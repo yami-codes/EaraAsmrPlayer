@@ -13,6 +13,7 @@ keystore.properties
 .gradle-home
 **/build/
 .build_asmr_player_android/
+.debug_device_db/
 captures/
 
 app/.cxx/
