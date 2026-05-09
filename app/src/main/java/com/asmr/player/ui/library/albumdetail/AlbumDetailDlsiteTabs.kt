@@ -124,6 +124,8 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.ImagePreviewItem
+import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -381,6 +383,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     onDownloadOne: (String) -> Unit,
     onAddToPlaylistOne: (String) -> Unit,
     onAddToPlaylist: (Track) -> Unit,
+    onPreviewImages: (ImagePreviewRequest) -> Unit,
     onPreviewFile: (AsmrTreeUiEntry.File) -> Unit,
     treeStateKey: String,
     initialCurrentPath: String,
@@ -395,7 +398,6 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     loadRemoteFileSize: suspend (String) -> Long?
 ) {
     val scope = rememberCoroutineScope()
-    var previewUrl by remember { mutableStateOf<String?>(null) }
     val videoTracks = remember(trialTracks) { trialTracks.filter { isVideoPreviewUrl(it.path) } }
     val audioTracks = remember(trialTracks) { trialTracks.filterNot { isVideoPreviewUrl(it.path) } }
     val asmrLeafTracks = remember(asmrOneTree) { flattenAsmrOneTracksForUi(asmrOneTree) }
@@ -516,7 +518,26 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                             if (headers.isEmpty()) url else CacheImageModel(data = url, headers = headers, keyTag = "dlsite")
                         }
                         Card(
-                            modifier = Modifier.size(width = 140.dp, height = 100.dp).clickable { previewUrl = url },
+                            modifier = Modifier.size(width = 140.dp, height = 100.dp).clickable {
+                                buildGalleryImagePreviewRequest(
+                                    galleryUrls = galleryUrls,
+                                    clickedUrl = url,
+                                    toPreviewItem = { galleryUrl ->
+                                        val headers = DlsiteAntiHotlink.headersForImageUrl(galleryUrl)
+                                        val model = if (headers.isEmpty()) {
+                                            galleryUrl
+                                        } else {
+                                            CacheImageModel(data = galleryUrl, headers = headers, keyTag = "dlsite")
+                                        }
+                                        ImagePreviewItem(
+                                            key = galleryUrl,
+                                            title = galleryUrl.substringBefore('?').substringAfterLast('/').ifBlank { "Gallery" },
+                                            imageModel = model,
+                                            openPathOrUrl = galleryUrl
+                                        )
+                                    }
+                                )?.let(onPreviewImages)
+                            },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             AsmrAsyncImage(
@@ -610,6 +631,30 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                                                 )
                                             )
                                         }
+                                    }
+                                    TreeFileType.Image -> {
+                                        buildDirectoryImagePreviewRequest(
+                                            files = browser.files,
+                                            clickedPath = file.path,
+                                            toPreviewItem = { imageFile ->
+                                                val imageUrl = imageFile.url.takeIf { it.isNotBlank() } ?: return@buildDirectoryImagePreviewRequest null
+                                                ImagePreviewItem(
+                                                    key = imageFile.path,
+                                                    title = imageFile.title,
+                                                    imageModel = imageUrl,
+                                                    openPathOrUrl = imageUrl
+                                                )
+                                            }
+                                        )?.let(onPreviewImages) ?: onPreviewFile(
+                                            AsmrTreeUiEntry.File(
+                                                path = file.path,
+                                                title = file.title,
+                                                depth = 0,
+                                                fileType = file.fileType,
+                                                isPlayable = false,
+                                                url = file.url
+                                            )
+                                        )
                                     }
                                     else -> onPreviewFile(
                                         AsmrTreeUiEntry.File(
@@ -742,50 +787,6 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             }
         }
     }
-
-    if (previewUrl != null) {
-        Dialog(onDismissRequest = { previewUrl = null }) {
-            Box(
-                modifier = Modifier.fillMaxSize().clickable { previewUrl = null },
-                contentAlignment = Alignment.Center
-            ) {
-                var scale by remember { mutableStateOf(1f) }
-                var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth(0.95f)
-                        .wrapContentHeight()
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(1f, 5f)
-                                if (scale > 1f) offset += pan else offset = androidx.compose.ui.geometry.Offset.Zero
-                            }
-                        }
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = offset.x,
-                            translationY = offset.y
-                        ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    val url = previewUrl.orEmpty()
-                    val model = remember(url) {
-                        val headers = DlsiteAntiHotlink.headersForImageUrl(url)
-                        if (headers.isEmpty()) url else CacheImageModel(data = url, headers = headers, keyTag = "dlsite")
-                    }
-                    AsmrAsyncImage(
-                        model = model,
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                        placeholderCornerRadius = 16
-                    )
-                }
-            }
-        }
-    }
 }
 
 
@@ -806,6 +807,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
     onAddMediaItemsToFavorites: (List<MediaItem>) -> Unit,
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
     onDownloadOne: (String) -> Unit,
+    onPreviewImages: (ImagePreviewRequest) -> Unit,
     onPreviewFile: (AsmrTreeUiEntry.File) -> Unit,
     treeStateKey: String,
     initialCurrentPath: String,
@@ -984,6 +986,30 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                                             )
                                         }
                                     }
+                                }
+                                TreeFileType.Image -> {
+                                    buildDirectoryImagePreviewRequest(
+                                        files = browser.files,
+                                        clickedPath = file.path,
+                                        toPreviewItem = { imageFile ->
+                                            val imageUrl = imageFile.url.takeIf { it.isNotBlank() } ?: return@buildDirectoryImagePreviewRequest null
+                                            ImagePreviewItem(
+                                                key = imageFile.path,
+                                                title = imageFile.title,
+                                                imageModel = imageUrl,
+                                                openPathOrUrl = imageUrl
+                                            )
+                                        }
+                                    )?.let(onPreviewImages) ?: onPreviewFile(
+                                        AsmrTreeUiEntry.File(
+                                            path = file.path,
+                                            title = file.title,
+                                            depth = 0,
+                                            fileType = file.fileType,
+                                            isPlayable = false,
+                                            url = file.url
+                                        )
+                                    )
                                 }
                                 else -> onPreviewFile(
                                     AsmrTreeUiEntry.File(

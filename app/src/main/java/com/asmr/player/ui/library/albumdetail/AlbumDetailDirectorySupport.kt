@@ -124,6 +124,8 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.ImagePreviewItem
+import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -306,6 +308,32 @@ internal data class DirectoryBrowserResult(
                 else -> null
             }
         }
+}
+
+internal fun buildDirectoryImagePreviewRequest(
+    files: List<DirectoryFileItem>,
+    clickedPath: String,
+    toPreviewItem: (DirectoryFileItem) -> ImagePreviewItem?
+): ImagePreviewRequest? {
+    val imageFiles = files.filter { it.fileType == TreeFileType.Image }
+    if (imageFiles.isEmpty()) return null
+    val items = imageFiles.mapNotNull(toPreviewItem)
+    if (items.isEmpty()) return null
+    val initialIndex = imageFiles.indexOfFirst { it.path == clickedPath }
+    if (initialIndex < 0) return null
+    return ImagePreviewRequest(items = items, initialIndex = initialIndex)
+}
+
+internal fun buildGalleryImagePreviewRequest(
+    galleryUrls: List<String>,
+    clickedUrl: String,
+    toPreviewItem: (String) -> ImagePreviewItem?
+): ImagePreviewRequest? {
+    val items = galleryUrls.mapNotNull(toPreviewItem)
+    if (items.isEmpty()) return null
+    val initialIndex = galleryUrls.indexOfFirst { it == clickedUrl }
+    if (initialIndex < 0) return null
+    return ImagePreviewRequest(items = items, initialIndex = initialIndex)
 }
 
 internal fun buildBreadcrumbSegments(currentPath: String): List<DirectoryBreadcrumbSegment> {
