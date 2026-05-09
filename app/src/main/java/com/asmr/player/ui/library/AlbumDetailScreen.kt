@@ -126,6 +126,8 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.ImagePreviewDialog
+import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -297,6 +299,7 @@ fun AlbumDetailScreen(
                     )
                     var localPreviewFile by remember { mutableStateOf<LocalTreeUiEntry.File?>(null) }
                     var onlinePreviewFile by remember { mutableStateOf<AsmrTreeUiEntry.File?>(null) }
+                    var imagePreviewRequest by remember { mutableStateOf<ImagePreviewRequest?>(null) }
                     val tabChromeState = rememberCollapsibleHeaderState()
                     val animatedTabChromeOffsetPx by animateFloatAsState(
                         targetValue = tabChromeState.offsetPx,
@@ -484,6 +487,7 @@ fun AlbumDetailScreen(
                                                 onSetCoverFromImage = { pathOrUri ->
                                                     viewModel.setLocalCoverPath(pathOrUri)
                                                 },
+                                                onPreviewImages = { request -> imagePreviewRequest = request },
                                                 onPreviewFile = { localPreviewFile = it },
                                                 animateIntro = shouldPlayInitialAnimations
                                             )
@@ -542,6 +546,7 @@ fun AlbumDetailScreen(
                                                 target.rjCode
                                             )
                                         },
+                                        onPreviewImages = { request -> imagePreviewRequest = request },
                                         onPreviewFile = { onlinePreviewFile = it },
                                         treeStateKey = "tree:asmrOne:${model.rjCode.trim().uppercase()}",
                                         initialCurrentPath = viewModel.getTreeCurrentPath("tree:asmrOne:${model.rjCode.trim().uppercase()}"),
@@ -580,6 +585,7 @@ fun AlbumDetailScreen(
                                         onDownloadOne = { relPath ->
                                             viewModel.downloadDlsitePlaySelected(setOf(relPath))
                                         },
+                                        onPreviewImages = { request -> imagePreviewRequest = request },
                                         onPreviewFile = { onlinePreviewFile = it },
                                         treeStateKey = "tree:dlsitePlay:${model.baseRjCode.ifBlank { model.rjCode }.trim().uppercase()}",
                                         initialCurrentPath = viewModel.getTreeCurrentPath("tree:dlsitePlay:${model.baseRjCode.ifBlank { model.rjCode }.trim().uppercase()}"),
@@ -701,6 +707,14 @@ fun AlbumDetailScreen(
                         messageManager = viewModel.messageManager,
                         loadOnlineText = viewModel::loadOnlineTextPreview,
                         onDismiss = { onlinePreviewFile = null }
+                    )
+                }
+
+                imagePreviewRequest?.let { request ->
+                    ImagePreviewDialog(
+                        request = request,
+                        messageManager = viewModel.messageManager,
+                        onDismiss = { imagePreviewRequest = null }
                     )
                 }
 
