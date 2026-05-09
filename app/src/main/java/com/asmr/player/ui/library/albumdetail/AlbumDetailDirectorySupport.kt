@@ -53,7 +53,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -71,6 +73,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -126,6 +129,7 @@ import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.ImagePreviewItem
 import com.asmr.player.ui.common.ImagePreviewRequest
+import com.asmr.player.ui.common.CollapsibleHeaderState
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -2497,6 +2501,7 @@ internal fun DirectoryBrowserPanelV4(
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
     animateIntro: Boolean = true,
+    parentChromeState: CollapsibleHeaderState? = null,
     preferredPath: String = "",
     onTogglePreferredPath: ((Boolean) -> Unit)? = null,
     folderKeyPrefix: String,
@@ -2512,6 +2517,35 @@ internal fun DirectoryBrowserPanelV4(
 ) {
     val browserListState = rememberSaveable("dir-panel-v4:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
+    }
+    val listNestedScrollConnection = remember(browserListState, parentChromeState) {
+        object : NestedScrollConnection {
+            private fun canScrollInside(deltaY: Float): Boolean = when {
+                deltaY < 0f -> browserListState.canScrollForward
+                deltaY > 0f -> browserListState.canScrollBackward
+                else -> false
+            }
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                parentChromeState?.setDescendantScrollBlocked(canScrollInside(available.y))
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                parentChromeState?.setDescendantScrollBlocked(canScrollInside(available.y))
+                return Velocity.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                parentChromeState?.setDescendantScrollBlocked(false)
+                return Velocity.Zero
+            }
+        }
+    }
+    DisposableEffect(parentChromeState) {
+        onDispose {
+            parentChromeState?.setDescendantScrollBlocked(false)
+        }
     }
     var selectionMode by remember(panelKey, currentPath) { mutableStateOf(false) }
     var preferredPathState by rememberSaveable(panelKey) { mutableStateOf(preferredPath.trim().trim('/')) }
@@ -2642,6 +2676,7 @@ internal fun DirectoryBrowserPanelV4(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(fixedHeight)
+                    .nestedScroll(listNestedScrollConnection)
                     .thinScrollbar(browserListState),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
             ) {

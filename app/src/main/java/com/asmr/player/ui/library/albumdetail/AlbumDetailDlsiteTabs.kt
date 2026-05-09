@@ -587,6 +587,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                         onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                         onAddMediaItemsToQueue = onAddMediaItemsToQueue,
                         animateIntro = animateIntro,
+                        parentChromeState = chromeState,
                         folderKeyPrefix = "asmr-folder",
                         fileKeyPrefix = "asmr-file",
                     fileContent = { file, selectionMode, selected, enterSelectionMode, onSelectedChange ->
@@ -941,6 +942,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                 onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                 onAddMediaItemsToQueue = onAddMediaItemsToQueue,
                 animateIntro = animateIntro,
+                parentChromeState = chromeState,
                 folderKeyPrefix = "dlplay-folder",
                 fileKeyPrefix = "dlplay-file",
                 fileContent = { file, selectionMode, selected, enterSelectionMode, onSelectedChange ->

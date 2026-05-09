@@ -263,6 +263,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                     onAddMediaItemsToQueue = onAddMediaItemsToQueue,
                     animateIntro = animateIntro,
+                    parentChromeState = chromeState,
                     preferredPath = preferredCurrentPath,
                     onTogglePreferredPath = { enabled ->
                         onTogglePreferredCurrentPath(currentPath, enabled)
