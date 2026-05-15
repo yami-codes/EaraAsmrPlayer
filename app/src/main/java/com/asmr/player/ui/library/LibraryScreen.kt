@@ -105,6 +105,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import androidx.media3.common.MediaItem
 import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.library.LibraryUiState
 
@@ -133,6 +134,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Card
@@ -159,6 +162,7 @@ import com.asmr.player.ui.common.ActionButton
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.common.thinScrollbar
+import com.asmr.player.playback.MediaItemFactory
 
 internal const val LIBRARY_CHROME_TAG = "library_chrome"
 internal const val LIBRARY_SEARCH_INPUT_TAG = "library_search_input"
@@ -220,7 +224,7 @@ fun LibraryScreen(
     windowSizeClass: WindowSizeClass,
     onAlbumClick: (Album) -> Unit,
     onPlayTracks: (Album, List<Track>, Track) -> Unit,
-    onOpenPlaylistPicker: (mediaId: String, uri: String, title: String, artist: String, artworkUri: String, albumId: Long, trackId: Long, rjCode: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
+    onOpenPlaylistPicker: (MediaItem) -> Unit = {},
     onOpenGroupPicker: (albumId: Long) -> Unit = { _ -> },
     onOpenFilterScreen: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
@@ -500,52 +504,7 @@ fun LibraryScreen(
                                             null
                                         }
                                     )
-                                } /* else if (false) {
-                                    val hasAnyQuery =
-                                        !querySpec.textQuery.isNullOrBlank() ||
-                                            querySpec.includeTagIds.isNotEmpty() ||
-                                            querySpec.excludeTagIds.isNotEmpty() ||
-                                            querySpec.circles.isNotEmpty() ||
-                                            querySpec.cvs.isNotEmpty() ||
-                                            querySpec.source != null
-
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 24.dp)
-                                                .align(Alignment.Center),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            if (hasAnyQuery) {
-                                                Text(
-                                                    "没有匹配结果",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                                Button(
-                                                    onClick = {
-                                                        searchText = ""
-                                                        viewModel.setSearchQuery("")
-                                                        viewModel.clearFilters()
-                                                    }
-                                                ) { Text("重置筛选与搜索") }
-                                            } else {
-                                                Text(
-                                                    "还没有扫描到本地专辑",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                                Text(
-                                                    "请到「设置」→「本地库」添加目录并执行同步/刷新",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                            }
-                                        }
-                                    }
-                                } */ else if (isTrackList) {
+                                } else if (isTrackList) {
                                     LazyColumn(
                                         state = listState,
                                         modifier = Modifier
@@ -589,7 +548,6 @@ fun LibraryScreen(
                                                         rjCode = header.rjCode.ifBlank { header.workId },
                                                         coverModel = header.coverPath.takeIf { it.isNotBlank() }.takeIf { it != "null" }
                                                             ?: header.coverUrl.takeIf { it.isNotBlank() },
-                                                        expanded = expanded,
                                                         onToggle = {
                                                             if (expanded) expandedAlbumIds.remove(albumId) else expandedAlbumIds.add(albumId)
                                                         }
@@ -662,26 +620,7 @@ fun LibraryScreen(
                                                                 playerViewModel.addTrackToQueue(album, track)
                                                             },
                                                             onAddToPlaylist = {
-                                                                val rj = album.rjCode.ifBlank { album.workId }
-                                                                val artist = when {
-                                                                    album.cv.isNotBlank() -> album.cv
-                                                                    album.circle.isNotBlank() -> album.circle
-                                                                    else -> rj
-                                                                }
-                                                                val artwork = album.coverPath.ifBlank { album.coverUrl }
-                                                                val displayTitle = track.title.ifBlank {
-                                                                    track.path.substringAfterLast('/').substringAfterLast('\\')
-                                                                }
-                                                                onOpenPlaylistPicker(
-                                                                    track.path,
-                                                                    track.path,
-                                                                    displayTitle,
-                                                                    artist.orEmpty(),
-                                                                    artwork,
-                                                                    album.id,
-                                                                    track.id,
-                                                                    rj
-                                                                )
+                                                                onOpenPlaylistPicker(MediaItemFactory.fromTrack(album, track))
                                                             },
                                                             onManageTags = {
                                                                 scope.launch {
@@ -1158,7 +1097,6 @@ private fun TrackAlbumHeader(
     albumTitle: String,
     rjCode: String,
     coverModel: Any?,
-    expanded: Boolean,
     onToggle: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -1221,6 +1159,17 @@ private fun TrackListRow(
                 style = MaterialTheme.typography.bodyLarge
             )
         },
+        supportingContent = {
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.textTertiary
+                )
+            }
+        },
         trailingContent = {
             var expanded by remember { mutableStateOf(false) }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1247,6 +1196,9 @@ private fun TrackListRow(
                                 onClick = {
                                     expanded = false
                                     onAddToQueue()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
                                 }
                             )
                             HorizontalDivider(
@@ -1255,10 +1207,13 @@ private fun TrackListRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text("添加到歌单") },
+                                text = { Text("添加到播放列表") },
                                 onClick = {
                                     expanded = false
                                     onAddToPlaylist()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null)
                                 }
                             )
                             HorizontalDivider(
@@ -1271,6 +1226,9 @@ private fun TrackListRow(
                                 onClick = {
                                     expanded = false
                                     onManageTags()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null)
                                 }
                             )
                             HorizontalDivider(
@@ -1283,6 +1241,9 @@ private fun TrackListRow(
                                 onClick = {
                                     expanded = false
                                     onRemove()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, contentDescription = null)
                                 }
                             )
                         }

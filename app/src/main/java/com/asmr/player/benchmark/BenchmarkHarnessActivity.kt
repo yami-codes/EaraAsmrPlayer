@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.data.repository.AlbumGroupRepository
 import com.asmr.player.data.repository.PlaylistRepository
+import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.ui.groups.AlbumGroupDetailContent
 import com.asmr.player.ui.groups.AlbumGroupPickerScreen
 import com.asmr.player.ui.groups.AlbumGroupsScreen
@@ -145,7 +146,7 @@ private fun BenchmarkScenarioScreen(
                 windowSizeClass = windowSizeClass,
                 onAlbumClick = {},
                 onPlayTracks = { _, _, _ -> },
-                onOpenPlaylistPicker = { _, _, _, _, _, _, _, _ -> },
+                onOpenPlaylistPicker = { _ -> },
                 onOpenGroupPicker = {},
                 onOpenFilterScreen = {}
             )
@@ -194,22 +195,6 @@ private fun BenchmarkScenarioScreen(
                 onMoveItemToTop = {},
                 onMoveItemToBottom = {},
                 onSaveManualOrder = {}
-            )
-        }
-
-        BenchmarkScenario.PlaylistPicker -> {
-            PlaylistPickerScreen(
-                windowSizeClass = windowSizeClass,
-                mediaId = seedSummary.sampleMediaId,
-                uri = seedSummary.sampleUri,
-                title = seedSummary.sampleTitle,
-                artist = seedSummary.sampleArtist,
-                artworkUri = seedSummary.sampleArtworkUri,
-                albumId = seedSummary.sampleAlbumId,
-                trackId = seedSummary.sampleTrackId,
-                rjCode = seedSummary.sampleRjCode,
-                embeddedInDialog = true,
-                onBack = {}
             )
         }
 

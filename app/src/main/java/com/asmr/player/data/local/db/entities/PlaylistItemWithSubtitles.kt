@@ -5,9 +5,18 @@ data class PlaylistItemWithSubtitles(
     val mediaId: String,
     val title: String,
     val artist: String = "",
+    val albumTitle: String = "",
     val uri: String,
     val artworkUri: String = "",
     val playbackArtworkUri: String = "",
+    val albumId: Long = 0L,
+    val trackId: Long = 0L,
+    val rjCode: String = "",
+    val albumWorkId: String = "",
+    val trackGroup: String = "",
+    val lyricsRelativePathNoExt: String = "",
+    val mimeType: String = "",
+    val isVideo: Boolean = false,
     val itemOrder: Int = 0,
     val hasSubtitles: Boolean
 )

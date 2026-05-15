@@ -24,6 +24,7 @@ interface PlaylistItemDao {
             pi.mediaId,
             pi.title,
             pi.artist,
+            pi.albumTitle,
             pi.uri,
             COALESCE(
                 NULLIF(a.coverThumbPath, ''),
@@ -39,6 +40,14 @@ interface PlaylistItemDao {
                 NULLIF(a.coverThumbPath, ''),
                 ''
             ) AS playbackArtworkUri,
+            pi.albumId,
+            pi.trackId,
+            pi.rjCode,
+            pi.albumWorkId,
+            pi.trackGroup,
+            pi.lyricsRelativePathNoExt,
+            pi.mimeType,
+            pi.isVideo,
             pi.itemOrder,
             (
                 EXISTS(

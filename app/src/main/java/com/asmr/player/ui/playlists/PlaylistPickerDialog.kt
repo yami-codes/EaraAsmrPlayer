@@ -44,23 +44,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
-import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrTheme
-import java.io.File
 
 @Composable
 fun PlaylistPickerScreen(
     windowSizeClass: WindowSizeClass,
-    mediaId: String = "",
-    uri: String = "",
-    title: String = "",
-    artist: String = "",
-    artworkUri: String = "",
-    albumId: Long = 0L,
-    trackId: Long = 0L,
-    rjCode: String = "",
-    items: List<MediaItem>? = null,
+    items: List<MediaItem>,
     onBack: () -> Unit,
     embeddedInDialog: Boolean = false,
     viewModel: PlaylistsViewModel = hiltViewModel()
@@ -75,21 +65,7 @@ fun PlaylistPickerScreen(
     val canCreate = remember(createName) { createName.trim().isNotBlank() }
     val isAdding = addingPlaylistId != null
 
-    val pickerItems = remember(mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode, items) {
-        items ?: listOf(
-            buildPlaylistAddMediaItem(
-                mediaId = mediaId,
-                uri = uri,
-                title = title,
-                artist = artist,
-                artworkUri = artworkUri,
-                albumId = albumId,
-                trackId = trackId,
-                rjCode = rjCode
-            )
-        )
-    }
-
+    val pickerItems = remember(items) { items }
     BackHandler(enabled = isAdding) {}
 
     DisposableEffect(Unit) {
@@ -227,60 +203,4 @@ fun PlaylistPickerScreen(
             }
         }
     }
-}
-
-private fun buildPlaylistAddMediaItem(
-    mediaId: String,
-    uri: String,
-    title: String,
-    artist: String,
-    artworkUri: String,
-    albumId: Long = 0L,
-    trackId: Long = 0L,
-    rjCode: String = ""
-): MediaItem {
-    return MediaItemFactory.fromDetails(
-        mediaId = mediaId,
-        uri = repairPlayableUriForPlaylist(uri),
-        title = title,
-        artist = artist,
-        artworkUri = artworkUri,
-        albumId = albumId,
-        trackId = trackId,
-        rjCode = rjCode
-    )
-}
-
-private fun repairPlayableUriForPlaylist(raw: String): String {
-    val trimmed = raw.trim()
-    if (!trimmed.startsWith("content://", ignoreCase = true)) return trimmed
-    return repairDocumentUri(trimmed)
-}
-
-private fun repairDocumentUri(raw: String): String {
-    val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return raw
-    val segments = uri.pathSegments ?: return raw
-    val docIndex = segments.indexOf("document")
-    if (docIndex < 0 || segments.size <= docIndex + 2) return raw
-    val docId = segments.subList(docIndex + 1, segments.size).joinToString("/")
-    val encodedDocId = Uri.encode(docId)
-    val encodedPath = "/" + segments.take(docIndex + 1).joinToString("/") + "/" + encodedDocId
-    return uri.buildUpon().encodedPath(encodedPath).build().toString()
-}
-
-@Suppress("unused")
-private fun toPlayableUriForPlaylist(raw: String): Uri {
-    val trimmed = raw.trim()
-    if (
-        trimmed.startsWith("content://", ignoreCase = true) ||
-            trimmed.startsWith("http://", ignoreCase = true) ||
-            trimmed.startsWith("https://", ignoreCase = true) ||
-            trimmed.startsWith("file://", ignoreCase = true)
-    ) {
-        return Uri.parse(repairPlayableUriForPlaylist(trimmed))
-    }
-    if (trimmed.startsWith("/")) {
-        return Uri.fromFile(File(trimmed))
-    }
-    return Uri.parse(trimmed)
 }

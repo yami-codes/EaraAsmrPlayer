@@ -276,7 +276,6 @@ fun resolvePrimaryRoute(
         currentRoute?.startsWith("group_picker") == true -> "groups"
         currentRoute == "library_filter" -> Routes.Library
         currentRoute?.startsWith("album_detail") == true -> lastPrimaryRoute ?: Routes.Library
-        currentRoute?.startsWith("playlist_picker") == true -> lastPrimaryRoute ?: Routes.Library
         else -> lastPrimaryRoute ?: Routes.Library
     }
 }

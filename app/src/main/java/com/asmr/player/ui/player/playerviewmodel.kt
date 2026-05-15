@@ -38,6 +38,7 @@ import android.os.Bundle
 import java.io.File
 
 import com.asmr.player.data.repository.PlaylistRepository
+import com.asmr.player.data.repository.PlaylistMediaItemMapper
 import com.asmr.player.data.repository.TrackSliceRepository
 import com.asmr.player.data.repository.SliceOverlapException
 import com.asmr.player.data.settings.EqualizerSettings
@@ -764,40 +765,5 @@ class PlayerViewModel @Inject constructor(
 }
 
 private fun PlaylistItemEntity.toMediaItemOrNull(): MediaItem? {
-    val trimmed = uri.trim()
-    if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return null
-    val metadata = MediaMetadata.Builder()
-        .setTitle(title)
-        .setArtist(artist)
-        .setArtworkUri(artworkUri.takeIf { it.isNotBlank() }?.toUri())
-        .build()
-
-    fun repairDocumentUri(raw: String): String {
-        val u = runCatching { Uri.parse(raw) }.getOrNull() ?: return raw
-        val segs = u.pathSegments ?: return raw
-        val docIndex = segs.indexOf("document")
-        if (docIndex < 0) return raw
-        if (segs.size <= docIndex + 2) return raw
-        val docId = segs.subList(docIndex + 1, segs.size).joinToString("/")
-        val encodedDocId = Uri.encode(docId)
-        val encodedPath = "/" + segs.take(docIndex + 1).joinToString("/") + "/" + encodedDocId
-        return u.buildUpon().encodedPath(encodedPath).build().toString()
-    }
-
-    val normalized = if (trimmed.startsWith("content://", ignoreCase = true)) repairDocumentUri(trimmed) else trimmed
-    val normalizedMediaId = mediaId.trim().let { mid ->
-        if (mid.startsWith("content://", ignoreCase = true)) repairDocumentUri(mid) else mid
-    }.ifBlank { normalized }
-    val parsedUri = when {
-        normalized.startsWith("http", ignoreCase = true) ||
-            normalized.startsWith("content://", ignoreCase = true) ||
-            normalized.startsWith("file://", ignoreCase = true) -> normalized.toUri()
-        trimmed.startsWith("/") -> Uri.fromFile(File(trimmed))
-        else -> return null
-    }
-    return MediaItem.Builder()
-        .setMediaId(normalizedMediaId)
-        .setUri(parsedUri)
-        .setMediaMetadata(metadata)
-        .build()
+    return PlaylistMediaItemMapper.toMediaItemOrNull(this)
 }

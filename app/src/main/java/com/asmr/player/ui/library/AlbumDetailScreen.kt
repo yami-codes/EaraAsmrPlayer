@@ -196,8 +196,7 @@ fun AlbumDetailScreen(
     onAddToQueue: (Album, Track) -> Boolean = { _, _ -> false },
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit = {},
     onAddMediaItemsToFavorites: (List<MediaItem>) -> Unit = {},
-    onOpenPlaylistPicker: (mediaId: String, uri: String, title: String, artist: String, artworkUri: String, albumId: Long, trackId: Long, rjCode: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
-    onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit = {},
+    onOpenPlaylistPicker: (MediaItem) -> Unit = {},
     onOpenGroupPicker: (albumId: Long) -> Unit = { _ -> },
     onPlayVideo: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onOpenDlsiteLogin: () -> Unit = {},
@@ -475,16 +474,7 @@ fun AlbumDetailScreen(
                                                 },
                                                 onAddToPlaylist = { track ->
                                                     val target = PlaylistAddTarget.fromTrack(local, track)
-                                                    onOpenPlaylistPicker(
-                                                        target.mediaId,
-                                                        target.uri,
-                                                        target.title,
-                                                        target.artist,
-                                                        target.artworkUri,
-                                                        target.albumId,
-                                                        target.trackId,
-                                                        target.rjCode
-                                                    )
+                                                    onOpenPlaylistPicker(target.toMediaItem())
                                                 },
                                                 onManageTrackTags = { track ->
                                                     tagManageTrack = track
@@ -530,29 +520,11 @@ fun AlbumDetailScreen(
                                         },
                                         onAddToPlaylistOne = { relPath ->
                                             val target = PlaylistAddTarget.fromAsmrOne(album, asmrOneTree, relPath) ?: return@AlbumDlsiteInfoBreadcrumbTabV2
-                                            onOpenPlaylistPicker(
-                                                target.mediaId,
-                                                target.uri,
-                                                target.title,
-                                                target.artist,
-                                                target.artworkUri,
-                                                target.albumId,
-                                                target.trackId,
-                                                target.rjCode
-                                            )
+                                            onOpenPlaylistPicker(target.toMediaItem())
                                         },
                                         onAddToPlaylist = { track ->
                                             val target = PlaylistAddTarget.fromTrack(album, track)
-                                            onOpenPlaylistPicker(
-                                                target.mediaId,
-                                                target.uri,
-                                                target.title,
-                                                target.artist,
-                                                target.artworkUri,
-                                                target.albumId,
-                                                target.trackId,
-                                                target.rjCode
-                                            )
+                                            onOpenPlaylistPicker(target.toMediaItem())
                                         },
                                         onPreviewImages = { request -> imagePreviewRequest = request },
                                         onPreviewFile = { onlinePreviewFile = it },

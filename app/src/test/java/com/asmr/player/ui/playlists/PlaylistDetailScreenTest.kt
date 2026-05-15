@@ -128,9 +128,18 @@ class PlaylistDetailScreenTest {
             mediaId = mediaId,
             title = title,
             artist = "Artist",
+            albumTitle = "Album",
             uri = "file:///$mediaId.mp3",
             artworkUri = "",
             playbackArtworkUri = "",
+            albumId = 1L,
+            trackId = 2L,
+            rjCode = "RJ123456",
+            albumWorkId = "WORK123",
+            trackGroup = "Disc 1",
+            lyricsRelativePathNoExt = "Disc 1/$mediaId",
+            mimeType = "audio/mpeg",
+            isVideo = false,
             itemOrder = 0,
             hasSubtitles = false
         )
