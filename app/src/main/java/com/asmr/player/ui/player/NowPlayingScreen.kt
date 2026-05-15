@@ -73,6 +73,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
@@ -169,7 +170,7 @@ internal fun NowPlayingScreen(
     onRouteExitStarted: (exitDurationMs: Int) -> Unit = {},
     onShowQueue: () -> Unit,
     onShowSleepTimer: () -> Unit,
-    onOpenPlaylistPicker: (mediaId: String, uri: String, title: String, artist: String, artworkUri: String, albumId: Long, trackId: Long, rjCode: String) -> Unit,
+    onOpenPlaylistPicker: (MediaItem) -> Unit,
     viewModel: PlayerViewModel,
     coverBackgroundEnabled: Boolean,
     coverBackgroundClarity: Float,
@@ -703,21 +704,7 @@ internal fun NowPlayingScreen(
                             viewModel = viewModel,
                             onShowPlaylistPicker = {
                                 val current = playback.currentMediaItem ?: return@PlaybackControls
-                                val md = current.mediaMetadata
-                                val extras = md.extras
-                                val albumId = extras?.getLong("album_id") ?: 0L
-                                val trackId = extras?.getLong("track_id") ?: 0L
-                                val rjCode = extras?.getString("rj_code").orEmpty()
-                                onOpenPlaylistPicker(
-                                    current.mediaId,
-                                    current.localConfiguration?.uri?.toString().orEmpty(),
-                                    md.title?.toString().orEmpty(),
-                                    md.artist?.toString().orEmpty(),
-                                    md.artworkUri?.toString().orEmpty(),
-                                    albumId,
-                                    trackId,
-                                    rjCode
-                                )
+                                onOpenPlaylistPicker(current)
                             },
                             onShowEqualizer = { showEqualizer = true },
                             onManageTags = {
@@ -928,21 +915,7 @@ internal fun NowPlayingScreen(
                             viewModel = viewModel,
                             onShowPlaylistPicker = {
                                 val current = playback.currentMediaItem ?: return@PlaybackControls
-                                val md = current.mediaMetadata
-                                val extras = md.extras
-                                val albumId = extras?.getLong("album_id") ?: 0L
-                                val trackId = extras?.getLong("track_id") ?: 0L
-                                val rjCode = extras?.getString("rj_code").orEmpty()
-                                onOpenPlaylistPicker(
-                                    current.mediaId,
-                                    current.localConfiguration?.uri?.toString().orEmpty(),
-                                    md.title?.toString().orEmpty(),
-                                    md.artist?.toString().orEmpty(),
-                                    md.artworkUri?.toString().orEmpty(),
-                                    albumId,
-                                    trackId,
-                                    rjCode
-                                )
+                                onOpenPlaylistPicker(current)
                             },
                             onShowEqualizer = { showEqualizer = true },
                             onManageTags = {
@@ -1147,21 +1120,7 @@ internal fun NowPlayingScreen(
                         viewModel = viewModel,
                         onShowPlaylistPicker = {
                             val current = playback.currentMediaItem ?: return@PlaybackControls
-                            val md = current.mediaMetadata
-                            val extras = md.extras
-                            val albumId = extras?.getLong("album_id") ?: 0L
-                            val trackId = extras?.getLong("track_id") ?: 0L
-                            val rjCode = extras?.getString("rj_code").orEmpty()
-                            onOpenPlaylistPicker(
-                                current.mediaId,
-                                current.localConfiguration?.uri?.toString().orEmpty(),
-                                md.title?.toString().orEmpty(),
-                                md.artist?.toString().orEmpty(),
-                                md.artworkUri?.toString().orEmpty(),
-                                albumId,
-                                trackId,
-                                rjCode
-                            )
+                            onOpenPlaylistPicker(current)
                         },
                         onShowEqualizer = { showEqualizer = true },
                         onManageTags = {

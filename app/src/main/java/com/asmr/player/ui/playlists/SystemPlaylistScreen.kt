@@ -17,7 +17,6 @@ import com.asmr.player.ui.theme.AsmrTheme
 @Composable
 fun SystemPlaylistScreen(
     windowSizeClass: WindowSizeClass,
-    type: String,
     onPlayAll: (List<PlaylistItemEntity>, PlaylistItemEntity) -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {

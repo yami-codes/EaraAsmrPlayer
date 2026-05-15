@@ -70,7 +70,9 @@ class LyricsLoader @Inject constructor(
     private suspend fun load(target: LyricsTargetContext, fallbackTitle: String): LyricsResult {
         if (target.mediaId.isBlank()) return LyricsResult(title = "", lyrics = emptyList())
 
-        val track = trackDao.getTrackByPathOnce(target.mediaId)
+        val trackByPath = trackDao.getTrackByPathOnce(target.mediaId)
+        val trackById = target.trackId.takeIf { it > 0L }?.let { id -> trackDao.getTrackByIdOnce(id) }
+        val track = trackByPath ?: trackById
         val title = track?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle.ifBlank { target.mediaId }
 
         val manualLyrics = loadManualLyrics(target)

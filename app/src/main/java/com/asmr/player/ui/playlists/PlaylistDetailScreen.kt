@@ -403,8 +403,17 @@ private fun PlaylistItemWithSubtitles.toPlaybackEntity(): PlaylistItemEntity {
         mediaId = mediaId,
         title = title,
         artist = artist,
+        albumTitle = albumTitle,
         uri = uri,
         artworkUri = playbackArtworkUri.ifBlank { artworkUri },
+        albumId = albumId,
+        trackId = trackId,
+        rjCode = rjCode,
+        albumWorkId = albumWorkId,
+        trackGroup = trackGroup,
+        lyricsRelativePathNoExt = lyricsRelativePathNoExt,
+        mimeType = mimeType,
+        isVideo = isVideo,
         itemOrder = itemOrder
     )
 }

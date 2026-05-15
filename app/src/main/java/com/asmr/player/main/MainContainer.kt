@@ -196,14 +196,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 internal data class PlaylistPickerRequest(
-    val mediaId: String,
-    val uri: String,
-    val title: String,
-    val artist: String,
-    val artworkUri: String,
-    val albumId: Long,
-    val trackId: Long,
-    val rjCode: String
+    val items: List<MediaItem>
 )
 
 internal data class BatchPlaylistPickerRequest(
@@ -1114,18 +1107,8 @@ fun MainContainer(
                                                         }
                                                     }
                                                 },
-                                                onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                                                    navController.navigateSingleTop(
-                                                        "playlist_picker" +
-                                                            "?mediaId=${encodeRouteArg(mediaId)}" +
-                                                            "&uri=${encodeRouteArg(uri)}" +
-                                                            "&title=${encodeRouteArg(title)}" +
-                                                            "&artist=${encodeRouteArg(artist)}" +
-                                                            "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                                            "&albumId=$albumId" +
-                                                            "&trackId=$trackId" +
-                                                            "&rjCode=${encodeRouteArg(rjCode)}"
-                                                    )
+                                                onOpenPlaylistPicker = { item ->
+                                                    albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                                                 },
                                                 onOpenGroupPicker = { albumId ->
                                                     navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1152,7 +1135,6 @@ fun MainContainer(
                                         "playlist_system/favorites" -> {
                                             SystemPlaylistScreen(
                                                 windowSizeClass = windowSizeClass,
-                                                type = "favorites",
                                                 onPlayAll = { items, startItem ->
                                                     playerViewModel.playPlaylistItems(items, startItem)
                                                     openNowPlaying()
@@ -1271,21 +1253,8 @@ fun MainContainer(
                         onAddMediaItemsToFavorites = { items ->
                             playlistsViewModel.addItemsToFavoritesInBackground(items)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
-                        },
-                        onOpenBatchPlaylistPicker = { items ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(items)
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1336,21 +1305,8 @@ fun MainContainer(
                         onAddMediaItemsToFavorites = { items ->
                             playlistsViewModel.addItemsToFavoritesInBackground(items)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
-                        },
-                        onOpenBatchPlaylistPicker = { items ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(items)
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1388,18 +1344,8 @@ fun MainContainer(
                         onAddToQueue = { album, track ->
                             playerViewModel.addTrackToQueue(album, track)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1496,7 +1442,6 @@ fun MainContainer(
                     } else {
                         SystemPlaylistScreen(
                             windowSizeClass = windowSizeClass,
-                            type = type,
                             onPlayAll = { items, startItem ->
                                 playerViewModel.playPlaylistItems(items, startItem)
                                 openNowPlaying()
@@ -1504,41 +1449,6 @@ fun MainContainer(
                             viewModel = playlistsViewModel
                         )
                     }
-                }
-                composable(
-                    route = "playlist_picker?mediaId={mediaId}&uri={uri}&title={title}&artist={artist}&artworkUri={artworkUri}&albumId={albumId}&trackId={trackId}&rjCode={rjCode}",
-                    arguments = listOf(
-                        navArgument("mediaId") { defaultValue = "" },
-                        navArgument("uri") { defaultValue = "" },
-                        navArgument("title") { defaultValue = "" },
-                        navArgument("artist") { defaultValue = "" },
-                        navArgument("artworkUri") { defaultValue = "" },
-                        navArgument("albumId") { type = NavType.LongType },
-                        navArgument("trackId") { type = NavType.LongType },
-                        navArgument("rjCode") { defaultValue = "" }
-                    )
-                ) { backStackEntry ->
-                    val mediaId = decodeRouteArg(backStackEntry.arguments?.getString("mediaId").orEmpty())
-                    val uri = decodeRouteArg(backStackEntry.arguments?.getString("uri").orEmpty())
-                    val title = decodeRouteArg(backStackEntry.arguments?.getString("title").orEmpty())
-                    val artist = decodeRouteArg(backStackEntry.arguments?.getString("artist").orEmpty())
-                    val artworkUri = decodeRouteArg(backStackEntry.arguments?.getString("artworkUri").orEmpty())
-                    val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
-                    val trackId = backStackEntry.arguments?.getLong("trackId") ?: 0L
-                    val rjCode = decodeRouteArg(backStackEntry.arguments?.getString("rjCode").orEmpty())
-                    PlaylistPickerScreen(
-                        windowSizeClass = windowSizeClass,
-                        mediaId = mediaId,
-                        uri = uri,
-                        title = title,
-                        artist = artist,
-                        artworkUri = artworkUri,
-                        albumId = albumId,
-                        trackId = trackId,
-                        rjCode = rjCode,
-                        onBack = { navController.popBackStack() },
-                        viewModel = playlistsViewModel
-                    )
                 }
                 composable("settings") {
                     Box(modifier = Modifier.fillMaxSize())
@@ -1743,17 +1653,8 @@ fun MainContainer(
                     },
                     onShowQueue = onShowQueue,
                     onShowSleepTimer = onShowSleepTimer,
-                    onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                        nowPlayingPlaylistPickerRequest = PlaylistPickerRequest(
-                            mediaId = mediaId,
-                            uri = uri,
-                            title = title,
-                            artist = artist,
-                            artworkUri = artworkUri,
-                            albumId = albumId,
-                            trackId = trackId,
-                            rjCode = rjCode
-                        )
+                    onOpenPlaylistPicker = { item ->
+                        nowPlayingPlaylistPickerRequest = PlaylistPickerRequest(items = listOf(item))
                     },
                     viewModel = playerViewModel,
                     coverBackgroundEnabled = coverBackgroundEnabled,
@@ -1784,14 +1685,7 @@ fun MainContainer(
                             ) {
                                 PlaylistPickerScreen(
                                     windowSizeClass = windowSizeClass,
-                                    mediaId = request.mediaId,
-                                    uri = request.uri,
-                                    title = request.title,
-                                    artist = request.artist,
-                                    artworkUri = request.artworkUri,
-                                    albumId = request.albumId,
-                                    trackId = request.trackId,
-                                    rjCode = request.rjCode,
+                                    items = request.items,
                                     onBack = { nowPlayingPlaylistPickerRequest = null },
                                     embeddedInDialog = true,
                                     viewModel = playlistsViewModel
