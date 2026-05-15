@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,14 +48,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.widthIn
 import com.asmr.player.util.Formatting
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.CoverContentRow
-import com.asmr.player.ui.common.CvChipsFlow
-import com.asmr.player.ui.common.CvChipsSingleLine
 import com.asmr.player.ui.common.AudioItemMenuAction
 import com.asmr.player.ui.common.AudioItemRow
 import com.asmr.player.ui.common.EaraBrandedEmptyState
@@ -116,12 +114,8 @@ import com.asmr.player.ui.library.LibraryUiState
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
@@ -670,8 +664,8 @@ fun LibraryScreen(
                                             .thinScrollbar(gridState),
                                         contentPadding = PaddingValues(top = topPadding, start = 16.dp, end = 16.dp, bottom = 16.dp)
                                             .withAddedBottomPadding(LocalBottomOverlayPadding.current),
-                                        verticalItemSpacing = 16.dp,
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        verticalItemSpacing = AlbumGridItemSpacing,
+                                        horizontalArrangement = Arrangement.spacedBy(AlbumGridItemSpacing)
                                     ) {
                                         staggeredItems(
                                             pagedAlbumIndices,
@@ -1165,24 +1159,24 @@ private fun TrackListRow(
         modifier = Modifier.fillMaxWidth(),
         actions = listOf(
             AudioItemMenuAction(
-                label = "娣诲姞鍒版挱鏀鹃槦鍒?",
+                label = "添加到播放队列",
                 onClick = onAddToQueue,
                 icon = Icons.AutoMirrored.Filled.QueueMusic
             ),
             AudioItemMenuAction(
-                label = "娣诲姞鍒版挱鏀惧垪琛?",
+                label = "添加到播放列表",
                 onClick = onAddToPlaylist,
                 icon = Icons.AutoMirrored.Filled.PlaylistAdd,
                 showDividerBefore = true
             ),
             AudioItemMenuAction(
-                label = "鏍囩绠＄悊",
+                label = "标签管理",
                 onClick = onManageTags,
                 icon = Icons.AutoMirrored.Filled.Label,
                 showDividerBefore = true
             ),
             AudioItemMenuAction(
-                label = "浠庝笓杈戠Щ闄?",
+                label = "从专辑移除",
                 onClick = onRemove,
                 icon = Icons.Default.Delete,
                 showDividerBefore = true
@@ -1200,11 +1194,18 @@ private fun AlbumGridItem(
     onLongClick: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val coverShape = remember { RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumGridItemCornerRadius,
+            topEnd = AlbumGridItemCornerRadius,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(AlbumGridItemCornerRadius))
             .background(colorScheme.surface.copy(alpha = 0.3f))
             .combinedClickable(
                 onClick = onClick,
@@ -1294,17 +1295,13 @@ private fun AlbumGridItem(
                 overflow = TextOverflow.Clip
             )
             
-            if (album.circle.isNotBlank()) {
-                Text(
-                    text = album.circle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.primary.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            AlbumPrimaryMetaRow(
+                rjCode = "",
+                circle = album.circle,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-            CvChipsFlow(cvText = album.cv)
+            AlbumCvChipsFlow(cvText = album.cv)
 
             val statsText = buildString {
                 val rv = album.ratingValue
@@ -1329,22 +1326,10 @@ private fun AlbumGridItem(
             }
 
             if (album.tags.isNotEmpty()) {
-                FlowRow(
+                AlbumTagsFlow(
+                    tags = album.tags,
                     modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    album.tags.forEach { tag ->
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.primary.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
-                    }
-                }
+                )
             }
         }
     }
@@ -1359,7 +1344,14 @@ private fun AlbumItem(
     onLongClick: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val coverShape = remember { RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 0.dp, bottomEnd = 0.dp) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumListItemCornerRadius,
+            bottomStart = AlbumListItemCornerRadius,
+            topEnd = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val listItemHeight = (screenWidthDp.dp * 0.24f).coerceIn(112.dp, 140.dp)
     val coverSize = listItemHeight
@@ -1368,7 +1360,7 @@ private fun AlbumItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(AlbumListItemCornerRadius))
             .background(colorScheme.surface.copy(alpha = 0.5f))
             .combinedClickable(
                 onClick = onClick,
@@ -1462,38 +1454,21 @@ private fun AlbumItem(
                 ) {
                     Text(
                         text = album.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = colorScheme.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
                     val rj = album.rjCode.ifBlank { album.workId }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (rj.isNotBlank()) {
-                            Text(
-                                text = rj,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.primary,
-                                modifier = Modifier
-                                    .background(colorScheme.primaryContainer, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        if (album.circle.isNotBlank()) {
-                            Text(
-                                text = album.circle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.primary.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                    AlbumPrimaryMetaRow(
+                        rjCode = rj,
+                        circle = album.circle,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
                     if (album.cv.isNotBlank()) {
-                        CvChipsSingleLine(
+                        AlbumCvChipsSingleLine(
                             cvText = album.cv,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -1510,27 +1485,10 @@ private fun AlbumItem(
                     }
 
                     if (album.tags.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clipToBounds()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            album.tags.forEach { tag ->
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colorScheme.primary.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .widthIn(max = 200.dp)
-                                        .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
-                        }
+                        AlbumTagsSingleLine(
+                            tags = album.tags,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
             },
