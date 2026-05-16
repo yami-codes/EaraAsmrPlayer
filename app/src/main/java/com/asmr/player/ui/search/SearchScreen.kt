@@ -336,7 +336,7 @@ fun SearchScreen(
                     } else {
                         Modifier
                             .fillMaxHeight()
-                            .widthIn(max = 760.dp)
+                            .widthIn(max = 800.dp)
                             .fillMaxWidth()
                     }
                 ) {

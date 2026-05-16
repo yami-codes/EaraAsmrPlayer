@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -52,7 +53,7 @@ internal val AudioItemTrailingSpacing = 4.dp
 internal val AudioItemSubtitleStampSpacing = 4.dp
 internal val AudioItemMenuButtonSize = 36.dp
 internal val AudioItemMenuIconSize = 18.dp
-internal val AudioItemTrailingEndPadding = 2.dp
+internal val AudioItemTrailingRightOffset = 6.dp
 
 @Composable
 internal fun AudioItemRow(
@@ -154,7 +155,7 @@ internal fun AudioItemRow(
 
             var expanded by remember { mutableStateOf(false) }
             Row(
-                modifier = Modifier.padding(end = AudioItemTrailingEndPadding),
+                modifier = Modifier.offset(x = AudioItemTrailingRightOffset),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(AudioItemTrailingSpacing)
             ) {

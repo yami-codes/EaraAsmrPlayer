@@ -1166,7 +1166,7 @@ private fun TrackAlbumHeader(
             }
             if (footerSegments.isNotEmpty()) {
                 Text(
-                    text = footerSegments.joinToString(" 路 "),
+                    text = footerSegments.joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall,
                     color = colorScheme.textTertiary,
                     maxLines = 1,

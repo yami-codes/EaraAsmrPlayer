@@ -163,6 +163,7 @@ internal data class PreparedMediaPlayback(
 private val AlbumDetailTabContentGap = 12.dp
 private val AlbumDetailTabCollapseOvershoot = 10.dp
 private const val AlbumDetailInitialIntroDurationMs = 1200L
+private val AlbumDetailHorizontalPadding = 8.dp
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -257,7 +258,7 @@ fun AlbumDetailScreen(
                 // 仅用于平板适配：限制内容区域最大宽度并填充可用空间
                 Modifier
                     .fillMaxHeight()
-                    .widthIn(max = 720.dp)
+                    .widthIn(max = 800.dp)
                     .fillMaxWidth()
             }
         ) {
@@ -769,7 +770,7 @@ private fun AlbumDetailTabChrome(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp)
             .onSizeChanged(onMeasured)
             .graphicsLayer {
                 translationY = animatedOffsetPx -
@@ -940,7 +941,7 @@ private fun AlbumHeader(
 
     val headerContainerModifier = Modifier
         .fillMaxWidth()
-        .padding(16.dp)
+        .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 12.dp)
         .clip(RoundedCornerShape(24.dp))
         .background(colorScheme.surface.copy(alpha = 0.5f))
 
@@ -993,7 +994,7 @@ private fun AlbumHeader(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     AlbumHeaderInfoReveal(
@@ -1030,7 +1031,7 @@ private fun AlbumHeader(
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
