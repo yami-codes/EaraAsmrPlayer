@@ -58,6 +58,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val ONLINE_MANUAL_LYRICS_MESSAGE = "在线音频如需替换歌词，请先下载音频到本地"
+
 @HiltViewModel
 @OptIn(FlowPreview::class)
 class PlayerViewModel @Inject constructor(
@@ -272,8 +274,16 @@ class PlayerViewModel @Inject constructor(
         messageManager.showInfo("在线音频暂不支持标签管理")
     }
 
+    fun showOnlineManualLyricsUnsupported() {
+        messageManager.showInfo(ONLINE_MANUAL_LYRICS_MESSAGE)
+    }
+
     fun bindManualLyrics(uri: String, onSuccess: () -> Unit = {}) {
         val item = playback.value.currentMediaItem ?: return
+        if (item.isOnlineMedia()) {
+            showOnlineManualLyricsUnsupported()
+            return
+        }
         val target = lyricsTargetContextFromMediaItem(item) ?: return
         val trimmed = uri.trim()
         if (trimmed.isBlank()) return

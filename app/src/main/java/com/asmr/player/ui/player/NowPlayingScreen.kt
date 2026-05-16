@@ -194,6 +194,7 @@ internal fun NowPlayingScreen(
     val canBindManualLyrics = lyricsTargetContextFromMediaItem(item) != null
     val colorScheme = AsmrTheme.colorScheme
     val uriText = item?.localConfiguration?.uri?.toString().orEmpty()
+    val isOnlineMedia = remember(uriText, item?.mediaId) { item.isOnlineMedia() }
     val artworkModel = remember(metadata?.artworkUri) {
         sanitizeBackdropArtworkModel(metadata?.artworkUri)
     }
@@ -288,8 +289,14 @@ internal fun NowPlayingScreen(
             lyricsViewModel.refreshCurrentLyrics()
         }
     }
-    val openLyricsPicker: (() -> Unit)? = if (canBindManualLyrics) {
-        { lyricsPicker.launch(lyricsPickerMimeTypes) }
+    val openManualLyricsAction: (() -> Unit)? = if (canBindManualLyrics) {
+        {
+            if (isOnlineMedia) {
+                viewModel.showOnlineManualLyricsUnsupported()
+            } else {
+                lyricsPicker.launch(lyricsPickerMimeTypes)
+            }
+        }
     } else {
         null
     }
@@ -461,7 +468,7 @@ internal fun NowPlayingScreen(
                 onNavigateUp = handleNavigateUp,
                 onShowSleepTimer = onShowSleepTimer,
                 onShowQueue = onShowQueue,
-                onManualBindLyrics = if (surfaceMode == NowPlayingSurfaceMode.LYRICS) openLyricsPicker else null,
+                onManualBindLyrics = if (surfaceMode == NowPlayingSurfaceMode.LYRICS) openManualLyricsAction else null,
                 navigationEnabled = !pendingRouteExit,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1162,7 +1169,7 @@ internal fun NowPlayingScreen(
                     lyricColors = lyricColors,
                     lyricsPageSettings = lyricsPageSettings,
                     onSeekTo = { viewModel.seekTo(it) },
-                    onAddLyrics = openLyricsPicker,
+                    onAddLyrics = openManualLyricsAction,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(routeTransition.nowPlayingMotionModifier(currentMotionLayout, NowPlayingMotionSlot.COVER))

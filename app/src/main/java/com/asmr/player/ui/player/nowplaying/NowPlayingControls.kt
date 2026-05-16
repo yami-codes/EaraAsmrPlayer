@@ -187,13 +187,7 @@ internal fun PlaybackControls(
                     )
                 }
 
-                val isOnlineMedia = playback.currentMediaItem?.let { current ->
-                    val uri = current.localConfiguration?.uri?.toString().orEmpty()
-                    uri.startsWith("http://", ignoreCase = true) ||
-                        uri.startsWith("https://", ignoreCase = true) ||
-                        current.mediaId.startsWith("http://", ignoreCase = true) ||
-                        current.mediaId.startsWith("https://", ignoreCase = true)
-                } == true
+                val isOnlineMedia = playback.currentMediaItem.isOnlineMedia()
                 IconButton(
                     onClick = {
                         if (isOnlineMedia) viewModel.showOnlineTagManageUnsupported() else onManageTags()
