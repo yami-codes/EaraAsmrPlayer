@@ -279,8 +279,9 @@ object LibraryTrackQueryBuilder {
                 CASE WHEN a.coverThumbPath IS NOT NULL AND a.coverThumbPath != '' AND a.coverThumbPath LIKE '%_v2%' THEN a.coverThumbPath ELSE a.coverPath END AS coverPath,
                 a.workId AS workId,
                 a.rjCode AS rjCode,
-                COUNT(t.id) AS trackCount,
-                COALESCE(SUM(t.duration), 0) AS totalDuration
+                COALESCE(NULLIF(a.audioTrackCount, 0), COUNT(t.id)) AS trackCount,
+                COALESCE(NULLIF(a.audioTotalDuration, 0), SUM(t.duration), 0) AS totalDuration,
+                COALESCE(a.audioTotalSizeBytes, 0) AS totalSizeBytes
             FROM tracks t
             JOIN albums a ON a.id = t.albumId
             """.trimIndent()

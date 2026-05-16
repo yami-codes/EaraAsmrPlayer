@@ -47,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -64,6 +65,7 @@ import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.asmr.player.data.local.db.AppDatabaseProvider
 import com.asmr.player.data.local.db.dao.AlbumGroupTrackRow
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AudioItemMenuAction
@@ -361,6 +363,11 @@ private fun AlbumSectionHeader(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val context = LocalContext.current
+    val persistedAlbum by produceState<com.asmr.player.data.local.db.entities.AlbumEntity?>(initialValue = null, albumId) {
+        value = withContext(Dispatchers.IO) {
+            AppDatabaseProvider.get(context).albumDao().getAlbumById(albumId)
+        }
+    }
     val totalSizeBytes by androidx.compose.runtime.produceState<Long?>(initialValue = null, tracks) {
         value = withContext(Dispatchers.IO) {
             tracks.sumOf { row -> queryTrackFileSize(context, row.trackPath) ?: 0L }

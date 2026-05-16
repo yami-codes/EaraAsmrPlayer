@@ -10,5 +10,6 @@ data class LibraryTrackAlbumHeaderRow(
     val workId: String,
     val rjCode: String,
     val trackCount: Int,
-    val totalDuration: Double
+    val totalDuration: Double,
+    val totalSizeBytes: Long
 )

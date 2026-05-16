@@ -562,7 +562,8 @@ fun LibraryScreen(
                                                         rjCode = header.rjCode.ifBlank { header.workId },
                                                         trackCount = header.trackCount,
                                                         totalDurationSeconds = header.totalDuration,
-                                                        totalSizeBytes = rememberAlbumTrackListTotalSizeBytes(rows),
+                                                        totalSizeBytes = header.totalSizeBytes.takeIf { it > 0L }
+                                                            ?: rememberAlbumTrackListTotalSizeBytes(rows),
                                                         coverModel = header.coverPath.takeIf { it.isNotBlank() }.takeIf { it != "null" }
                                                             ?: header.coverUrl.takeIf { it.isNotBlank() },
                                                         onToggle = {
