@@ -46,6 +46,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -195,14 +196,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 internal data class PlaylistPickerRequest(
-    val mediaId: String,
-    val uri: String,
-    val title: String,
-    val artist: String,
-    val artworkUri: String,
-    val albumId: Long,
-    val trackId: Long,
-    val rjCode: String
+    val items: List<MediaItem>
 )
 
 internal data class BatchPlaylistPickerRequest(
@@ -341,6 +335,13 @@ fun MainContainer(
     var bottomChromeOverflowExpanded by remember { mutableStateOf(false) }
     var bottomChromeOverflowProtectedBounds by remember { mutableStateOf<List<Rect>>(emptyList()) }
     var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
+    var libraryScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var searchScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var favoritesScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var playlistsScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var groupsScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var downloadsScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var settingsScrollToTopSignal by remember { mutableLongStateOf(0L) }
     val appVolumeWarningSessionState = rememberAppVolumeWarningSessionState()
     val audioOutputRouteKind = rememberCurrentAudioOutputRouteKind()
     
@@ -351,6 +352,7 @@ fun MainContainer(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     var nowPlayingVisible by rememberSaveable { mutableStateOf(false) }
+    var nowPlayingUsesInlineVolumeControl by remember { mutableStateOf(false) }
     var nowPlayingBackdropActive by rememberSaveable { mutableStateOf(false) }
     var nowPlayingBackdropExitDurationMs by rememberSaveable {
         mutableIntStateOf(NowPlayingMotionSpec.totalExitDurationMs(NowPlayingMotionLayout.PORTRAIT))
@@ -367,6 +369,7 @@ fun MainContainer(
         nowPlayingPlaylistPickerRequest = null
         albumBatchPlaylistPickerRequest = null
         nowPlayingBackdropActive = false
+        nowPlayingUsesInlineVolumeControl = false
         nowPlayingVisible = false
     }
     val playerBackdropVisible = nowPlayingVisible
@@ -442,11 +445,23 @@ fun MainContainer(
         }
     }
 
-    fun openAlbumDetailFromSearch(albumId: Long?, rj: String?) {
+    fun triggerPrimaryRouteScrollToTop(route: String) {
+        when (route) {
+            Routes.Library -> libraryScrollToTopSignal += 1L
+            Routes.Search -> searchScrollToTopSignal += 1L
+            "playlist_system/favorites" -> favoritesScrollToTopSignal += 1L
+            "playlists" -> playlistsScrollToTopSignal += 1L
+            "groups" -> groupsScrollToTopSignal += 1L
+            "downloads" -> downloadsScrollToTopSignal += 1L
+            "settings" -> settingsScrollToTopSignal += 1L
+        }
+    }
+
+    fun openAlbumDetailFromSearch(albumId: Long?, rj: String?, preferDlsitePlay: Boolean = false) {
         val seq = ++pendingDetailNavigationSeq
         pendingDetailNavigation = true
         cancelPendingDetailNavigation = false
-        navigator.openAlbumDetail(albumId = albumId, rj = rj)
+        navigator.openAlbumDetail(albumId = albumId, rj = rj, preferDlsitePlay = preferDlsitePlay)
         scope.launch {
             delay(700)
             if (pendingDetailNavigationSeq == seq) {
@@ -539,7 +554,10 @@ fun MainContainer(
     }
 
     LaunchedEffect(nowPlayingVisible) {
-        if (!nowPlayingVisible) return@LaunchedEffect
+        if (!nowPlayingVisible) {
+            nowPlayingUsesInlineVolumeControl = false
+            return@LaunchedEffect
+        }
         showHardwareVolumeOverlay = false
         hardwareVolumeOverlayInteracting = false
         hardwareVolumeOverlayBounds = null
@@ -655,7 +673,7 @@ fun MainContainer(
         if (volumeKeyEventTick <= 0L) return@LaunchedEffect
         if (volumeKeyEventTick == lastHandledVolumeKeyTick) return@LaunchedEffect
         lastHandledVolumeKeyTick = volumeKeyEventTick
-        if (nowPlayingVisible) {
+        if (nowPlayingUsesInlineVolumeControl) {
             showHardwareVolumeOverlay = false
             nowPlayingVolumeEventTick = volumeKeyEventTick
             return@LaunchedEffect
@@ -664,9 +682,9 @@ fun MainContainer(
         hardwareVolumeOverlayHoldTick = volumeKeyEventTick
     }
 
-    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingVisible) {
+    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingUsesInlineVolumeControl) {
         if (!showHardwareVolumeOverlay) return@LaunchedEffect
-        if (nowPlayingVisible) {
+        if (nowPlayingUsesInlineVolumeControl) {
             showHardwareVolumeOverlay = false
             hardwareVolumeOverlayBounds = null
             return@LaunchedEffect
@@ -841,13 +859,15 @@ fun MainContainer(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(colorScheme.background.copy(alpha = 0.88f))
+                            .background(colorScheme.background)
                     )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(colorScheme.primarySoft.copy(alpha = 0.16f))
-                    )
+                    if (!colorScheme.isDark) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(colorScheme.primarySoft.copy(alpha = 0.16f))
+                        )
+                    }
                     Scaffold(
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         containerColor = Color.Transparent,
@@ -961,6 +981,9 @@ fun MainContainer(
                                                             ) {
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑列表") },
+                                                                leadingIcon = {
+                                                                    Icon(Icons.Default.ViewList, contentDescription = null)
+                                                                },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
                                                                     libraryViewModel.setLibraryViewMode(0)
@@ -973,6 +996,9 @@ fun MainContainer(
                                                             )
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑卡片") },
+                                                                leadingIcon = {
+                                                                    Icon(Icons.Default.GridView, contentDescription = null)
+                                                                },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
                                                                     libraryViewModel.setLibraryViewMode(1)
@@ -985,6 +1011,9 @@ fun MainContainer(
                                                             )
                                                             DropdownMenuItem(
                                                                 text = { Text("音轨列表") },
+                                                                leadingIcon = {
+                                                                    Icon(Icons.Default.Audiotrack, contentDescription = null)
+                                                                },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
                                                                     libraryViewModel.setLibraryViewMode(2)
@@ -1095,6 +1124,7 @@ fun MainContainer(
                                         Routes.Library -> {
                                             LibraryScreen(
                                                 windowSizeClass = windowSizeClass,
+                                                scrollToTopSignal = libraryScrollToTopSignal,
                                                 onAlbumClick = { album ->
                                                     navigator.openAlbumDetail(
                                                         albumId = album.id,
@@ -1108,18 +1138,8 @@ fun MainContainer(
                                                         }
                                                     }
                                                 },
-                                                onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                                                    navController.navigateSingleTop(
-                                                        "playlist_picker" +
-                                                            "?mediaId=${encodeRouteArg(mediaId)}" +
-                                                            "&uri=${encodeRouteArg(uri)}" +
-                                                            "&title=${encodeRouteArg(title)}" +
-                                                            "&artist=${encodeRouteArg(artist)}" +
-                                                            "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                                            "&albumId=$albumId" +
-                                                            "&trackId=$trackId" +
-                                                            "&rjCode=${encodeRouteArg(rjCode)}"
-                                                    )
+                                                onOpenPlaylistPicker = { item ->
+                                                    albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                                                 },
                                                 onOpenGroupPicker = { albumId ->
                                                     navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1132,10 +1152,12 @@ fun MainContainer(
                                         Routes.Search -> {
                                             SearchScreen(
                                                 windowSizeClass = windowSizeClass,
-                                                onAlbumClick = { album ->
+                                                scrollToTopSignal = searchScrollToTopSignal,
+                                                onAlbumClick = { album, fromPurchasedOnly ->
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
-                                                        rj = album.rjCode.ifBlank { album.workId }
+                                                        rj = album.rjCode.ifBlank { album.workId },
+                                                        preferDlsitePlay = fromPurchasedOnly
                                                     )
                                                 },
                                                 viewModel = searchViewModel
@@ -1145,7 +1167,7 @@ fun MainContainer(
                                         "playlist_system/favorites" -> {
                                             SystemPlaylistScreen(
                                                 windowSizeClass = windowSizeClass,
-                                                type = "favorites",
+                                                scrollToTopSignal = favoritesScrollToTopSignal,
                                                 onPlayAll = { items, startItem ->
                                                     playerViewModel.playPlaylistItems(items, startItem)
                                                     openNowPlaying()
@@ -1157,6 +1179,7 @@ fun MainContainer(
                                         "playlists" -> {
                                             PlaylistsScreen(
                                                 windowSizeClass = windowSizeClass,
+                                                scrollToTopSignal = playlistsScrollToTopSignal,
                                                 onPlaylistClick = { playlist ->
                                                     val encoded = URLEncoder.encode(playlist.name, "UTF-8")
                                                     navController.navigateSingleTop("playlist/${playlist.id}/$encoded")
@@ -1168,6 +1191,7 @@ fun MainContainer(
                                         "groups" -> {
                                             com.asmr.player.ui.groups.AlbumGroupsScreen(
                                                 windowSizeClass = windowSizeClass,
+                                                scrollToTopSignal = groupsScrollToTopSignal,
                                                 onGroupClick = { group ->
                                                     val encoded = encodeRouteArg(group.name)
                                                     navController.navigateSingleTop("group/${group.id}/$encoded")
@@ -1179,6 +1203,7 @@ fun MainContainer(
                                         "downloads" -> {
                                             DownloadsScreen(
                                                 windowSizeClass = windowSizeClass,
+                                                scrollToTopSignal = downloadsScrollToTopSignal,
                                                 viewModel = downloadsViewModel
                                             )
                                         }
@@ -1188,6 +1213,7 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 viewModel = settingsViewModel,
                                                 libraryViewModel = libraryViewModel,
+                                                scrollToTopSignal = settingsScrollToTopSignal,
                                                 onHorizontalControlInteractionChanged = { active ->
                                                     primaryPagerScrollLocked = active
                                                 }
@@ -1229,15 +1255,19 @@ fun MainContainer(
                                 composable("search") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
-                                composable(
-                    route = "album_detail_rj/{rj}",
-                    arguments = listOf(navArgument("rj") { defaultValue = "" })
+                composable(
+                    route = Routes.AlbumDetailByRjPattern,
+                    arguments = listOf(
+                        navArgument("rj") { defaultValue = "" },
+                        navArgument("initialTab") { type = NavType.StringType; nullable = true; defaultValue = null }
+                    )
                 ) { backStackEntry ->
                     val rj = backStackEntry.arguments?.getString("rj").orEmpty()
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
                     AlbumDetailScreen(
                         windowSizeClass = windowSizeClass,
                         rjCode = rj,
+                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
                         refreshToken = refreshToken,
                         onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
                         onPlayTracks = { album, tracks, startTrack ->
@@ -1258,25 +1288,10 @@ fun MainContainer(
                             playerViewModel.addMediaItemsToQueue(items)
                         },
                         onAddMediaItemsToFavorites = { items ->
-                            scope.launch {
-                                playlistsViewModel.addItemsToFavorites(items)
-                            }
+                            playlistsViewModel.addItemsToFavoritesInBackground(items)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
-                        },
-                        onOpenBatchPlaylistPicker = { items ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(items)
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1290,10 +1305,11 @@ fun MainContainer(
                     )
                 }
                 composable(
-                    route = "album_detail/{albumId}?rjCode={rjCode}",
+                    route = Routes.AlbumDetailByIdPattern,
                     arguments = listOf(
                         navArgument("albumId") { type = NavType.LongType },
-                        navArgument("rjCode") { type = NavType.StringType; nullable = true; defaultValue = null }
+                        navArgument("rjCode") { type = NavType.StringType; nullable = true; defaultValue = null },
+                        navArgument("initialTab") { type = NavType.StringType; nullable = true; defaultValue = null }
                     )
                 ) { backStackEntry ->
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
@@ -1303,6 +1319,7 @@ fun MainContainer(
                         windowSizeClass = windowSizeClass,
                         albumId = albumId,
                         rjCode = rjCode,
+                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
                         refreshToken = refreshToken,
                         onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
                         onPlayTracks = { album, tracks, startTrack ->
@@ -1323,25 +1340,10 @@ fun MainContainer(
                             playerViewModel.addMediaItemsToQueue(items)
                         },
                         onAddMediaItemsToFavorites = { items ->
-                            scope.launch {
-                                playlistsViewModel.addItemsToFavorites(items)
-                            }
+                            playlistsViewModel.addItemsToFavoritesInBackground(items)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
-                        },
-                        onOpenBatchPlaylistPicker = { items ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(items)
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1379,18 +1381,8 @@ fun MainContainer(
                         onAddToQueue = { album, track ->
                             playerViewModel.addTrackToQueue(album, track)
                         },
-                        onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                            navController.navigateSingleTop(
-                                "playlist_picker" +
-                                    "?mediaId=${encodeRouteArg(mediaId)}" +
-                                    "&uri=${encodeRouteArg(uri)}" +
-                                    "&title=${encodeRouteArg(title)}" +
-                                    "&artist=${encodeRouteArg(artist)}" +
-                                    "&artworkUri=${encodeRouteArg(artworkUri)}" +
-                                    "&albumId=$albumId" +
-                                    "&trackId=$trackId" +
-                                    "&rjCode=${encodeRouteArg(rjCode)}"
-                            )
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
@@ -1457,7 +1449,8 @@ fun MainContainer(
                     com.asmr.player.ui.groups.AlbumGroupPickerScreen(
                         windowSizeClass = windowSizeClass,
                         albumId = albumId,
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        viewModel = albumGroupsViewModel
                     )
                 }
                 composable(
@@ -1486,7 +1479,6 @@ fun MainContainer(
                     } else {
                         SystemPlaylistScreen(
                             windowSizeClass = windowSizeClass,
-                            type = type,
                             onPlayAll = { items, startItem ->
                                 playerViewModel.playPlaylistItems(items, startItem)
                                 openNowPlaying()
@@ -1494,40 +1486,6 @@ fun MainContainer(
                             viewModel = playlistsViewModel
                         )
                     }
-                }
-                composable(
-                    route = "playlist_picker?mediaId={mediaId}&uri={uri}&title={title}&artist={artist}&artworkUri={artworkUri}&albumId={albumId}&trackId={trackId}&rjCode={rjCode}",
-                    arguments = listOf(
-                        navArgument("mediaId") { defaultValue = "" },
-                        navArgument("uri") { defaultValue = "" },
-                        navArgument("title") { defaultValue = "" },
-                        navArgument("artist") { defaultValue = "" },
-                        navArgument("artworkUri") { defaultValue = "" },
-                        navArgument("albumId") { type = NavType.LongType },
-                        navArgument("trackId") { type = NavType.LongType },
-                        navArgument("rjCode") { defaultValue = "" }
-                    )
-                ) { backStackEntry ->
-                    val mediaId = decodeRouteArg(backStackEntry.arguments?.getString("mediaId").orEmpty())
-                    val uri = decodeRouteArg(backStackEntry.arguments?.getString("uri").orEmpty())
-                    val title = decodeRouteArg(backStackEntry.arguments?.getString("title").orEmpty())
-                    val artist = decodeRouteArg(backStackEntry.arguments?.getString("artist").orEmpty())
-                    val artworkUri = decodeRouteArg(backStackEntry.arguments?.getString("artworkUri").orEmpty())
-                    val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
-                    val trackId = backStackEntry.arguments?.getLong("trackId") ?: 0L
-                    val rjCode = decodeRouteArg(backStackEntry.arguments?.getString("rjCode").orEmpty())
-                    PlaylistPickerScreen(
-                        windowSizeClass = windowSizeClass,
-                        mediaId = mediaId,
-                        uri = uri,
-                        title = title,
-                        artist = artist,
-                        artworkUri = artworkUri,
-                        albumId = albumId,
-                        trackId = trackId,
-                        rjCode = rjCode,
-                        onBack = { navController.popBackStack() }
-                    )
                 }
                 composable("settings") {
                     Box(modifier = Modifier.fillMaxSize())
@@ -1596,64 +1554,6 @@ fun MainContainer(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                if (showHardwareVolumeOverlay) {
-                    DismissOutsideBoundsOverlay(
-                        targetBoundsInRoot = hardwareVolumeOverlayBounds,
-                        onDismiss = {
-                            showHardwareVolumeOverlay = false
-                            hardwareVolumeOverlayBounds = null
-                        }
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(end = 18.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    AnimatedVisibility(
-                        visible = showHardwareVolumeOverlay,
-                        enter = fadeIn(animationSpec = tween(140)) + slideInHorizontally(animationSpec = tween(180)) { it / 3 },
-                        exit = fadeOut(animationSpec = tween(160)) + slideOutHorizontally(animationSpec = tween(180)) { it / 3 }
-                    ) {
-                        HardwareVolumeOverlay(
-                            modifier = Modifier.onGloballyPositioned { coordinates ->
-                                hardwareVolumeOverlayBounds = coordinates.boundsInRoot()
-                            },
-                            volumePercent = appVolumePercent,
-                            audioOutputRouteKind = audioOutputRouteKind,
-                            onVolumeChange = {
-                                playerViewModel.setAppVolumePercent(it)
-                                hardwareVolumeOverlayHoldTick += 1L
-                            },
-                            onToggleMute = {
-                                if (appVolumePercent > 0) {
-                                    playerViewModel.setAppVolumePercent(0)
-                                } else {
-                                    playerViewModel.setAppVolumePercent(
-                                        lastNonZeroAppVolumePercent.coerceAtLeast(AppVolume.StepPercent)
-                                    )
-                                }
-                                hardwareVolumeOverlayHoldTick += 1L
-                            },
-                            onInteractionActiveChanged = { active ->
-                                hardwareVolumeOverlayInteracting = active
-                                if (!active) {
-                                    hardwareVolumeOverlayHoldTick += 1L
-                                }
-                            },
-                            warningSessionState = appVolumeWarningSessionState
-                        )
-                    }
-                }
-            }
-
-            NonTouchableAppMessageOverlay(messages = visibleMessages)
         }
 
         }
@@ -1718,6 +1618,10 @@ fun MainContainer(
                         },
                         onOpenQueue = onShowQueue,
                         onNavigate = { route ->
+                            if (route == activePrimaryRoute) {
+                                triggerPrimaryRouteScrollToTop(route)
+                                return@BottomChrome
+                            }
                             val projectedPagerRoutes = if (route in bottomNavRoutes && route !in fixedBottomNavRoutes) {
                                 resolvePrimaryPagerRoutes(
                                     navItems = bottomNavItems,
@@ -1757,15 +1661,13 @@ fun MainContainer(
                             .fillMaxSize()
                             .background(colorScheme.background)
                     )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                colorScheme.primarySoft.copy(
-                                    alpha = if (colorScheme.isDark) 0.18f else 0.14f
-                                )
-                            )
-                    )
+                    if (!colorScheme.isDark) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(colorScheme.primarySoft.copy(alpha = 0.14f))
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -1782,6 +1684,7 @@ fun MainContainer(
                 NowPlayingScreen(
                     windowSizeClass = windowSizeClass,
                     hardwareVolumeEventTick = nowPlayingVolumeEventTick,
+                    onInlineVolumeControlVisibilityChanged = { nowPlayingUsesInlineVolumeControl = it },
                     onBack = closeNowPlaying,
                     onRouteExitStarted = { exitDurationMs ->
                         nowPlayingBackdropExitDurationMs = exitDurationMs
@@ -1789,17 +1692,8 @@ fun MainContainer(
                     },
                     onShowQueue = onShowQueue,
                     onShowSleepTimer = onShowSleepTimer,
-                    onOpenPlaylistPicker = { mediaId, uri, title, artist, artworkUri, albumId, trackId, rjCode ->
-                        nowPlayingPlaylistPickerRequest = PlaylistPickerRequest(
-                            mediaId = mediaId,
-                            uri = uri,
-                            title = title,
-                            artist = artist,
-                            artworkUri = artworkUri,
-                            albumId = albumId,
-                            trackId = trackId,
-                            rjCode = rjCode
-                        )
+                    onOpenPlaylistPicker = { item ->
+                        nowPlayingPlaylistPickerRequest = PlaylistPickerRequest(items = listOf(item))
                     },
                     viewModel = playerViewModel,
                     coverBackgroundEnabled = coverBackgroundEnabled,
@@ -1830,16 +1724,10 @@ fun MainContainer(
                             ) {
                                 PlaylistPickerScreen(
                                     windowSizeClass = windowSizeClass,
-                                    mediaId = request.mediaId,
-                                    uri = request.uri,
-                                    title = request.title,
-                                    artist = request.artist,
-                                    artworkUri = request.artworkUri,
-                                    albumId = request.albumId,
-                                    trackId = request.trackId,
-                                    rjCode = request.rjCode,
+                                    items = request.items,
                                     onBack = { nowPlayingPlaylistPickerRequest = null },
-                                    embeddedInDialog = true
+                                    embeddedInDialog = true,
+                                    viewModel = playlistsViewModel
                                 )
                             }
                         }
@@ -1865,35 +1753,8 @@ fun MainContainer(
                                     windowSizeClass = windowSizeClass,
                                     items = request.items,
                                     onBack = { albumBatchPlaylistPickerRequest = null },
-                                    embeddedInDialog = true
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (!nowPlayingVisible) {
-                albumBatchPlaylistPickerRequest?.let { request ->
-                    Dialog(
-                        onDismissRequest = { albumBatchPlaylistPickerRequest = null },
-                        properties = DialogProperties(usePlatformDefaultWidth = false)
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = colorScheme.background.copy(alpha = 0.96f),
-                            contentColor = colorScheme.onBackground
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .windowInsetsPadding(StableWindowInsets.statusBars)
-                                    .windowInsetsPadding(StableWindowInsets.navigationBars)
-                            ) {
-                                PlaylistPickerScreen(
-                                    windowSizeClass = windowSizeClass,
-                                    items = request.items,
-                                    onBack = { albumBatchPlaylistPickerRequest = null },
-                                    embeddedInDialog = true
+                                    embeddedInDialog = true,
+                                    viewModel = playlistsViewModel
                                 )
                             }
                         }
@@ -1901,6 +1762,96 @@ fun MainContainer(
                 }
             }
         }
+
+        if (!nowPlayingVisible) {
+            albumBatchPlaylistPickerRequest?.let { request ->
+                Dialog(
+                    onDismissRequest = { albumBatchPlaylistPickerRequest = null },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = colorScheme.background.copy(alpha = 0.96f),
+                        contentColor = colorScheme.onBackground
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .windowInsetsPadding(StableWindowInsets.statusBars)
+                                .windowInsetsPadding(StableWindowInsets.navigationBars)
+                        ) {
+                            PlaylistPickerScreen(
+                                windowSizeClass = windowSizeClass,
+                                items = request.items,
+                                onBack = { albumBatchPlaylistPickerRequest = null },
+                                embeddedInDialog = true,
+                                viewModel = playlistsViewModel
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(3f),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            if (showHardwareVolumeOverlay) {
+                DismissOutsideBoundsOverlay(
+                    targetBoundsInRoot = hardwareVolumeOverlayBounds,
+                    onDismiss = {
+                        showHardwareVolumeOverlay = false
+                        hardwareVolumeOverlayBounds = null
+                    }
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = 18.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                AnimatedVisibility(
+                    visible = showHardwareVolumeOverlay,
+                    enter = fadeIn(animationSpec = tween(140)) + slideInHorizontally(animationSpec = tween(180)) { it / 3 },
+                    exit = fadeOut(animationSpec = tween(160)) + slideOutHorizontally(animationSpec = tween(180)) { it / 3 }
+                ) {
+                    HardwareVolumeOverlay(
+                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                            hardwareVolumeOverlayBounds = coordinates.boundsInRoot()
+                        },
+                        volumePercent = appVolumePercent,
+                        audioOutputRouteKind = audioOutputRouteKind,
+                        onVolumeChange = {
+                            playerViewModel.setAppVolumePercent(it)
+                            hardwareVolumeOverlayHoldTick += 1L
+                        },
+                        onToggleMute = {
+                            if (appVolumePercent > 0) {
+                                playerViewModel.setAppVolumePercent(0)
+                            } else {
+                                playerViewModel.setAppVolumePercent(
+                                    lastNonZeroAppVolumePercent.coerceAtLeast(AppVolume.StepPercent)
+                                )
+                            }
+                            hardwareVolumeOverlayHoldTick += 1L
+                        },
+                        onInteractionActiveChanged = { active ->
+                            hardwareVolumeOverlayInteracting = active
+                            if (!active) {
+                                hardwareVolumeOverlayHoldTick += 1L
+                            }
+                        },
+                        warningSessionState = appVolumeWarningSessionState
+                    )
+                }
+            }
+        }
+
+        NonTouchableAppMessageOverlay(messages = visibleMessages)
     }
 }
 

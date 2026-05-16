@@ -2,6 +2,7 @@ package com.asmr.player.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,49 +18,39 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.asmr.player.domain.model.Album
 import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.ui.common.AsmrAsyncImage
- import com.asmr.player.ui.common.CoverContentRow
-import com.asmr.player.ui.common.CvChipsFlow
-import com.asmr.player.ui.common.CvChipsSingleLine
+import com.asmr.player.ui.common.CoverContentRow
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
-import com.asmr.player.ui.common.rememberDominantColor
+import com.asmr.player.ui.library.AlbumMetaLeadingVisual.Icon
 import com.asmr.player.util.DlsiteAntiHotlink
 
 import com.asmr.player.ui.theme.AsmrTheme
+
+internal val AlbumListItemCornerRadius = 6.dp
+internal val AlbumGridItemCornerRadius = 6.dp
+internal val AlbumGridItemSpacing = 6.dp
+private val AlbumItemHorizontalPadding = 8.dp
+private val AlbumItemVerticalPadding = 2.dp
+private val AlbumItemMetaLineVerticalPadding = 1.dp
+private val AlbumItemCoverContentSpacing = 8.dp
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -68,11 +59,22 @@ fun AlbumItem(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    emptyCoverUseShimmer: Boolean = false
+    emptyCoverUseShimmer: Boolean = false,
+    onRjClick: ((String) -> Unit)? = null,
+    onCircleClick: ((String) -> Unit)? = null,
+    onCvClick: ((String) -> Unit)? = null,
+    onTagClick: ((String) -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val shape = remember { RoundedCornerShape(16.dp) }
-    val coverShape = remember { RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 0.dp, bottomEnd = 0.dp) }
+    val shape = remember { RoundedCornerShape(AlbumListItemCornerRadius) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumListItemCornerRadius,
+            bottomStart = AlbumListItemCornerRadius,
+            topEnd = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     val data = album.coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
         .orEmpty()
         .ifBlank { album.coverPath }
@@ -88,7 +90,7 @@ fun AlbumItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = AlbumItemHorizontalPadding, vertical = AlbumItemVerticalPadding)
             .clip(shape)
             .background(colorScheme.surface.copy(alpha = 0.5f))
             .combinedClickable(
@@ -99,7 +101,7 @@ fun AlbumItem(
         CoverContentRow(
             coverWidth = coverSize,
             minHeight = coverSize,
-            spacing = 16.dp,
+            spacing = AlbumItemCoverContentSpacing,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(listItemHeight),
@@ -132,47 +134,38 @@ fun AlbumItem(
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .padding(top = 4.dp, bottom = 4.dp, end = 12.dp),
+                        .padding(top = 3.dp, bottom = 3.dp, end = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
                     val rj = album.rjCode.ifBlank { album.workId }
                     Text(
                         text = album.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = colorScheme.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (rj.isNotBlank()) {
-                            Text(
-                                text = rj,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.primary,
-                                modifier = Modifier
-                                    .background(colorScheme.primaryContainer, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        if (album.circle.isNotBlank()) {
-                            Text(
-                                text = album.circle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.primary.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+
+                    AlbumItemMetaLine {
+                        AlbumPrimaryMetaRow(
+                            rjCode = rj,
+                            circle = album.circle,
+                            modifier = Modifier.fillMaxWidth(),
+                            rjOnClick = onRjClick?.let { click -> { click(rj) } },
+                            circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                            leadingVisual = Icon,
+                        )
                     }
 
                     if (album.cv.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        CvChipsSingleLine(
-                            cvText = album.cv,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        AlbumItemMetaLine {
+                            AlbumCvChipsSingleLine(
+                                cvText = album.cv,
+                                modifier = Modifier.fillMaxWidth(),
+                                onCvClick = onCvClick,
+                                leadingVisual = Icon,
+                            )
+                        }
                     }
 
                     val statsText = remember(
@@ -203,38 +196,27 @@ fun AlbumItem(
                             }
                         }
                     }
-                    if (statsText.isNotBlank()) {
-                        Text(
-                            text = statsText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.textTertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    if (album.tags.isNotEmpty()) {
+                        AlbumItemMetaLine {
+                            AlbumTagsSingleLine(
+                                tags = album.tags,
+                                modifier = Modifier.fillMaxWidth(),
+                                onTagClick = onTagClick,
+                                leadingVisual = Icon,
+                            )
+                        }
                     }
 
-                    if (album.tags.isNotEmpty()) {
-                        val scrollState = rememberScrollState()
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clipToBounds()
-                                .horizontalScroll(scrollState),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            album.tags.forEach { tag ->
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colorScheme.primary.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .widthIn(max = 200.dp)
-                                        .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
+                    if (statsText.isNotBlank()) {
+                        AlbumItemMetaLine {
+                            Text(
+                                text = statsText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -252,17 +234,43 @@ fun AlbumItem(
 }
 
 @Composable
+private fun AlbumItemMetaLine(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = AlbumItemMetaLineVerticalPadding),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        content()
+    }
+}
+
+@Composable
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 fun AlbumGridItem(
     album: Album,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    emptyCoverUseShimmer: Boolean = false
+    emptyCoverUseShimmer: Boolean = false,
+    onRjClick: ((String) -> Unit)? = null,
+    onCircleClick: ((String) -> Unit)? = null,
+    onCvClick: ((String) -> Unit)? = null,
+    onTagClick: ((String) -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val shape = remember { RoundedCornerShape(20.dp) }
-    val coverShape = remember { RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp) }
+    val shape = remember { RoundedCornerShape(AlbumGridItemCornerRadius) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumGridItemCornerRadius,
+            topEnd = AlbumGridItemCornerRadius,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     val data = album.coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
         .orEmpty()
         .ifBlank { album.coverPath }
@@ -311,6 +319,13 @@ fun AlbumGridItem(
                         .align(Alignment.TopStart)
                         .padding(8.dp)
                         .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .let { base ->
+                            if (onRjClick != null) {
+                                base.clickable { onRjClick(rj) }
+                            } else {
+                                base
+                            }
+                        }
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
@@ -348,17 +363,19 @@ fun AlbumGridItem(
                 overflow = TextOverflow.Clip
             )
             
-            if (album.circle.isNotBlank()) {
-                Text(
-                    text = album.circle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.primary.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            AlbumPrimaryMetaRow(
+                rjCode = "",
+                circle = album.circle,
+                modifier = Modifier.fillMaxWidth(),
+                circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                leadingVisual = Icon,
+            )
 
-            CvChipsFlow(cvText = album.cv)
+            AlbumCvChipsFlow(
+                cvText = album.cv,
+                onCvClick = onCvClick,
+                leadingVisual = Icon,
+            )
 
             val statsText = remember(album.ratingValue, album.ratingCount, album.priceJpy) {
                 buildString {
@@ -374,6 +391,15 @@ fun AlbumGridItem(
                     }
                 }
             }
+            if (album.tags.isNotEmpty()) {
+                AlbumTagsFlow(
+                    tags = album.tags,
+                    modifier = Modifier.padding(top = 2.dp),
+                    onTagClick = onTagClick,
+                    leadingVisual = Icon,
+                )
+            }
+
             if (statsText.isNotBlank()) {
                 Text(
                     text = statsText,
@@ -382,25 +408,6 @@ fun AlbumGridItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-            }
-
-            if (album.tags.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    album.tags.forEach { tag ->
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.primary.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
-                    }
-                }
             }
         }
     }

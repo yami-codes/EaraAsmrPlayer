@@ -15,6 +15,8 @@ import com.asmr.player.util.ManualItemOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +34,8 @@ class PlaylistRepository @Inject constructor(
     private val trackDao: TrackDao,
     private val albumDao: AlbumDao
 ) {
+    private val addItemsMutex = Mutex()
+
     companion object {
         const val CATEGORY_SYSTEM = "system"
         const val CATEGORY_USER = "user"
@@ -61,15 +65,13 @@ class PlaylistRepository @Inject constructor(
 
     suspend fun replacePlaylistWithMediaItems(playlistId: Long, items: List<MediaItem>) {
         val entities = items.mapIndexed { index, item ->
-            PlaylistItemEntity(
+            PlaylistMediaItemMapper.fromMediaItem(
                 playlistId = playlistId,
-                mediaId = item.mediaId.ifBlank { item.localConfiguration?.uri.toString() },
-                title = item.mediaMetadata.title?.toString().orEmpty(),
-                artist = item.mediaMetadata.artist?.toString().orEmpty(),
-                uri = item.localConfiguration?.uri.toString(),
-                artworkUri = resolvePlaylistItemArtwork(item),
+                item = item,
                 itemOrder = index
-            )
+            ).let { mapped ->
+                mapped.copy(artworkUri = resolvePlaylistItemArtwork(item, mapped.artworkUri))
+            }
         }
         playlistItemDao.replaceAll(playlistId, entities)
     }
@@ -103,9 +105,9 @@ class PlaylistRepository @Inject constructor(
         return addItemsToPlaylist(playlistId, listOf(item)).addedCount > 0
     }
 
-    suspend fun addItemsToPlaylist(playlistId: Long, items: List<MediaItem>): PlaylistAddSummary {
+    suspend fun addItemsToPlaylist(playlistId: Long, items: List<MediaItem>): PlaylistAddSummary = addItemsMutex.withLock {
         if (playlistId <= 0L || items.isEmpty()) {
-            return PlaylistAddSummary(addedCount = 0, skippedCount = items.size)
+            return@withLock PlaylistAddSummary(addedCount = 0, skippedCount = items.size)
         }
         val currentItems = playlistItemDao.getItemsOnce(playlistId)
         val existingIds = currentItems.map { it.mediaId }.toHashSet()
@@ -120,21 +122,18 @@ class PlaylistRepository @Inject constructor(
                 skipped += 1
                 return@forEach
             }
-            toInsert += PlaylistItemEntity(
+            val mapped = PlaylistMediaItemMapper.fromMediaItem(
                 playlistId = playlistId,
-                mediaId = mediaId,
-                title = item.mediaMetadata.title?.toString().orEmpty(),
-                artist = item.mediaMetadata.artist?.toString().orEmpty(),
-                uri = item.localConfiguration?.uri.toString(),
-                artworkUri = resolvePlaylistItemArtwork(item),
+                item = item,
                 itemOrder = nextOrder++
             )
+            toInsert += mapped.copy(artworkUri = resolvePlaylistItemArtwork(item, mapped.artworkUri))
         }
 
         if (toInsert.isNotEmpty()) {
             playlistItemDao.upsertItems(toInsert)
         }
-        return PlaylistAddSummary(
+        return@withLock PlaylistAddSummary(
             addedCount = toInsert.size,
             skippedCount = skipped
         )
@@ -186,7 +185,7 @@ class PlaylistRepository @Inject constructor(
         )
     }
 
-    private suspend fun resolvePlaylistItemArtwork(item: MediaItem): String {
+    private suspend fun resolvePlaylistItemArtwork(item: MediaItem, fallbackArtwork: String = ""): String {
         val extras = item.mediaMetadata.extras
         android.util.Log.d("PlaylistRepository", "resolvePlaylistItemArtwork - START - mediaId: ${item.mediaId}, extras: $extras")
         val albumId = extras?.getLong("album_id") ?: 0L
@@ -200,7 +199,7 @@ class PlaylistRepository @Inject constructor(
             }
         }
 
-        val artwork = item.mediaMetadata.artworkUri?.toString().orEmpty().trim()
+        val artwork = fallbackArtwork.trim().ifBlank { item.mediaMetadata.artworkUri?.toString().orEmpty().trim() }
         android.util.Log.d("PlaylistRepository", "resolvePlaylistItemArtwork - artworkUri from metadata: '$artwork'")
         if (artwork.isNotBlank()) {
             android.util.Log.d("PlaylistRepository", "resolvePlaylistItemArtwork - returning artwork from metadata: '$artwork'")

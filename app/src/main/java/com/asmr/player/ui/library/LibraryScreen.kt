@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,17 +49,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.widthIn
 import com.asmr.player.util.Formatting
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.CoverContentRow
-import com.asmr.player.ui.common.CvChipsFlow
-import com.asmr.player.ui.common.CvChipsSingleLine
+import com.asmr.player.ui.common.AudioItemMenuAction
+import com.asmr.player.ui.common.AudioItemRow
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.rememberAudioMeta
+import com.asmr.player.ui.common.rememberAudioMetaText
+import com.asmr.player.ui.common.rememberTrackMetaLine
 import com.asmr.player.ui.common.withAddedBottomPadding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
@@ -102,20 +106,18 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import androidx.media3.common.MediaItem
 import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.library.LibraryUiState
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
@@ -133,6 +135,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Card
@@ -159,6 +163,7 @@ import com.asmr.player.ui.common.ActionButton
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.common.thinScrollbar
+import com.asmr.player.playback.MediaItemFactory
 
 internal const val LIBRARY_CHROME_TAG = "library_chrome"
 internal const val LIBRARY_SEARCH_INPUT_TAG = "library_search_input"
@@ -166,6 +171,10 @@ internal const val LIBRARY_SORT_BUTTON_TAG = "library_sort_button"
 internal const val LIBRARY_FILTER_BUTTON_TAG = "library_filter_button"
 private val LibraryChromeContentGap = 20.dp
 private val LibraryChromeCollapseOvershoot = 12.dp
+private val LibraryPageHorizontalPadding = 8.dp
+private val LibraryTrackListHeaderCornerRadius = 10.dp
+private val LibraryTrackListItemCornerRadius = 10.dp
+private val LibraryAlbumItemVerticalPadding = 2.dp
 
 private fun Album.withUserTags(userTags: List<String>): Album {
     if (userTags.isEmpty()) return this
@@ -220,9 +229,10 @@ fun LibraryScreen(
     windowSizeClass: WindowSizeClass,
     onAlbumClick: (Album) -> Unit,
     onPlayTracks: (Album, List<Track>, Track) -> Unit,
-    onOpenPlaylistPicker: (mediaId: String, uri: String, title: String, artist: String, artworkUri: String, albumId: Long, trackId: Long, rjCode: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
+    onOpenPlaylistPicker: (MediaItem) -> Unit = {},
     onOpenGroupPicker: (albumId: Long) -> Unit = { _ -> },
     onOpenFilterScreen: () -> Unit = {},
+    scrollToTopSignal: Long = 0L,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -235,6 +245,7 @@ fun LibraryScreen(
     val userTagsByAlbumId by viewModel.userTagsByAlbumId.collectAsState()
     val userTagsByTrackId by viewModel.userTagsByTrackId.collectAsState()
     val isGlobalSyncRunning by viewModel.isGlobalSyncRunning.collectAsState()
+    val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val scope = rememberCoroutineScope()
     var searchText by rememberSaveable { mutableStateOf(querySpec.textQuery.orEmpty()) }
@@ -315,6 +326,14 @@ fun LibraryScreen(
             chromeState.expand()
         }
     }
+    LaunchedEffect(scrollToTopSignal) {
+        if (scrollToTopSignal == 0L) return@LaunchedEffect
+        when (mode) {
+            1 -> runCatching { gridState.animateScrollToItem(0) }
+            else -> runCatching { listState.animateScrollToItem(0) }
+        }
+        chromeState.expand()
+    }
 
     Scaffold(
         contentWindowInsets = StableWindowInsets.navigationBars,
@@ -367,7 +386,7 @@ fun LibraryScreen(
                     } else {
                         Modifier
                             .fillMaxHeight()
-                            .widthIn(max = 720.dp)
+                            .widthIn(max = 760.dp)
                             .fillMaxWidth()
                     }
                 ) {
@@ -500,52 +519,7 @@ fun LibraryScreen(
                                             null
                                         }
                                     )
-                                } /* else if (false) {
-                                    val hasAnyQuery =
-                                        !querySpec.textQuery.isNullOrBlank() ||
-                                            querySpec.includeTagIds.isNotEmpty() ||
-                                            querySpec.excludeTagIds.isNotEmpty() ||
-                                            querySpec.circles.isNotEmpty() ||
-                                            querySpec.cvs.isNotEmpty() ||
-                                            querySpec.source != null
-
-                                    Box(modifier = Modifier.fillMaxSize()) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 24.dp)
-                                                .align(Alignment.Center),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            if (hasAnyQuery) {
-                                                Text(
-                                                    "没有匹配结果",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                                Button(
-                                                    onClick = {
-                                                        searchText = ""
-                                                        viewModel.setSearchQuery("")
-                                                        viewModel.clearFilters()
-                                                    }
-                                                ) { Text("重置筛选与搜索") }
-                                            } else {
-                                                Text(
-                                                    "还没有扫描到本地专辑",
-                                                    style = MaterialTheme.typography.bodyLarge,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                                Text(
-                                                    "请到「设置」→「本地库」添加目录并执行同步/刷新",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = colorScheme.textSecondary
-                                                )
-                                            }
-                                        }
-                                    }
-                                } */ else if (isTrackList) {
+                                } else if (isTrackList) {
                                     LazyColumn(
                                         state = listState,
                                         modifier = Modifier
@@ -563,7 +537,7 @@ fun LibraryScreen(
                                                     Box(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                                                            .padding(horizontal = LibraryPageHorizontalPadding, vertical = 10.dp)
                                                     ) {
                                                         Spacer(modifier = Modifier.height(50.dp))
                                                     }
@@ -574,12 +548,18 @@ fun LibraryScreen(
                                             val albumId = header.albumId
                                             val expanded = expandedAlbumIds.contains(albumId)
                                             val rows = expandedAlbumTracks[albumId].orEmpty()
+                                            val isFirstAlbumHeader = headerIndex == 0
+                                            val isLastAlbumHeader = headerIndex == headerCount - 1
 
                                             stickyHeader(key = "album:$albumId") {
-                                                Column {
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .background(colorScheme.background)
+                                                ) {
                                                     if (headerIndex > 0) {
                                                         HorizontalDivider(
-                                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                                            modifier = Modifier.padding(horizontal = LibraryPageHorizontalPadding),
                                                             thickness = 0.5.dp,
                                                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                                                         )
@@ -587,9 +567,15 @@ fun LibraryScreen(
                                                     TrackAlbumHeader(
                                                         albumTitle = header.albumTitle,
                                                         rjCode = header.rjCode.ifBlank { header.workId },
+                                                        trackCount = header.trackCount,
+                                                        totalDurationSeconds = header.totalDuration,
+                                                        totalSizeBytes = header.totalSizeBytes.takeIf { it > 0L }
+                                                            ?: rememberAlbumTrackListTotalSizeBytes(rows),
                                                         coverModel = header.coverPath.takeIf { it.isNotBlank() }.takeIf { it != "null" }
                                                             ?: header.coverUrl.takeIf { it.isNotBlank() },
                                                         expanded = expanded,
+                                                        isFirstInList = isFirstAlbumHeader,
+                                                        isLastInList = isLastAlbumHeader,
                                                         onToggle = {
                                                             if (expanded) expandedAlbumIds.remove(albumId) else expandedAlbumIds.add(albumId)
                                                         }
@@ -632,15 +618,19 @@ fun LibraryScreen(
                                                             group = row.trackGroup
                                                         )
                                                     }
-                                                    val subtitleText = remember(row.duration) {
-                                                        if (row.duration > 0) Formatting.formatTrackTime(row.duration.toLong()) else ""
-                                                    }
+                                                    val meta = rememberAudioMeta(
+                                                        sourcePath = row.trackPath,
+                                                        durationSeconds = row.duration,
+                                                        prefixSegments = listOf(row.cv)
+                                                    )
 
                                                     Column {
                                                         TrackListRow(
                                                             title = track.title,
-                                                            subtitle = subtitleText,
+                                                            subtitle = meta.leadingText,
+                                                            fixedTrailingSubtitle = meta.trailingText,
                                                             showSubtitleStamp = row.hasSubtitles,
+                                                            isLastInSection = index == rows.lastIndex,
                                                             onClick = {
                                                                 scope.launch {
                                                                     val tracksForAlbum = withContext(Dispatchers.Default) {
@@ -662,26 +652,7 @@ fun LibraryScreen(
                                                                 playerViewModel.addTrackToQueue(album, track)
                                                             },
                                                             onAddToPlaylist = {
-                                                                val rj = album.rjCode.ifBlank { album.workId }
-                                                                val artist = when {
-                                                                    album.cv.isNotBlank() -> album.cv
-                                                                    album.circle.isNotBlank() -> album.circle
-                                                                    else -> rj
-                                                                }
-                                                                val artwork = album.coverPath.ifBlank { album.coverUrl }
-                                                                val displayTitle = track.title.ifBlank {
-                                                                    track.path.substringAfterLast('/').substringAfterLast('\\')
-                                                                }
-                                                                onOpenPlaylistPicker(
-                                                                    track.path,
-                                                                    track.path,
-                                                                    displayTitle,
-                                                                    artist.orEmpty(),
-                                                                    artwork,
-                                                                    album.id,
-                                                                    track.id,
-                                                                    rj
-                                                                )
+                                                                onOpenPlaylistPicker(MediaItemFactory.fromTrack(album, track))
                                                             },
                                                             onManageTags = {
                                                                 scope.launch {
@@ -703,7 +674,7 @@ fun LibraryScreen(
                                                         )
                                                         if (index < rows.size - 1) {
                                                             HorizontalDivider(
-                                                                modifier = Modifier.padding(horizontal = 16.dp),
+                                                                modifier = Modifier.padding(horizontal = LibraryPageHorizontalPadding),
                                                                 thickness = 0.5.dp,
                                                                 color = colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                                                             )
@@ -721,10 +692,10 @@ fun LibraryScreen(
                                             .fillMaxSize()
                                             .nestedScroll(chromeState.nestedScrollConnection)
                                             .thinScrollbar(gridState),
-                                        contentPadding = PaddingValues(top = topPadding, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                                        contentPadding = PaddingValues(top = topPadding, start = LibraryPageHorizontalPadding, end = LibraryPageHorizontalPadding, bottom = 16.dp)
                                             .withAddedBottomPadding(LocalBottomOverlayPadding.current),
-                                        verticalItemSpacing = 16.dp,
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        verticalItemSpacing = AlbumGridItemSpacing,
+                                        horizontalArrangement = Arrangement.spacedBy(AlbumGridItemSpacing)
                                     ) {
                                         staggeredItems(
                                             pagedAlbumIndices,
@@ -739,7 +710,11 @@ fun LibraryScreen(
                                                 onLongClick = {
                                                     actionAlbum = mergedAlbum
                                                     showAlbumActions = true
-                                                }
+                                                },
+                                                onRjClick = { copyMeta("RJ", it) },
+                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCvClick = { copyMeta("CV", it) },
+                                                onTagClick = { copyMeta("标签", it) },
                                             )
                                         }
                                     }
@@ -794,7 +769,11 @@ fun LibraryScreen(
                                                 onLongClick = {
                                                     actionAlbum = mergedAlbum
                                                     showAlbumActions = true
-                                                }
+                                                },
+                                                onRjClick = { copyMeta("RJ", it) },
+                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCvClick = { copyMeta("CV", it) },
+                                                onTagClick = { copyMeta("标签", it) },
                                             )
                                         }
                                     }
@@ -1030,7 +1009,7 @@ internal fun LibraryChrome(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = LibraryPageHorizontalPadding, vertical = 8.dp)
             .onSizeChanged(onMeasured)
             .graphicsLayer {
                 translationY = chromeOffsetPx - (collapseFraction.coerceIn(0f, 1f) * collapseOvershootPx)
@@ -1157,17 +1136,38 @@ private sealed class TagAssignTarget {
 private fun TrackAlbumHeader(
     albumTitle: String,
     rjCode: String,
+    trackCount: Int,
+    totalDurationSeconds: Double,
+    totalSizeBytes: Long?,
     coverModel: Any?,
     expanded: Boolean,
+    isFirstInList: Boolean,
+    isLastInList: Boolean,
     onToggle: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
+    val containerShape = if (expanded) {
+        RoundedCornerShape(
+            topStart = if (isFirstInList) LibraryTrackListHeaderCornerRadius else 0.dp,
+            topEnd = if (isFirstInList) LibraryTrackListHeaderCornerRadius else 0.dp,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        )
+    } else {
+        RoundedCornerShape(
+            topStart = if (isFirstInList) LibraryTrackListHeaderCornerRadius else 0.dp,
+            topEnd = if (isFirstInList) LibraryTrackListHeaderCornerRadius else 0.dp,
+            bottomStart = if (isLastInList) LibraryTrackListHeaderCornerRadius else 0.dp,
+            bottomEnd = if (isLastInList) LibraryTrackListHeaderCornerRadius else 0.dp
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(containerShape)
             .background(colorScheme.surface)
             .clickable { onToggle() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = LibraryPageHorizontalPadding, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsmrAsyncImage(
@@ -1180,29 +1180,55 @@ private fun TrackAlbumHeader(
                 .clip(RoundedCornerShape(8.dp)),
         )
         Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = albumTitle.ifBlank { rjCode.ifBlank { "专辑" } },
-            style = MaterialTheme.typography.titleMedium,
-            color = colorScheme.textPrimary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        if (rjCode.isNotBlank()) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = rjCode,
-                style = MaterialTheme.typography.labelSmall,
-                color = colorScheme.textTertiary
+                text = albumTitle.ifBlank { rjCode.ifBlank { "专辑" } },
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = colorScheme.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+
+            val footerSegments = buildList {
+                if (rjCode.isNotBlank()) add(rjCode)
+                add("$trackCount 音频")
+                Formatting.formatTrackSeconds(totalDurationSeconds).takeIf { it.isNotBlank() }?.let(::add)
+                totalSizeBytes?.takeIf { it > 0L }?.let(Formatting::formatFileSize)?.let(::add)
+            }
+            if (footerSegments.isNotEmpty()) {
+                Text(
+                    text = footerSegments.joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun rememberAlbumTrackListTotalSizeBytes(rows: List<com.asmr.player.data.local.db.dao.LibraryTrackRow>): Long? {
+    val context = LocalContext.current
+    val paths = remember(rows) { rows.map { it.trackPath } }
+    return androidx.compose.runtime.produceState<Long?>(initialValue = null, paths) {
+        value = withContext(Dispatchers.IO) {
+            val total = rows.sumOf { row ->
+                com.asmr.player.ui.common.queryTrackFileSize(context, row.trackPath) ?: 0L
+            }
+            total.takeIf { it > 0L }
+        }
+    }.value
 }
 
 @Composable
 private fun TrackListRow(
     title: String,
     subtitle: String,
+    fixedTrailingSubtitle: String,
     showSubtitleStamp: Boolean,
+    isLastInSection: Boolean,
     onClick: () -> Unit,
     onAddToQueue: () -> Unit,
     onAddToPlaylist: () -> Unit,
@@ -1210,89 +1236,52 @@ private fun TrackListRow(
     onRemove: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val materialColorScheme = MaterialTheme.colorScheme
-    val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
-    ListItem(
-        headlineContent = {
-            Text(
-                title,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        },
-        trailingContent = {
-            var expanded by remember { mutableStateOf(false) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (showSubtitleStamp) {
-                    SubtitleStamp(modifier = Modifier.padding(end = 8.dp))
-                }
-                Box {
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = null)
-                    }
-                    MaterialTheme(
-                        colorScheme = materialColorScheme.copy(
-                            surface = dynamicContainerColor,
-                            surfaceContainer = dynamicContainerColor
-                        )
-                    ) {
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(dynamicContainerColor)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("添加到播放队列") },
-                                onClick = {
-                                    expanded = false
-                                    onAddToQueue()
-                                }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                thickness = 0.5.dp,
-                                color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
-                            )
-                            DropdownMenuItem(
-                                text = { Text("添加到歌单") },
-                                onClick = {
-                                    expanded = false
-                                    onAddToPlaylist()
-                                }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                thickness = 0.5.dp,
-                                color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
-                            )
-                            DropdownMenuItem(
-                                text = { Text("标签管理") },
-                                onClick = {
-                                    expanded = false
-                                    onManageTags()
-                                }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                thickness = 0.5.dp,
-                                color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
-                            )
-                            DropdownMenuItem(
-                                text = { Text("从专辑移除") },
-                                onClick = {
-                                    expanded = false
-                                    onRemove()
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
+    val rowShape = if (isLastInSection) {
+        RoundedCornerShape(
+            topStart = 0.dp,
+            topEnd = 0.dp,
+            bottomStart = LibraryTrackListItemCornerRadius,
+            bottomEnd = LibraryTrackListItemCornerRadius
+        )
+    } else {
+        RoundedCornerShape(0.dp)
+    }
+
+    AudioItemRow(
+        title = title,
+        subtitle = subtitle,
+        fixedTrailingSubtitle = fixedTrailingSubtitle,
+        showSubtitleStamp = showSubtitleStamp,
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clip(rowShape)
+            .background(colorScheme.surface),
+        actions = listOf(
+            AudioItemMenuAction(
+                label = "添加到播放队列",
+                onClick = onAddToQueue,
+                icon = Icons.AutoMirrored.Filled.QueueMusic
+            ),
+            AudioItemMenuAction(
+                label = "添加到播放列表",
+                onClick = onAddToPlaylist,
+                icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                showDividerBefore = true
+            ),
+            AudioItemMenuAction(
+                label = "标签管理",
+                onClick = onManageTags,
+                icon = Icons.AutoMirrored.Filled.Label,
+                showDividerBefore = true
+            ),
+            AudioItemMenuAction(
+                label = "从专辑移除",
+                onClick = onRemove,
+                icon = Icons.Default.Delete,
+                showDividerBefore = true
+            )
+        )
     )
 }
 
@@ -1302,14 +1291,25 @@ private fun AlbumGridItem(
     album: Album,
     syncStatus: SyncStatus,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onRjClick: ((String) -> Unit)? = null,
+    onCircleClick: ((String) -> Unit)? = null,
+    onCvClick: ((String) -> Unit)? = null,
+    onTagClick: ((String) -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val coverShape = remember { RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumGridItemCornerRadius,
+            topEnd = AlbumGridItemCornerRadius,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(AlbumGridItemCornerRadius))
             .background(colorScheme.surface.copy(alpha = 0.3f))
             .combinedClickable(
                 onClick = onClick,
@@ -1383,6 +1383,13 @@ private fun AlbumGridItem(
                         .align(Alignment.TopStart)
                         .padding(8.dp)
                         .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .let { base ->
+                            if (onRjClick != null) {
+                                base.clickable { onRjClick(rj) }
+                            } else {
+                                base
+                            }
+                        }
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
@@ -1399,17 +1406,19 @@ private fun AlbumGridItem(
                 overflow = TextOverflow.Clip
             )
             
-            if (album.circle.isNotBlank()) {
-                Text(
-                    text = album.circle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.primary.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            AlbumPrimaryMetaRow(
+                rjCode = "",
+                circle = album.circle,
+                modifier = Modifier.fillMaxWidth(),
+                circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                leadingVisual = AlbumMetaLeadingVisual.Icon,
+            )
 
-            CvChipsFlow(cvText = album.cv)
+            AlbumCvChipsFlow(
+                cvText = album.cv,
+                onCvClick = onCvClick,
+                leadingVisual = AlbumMetaLeadingVisual.Icon,
+            )
 
             val statsText = buildString {
                 val rv = album.ratingValue
@@ -1434,22 +1443,12 @@ private fun AlbumGridItem(
             }
 
             if (album.tags.isNotEmpty()) {
-                FlowRow(
+                AlbumTagsFlow(
+                    tags = album.tags,
                     modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    album.tags.forEach { tag ->
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.primary.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        )
-                    }
-                }
+                    onTagClick = onTagClick,
+                    leadingVisual = AlbumMetaLeadingVisual.Icon,
+                )
             }
         }
     }
@@ -1461,10 +1460,21 @@ private fun AlbumItem(
     album: Album,
     syncStatus: SyncStatus,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onRjClick: ((String) -> Unit)? = null,
+    onCircleClick: ((String) -> Unit)? = null,
+    onCvClick: ((String) -> Unit)? = null,
+    onTagClick: ((String) -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val coverShape = remember { RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, topEnd = 0.dp, bottomEnd = 0.dp) }
+    val coverShape = remember {
+        RoundedCornerShape(
+            topStart = AlbumListItemCornerRadius,
+            bottomStart = AlbumListItemCornerRadius,
+            topEnd = 0.dp,
+            bottomEnd = 0.dp
+        )
+    }
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val listItemHeight = (screenWidthDp.dp * 0.24f).coerceIn(112.dp, 140.dp)
     val coverSize = listItemHeight
@@ -1472,8 +1482,8 @@ private fun AlbumItem(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .padding(horizontal = LibraryPageHorizontalPadding, vertical = LibraryAlbumItemVerticalPadding)
+            .clip(RoundedCornerShape(AlbumListItemCornerRadius))
             .background(colorScheme.surface.copy(alpha = 0.5f))
             .combinedClickable(
                 onClick = onClick,
@@ -1483,7 +1493,7 @@ private fun AlbumItem(
         CoverContentRow(
             coverWidth = coverSize,
             minHeight = coverSize,
-            spacing = 16.dp,
+            spacing = 8.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(listItemHeight),
@@ -1567,40 +1577,28 @@ private fun AlbumItem(
                 ) {
                     Text(
                         text = album.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = colorScheme.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
                     val rj = album.rjCode.ifBlank { album.workId }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (rj.isNotBlank()) {
-                            Text(
-                                text = rj,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.primary,
-                                modifier = Modifier
-                                    .background(colorScheme.primaryContainer, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        if (album.circle.isNotBlank()) {
-                            Text(
-                                text = album.circle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.primary.copy(alpha = 0.8f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                    AlbumPrimaryMetaRow(
+                        rjCode = rj,
+                        circle = album.circle,
+                        modifier = Modifier.fillMaxWidth(),
+                        rjOnClick = onRjClick?.let { click -> { click(rj) } },
+                        circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                        leadingVisual = AlbumMetaLeadingVisual.Icon,
+                    )
 
                     if (album.cv.isNotBlank()) {
-                        CvChipsSingleLine(
+                        AlbumCvChipsSingleLine(
                             cvText = album.cv,
                             modifier = Modifier.fillMaxWidth(),
+                            onCvClick = onCvClick,
+                            leadingVisual = AlbumMetaLeadingVisual.Icon,
                         )
                     }
 
@@ -1615,27 +1613,12 @@ private fun AlbumItem(
                     }
 
                     if (album.tags.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clipToBounds()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            album.tags.forEach { tag ->
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colorScheme.primary.copy(alpha = 0.7f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .widthIn(max = 200.dp)
-                                        .background(colorScheme.primary.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
-                        }
+                        AlbumTagsSingleLine(
+                            tags = album.tags,
+                            modifier = Modifier.fillMaxWidth(),
+                            onTagClick = onTagClick,
+                            leadingVisual = AlbumMetaLeadingVisual.Icon,
+                        )
                     }
                 }
             },

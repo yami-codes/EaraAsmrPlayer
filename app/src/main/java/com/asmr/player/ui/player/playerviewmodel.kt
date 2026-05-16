@@ -3,6 +3,8 @@ package com.asmr.player.ui.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
+import com.asmr.player.data.lyrics.ManualLyricsSourceRepository
+import com.asmr.player.data.lyrics.lyricsTargetContextFromMediaItem
 import com.asmr.player.playback.PlaybackSnapshot
 import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.playback.PlayerConnection
@@ -36,6 +38,7 @@ import android.os.Bundle
 import java.io.File
 
 import com.asmr.player.data.repository.PlaylistRepository
+import com.asmr.player.data.repository.PlaylistMediaItemMapper
 import com.asmr.player.data.repository.TrackSliceRepository
 import com.asmr.player.data.repository.SliceOverlapException
 import com.asmr.player.data.settings.EqualizerSettings
@@ -55,6 +58,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val ONLINE_MANUAL_LYRICS_MESSAGE = "在线音频如需替换歌词，请先下载音频到本地"
+
 @HiltViewModel
 @OptIn(FlowPreview::class)
 class PlayerViewModel @Inject constructor(
@@ -64,6 +69,7 @@ class PlayerViewModel @Inject constructor(
     private val trackDao: TrackDao,
     private val trackSliceRepository: TrackSliceRepository,
     private val slicePlaybackController: SlicePlaybackController,
+    private val manualLyricsSourceRepository: ManualLyricsSourceRepository,
     private val messageManager: MessageManager
 ) : ViewModel() {
     val playback: StateFlow<PlaybackSnapshot> = playerConnection.snapshot
@@ -264,6 +270,40 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun showOnlineTagManageUnsupported() {
+        messageManager.showInfo("在线音频暂不支持标签管理")
+    }
+
+    fun showOnlineManualLyricsUnsupported() {
+        messageManager.showInfo(ONLINE_MANUAL_LYRICS_MESSAGE)
+    }
+
+    fun bindManualLyrics(uri: String, onSuccess: () -> Unit = {}) {
+        val item = playback.value.currentMediaItem ?: return
+        if (item.isOnlineMedia()) {
+            showOnlineManualLyricsUnsupported()
+            return
+        }
+        val target = lyricsTargetContextFromMediaItem(item) ?: return
+        val trimmed = uri.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                manualLyricsSourceRepository.upsert(target, trimmed)
+                playerConnection.requestLyricsReload()
+            }.onSuccess {
+                messageManager.showSuccess("歌词已添加")
+                onSuccess()
+            }.onFailure {
+                messageManager.showError("歌词添加失败")
+            }
+        }
+    }
+
+    fun showUnsupportedLyricsFileMessage() {
+        messageManager.showInfo("仅支持 LRC、SRT、VTT 歌词文件")
+    }
+
     fun addToQueue() {
         val item = playback.value.currentMediaItem ?: return
         showQueueAddSummary(playerConnection.addMediaItems(listOf(item)))
@@ -337,8 +377,10 @@ class PlayerViewModel @Inject constructor(
         val enabled = slicePlaybackController.sliceModeEnabled.value
         if (!enabled) {
             slicePlaybackController.setSliceModeEnabled(true)
+            messageManager.showInfo("仅播放切片已开启")
         } else {
             slicePlaybackController.setSliceModeEnabled(false)
+            messageManager.showInfo("仅播放切片已关闭")
         }
     }
 
@@ -533,7 +575,8 @@ class PlayerViewModel @Inject constructor(
                     title = it.title,
                     path = it.path,
                     duration = it.duration,
-                    group = it.group
+                    group = it.group,
+                    lyricsRelativePathNoExt = ""
                 )
             }
             if (allTracks.isEmpty()) {
@@ -616,11 +659,11 @@ class PlayerViewModel @Inject constructor(
         startPositionMs: Long
     ): Boolean {
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError("鎾斁鍣ㄦ湭杩炴帴")
+            messageManager.showError("播放器未连接")
             return false
         }
         if (startTrack.path.contains(".m3u8", ignoreCase = true)) {
-            messageManager.showError("褰撳墠涓嶆敮鎸?m3u8 娴佸獟浣擄紝璇峰厛涓嬭浇闊抽鏂囦欢")
+            messageManager.showError("当前不支持 m3u8 流媒体，请先下载音频文件")
             return false
         }
         val (items, index) = withContext(Dispatchers.Default) {
@@ -629,7 +672,7 @@ class PlayerViewModel @Inject constructor(
             preparedItems to preparedIndex
         }
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError("鎾斁鍣ㄦ湭杩炴帴")
+            messageManager.showError("播放器未连接")
             return false
         }
         playerConnection.setQueue(
@@ -732,40 +775,5 @@ class PlayerViewModel @Inject constructor(
 }
 
 private fun PlaylistItemEntity.toMediaItemOrNull(): MediaItem? {
-    val trimmed = uri.trim()
-    if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return null
-    val metadata = MediaMetadata.Builder()
-        .setTitle(title)
-        .setArtist(artist)
-        .setArtworkUri(artworkUri.takeIf { it.isNotBlank() }?.toUri())
-        .build()
-
-    fun repairDocumentUri(raw: String): String {
-        val u = runCatching { Uri.parse(raw) }.getOrNull() ?: return raw
-        val segs = u.pathSegments ?: return raw
-        val docIndex = segs.indexOf("document")
-        if (docIndex < 0) return raw
-        if (segs.size <= docIndex + 2) return raw
-        val docId = segs.subList(docIndex + 1, segs.size).joinToString("/")
-        val encodedDocId = Uri.encode(docId)
-        val encodedPath = "/" + segs.take(docIndex + 1).joinToString("/") + "/" + encodedDocId
-        return u.buildUpon().encodedPath(encodedPath).build().toString()
-    }
-
-    val normalized = if (trimmed.startsWith("content://", ignoreCase = true)) repairDocumentUri(trimmed) else trimmed
-    val normalizedMediaId = mediaId.trim().let { mid ->
-        if (mid.startsWith("content://", ignoreCase = true)) repairDocumentUri(mid) else mid
-    }.ifBlank { normalized }
-    val parsedUri = when {
-        normalized.startsWith("http", ignoreCase = true) ||
-            normalized.startsWith("content://", ignoreCase = true) ||
-            normalized.startsWith("file://", ignoreCase = true) -> normalized.toUri()
-        trimmed.startsWith("/") -> Uri.fromFile(File(trimmed))
-        else -> return null
-    }
-    return MediaItem.Builder()
-        .setMediaId(normalizedMediaId)
-        .setUri(parsedUri)
-        .setMediaMetadata(metadata)
-        .build()
+    return PlaylistMediaItemMapper.toMediaItemOrNull(this)
 }

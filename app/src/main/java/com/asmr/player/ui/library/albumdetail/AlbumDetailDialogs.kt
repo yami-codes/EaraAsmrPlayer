@@ -675,13 +675,12 @@ internal fun FilePreviewDialog(
             if (absolutePath.startsWith("http", ignoreCase = true) || absolutePath.startsWith("content://")) {
                 return@withContext listOf(absolutePath)
             }
-            if (fileType != TreeFileType.Image && fileType != TreeFileType.Video) {
+            if (fileType != TreeFileType.Video) {
                 return@withContext listOf(absolutePath)
             }
             val current = File(absolutePath)
             val parent = current.parentFile ?: return@withContext listOf(absolutePath)
             val exts = when (fileType) {
-                TreeFileType.Image -> setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
                 TreeFileType.Video -> setOf("mp4", "mkv", "webm", "mov", "m4v")
                 else -> emptySet()
             }
@@ -697,8 +696,21 @@ internal fun FilePreviewDialog(
         mutableIntStateOf(initialCandidates.indexOf(absolutePath).takeIf { it >= 0 } ?: 0)
     }
     val currentPath = initialCandidates.getOrElse(currentIndex) { absolutePath }
-    val currentName = remember(currentPath) { currentPath.substringAfterLast('/').substringAfterLast('\\') }
-    val currentType = remember(currentName) { treeFileTypeForName(currentName) }
+    val currentName = remember(currentPath, absolutePath, title) {
+        if (currentPath == absolutePath && title.isNotBlank()) {
+            title
+        } else {
+            currentPath.substringAfterLast('/').substringAfterLast('\\')
+        }
+    }
+    val currentType = remember(currentPath, absolutePath, currentName, fileType) {
+        val inferred = treeFileTypeForName(currentName)
+        when {
+            currentPath == absolutePath && fileType != TreeFileType.Other -> fileType
+            inferred != TreeFileType.Other -> inferred
+            else -> fileType
+        }
+    }
     val canNavigate = initialCandidates.size > 1
     var fullscreen by remember { mutableStateOf(false) }
     val canFullscreen = currentType == TreeFileType.Video
@@ -794,7 +806,7 @@ internal fun FilePreviewDialog(
                 .then(
                     if (fullscreen && currentType == TreeFileType.Video) {
                         Modifier.fillMaxSize()
-                    } else if (computedSize != null && (currentType == TreeFileType.Image || currentType == TreeFileType.Video)) {
+                    } else if (computedSize != null && currentType == TreeFileType.Video) {
                         Modifier.width(computedSize.first).height(computedSize.second)
                     } else {
                         Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.85f)
@@ -848,34 +860,6 @@ internal fun FilePreviewDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     when (currentType) {
-                        TreeFileType.Image -> {
-                            var scale by remember { mutableStateOf(1f) }
-                            var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-                            AsmrAsyncImage(
-                                model = currentPath,
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(Unit) {
-                                        detectTransformGestures { _, pan, zoom, _ ->
-                                            scale = (scale * zoom).coerceIn(1f, 5f)
-                                            if (scale > 1f) {
-                                                offset += pan
-                                            } else {
-                                                offset = androidx.compose.ui.geometry.Offset.Zero
-                                            }
-                                        }
-                                    }
-                                    .graphicsLayer(
-                                        scaleX = scale,
-                                        scaleY = scale,
-                                        translationX = offset.x,
-                                        translationY = offset.y
-                                    ),
-                                placeholderCornerRadius = 0,
-                            )
-                        }
                         TreeFileType.Video -> {
                             InlineVideoPlayer(
                                 url = currentPath,

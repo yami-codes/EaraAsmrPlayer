@@ -92,7 +92,9 @@ import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
+import com.asmr.player.ui.library.AlbumGridItemSpacing
 import com.asmr.player.ui.library.AlbumItem
+import com.asmr.player.ui.library.rememberAlbumMetaCopyAction
 import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.ui.theme.AsmrTheme
@@ -111,6 +113,7 @@ internal const val SEARCH_CHROME_TAG = "search_chrome"
 private val SearchChromeContentGap = 16.dp
 private const val SearchPullRefreshContentShiftRatio = 1f
 private val SearchPullRefreshIndicatorSize = 40.dp
+private val SearchPageHorizontalPadding = 8.dp
 
 private fun stableAlbumKey(album: Album): String {
     val id = album.rjCode.ifBlank { album.workId }.trim()
@@ -123,7 +126,8 @@ private fun stableAlbumKey(album: Album): String {
 @Composable
 fun SearchScreen(
     windowSizeClass: WindowSizeClass,
-    onAlbumClick: (Album) -> Unit,
+    onAlbumClick: (Album, Boolean) -> Unit,
+    scrollToTopSignal: Long = 0L,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var keyword by rememberSaveable { mutableStateOf("") }
@@ -140,6 +144,7 @@ fun SearchScreen(
     val listState = rememberSaveable(currentPageKey, saver = LazyListState.Saver) { LazyListState(0, 0) }
     val gridState = rememberSaveable(currentPageKey, saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
     val colorScheme = AsmrTheme.colorScheme
+    val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -275,6 +280,14 @@ fun SearchScreen(
             chromeState.expand()
         }
     }
+    LaunchedEffect(scrollToTopSignal) {
+        if (scrollToTopSignal == 0L) return@LaunchedEffect
+        when (viewMode) {
+            0 -> runCatching { listState.animateScrollToItem(0) }
+            else -> runCatching { gridState.animateScrollToItem(0) }
+        }
+        chromeState.expand()
+    }
 
     Scaffold(
         contentWindowInsets = StableWindowInsets.navigationBars,
@@ -304,7 +317,8 @@ fun SearchScreen(
                                 workId = album.workId,
                                 rjCode = album.rjCode,
                                 description = album.description
-                            )
+                            ),
+                            false
                         )
                     },
                     modifier = Modifier.fillMaxHeight()
@@ -322,7 +336,7 @@ fun SearchScreen(
                     } else {
                         Modifier
                             .fillMaxHeight()
-                            .widthIn(max = 720.dp)
+                            .widthIn(max = 800.dp)
                             .fillMaxWidth()
                     }
                 ) {
@@ -388,8 +402,12 @@ fun SearchScreen(
                                         ) { album ->
                                             AlbumItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album) },
-                                                emptyCoverUseShimmer = true
+                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                emptyCoverUseShimmer = true,
+                                                onRjClick = { copyMeta("RJ", it) },
+                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCvClick = { copyMeta("CV", it) },
+                                                onTagClick = { copyMeta("标签", it) },
                                             )
                                         }
                                     }
@@ -403,12 +421,12 @@ fun SearchScreen(
                                             .thinScrollbar(gridState),
                                         contentPadding = PaddingValues(
                                             top = topPadding,
-                                            start = 16.dp,
-                                            end = 16.dp,
+                                            start = SearchPageHorizontalPadding,
+                                            end = SearchPageHorizontalPadding,
                                             bottom = 16.dp
                                         ).withAddedBottomPadding(LocalBottomOverlayPadding.current),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalItemSpacing = 16.dp
+                                        horizontalArrangement = Arrangement.spacedBy(AlbumGridItemSpacing),
+                                        verticalItemSpacing = AlbumGridItemSpacing
                                     ) {
                                         items(
                                             state.results.size,
@@ -418,8 +436,12 @@ fun SearchScreen(
                                             val album = state.results[index]
                                             AlbumGridItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album) },
-                                                emptyCoverUseShimmer = true
+                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                emptyCoverUseShimmer = true,
+                                                onRjClick = { copyMeta("RJ", it) },
+                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCvClick = { copyMeta("CV", it) },
+                                                onTagClick = { copyMeta("标签", it) },
                                             )
                                         }
                                     }
@@ -520,12 +542,14 @@ fun SearchScreen(
                         onMeasured = { size: IntSize -> chromeState.updateHeight(size.height.toFloat()) },
                         onSearchSubmit = ::submitSearch,
                         onPurchasedOnlySelected = {
-                            purchasedOnly = true
-                            viewModel.updateSearchOptions(
+                            val accepted = viewModel.updateSearchOptions(
                                 order = selectedOrder,
                                 purchasedOnly = true,
                                 locale = selectedLocale
                             )
+                            if (accepted) {
+                                purchasedOnly = true
+                            }
                         },
                         onOrderSelected = { order ->
                             selectedOrderName = order.name
@@ -708,7 +732,7 @@ internal fun SearchToolbar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = SearchPageHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         CustomSearchBar(
@@ -892,7 +916,7 @@ internal fun SearchPaginationHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .padding(horizontal = SearchPageHorizontalPadding, vertical = 2.dp)
     ) {
         Row(
             modifier = Modifier

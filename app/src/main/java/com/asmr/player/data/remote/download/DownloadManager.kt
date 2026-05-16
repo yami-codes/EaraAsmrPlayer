@@ -14,6 +14,8 @@ import com.asmr.player.data.local.db.entities.DownloadTaskEntity
 import com.asmr.player.data.local.db.entities.SubtitleEntity
 import com.asmr.player.data.local.db.entities.TrackEntity
 import com.asmr.player.data.local.db.AppDatabaseProvider
+import com.asmr.player.util.SubtitleEntry
+import com.asmr.player.util.SubtitleMatchSupport
 import com.asmr.player.util.SubtitleParser
 import com.asmr.player.util.TrackKeyNormalizer
 import com.asmr.player.work.AlbumCoverThumbWorker
@@ -691,7 +693,6 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                     else -> -1L
                 }
                 val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
-                var lastProgressAt = 0L
                 var lastBytes = 0L
                 var lastTs = System.currentTimeMillis()
 
@@ -738,7 +739,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                             pendingTrafficBytes += read.toLong()
 
                             val now = System.currentTimeMillis()
-                            val shouldUpdate = downloaded - lastProgressAt >= PROGRESS_UPDATE_BYTES || now - lastTs >= PROGRESS_UPDATE_INTERVAL_MS
+                            val shouldUpdate = now - lastTs >= PROGRESS_UPDATE_INTERVAL_MS
                             if (shouldUpdate) {
                                 flushTrafficStats()
                                 val dt = (now - lastTs).coerceAtLeast(1)
@@ -751,7 +752,6 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                                     speed = speed,
                                     updatedAt = now
                                 )
-                                lastProgressAt = downloaded
                                 lastBytes = downloaded
                                 lastTs = now
                             }
@@ -829,7 +829,6 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
 
     companion object {
         private const val DOWNLOAD_BUFFER_SIZE = 64 * 1024
-        private const val PROGRESS_UPDATE_BYTES = 256 * 1024L
         private const val PROGRESS_UPDATE_INTERVAL_MS = 1_000L
 
         @Volatile
@@ -1014,11 +1013,28 @@ private suspend fun upsertDownloadedAlbumToLibrary(
     }
 
     val audioExtensions = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
-    val subtitleExtensions = setOf("lrc", "srt", "vtt")
     val audioFiles = dir.walkTopDown()
         .filter { it.isFile && audioExtensions.contains(it.extension.lowercase()) }
         .toList()
         .sortedBy { it.absolutePath.lowercase() }
+    val subtitleCandidates = dir.walkTopDown()
+        .filter { it.isFile && SubtitleMatchSupport.SubtitleExtensions.contains(it.extension.lowercase()) }
+        .mapNotNull { file ->
+            val relative = runCatching { file.relativeTo(dir).path.replace('\\', '/') }.getOrNull().orEmpty()
+            val candidate = SubtitleMatchSupport.inferCandidate(relative, file.absolutePath) ?: return@mapNotNull null
+            candidate to file
+        }
+        .toList()
+    val subtitleCandidateList = subtitleCandidates.map { it.first }
+
+    fun parseBestSubtitle(audio: File): List<SubtitleEntry> {
+        val relativePathNoExt = runCatching { audio.relativeTo(dir).path.replace('\\', '/') }
+            .getOrElse { audio.name }
+            .substringBeforeLast('.')
+        val matched = SubtitleMatchSupport.matchBest(relativePathNoExt, subtitleCandidateList) ?: return emptyList()
+        val subtitleFile = subtitleCandidates.firstOrNull { it.first.sourceRef == matched.sourceRef }?.second ?: return emptyList()
+        return runCatching { SubtitleParser.parse(subtitleFile.absolutePath) }.getOrDefault(emptyList())
+    }
 
     val existingTracks = try {
         trackDao.getTracksForAlbumOnce(albumId)
@@ -1026,13 +1042,13 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         emptyList()
     }
     val prefix = dir.absolutePath.trimEnd('\\', '/') + File.separator
-    val existingLocalKeys = LinkedHashSet<String>()
-    val existingLocalKeysNoGroup = LinkedHashSet<String>()
+    val existingLocalTargetsByKey = LinkedHashMap<String, TrackEntity>()
+    val existingLocalTargetsByKeyNoGroup = LinkedHashMap<String, TrackEntity>()
     existingTracks
         .filter { it.path.isNotBlank() && !it.path.startsWith(prefix) && !it.path.trim().startsWith("http", ignoreCase = true) }
         .forEach { t ->
-            existingLocalKeys.add(TrackKeyNormalizer.buildKey(t.title, t.group, null))
-            existingLocalKeysNoGroup.add(TrackKeyNormalizer.buildKey(t.title, "", null))
+            existingLocalTargetsByKey.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t)
+            existingLocalTargetsByKeyNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t)
         }
     val toDelete = existingTracks.filter { it.path.startsWith(dir.absolutePath) }.map { it.id }
     if (toDelete.isNotEmpty()) {
@@ -1040,11 +1056,32 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         runCatching { trackDao.deleteTracksByIds(toDelete) }
     }
 
-    val filteredAudioFiles = audioFiles.filter { f ->
+    val filteredAudioFiles = ArrayList<File>(audioFiles.size)
+    audioFiles.forEach { f ->
         val group = if (f.parentFile != null && f.parentFile?.absolutePath != dir.absolutePath) f.parentFile?.name.orEmpty() else ""
         val key = TrackKeyNormalizer.buildKey(f.nameWithoutExtension.ifBlank { "track" }, group, null)
         val keyNoGroup = TrackKeyNormalizer.buildKey(f.nameWithoutExtension.ifBlank { "track" }, "", null)
-        !(existingLocalKeys.contains(key) || existingLocalKeysNoGroup.contains(keyNoGroup))
+        val duplicateLocalTrack = existingLocalTargetsByKey[key] ?: existingLocalTargetsByKeyNoGroup[keyNoGroup]
+        if (duplicateLocalTrack != null) {
+            val entries = parseBestSubtitle(f)
+            if (entries.isNotEmpty()) {
+                runCatching { trackDao.deleteSubtitlesForTrack(duplicateLocalTrack.id) }
+                runCatching {
+                    trackDao.insertSubtitles(
+                        entries.map { e ->
+                            SubtitleEntity(
+                                trackId = duplicateLocalTrack.id,
+                                startMs = e.startMs,
+                                endMs = e.endMs,
+                                text = e.text
+                            )
+                        }
+                    )
+                }
+            }
+        } else {
+            filteredAudioFiles += f
+        }
     }
 
     val newTracks = filteredAudioFiles.map { f ->
@@ -1061,51 +1098,9 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         val insertedTrackIds = runCatching { trackDao.insertTracks(newTracks) }.getOrDefault(emptyList())
         if (insertedTrackIds.isNotEmpty()) {
             val subtitlesToInsert = ArrayList<SubtitleEntity>()
-            val prefer = listOf("default", "zh", "cn", "chs", "ja", "jp", "jpn", "en")
-
-            fun findBestSidecarSubtitle(audio: File): File? {
-                val parent = audio.parentFile ?: return null
-                val base = audio.nameWithoutExtension
-                val siblings = parent.listFiles()
-                    ?.filter { it.isFile && subtitleExtensions.contains(it.extension.lowercase()) }
-                    .orEmpty()
-
-                val matched = siblings.mapNotNull { f ->
-                    val nameWithoutExt = f.nameWithoutExtension
-                    val isMatch: Boolean
-                    val language: String
-                    if (nameWithoutExt.equals(base, ignoreCase = true)) {
-                        isMatch = true
-                        language = "default"
-                    } else if (nameWithoutExt.startsWith("$base.", ignoreCase = true)) {
-                        isMatch = true
-                        val suffix = nameWithoutExt.substring(base.length + 1)
-                        val parts = suffix.split('.').filter { it.isNotBlank() }
-                        val valid = parts.filter { !audioExtensions.contains(it.lowercase()) }
-                        language = when {
-                            valid.isEmpty() -> "zh"
-                            valid.size == 1 -> valid[0]
-                            else -> valid.last()
-                        }
-                    } else {
-                        isMatch = false
-                        language = "default"
-                    }
-                    if (isMatch) f to language else null
-                }
-
-                val ordered = matched.sortedWith(
-                    compareBy<Pair<File, String>> { (_, lang) ->
-                        val idx = prefer.indexOf(lang.lowercase())
-                        if (idx >= 0) idx else Int.MAX_VALUE
-                    }.thenBy { it.first.name.lowercase() }
-                )
-                return ordered.firstOrNull()?.first
-            }
 
             insertedTrackIds.zip(filteredAudioFiles).forEach { (trackId, audio) ->
-                val subtitleFile = findBestSidecarSubtitle(audio) ?: return@forEach
-                val entries = runCatching { SubtitleParser.parse(subtitleFile.absolutePath) }.getOrDefault(emptyList())
+                val entries = parseBestSubtitle(audio)
                 entries.forEach { e ->
                     subtitlesToInsert.add(
                         SubtitleEntity(

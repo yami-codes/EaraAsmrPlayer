@@ -123,6 +123,8 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.ImagePreviewItem
+import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -160,6 +162,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
     onManageTrackTags: (Track) -> Unit,
     onRemoveTrack: (Track) -> Unit,
     onSetCoverFromImage: (String) -> Unit,
+    onPreviewImages: (ImagePreviewRequest) -> Unit,
     onPreviewFile: (LocalTreeUiEntry.File) -> Unit,
 ) {
     val queueTracks = remember(album.id, album.tracks) { album.tracks.sortedBy { it.path } }
@@ -260,6 +263,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                     onAddMediaItemsToQueue = onAddMediaItemsToQueue,
                     animateIntro = animateIntro,
+                    parentChromeState = chromeState,
                     preferredPath = preferredCurrentPath,
                     onTogglePreferredPath = { enabled ->
                         onTogglePreferredCurrentPath(currentPath, enabled)
@@ -323,16 +327,47 @@ internal fun AlbumLocalBreadcrumbTabV2(
                                     if (prepared != null) {
                                         onPlayMediaItems(prepared.items, prepared.startIndex)
                                     } else {
-                                        onPreviewFile(
-                                            LocalTreeUiEntry.File(
-                                                path = file.path,
-                                                title = file.title,
-                                                depth = 0,
-                                                absolutePath = file.absolutePath,
-                                                fileType = file.fileType,
-                                                track = file.track
+                                        if (file.fileType == TreeFileType.Image) {
+                                            buildDirectoryImagePreviewRequest(
+                                                files = browserValue.files,
+                                                clickedPath = file.path,
+                                                toPreviewItem = { imageFile ->
+                                                    imageFile.absolutePath.takeIf { it.isNotBlank() }?.let { path ->
+                                                        ImagePreviewItem(
+                                                            key = imageFile.path,
+                                                            title = imageFile.title,
+                                                            openPathOrUrl = path,
+                                                            prepareImage = {
+                                                                com.asmr.player.ui.common.ImagePreviewPreparedItem(
+                                                                    imageModel = path,
+                                                                    openPathOrUrl = path
+                                                                )
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            )?.let(onPreviewImages) ?: onPreviewFile(
+                                                LocalTreeUiEntry.File(
+                                                    path = file.path,
+                                                    title = file.title,
+                                                    depth = 0,
+                                                    absolutePath = file.absolutePath,
+                                                    fileType = file.fileType,
+                                                    track = file.track
+                                                )
                                             )
-                                        )
+                                        } else {
+                                            onPreviewFile(
+                                                LocalTreeUiEntry.File(
+                                                    path = file.path,
+                                                    title = file.title,
+                                                    depth = 0,
+                                                    absolutePath = file.absolutePath,
+                                                    fileType = file.fileType,
+                                                    track = file.track
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             },

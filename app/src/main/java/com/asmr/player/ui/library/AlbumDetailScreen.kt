@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -57,14 +57,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -119,13 +117,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
+import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
 import com.asmr.player.ui.common.rememberDominantColor
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
-import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.ImagePreviewDialog
+import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -163,6 +163,7 @@ internal data class PreparedMediaPlayback(
 private val AlbumDetailTabContentGap = 12.dp
 private val AlbumDetailTabCollapseOvershoot = 10.dp
 private const val AlbumDetailInitialIntroDurationMs = 1200L
+private val AlbumDetailHorizontalPadding = 8.dp
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -193,12 +194,12 @@ fun AlbumDetailScreen(
     onAddToQueue: (Album, Track) -> Boolean = { _, _ -> false },
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit = {},
     onAddMediaItemsToFavorites: (List<MediaItem>) -> Unit = {},
-    onOpenPlaylistPicker: (mediaId: String, uri: String, title: String, artist: String, artworkUri: String, albumId: Long, trackId: Long, rjCode: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
-    onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit = {},
+    onOpenPlaylistPicker: (MediaItem) -> Unit = {},
     onOpenGroupPicker: (albumId: Long) -> Unit = { _ -> },
     onPlayVideo: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onOpenDlsiteLogin: () -> Unit = {},
     onOpenAlbumByRj: (String) -> Unit = {},
+    initialTab: Int? = null,
     viewModel: AlbumDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -210,8 +211,11 @@ fun AlbumDetailScreen(
         if (rjPart.isNotBlank()) "album:$rjPart" else "albumId:$idPart"
     }
     val introSessionKey = remember(screenKey) { "intro:${UUID.randomUUID()}" }
-    var selectedTab by rememberSaveable(screenKey) {
-        mutableIntStateOf(if (albumId != null && albumId > 0) 0 else 1)
+    val initialSelectedTab = remember(albumId, initialTab) {
+        initialTab?.coerceIn(0, 2) ?: if (albumId != null && albumId > 0) 0 else 1
+    }
+    var selectedTab by rememberSaveable(screenKey, initialSelectedTab) {
+        mutableIntStateOf(initialSelectedTab)
     }
     var lastChromeResetTab by rememberSaveable(screenKey) {
         mutableIntStateOf(selectedTab)
@@ -243,7 +247,7 @@ fun AlbumDetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent), // Background handled by MainActivity
-        contentAlignment = Alignment.TopCenter // 仅用于平板适配：居中显示内容
+        contentAlignment = Alignment.TopCenter // 浠呯敤浜庡钩鏉块€傞厤锛氬眳涓樉绀哄唴瀹?
     ) {
         val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
         
@@ -251,10 +255,10 @@ fun AlbumDetailScreen(
             modifier = if (isCompact) {
                 Modifier.fillMaxSize()
             } else {
-                // 仅用于平板适配：限制内容区域最大宽度并填充可用空间
+                // 浠呯敤浜庡钩鏉块€傞厤锛氶檺鍒跺唴瀹瑰尯鍩熸渶澶у搴﹀苟濉厖鍙敤绌洪棿
                 Modifier
                     .fillMaxHeight()
-                    .widthIn(max = 720.dp)
+                    .widthIn(max = 800.dp)
                     .fillMaxWidth()
             }
         ) {
@@ -297,6 +301,7 @@ fun AlbumDetailScreen(
                     )
                     var localPreviewFile by remember { mutableStateOf<LocalTreeUiEntry.File?>(null) }
                     var onlinePreviewFile by remember { mutableStateOf<AsmrTreeUiEntry.File?>(null) }
+                    var imagePreviewRequest by remember { mutableStateOf<ImagePreviewRequest?>(null) }
                     val tabChromeState = rememberCollapsibleHeaderState()
                     val animatedTabChromeOffsetPx by animateFloatAsState(
                         targetValue = tabChromeState.offsetPx,
@@ -396,7 +401,10 @@ fun AlbumDetailScreen(
                                 viewModel.ensureDlsiteLoaded()
                                 viewModel.ensureAsmrOneLoaded()
                             }
-                            2 -> viewModel.ensureDlsitePlayLoaded()
+                            2 -> {
+                                viewModel.ensureDlsiteLoaded()
+                                viewModel.ensureDlsitePlayLoaded()
+                            }
                         }
                     }
 
@@ -464,16 +472,7 @@ fun AlbumDetailScreen(
                                                 },
                                                 onAddToPlaylist = { track ->
                                                     val target = PlaylistAddTarget.fromTrack(local, track)
-                                                    onOpenPlaylistPicker(
-                                                        target.mediaId,
-                                                        target.uri,
-                                                        target.title,
-                                                        target.artist,
-                                                        target.artworkUri,
-                                                        target.albumId,
-                                                        target.trackId,
-                                                        target.rjCode
-                                                    )
+                                                    onOpenPlaylistPicker(target.toMediaItem())
                                                 },
                                                 onManageTrackTags = { track ->
                                                     tagManageTrack = track
@@ -484,6 +483,7 @@ fun AlbumDetailScreen(
                                                 onSetCoverFromImage = { pathOrUri ->
                                                     viewModel.setLocalCoverPath(pathOrUri)
                                                 },
+                                                onPreviewImages = { request -> imagePreviewRequest = request },
                                                 onPreviewFile = { localPreviewFile = it },
                                                 animateIntro = shouldPlayInitialAnimations
                                             )
@@ -518,30 +518,13 @@ fun AlbumDetailScreen(
                                         },
                                         onAddToPlaylistOne = { relPath ->
                                             val target = PlaylistAddTarget.fromAsmrOne(album, asmrOneTree, relPath) ?: return@AlbumDlsiteInfoBreadcrumbTabV2
-                                            onOpenPlaylistPicker(
-                                                target.mediaId,
-                                                target.uri,
-                                                target.title,
-                                                target.artist,
-                                                target.artworkUri,
-                                                target.albumId,
-                                                target.trackId,
-                                                target.rjCode
-                                            )
+                                            onOpenPlaylistPicker(target.toMediaItem())
                                         },
                                         onAddToPlaylist = { track ->
                                             val target = PlaylistAddTarget.fromTrack(album, track)
-                                            onOpenPlaylistPicker(
-                                                target.mediaId,
-                                                target.uri,
-                                                target.title,
-                                                target.artist,
-                                                target.artworkUri,
-                                                target.albumId,
-                                                target.trackId,
-                                                target.rjCode
-                                            )
+                                            onOpenPlaylistPicker(target.toMediaItem())
                                         },
+                                        onPreviewImages = { request -> imagePreviewRequest = request },
                                         onPreviewFile = { onlinePreviewFile = it },
                                         treeStateKey = "tree:asmrOne:${model.rjCode.trim().uppercase()}",
                                         initialCurrentPath = viewModel.getTreeCurrentPath("tree:asmrOne:${model.rjCode.trim().uppercase()}"),
@@ -580,7 +563,9 @@ fun AlbumDetailScreen(
                                         onDownloadOne = { relPath ->
                                             viewModel.downloadDlsitePlaySelected(setOf(relPath))
                                         },
+                                        onPreviewImages = { request -> imagePreviewRequest = request },
                                         onPreviewFile = { onlinePreviewFile = it },
+                                        prepareImagePreview = viewModel::prepareDlsitePlayImagePreview,
                                         treeStateKey = "tree:dlsitePlay:${model.baseRjCode.ifBlank { model.rjCode }.trim().uppercase()}",
                                         initialCurrentPath = viewModel.getTreeCurrentPath("tree:dlsitePlay:${model.baseRjCode.ifBlank { model.rjCode }.trim().uppercase()}"),
                                         topContentPadding = tabContentTopPadding,
@@ -704,6 +689,14 @@ fun AlbumDetailScreen(
                     )
                 }
 
+                imagePreviewRequest?.let { request ->
+                    ImagePreviewDialog(
+                        request = request,
+                        messageManager = viewModel.messageManager,
+                        onDismiss = { imagePreviewRequest = null }
+                    )
+                }
+
                 val track = tagManageTrack
                 if (track != null && track.id > 0L) {
                     TagAssignDialog(
@@ -777,7 +770,7 @@ private fun AlbumDetailTabChrome(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp)
             .onSizeChanged(onMeasured)
             .graphicsLayer {
                 translationY = animatedOffsetPx -
@@ -922,8 +915,8 @@ private fun AlbumHeader(
     messageManager: MessageManager
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     val colorScheme = AsmrTheme.colorScheme
+    val copyMeta = rememberAlbumMetaCopyAction(messageManager)
     val data = album.coverPath.ifEmpty { album.coverUrl }
     val imageModel = remember(data) {
         val headers = if (data.startsWith("http", ignoreCase = true)) DlsiteAntiHotlink.headersForImageUrl(data) else emptyMap()
@@ -945,18 +938,24 @@ private fun AlbumHeader(
         delay(700)
         headerIntroPlayed = true
     }
-    fun copy(label: String, value: String) {
-        val v = value.trim()
-        if (v.isBlank()) return
-        clipboard.setText(AnnotatedString(v))
-        messageManager.showSuccess("$label 已复制")
-    }
 
     val headerContainerModifier = Modifier
         .fillMaxWidth()
-        .padding(16.dp)
+        .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 12.dp)
         .clip(RoundedCornerShape(24.dp))
         .background(colorScheme.surface.copy(alpha = 0.5f))
+    val langCandidates = remember(dlsiteEditions) {
+        dlsiteEditions
+            .filter { it.lang in setOf("JPN", "CHI_HANS", "CHI_HANT") }
+            .distinctBy { it.lang }
+            .sortedWith(compareBy({ it.displayOrder }, { it.lang }))
+    }
+    val selectedLangLabel = remember(dlsiteSelectedLang, langCandidates) {
+        langCandidates.firstOrNull { it.lang.equals(dlsiteSelectedLang, ignoreCase = true) }
+            ?.let { dlsiteLanguageButtonLabel(it.lang) }
+            ?: dlsiteLanguageButtonLabel(dlsiteSelectedLang)
+    }
+    var languageMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = dlsiteElasticItemModifier(
@@ -989,7 +988,7 @@ private fun AlbumHeader(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Photo,
-                            contentDescription = "选择封面",
+                            contentDescription = "閫夋嫨灏侀潰",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
@@ -1007,7 +1006,7 @@ private fun AlbumHeader(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     AlbumHeaderInfoReveal(
@@ -1018,7 +1017,7 @@ private fun AlbumHeader(
                     ) {
                     Text(
                         text = album.title,
-                        modifier = Modifier.clickable { copy("标题", album.title) },
+                        modifier = Modifier.clickable { copyMeta("标题", album.title) },
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = Color.White,
                         maxLines = 2,
@@ -1032,90 +1031,33 @@ private fun AlbumHeader(
                             delayMillis = 40,
                             enabled = animateIntro
                         ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (rj.isNotBlank()) {
-                            Text(
-                                text = rj,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.primary,
-                                modifier = Modifier
-                                    .clickable { copy("RJ", rj) }
-                                    .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            AlbumPrimaryMetaRow(
+                                rjCode = rj,
+                                circle = circle,
+                                rjOnClick = { copyMeta("RJ", rj) },
+                                circleOnClick = { copyMeta("社团", circle) },
+                                appearance = AlbumMetaAppearance.OnImage,
+                                leadingVisual = AlbumMetaLeadingVisual.Icon,
                             )
-                        }
-                        if (circle.isNotBlank()) {
-                            Text(
-                                text = circle,
-                                modifier = Modifier.clickable { copy("社团", circle) },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.9f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
                         }
                     }
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
                         delayMillis = 80,
                         enabled = animateIntro
                     ) {
-                        CvChipsFlow(
+                        AlbumCvChipsFlow(
                             cvText = album.cv,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                            onCvClick = { cv -> copy("CV", cv) },
+                            onCvClick = { cv -> copyMeta("CV", cv) },
+                            leadingVisual = AlbumMetaLeadingVisual.Icon,
                         )
-                    }
-                }
-
-                val langCandidates = remember(dlsiteEditions) {
-                    dlsiteEditions
-                        .filter { it.lang in setOf("JPN", "CHI_HANS", "CHI_HANT") }
-                        .distinctBy { it.lang }
-                        .sortedWith(compareBy({ it.displayOrder }, { it.lang }))
-                }
-
-                if (langCandidates.size > 1) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        langCandidates.forEach { edition ->
-                            val selected = edition.lang.equals(dlsiteSelectedLang, ignoreCase = true)
-                            val label = when (edition.lang) {
-                                "CHI_HANS" -> "简中"
-                                "CHI_HANT" -> "繁中"
-                                else -> "日语"
-                            }
-                            FilterChip(
-                                selected = selected,
-                                onClick = { onDlsiteLangSelected(edition.lang) },
-                                label = { Text(label) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = colorScheme.primary.copy(alpha = 0.2f),
-                                    selectedLabelColor = colorScheme.primary,
-                                    selectedLeadingIconColor = colorScheme.primary
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = selected,
-                                    borderColor = colorScheme.primary.copy(alpha = 0.3f),
-                                    selectedBorderColor = colorScheme.primary
-                                )
-                            )
-                        }
                     }
                 }
 
@@ -1125,22 +1067,13 @@ private fun AlbumHeader(
                         delayMillis = 120,
                         enabled = animateIntro
                     ) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        album.tags.forEach { tag ->
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.primary,
-                                modifier = Modifier
-                                    .background(colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    .clickable { copy("标签", tag) }
-                            )
-                        }
-                    }
+                        AlbumTagsFlow(
+                            tags = album.tags,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            onTagClick = { tag -> copyMeta("标签", tag) },
+                            leadingVisual = AlbumMetaLeadingVisual.Icon,
+                        )
                     }
                 }
 
@@ -1149,103 +1082,205 @@ private fun AlbumHeader(
                     delayMillis = 160,
                     enabled = animateIntro
                 ) {
-                Row(
-                    modifier = Modifier.padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(modifier = Modifier.height(36.dp).weight(1f)) {
-                        val radius = 10.dp
-                        val leftShape = if (canSaveOnline) {
-                            RoundedCornerShape(topStart = radius, bottomStart = radius, topEnd = 0.dp, bottomEnd = 0.dp)
-                        } else {
-                            RoundedCornerShape(radius)
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
+                        val compact = maxWidth < 400.dp
+                        val ultraCompact = maxWidth < 340.dp
+                        val actionGap = if (compact) 8.dp else 10.dp
+                        val primaryButtonPadding = when {
+                            ultraCompact -> 6.dp
+                            compact -> 8.dp
+                            else -> 12.dp
                         }
-                        val rightShape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = radius, bottomEnd = radius)
+                        val smallButtonPadding = when {
+                            ultraCompact -> 6.dp
+                            compact -> 8.dp
+                            else -> 12.dp
+                        }
+                        val primaryIconSize = if (compact) 16.dp else 18.dp
+                        val primaryIconGap = if (compact) 4.dp else 6.dp
+                        val selectorMinWidth = when {
+                            ultraCompact -> 68.dp
+                            compact -> 76.dp
+                            else -> 96.dp
+                        }
+                        val selectorMaxWidth = when {
+                            ultraCompact -> 92.dp
+                            compact -> 104.dp
+                            else -> 140.dp
+                        }
+                        val externalMinWidth = when {
+                            ultraCompact -> 46.dp
+                            compact -> 50.dp
+                            else -> 56.dp
+                        }
+                        val externalMaxWidth = when {
+                            ultraCompact -> 58.dp
+                            compact -> 64.dp
+                            else -> 76.dp
+                        }
 
-                        Button(
-                            onClick = onDownloadClick,
-                            enabled = downloadEnabled,
-                            modifier = Modifier.fillMaxHeight().weight(1f),
-                            shape = leftShape,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(actionGap),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("下载", style = MaterialTheme.typography.labelMedium)
-                        }
-
-                        if (canSaveOnline) {
-                            Button(
-                                onClick = onSaveClick,
-                                enabled = saveEnabled,
-                                modifier = Modifier.fillMaxHeight().weight(1f),
-                                shape = rightShape,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = colorScheme.primary.copy(alpha = 0.14f),
-                                    contentColor = colorScheme.primary
-                                )
+                            Row(
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .weight(1f)
                             ) {
-                                Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("保存", style = MaterialTheme.typography.labelMedium)
+                                val radius = 10.dp
+                                val leftShape = if (canSaveOnline) {
+                                    RoundedCornerShape(topStart = radius, bottomStart = radius, topEnd = 0.dp, bottomEnd = 0.dp)
+                                } else {
+                                    RoundedCornerShape(radius)
+                                }
+                                val rightShape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = radius, bottomEnd = radius)
+
+                                Button(
+                                    onClick = onDownloadClick,
+                                    enabled = downloadEnabled,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .weight(1f),
+                                    shape = leftShape,
+                                    contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                    Spacer(modifier = Modifier.width(primaryIconGap))
+                                    Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                }
+
+                                if (canSaveOnline) {
+                                    Button(
+                                        onClick = onSaveClick,
+                                        enabled = saveEnabled,
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .weight(1f),
+                                        shape = rightShape,
+                                        contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colorScheme.primary.copy(alpha = 0.14f),
+                                            contentColor = colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Spacer(modifier = Modifier.width(primaryIconGap))
+                                        Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                    }
+                                }
+                            }
+
+                            if (showGroupButton) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val id = album.id
+                                        if (id > 0L) onOpenGroupPicker(id)
+                                    },
+                                    enabled = album.id > 0L,
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .widthIn(min = selectorMinWidth, max = selectorMaxWidth),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = smallButtonPadding, vertical = 0.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
+                                ) {
+                                    Icon(
+                                        Icons.Default.CreateNewFolder,
+                                        contentDescription = null,
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(primaryIconSize)
+                                    )
+                                    Spacer(modifier = Modifier.width(primaryIconGap))
+                                    Text("分组", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
+                                }
+                            }
+
+                            if (langCandidates.size > 1) {
+                                Box {
+                                    OutlinedButton(
+                                        onClick = { languageMenuExpanded = true },
+                                        modifier = Modifier
+                                            .height(36.dp)
+                                            .widthIn(min = selectorMinWidth, max = selectorMaxWidth),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = smallButtonPadding, vertical = 0.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
+                                    ) {
+                                        Text(
+                                            text = selectedLangLabel,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colorScheme.primary,
+                                            maxLines = 1
+                                        )
+                                        Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDropDown,
+                                            contentDescription = null,
+                                            tint = colorScheme.primary,
+                                            modifier = Modifier.size(primaryIconSize)
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = languageMenuExpanded,
+                                        onDismissRequest = { languageMenuExpanded = false }
+                                    ) {
+                                        langCandidates.forEach { edition ->
+                                            DropdownMenuItem(
+                                                text = { Text(dlsiteLanguageButtonLabel(edition.lang)) },
+                                                onClick = {
+                                                    languageMenuExpanded = false
+                                                    onDlsiteLangSelected(edition.lang)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            listOf(
+                                "DLsite" to dlsiteUrl,
+                                "ONE" to asmrOneUrl
+                            ).forEach { (label, url) ->
+                                OutlinedButton(
+                                    onClick = {
+                                        if (url.isNotBlank()) {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            )
+                                        }
+                                    },
+                                    enabled = url.isNotBlank(),
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .widthIn(min = externalMinWidth, max = externalMaxWidth),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = smallButtonPadding, vertical = 0.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
+                                ) {
+                                    Text(label, style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
+                                }
                             }
                         }
                     }
-                    
-                    if (showGroupButton) {
-                        OutlinedButton(
-                            onClick = {
-                                val id = album.id
-                                if (id > 0L) onOpenGroupPicker(id)
-                            },
-                            enabled = album.id > 0L,
-                            modifier = Modifier
-                                .height(36.dp)
-                                .widthIn(min = 98.dp, max = 140.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
-                        ) {
-                            Icon(
-                                Icons.Default.CreateNewFolder,
-                                contentDescription = null,
-                                tint = colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("分组", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
-                        }
-                    }
-
-                    listOf(
-                        "DLsite" to dlsiteUrl,
-                        "ONE" to asmrOneUrl
-                    ).forEach { (label, url) ->
-                        OutlinedButton(
-                            onClick = {
-                                if (url.isNotBlank()) {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
-                                }
-                            },
-                            enabled = url.isNotBlank(),
-                            modifier = Modifier
-                                .height(36.dp)
-                                .widthIn(min = 56.dp, max = 76.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
-                        ) {
-                            Text(label, style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
-                        }
-                    }
-                }
                 }
             }
         }
+    }
+}
+
+private fun dlsiteLanguageButtonLabel(lang: String): String {
+    return when (lang.trim().uppercase()) {
+        "CHI_HANS" -> "简中"
+        "CHI_HANT" -> "繁中"
+        "JPN" -> "日语"
+        else -> lang.trim().ifBlank { "日语" }
     }
 }
 
@@ -1343,6 +1378,9 @@ internal data class PlaylistAddTarget(
     val albumId: Long = 0L,
     val trackId: Long = 0L,
     val rjCode: String = "",
+    val albumWorkId: String = "",
+    val trackGroup: String = "",
+    val lyricsRelativePathNoExt: String = "",
     val mimeType: String? = null,
     val isVideo: Boolean = false
 ) {
@@ -1357,6 +1395,9 @@ internal data class PlaylistAddTarget(
             albumId = albumId,
             trackId = trackId,
             rjCode = rjCode,
+            albumWorkId = albumWorkId,
+            trackGroup = trackGroup,
+            lyricsRelativePathNoExt = lyricsRelativePathNoExt,
             mimeType = mimeType,
             isVideo = isVideo
         )
@@ -1377,7 +1418,10 @@ internal data class PlaylistAddTarget(
                 albumTitle = album.title,
                 albumId = album.id,
                 trackId = track.id,
-                rjCode = rj
+                rjCode = rj,
+                albumWorkId = album.workId,
+                trackGroup = track.group,
+                lyricsRelativePathNoExt = deriveLyricsRelativePathNoExt(track.path, album.getAllLocalPaths())
             )
         }
 
@@ -1397,6 +1441,7 @@ internal data class PlaylistAddTarget(
                 albumTitle = album.title,
                 albumId = album.id,
                 rjCode = album.rjCode.ifBlank { album.workId },
+                albumWorkId = album.workId,
                 mimeType = MediaItemFactory.guessMimeType(trimmed),
                 isVideo = true
             )
@@ -1408,3 +1453,6 @@ internal data class PlaylistAddTarget(
         }
     }
 }
+
+
+

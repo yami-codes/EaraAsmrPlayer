@@ -20,6 +20,8 @@ class CollapsibleHeaderState internal constructor(
     initialHeightPx: Float = 0f,
     initialOffsetPx: Float = 0f
 ) {
+    private var descendantScrollBlocked: Boolean = false
+
     var heightPx by mutableFloatStateOf(initialHeightPx)
         private set
 
@@ -38,11 +40,13 @@ class CollapsibleHeaderState internal constructor(
             available: Offset,
             source: NestedScrollSource
         ): Offset {
+            if (descendantScrollBlocked) return Offset.Zero
             onScrollDelta(consumed.y)
             return Offset.Zero
         }
 
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            if (descendantScrollBlocked) return Velocity.Zero
             if (heightPx <= 0f) return Velocity.Zero
             if (offsetPx > -heightPx * 0.5f) {
                 expand()
@@ -65,6 +69,10 @@ class CollapsibleHeaderState internal constructor(
     fun onScrollDelta(deltaY: Float) {
         if (heightPx <= 0f || deltaY == 0f) return
         offsetPx = (offsetPx + deltaY).coerceIn(-heightPx, 0f)
+    }
+
+    fun setDescendantScrollBlocked(blocked: Boolean) {
+        descendantScrollBlocked = blocked
     }
 
     fun expand() {

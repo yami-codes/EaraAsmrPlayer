@@ -22,23 +22,31 @@ import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
 import com.asmr.player.data.remote.crawler.AsmrOneCrawler
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncCandidate
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncResolveResult
+import com.asmr.player.data.remote.dlsite.DLSITE_PLAY_PREVIEW_CACHE_VERSION
 import com.asmr.player.data.remote.dlsite.DlsitePlayWorkClient
 import com.asmr.player.data.remote.dlsite.DlsitePlayTreeResult
 import com.asmr.player.data.remote.dlsite.DlsiteLanguageEdition
 import com.asmr.player.data.remote.dlsite.DlsiteProductInfoClient
+import com.asmr.player.data.remote.dlsite.descrambleDlsitePlayBitmap
+import com.asmr.player.data.remote.dlsite.parseDlsitePlayImageSeed
 import com.asmr.player.data.remote.dlsite.resolveCloudSyncWorkId
 import com.asmr.player.data.remote.dlsite.resolveDlsiteCloudSync
 import com.asmr.player.data.remote.dlsite.resolveSelectedDlsiteCloudSync
+import com.asmr.player.data.remote.auth.DlsiteAuthStore
+import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
 import com.asmr.player.data.remote.download.DownloadManager
 import com.asmr.player.data.remote.scraper.DLSiteScraper
 import com.asmr.player.data.remote.scraper.DlsiteRecommendedWork
 import com.asmr.player.data.remote.scraper.DlsiteRecommendations
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.data.lyrics.LyricsLoader
+import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import com.asmr.player.ui.common.queryTrackFileSize
 import com.asmr.player.util.OnlineLyricsStore
 import com.asmr.player.util.RemoteSubtitleSource
+import com.asmr.player.util.SubtitleMatchSupport
 import com.asmr.player.util.SyncCoordinator
 import com.asmr.player.util.TrackKeyNormalizer
 import com.asmr.player.util.DlsiteWorkNo
@@ -69,9 +77,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
 import android.os.SystemClock
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -100,6 +105,39 @@ class AlbumDetailViewModel @Inject constructor(
     val messageManager: MessageManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private data class AlbumAudioAggregate(
+        val trackCount: Int,
+        val totalDuration: Double,
+        val totalSizeBytes: Long,
+    )
+
+    private suspend fun computeAlbumAudioAggregate(
+        tracks: List<TrackEntity>,
+    ): AlbumAudioAggregate {
+        val totalSizeBytes = withContext(Dispatchers.IO) {
+            tracks.sumOf { track -> queryTrackFileSize(context, track.path) ?: 0L }
+        }
+        return AlbumAudioAggregate(
+            trackCount = tracks.size,
+            totalDuration = tracks.sumOf { it.duration },
+            totalSizeBytes = totalSizeBytes,
+        )
+    }
+
+    private suspend fun refreshAlbumAudioAggregate(albumId: Long) {
+        if (albumId <= 0L) return
+        val entity = albumDao.getAlbumById(albumId) ?: return
+        val tracks = trackDao.getTracksForAlbumOnce(albumId)
+        val aggregate = computeAlbumAudioAggregate(tracks)
+        albumDao.updateAlbum(
+            entity.copy(
+                audioTrackCount = aggregate.trackCount,
+                audioTotalDuration = aggregate.totalDuration,
+                audioTotalSizeBytes = aggregate.totalSizeBytes,
+            )
+        )
+    }
 
     private val _uiState = MutableStateFlow<AlbumDetailUiState>(AlbumDetailUiState.Loading)
     val uiState = _uiState.asStateFlow()
@@ -257,6 +295,62 @@ class AlbumDetailViewModel @Inject constructor(
         val u = url.trim()
         if (u.isBlank()) return null
         return lyricsLoader.fetchTextForPreview(u)
+    }
+
+    suspend fun prepareDlsitePlayImagePreview(
+        url: String,
+        optimizedName: String?,
+        crypt: Boolean,
+        width: Int?,
+        height: Int?
+    ): String? = withContext(Dispatchers.IO) {
+        val normalizedUrl = url.trim()
+        if (normalizedUrl.isBlank()) return@withContext null
+        if (!crypt) return@withContext normalizedUrl
+        val imageWidth = width ?: return@withContext null
+        val imageHeight = height ?: return@withContext null
+        if (imageWidth <= 0 || imageHeight <= 0) return@withContext null
+        val name = optimizedName?.trim().orEmpty().ifBlank {
+            normalizedUrl.substringBefore('?').substringAfterLast('/')
+        }
+        val seed = parseDlsitePlayImageSeed(name) ?: return@withContext null
+
+        val previewDir = File(context.cacheDir, "dlsite_play_preview").apply { if (!exists()) mkdirs() }
+        val previewKey = listOf(
+            DLSITE_PLAY_PREVIEW_CACHE_VERSION.toString(),
+            normalizedUrl,
+            name,
+            imageWidth.toString(),
+            imageHeight.toString(),
+            seed.toString()
+        ).joinToString("|")
+        val previewFile = File(previewDir, "${previewKey.hashCode()}_descrambled.png")
+        if (previewFile.exists() && previewFile.length() > 0L) return@withContext previewFile.absolutePath
+
+        val requestBuilder = Request.Builder()
+            .url(normalizedUrl)
+            .header("Accept", "image/*,*/*;q=0.8")
+            .header("Referer", "https://play.dlsite.com/")
+            .header("User-Agent", NetworkHeaders.USER_AGENT)
+            .header("Accept-Language", NetworkHeaders.ACCEPT_LANGUAGE)
+            .get()
+        val cookie = buildDlsiteCookieHeader(DlsiteAuthStore(context).getPlayCookie())
+        if (cookie.isNotBlank()) requestBuilder.header("Cookie", cookie)
+
+        val bytes = runCatching {
+            imageOkHttpClient.newCall(requestBuilder.build()).execute().use { resp ->
+                if (!resp.isSuccessful) return@use null
+                resp.body?.bytes()
+            }
+        }.getOrNull() ?: return@withContext null
+        val scrambled = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@withContext null
+        val descrambled = descrambleDlsitePlayBitmap(scrambled, seed, imageWidth, imageHeight)
+        FileOutputStream(previewFile).use { out ->
+            descrambled.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+        if (descrambled !== scrambled && !descrambled.isRecycled) descrambled.recycle()
+        if (!scrambled.isRecycled) scrambled.recycle()
+        previewFile.absolutePath
     }
 
     fun getListScrollPosition(stateKey: String): Pair<Int, Int> {
@@ -1980,11 +2074,15 @@ class AlbumDetailViewModel @Inject constructor(
                         if (sources.isNotEmpty()) {
                             runCatching { database.remoteSubtitleSourceDao().insertAll(sources) }
                         }
-                    }
                 }
+            }
 
-                SaveOnlineToLibraryResult(
-                    selectedCount = selected.size,
+            if (albumIdResult > 0L) {
+                refreshAlbumAudioAggregate(albumIdResult)
+            }
+
+            SaveOnlineToLibraryResult(
+                selectedCount = selected.size,
                     insertedCount = insertedCount,
                     albumId = albumIdResult,
                     coverUrl = coverUrlResult,
@@ -2189,7 +2287,6 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-
     private data class OnlineSaveLeaf(
         val relativePath: String,
         val title: String,
@@ -2219,33 +2316,25 @@ class AlbumDetailViewModel @Inject constructor(
             val baseName: String = safeTitle.substringBeforeLast('.')
         }
 
-        fun buildSubtitlesForAudio(audio: LeafFile, siblings: List<LeafFile>): List<RemoteSubtitleSource> {
-            val base = audio.baseName
-            if (base.isBlank()) return emptyList()
-            return siblings.filter { subtitleExts.contains(it.ext) }.mapNotNull { sib ->
-                val sibBase = sib.baseName
-                val lang = when {
-                    sibBase == base -> "default"
-                    sibBase.startsWith("$base.") -> {
-                        val suffix = sibBase.substring(base.length + 1)
-                        val parts = suffix.split('.').filter { it.isNotBlank() }
-                        val valid = parts.filter { !audioExts.contains(it.lowercase()) }
-                        when {
-                            valid.isEmpty() -> "zh"
-                            valid.size == 1 -> valid[0]
-                            else -> valid.last()
-                        }
-                    }
-                    else -> return@mapNotNull null
+        val subtitleCandidates = mutableListOf<Pair<com.asmr.player.util.SubtitleMatchCandidate, LeafFile>>()
+
+        fun collectSubtitleCandidates(nodes: List<AsmrOneTrackNodeResponse>, parentPath: String) {
+            nodes.forEach { node ->
+                val children = node.children.orEmpty()
+                val rawTitle = node.title?.trim().orEmpty().ifBlank { "item" }
+                val url = node.mediaDownloadUrl ?: node.streamUrl
+                val safeTitle = sanitize(rawTitle)
+                val path = if (parentPath.isBlank()) safeTitle else "$parentPath/$safeTitle"
+                if (children.isNotEmpty() || url.isNullOrBlank()) {
+                    if (children.isNotEmpty()) collectSubtitleCandidates(children, path)
+                    return@forEach
                 }
-                RemoteSubtitleSource(url = sib.url, language = lang, ext = sib.ext)
-            }.sortedWith(
-                compareBy<RemoteSubtitleSource> { s ->
-                    val prefer = listOf("default", "zh", "cn", "chs", "ja", "jp", "jpn")
-                    val idx = prefer.indexOf(s.language.lowercase())
-                    if (idx >= 0) idx else Int.MAX_VALUE
-                }.thenBy { it.url }
-            )
+                val leaf = LeafFile(rawTitle = rawTitle, safeTitle = safeTitle, url = url, duration = node.duration)
+                if (subtitleExts.contains(leaf.ext)) {
+                    val candidate = SubtitleMatchSupport.inferCandidate(path, leaf.url)
+                    if (candidate != null) subtitleCandidates += candidate to leaf
+                }
+            }
         }
 
         fun walk(nodes: List<AsmrOneTrackNodeResponse>, parentPath: String) {
@@ -2262,7 +2351,16 @@ class AlbumDetailViewModel @Inject constructor(
                 val path = if (parentPath.isBlank()) leaf.safeTitle else "$parentPath/${leaf.safeTitle}"
                 val relDir = path.substringBeforeLast('/', "")
                 val group = relDir
-                val subsRaw = if (audioExts.contains(leaf.ext)) buildSubtitlesForAudio(leaf, leafFiles) else emptyList()
+                val subsRaw = if (audioExts.contains(leaf.ext)) {
+                    val matched = SubtitleMatchSupport.matchBest(path.substringBeforeLast('.'), subtitleCandidates.map { it.first })
+                    if (matched != null) {
+                        subtitleCandidates.firstOrNull { it.first.sourceRef == matched.sourceRef }?.second?.let { subtitleLeaf ->
+                            listOf(RemoteSubtitleSource(url = subtitleLeaf.url, language = matched.language, ext = subtitleLeaf.ext))
+                        }.orEmpty()
+                    } else {
+                        emptyList()
+                    }
+                } else emptyList()
                 val subs = if (subsRaw.isNotEmpty()) subsRaw else OnlineLyricsStore.get(leaf.url)
                 out.add(
                     OnlineSaveLeaf(
@@ -2285,8 +2383,23 @@ class AlbumDetailViewModel @Inject constructor(
                 walk(children, path)
             }
         }
+        collectSubtitleCandidates(tree, "")
         walk(tree, "")
-        return out
+        return out.map { leaf ->
+            if (!(audioExts.contains(leaf.url.substringBefore('?').substringAfterLast('.', "").lowercase()) ||
+                    videoExts.contains(leaf.url.substringBefore('?').substringAfterLast('.', "").lowercase()))) {
+                return@map leaf
+            }
+            val matched = SubtitleMatchSupport.matchBest(leaf.relativePath.substringBeforeLast('.'), subtitleCandidates.map { it.first })
+            val subtitles = if (matched != null) {
+                subtitleCandidates.firstOrNull { it.first.sourceRef == matched.sourceRef }?.second?.let { subtitleLeaf ->
+                    listOf(RemoteSubtitleSource(url = subtitleLeaf.url, language = matched.language, ext = subtitleLeaf.ext))
+                }.orEmpty()
+            } else {
+                leaf.subtitleSources
+            }
+            leaf.copy(subtitleSources = subtitles)
+        }
     }
 
     private fun normalizeRj(raw: String): String {
@@ -2342,7 +2455,12 @@ class AlbumDetailViewModel @Inject constructor(
                                     title = name.substringBeforeLast('.'),
                                     path = trackUri.toString(),
                                     duration = 0.0,
-                                    group = group
+                                    group = group,
+                                    lyricsRelativePathNoExt = if (parentRelativePath.isEmpty()) {
+                                        name.substringBeforeLast('.')
+                                    } else {
+                                        "$parentRelativePath/${name.substringBeforeLast('.')}"
+                                    }
                                 )
                             )
                         }
@@ -2373,7 +2491,8 @@ class AlbumDetailViewModel @Inject constructor(
                 title = file.nameWithoutExtension,
                 path = file.absolutePath,
                 duration = 0.0,
-                group = group
+                group = group,
+                lyricsRelativePathNoExt = deriveLyricsRelativePathNoExt(file.absolutePath, listOf(root.absolutePath))
             )
         }
     }
@@ -2385,7 +2504,8 @@ class AlbumDetailViewModel @Inject constructor(
             title = title,
             path = path,
             duration = duration,
-            group = group
+            group = group,
+            lyricsRelativePathNoExt = ""
         )
     }
 

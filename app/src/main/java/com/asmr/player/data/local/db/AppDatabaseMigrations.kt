@@ -331,4 +331,54 @@ object AppDatabaseMigrations {
             db.execSQL("ALTER TABLE download_tasks ADD COLUMN `albumRjCode` TEXT NOT NULL DEFAULT ''")
         }
     }
+
+    val MIGRATION_19_20: Migration = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `manual_lyrics_sources` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `exactTargetKey` TEXT NOT NULL,
+                    `fallbackTargetKey` TEXT NOT NULL,
+                    `canonicalMediaId` TEXT NOT NULL,
+                    `sourceUri` TEXT NOT NULL,
+                    `displayName` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_lyrics_sources_exactTargetKey` ON `manual_lyrics_sources` (`exactTargetKey`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_manual_lyrics_sources_fallbackTargetKey` ON `manual_lyrics_sources` (`fallbackTargetKey`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_manual_lyrics_sources_canonicalMediaId` ON `manual_lyrics_sources` (`canonicalMediaId`)"
+            )
+        }
+    }
+
+    val MIGRATION_20_21: Migration = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `albumTitle` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `albumId` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `trackId` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `rjCode` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `albumWorkId` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `trackGroup` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `lyricsRelativePathNoExt` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `mimeType` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE playlist_items ADD COLUMN `isVideo` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    val MIGRATION_21_22: Migration = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE albums ADD COLUMN `audioTrackCount` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE albums ADD COLUMN `audioTotalDuration` REAL NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE albums ADD COLUMN `audioTotalSizeBytes` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 }

@@ -11,7 +11,6 @@ enum class BenchmarkScenario(
     FavoritesDetail("favorites_detail"),
     PlaylistsList("playlists_list"),
     PlaylistDetail("playlist_detail"),
-    PlaylistPicker("playlist_picker"),
     GroupsList("groups_list"),
     GroupDetail("group_detail"),
     GroupPicker("group_picker"),

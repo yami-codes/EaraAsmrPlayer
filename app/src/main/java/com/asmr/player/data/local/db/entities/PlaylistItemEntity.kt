@@ -16,8 +16,17 @@ data class PlaylistItemEntity(
     val mediaId: String,
     val title: String,
     val artist: String = "",
+    val albumTitle: String = "",
     val uri: String,
     val artworkUri: String = "",
+    val albumId: Long = 0L,
+    val trackId: Long = 0L,
+    val rjCode: String = "",
+    val albumWorkId: String = "",
+    val trackGroup: String = "",
+    val lyricsRelativePathNoExt: String = "",
+    val mimeType: String = "",
+    val isVideo: Boolean = false,
     val itemOrder: Int = 0
 )
 

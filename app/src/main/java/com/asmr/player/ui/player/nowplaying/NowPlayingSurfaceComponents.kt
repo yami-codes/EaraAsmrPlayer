@@ -113,6 +113,7 @@ internal fun PlayerSurfaceHeader(
     onNavigateUp: () -> Unit,
     onShowSleepTimer: () -> Unit,
     onShowQueue: () -> Unit,
+    onManualBindLyrics: (() -> Unit)? = null,
     navigationEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -153,6 +154,16 @@ internal fun PlayerSurfaceHeader(
             color = colorScheme.textPrimary
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onManualBindLyrics != null) {
+                IconButton(onClick = onManualBindLyrics) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_manual_subtitle_import),
+                        contentDescription = "手动绑定歌词",
+                        modifier = Modifier.size(if (isLandscape) 20.dp else 22.dp),
+                        tint = colorScheme.onSurface
+                    )
+                }
+            }
             IconButton(onClick = onShowSleepTimer) {
                 Icon(
                     Icons.Default.Timer,
@@ -189,18 +200,41 @@ internal fun NowPlayingLyricsSurface(
     lyricColors: LyricReadableColors,
     lyricsPageSettings: LyricsPageSettings,
     onSeekTo: (Long) -> Unit,
+    onAddLyrics: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
-        AppleLyricsView(
-            lyrics = lyrics,
-            currentPosition = playbackPositionMs,
-            onSeekTo = onSeekTo,
-            colors = lyricColors,
-            modifier = Modifier.fillMaxSize(),
-            isLandscape = isLandscape,
-            settings = lyricsPageSettings
-        )
+        if (lyrics.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "暂无歌词",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = AsmrTheme.colorScheme.textSecondary
+                )
+                if (onAddLyrics != null) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(onClick = onAddLyrics) {
+                        Text("添加歌词")
+                    }
+                }
+            }
+        } else {
+            AppleLyricsView(
+                lyrics = lyrics,
+                currentPosition = playbackPositionMs,
+                onSeekTo = onSeekTo,
+                colors = lyricColors,
+                modifier = Modifier.fillMaxSize(),
+                isLandscape = isLandscape,
+                settings = lyricsPageSettings
+            )
+        }
     }
 }
 
