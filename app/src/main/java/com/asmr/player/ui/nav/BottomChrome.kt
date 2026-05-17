@@ -109,8 +109,8 @@ private val BottomNavOverflowLeftShoulderReach = 22.dp
 private val BottomNavOverflowLeftShoulderReachLarge = 24.dp
 private val BottomNavOverflowRightShoulderReach = 24.dp
 private val BottomNavOverflowRightShoulderReachLarge = 26.dp
-private val BottomNavOverflowHorizontalBias = 10.dp
-private val BottomNavOverflowHorizontalBiasLarge = 12.dp
+private val BottomNavOverflowHorizontalBias = 0.dp
+private val BottomNavOverflowHorizontalBiasLarge = 0.dp
 private val BottomNavOverflowTopContentPadding = 1.dp
 private val BottomNavOverflowTopContentPaddingLarge = 2.dp
 private val BottomNavOverflowBottomPadding = 12.dp
@@ -455,17 +455,33 @@ private fun buildBottomNavRailEntries(
 
 private fun computeBottomNavRailOffsets(
     entries: List<BottomNavRailEntry>,
+    currentWidth: Dp,
     metrics: BottomChromeMetrics
 ): List<Dp> {
     if (entries.isEmpty()) return emptyList()
 
+    val gapCount = (entries.size - 1).coerceAtLeast(0)
+    val baseContentWidth = entries.fold(0.dp) { total, entry -> total + entry.width } +
+        metrics.expandedHorizontalPadding * 2 +
+        metrics.expandedItemSpacing * gapCount
+    val extraWidth = (currentWidth - baseContentWidth).coerceAtLeast(0.dp)
+    val extraSpacing = if (gapCount > 0) {
+        extraWidth / (gapCount + 2)
+    } else {
+        0.dp
+    }
+    val resolvedSpacing = metrics.expandedItemSpacing + extraSpacing
+    val resolvedContentWidth = entries.fold(0.dp) { total, entry -> total + entry.width } +
+        metrics.expandedHorizontalPadding * 2 +
+        resolvedSpacing * gapCount
+    var currentOffset = metrics.expandedHorizontalPadding +
+        ((currentWidth - resolvedContentWidth).coerceAtLeast(0.dp) / 2)
     val offsets = ArrayList<Dp>(entries.size)
-    var currentOffset = metrics.expandedHorizontalPadding
     entries.forEachIndexed { index, entry ->
         offsets += currentOffset
         currentOffset += entry.width
         if (index != entries.lastIndex) {
-            currentOffset += metrics.expandedItemSpacing
+            currentOffset += resolvedSpacing
         }
     }
     return offsets
@@ -535,18 +551,25 @@ fun BottomChrome(
         val metrics = remember(largeLayout) { bottomChromeMetrics(largeLayout) }
         val navExpanded = !miniPlayerVisible || miniPlayerDisplayMode == MiniPlayerDisplayMode.CoverOnly
         val miniCollapsedWidth = if (largeLayout) 76.dp else 64.dp
+        val chromeSpacing = if (largeLayout) 8.dp else 6.dp
         val expandedNavWidthLimit = maxWidth.coerceAtMost(metrics.preferredExpandedWidth)
         val miniWidthTarget = when {
             !miniPlayerVisible -> 0.dp
             miniPlayerDisplayMode == MiniPlayerDisplayMode.Expanded ->
-                (maxWidth - metrics.collapsedWidth - 8.dp).coerceAtLeast(if (largeLayout) 244.dp else 204.dp)
+                (maxWidth - metrics.collapsedWidth - chromeSpacing).coerceAtLeast(if (largeLayout) 244.dp else 204.dp)
             else -> miniCollapsedWidth
         }
-        val navWidthTarget = when {
+        val navLayoutWidthTarget = when {
             !miniPlayerVisible -> expandedNavWidthLimit
-            navExpanded -> (maxWidth - miniWidthTarget - 8.dp)
+            navExpanded -> (maxWidth - miniWidthTarget - chromeSpacing)
                 .coerceAtLeast(if (largeLayout) 108.dp else 92.dp)
                 .coerceAtMost(expandedNavWidthLimit)
+            else -> metrics.collapsedWidth
+        }
+        val navSurfaceWidthTarget = when {
+            !miniPlayerVisible -> navLayoutWidthTarget
+            navExpanded -> (maxWidth - miniWidthTarget - chromeSpacing)
+                .coerceAtLeast(navLayoutWidthTarget)
             else -> metrics.collapsedWidth
         }
         val miniWidth by animateDpAsState(
@@ -558,7 +581,7 @@ fun BottomChrome(
             label = "bottomChromeMiniWidth"
         )
         val navWidth by animateDpAsState(
-            targetValue = navWidthTarget,
+            targetValue = navSurfaceWidthTarget,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMediumLow
@@ -569,16 +592,11 @@ fun BottomChrome(
             !navExpanded -> 1
             else -> BottomNavExpandedSlotCount - 1
         }
-        val chromeArrangement = Arrangement.spacedBy(
-            if (largeLayout) 10.dp else 8.dp,
-            alignment = Alignment.CenterHorizontally
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { clip = false },
-            horizontalArrangement = chromeArrangement,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
             BottomNavigationPill(
@@ -587,7 +605,8 @@ fun BottomChrome(
                 selectionProgresses = selectionProgresses,
                 preferredPinnedRoute = preferredPinnedRoute,
                 expanded = navExpanded,
-                availableWidth = navWidthTarget,
+                availableWidth = navLayoutWidthTarget,
+                surfaceTargetWidth = navSurfaceWidthTarget,
                 currentWidth = navWidth,
                 metrics = metrics,
                 maxVisibleItems = maxVisibleItems,
@@ -621,6 +640,7 @@ private fun BottomNavigationPill(
     preferredPinnedRoute: String? = null,
     expanded: Boolean,
     availableWidth: Dp,
+    surfaceTargetWidth: Dp = availableWidth,
     currentWidth: Dp = availableWidth,
     metrics: BottomChromeMetrics = bottomChromeMetrics(largeLayout = false),
     maxVisibleItems: Int? = null,
@@ -644,6 +664,7 @@ private fun BottomNavigationPill(
         preferredPinnedRoute = preferredPinnedRoute,
         expanded = expanded,
         availableWidth = availableWidth,
+        surfaceTargetWidth = surfaceTargetWidth,
         currentWidth = currentWidth,
         metrics = metrics,
         maxVisibleItems = maxVisibleItems,
@@ -664,6 +685,7 @@ private fun BottomNavigationPillSurface(
     preferredPinnedRoute: String?,
     expanded: Boolean,
     availableWidth: Dp,
+    surfaceTargetWidth: Dp,
     currentWidth: Dp,
     metrics: BottomChromeMetrics,
     maxVisibleItems: Int? = null,
@@ -744,7 +766,11 @@ private fun BottomNavigationPillSurface(
         .maxOfOrNull { item -> resolvedSelectionProgresses[item.route] ?: 0f }
         ?: 0f
     val motionEntries = buildBottomNavRailEntries(motionLayout, metrics)
-    val motionOffsets = computeBottomNavRailOffsets(motionEntries, metrics)
+    val motionOffsets = computeBottomNavRailOffsets(
+        entries = motionEntries,
+        currentWidth = currentWidth,
+        metrics = metrics
+    )
     val railShift = computeBottomNavRailShift(
         entries = motionEntries,
         offsets = motionOffsets,
@@ -828,7 +854,7 @@ private fun BottomNavigationPillSurface(
         overflowRevealProgress = overflowRevealProgress
     )
     val interactionBlocked =
-        abs(currentWidth.value - availableWidth.value) > 0.5f ||
+        abs(currentWidth.value - surfaceTargetWidth.value) > 0.5f ||
             (overflowRevealProgress > 0.01f && overflowRevealProgress < 0.99f)
 
     SideEffect {

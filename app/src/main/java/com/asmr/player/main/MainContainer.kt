@@ -1551,6 +1551,7 @@ fun MainContainer(
             BoxWithConstraints(
                 modifier = Modifier.fillMaxSize()
             ) {
+                val bottomChromeHorizontalPadding = if (useLargeBottomChrome) 16.dp else 12.dp
                 val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
                 val canUseRightPanel = !isCompactWidth &&
                     !isPhone &&
@@ -1571,7 +1572,7 @@ fun MainContainer(
                     animationSpec = tween(durationMillis = if (rightPanelExpanded) 220 else 180),
                     label = "miniPlayerReservedRight"
                 )
-                val chromeWidth = (maxWidth - reservedRight - 48.dp).coerceAtLeast(0.dp)
+                val chromeWidth = (maxWidth - reservedRight - (bottomChromeHorizontalPadding * 2)).coerceAtLeast(0.dp)
                 if (bottomChromeOverflowExpanded) {
                     DismissOutsideBoundsOverlay(
                         protectedBoundsInRoot = bottomChromeOverflowProtectedBounds,
@@ -1582,7 +1583,7 @@ fun MainContainer(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .graphicsLayer { clip = false }
-                        .padding(start = 22.dp, bottom = 24.dp)
+                        .padding(start = bottomChromeHorizontalPadding, bottom = 24.dp)
                         .width(chromeWidth)
                 ) {
                     BottomChrome(
