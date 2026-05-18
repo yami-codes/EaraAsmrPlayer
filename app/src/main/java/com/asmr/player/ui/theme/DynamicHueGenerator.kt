@@ -50,20 +50,20 @@ fun rememberDynamicHuePalette(
     }
     val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
     val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
-    val key = "hue:cw:$regionKey:$baseKey:${mode.name}"
+    val seedKey = "hue:cw:$regionKey:$baseKey"
     
-    val animatable = remember(key) { // Removed fallbackHue.primary dependency to avoid reset on theme change
-        Animatable(DynamicHueCache.get(key) ?: fallbackHue.primary, ColorVectorConverter)
+    val animatable = remember(seedKey) {
+        Animatable(DynamicHueCache.get(seedKey) ?: fallbackHue.primary, ColorVectorConverter)
     }
 
 
-    LaunchedEffect(key, mode) { // Removed fallbackHue.primary from key to avoid restart on fallback change
+    LaunchedEffect(seedKey) {
         if (baseKey.isBlank()) {
             return@LaunchedEffect
         }
         
         // If we have it in cache, snap immediately to avoid animation if we are just scrolling/recomposing?
-        DynamicHueCache.get(key)?.let {
+        DynamicHueCache.get(seedKey)?.let {
             if (cachedTransitionDurationMs <= 0) animatable.snapTo(it)
             else animatable.animateTo(it, animationSpec = tween(cachedTransitionDurationMs))
             return@LaunchedEffect
@@ -75,7 +75,7 @@ fun rememberDynamicHuePalette(
         while (constrainedPrimary == null && attempt < 3) {
             if (attempt > 0) kotlinx.coroutines.delay(300)
             
-            constrainedPrimary = DynamicHueCache.getOrCompute(key) {
+            constrainedPrimary = DynamicHueCache.getOrCompute(seedKey) {
                 withContext(Dispatchers.Default) {
                     val m = artworkModel ?: return@withContext null
                     val img = runCatching {
@@ -143,22 +143,22 @@ fun rememberDynamicHuePaletteFromVideoFrame(
     }
     val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
     val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
-    val key = "hue:vf:cw:$regionKey:$baseKey:${mode.name}"
+    val seedKey = "hue:vf:cw:$regionKey:$baseKey"
 
-    val animatable = remember(key) {
-        Animatable(DynamicHueCache.get(key) ?: fallbackHue.primary, ColorVectorConverter)
+    val animatable = remember(seedKey) {
+        Animatable(DynamicHueCache.get(seedKey) ?: fallbackHue.primary, ColorVectorConverter)
     }
 
-    LaunchedEffect(key, mode) {
+    LaunchedEffect(seedKey) {
         if (baseKey.isBlank() || videoUri == null) return@LaunchedEffect
 
-        DynamicHueCache.get(key)?.let {
+        DynamicHueCache.get(seedKey)?.let {
             if (cachedTransitionDurationMs <= 0) animatable.snapTo(it)
             else animatable.animateTo(it, animationSpec = tween(cachedTransitionDurationMs))
             return@LaunchedEffect
         }
 
-        val constrainedPrimary = DynamicHueCache.getOrCompute(key) {
+        val constrainedPrimary = DynamicHueCache.getOrCompute(seedKey) {
             withContext(Dispatchers.Default) {
                 withTimeoutOrNull(timeoutMs) {
                     val bitmap = extractMeaningfulVideoFrameBitmap(context, videoUri, imageSizePx) ?: return@withTimeoutOrNull null
