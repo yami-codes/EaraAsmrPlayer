@@ -16,16 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
-import androidx.core.graphics.ColorUtils
-import androidx.palette.graphics.Palette
 import com.asmr.player.cache.CachePolicy
 import com.asmr.player.cache.ImageCacheEntryPoint
-import com.asmr.player.ui.common.adjustHslForUi
-import com.asmr.player.ui.common.computeCenterWeightedHintColorInt
-import com.asmr.player.ui.common.pickBestColorInt
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
@@ -63,8 +57,6 @@ fun rememberDynamicHuePalette(
     }
 
 
-    val preferDarkBackground = mode.isDark
-    
     LaunchedEffect(key, mode) { // Removed fallbackHue.primary from key to avoid restart on fallback change
         if (baseKey.isBlank()) {
             return@LaunchedEffect
@@ -97,23 +89,11 @@ fun rememberDynamicHuePalette(
                         
                     if (bitmap.width < 10 || bitmap.height < 10) return@withContext null
 
-                    val colorInt = runCatching {
-                        val palette = Palette.from(bitmap).generate()
-                        val hint = computeCenterWeightedHintColorInt(bitmap, centerRegionRatio)
-                        pickBestColorInt(
-                            palette = palette,
-                            fallbackColorInt = fallbackHue.primary.toArgb(),
-                            preferDarkBackground = preferDarkBackground,
-                            hintColorInt = hint
-                        )
-                    }.getOrNull() ?: fallbackHue.primary.toArgb()
-
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(colorInt, hsl)
-                    adjustHslForUi(hsl, preferDarkBackground)
-                    clampPrimaryHslForMode(hsl, mode)
-
-                    Color(ColorUtils.HSLToColor(hsl))
+                    monetSeedColorFromBitmap(
+                        bitmap = bitmap,
+                        fallbackColor = fallbackHue.primary,
+                        centerRegionRatio = centerRegionRatio
+                    )
                 }
             }
             attempt++
@@ -169,8 +149,6 @@ fun rememberDynamicHuePaletteFromVideoFrame(
         Animatable(DynamicHueCache.get(key) ?: fallbackHue.primary, ColorVectorConverter)
     }
 
-    val preferDarkBackground = mode.isDark
-
     LaunchedEffect(key, mode) {
         if (baseKey.isBlank() || videoUri == null) return@LaunchedEffect
 
@@ -184,23 +162,11 @@ fun rememberDynamicHuePaletteFromVideoFrame(
             withContext(Dispatchers.Default) {
                 withTimeoutOrNull(timeoutMs) {
                     val bitmap = extractMeaningfulVideoFrameBitmap(context, videoUri, imageSizePx) ?: return@withTimeoutOrNull null
-                    val colorInt = runCatching {
-                        val palette = Palette.from(bitmap).generate()
-                        val hint = computeCenterWeightedHintColorInt(bitmap, centerRegionRatio)
-                        pickBestColorInt(
-                            palette = palette,
-                            fallbackColorInt = fallbackHue.primary.toArgb(),
-                            preferDarkBackground = preferDarkBackground,
-                            hintColorInt = hint
-                        )
-                    }.getOrNull() ?: fallbackHue.primary.toArgb()
-
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(colorInt, hsl)
-                    adjustHslForUi(hsl, preferDarkBackground)
-                    clampPrimaryHslForMode(hsl, mode)
-
-                    Color(ColorUtils.HSLToColor(hsl))
+                    monetSeedColorFromBitmap(
+                        bitmap = bitmap,
+                        fallbackColor = fallbackHue.primary,
+                        centerRegionRatio = centerRegionRatio
+                    )
                 }
             }
         }

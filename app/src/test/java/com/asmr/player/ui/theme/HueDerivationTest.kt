@@ -3,18 +3,15 @@ package com.asmr.player.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
 import kotlin.math.sqrt
 
-@RunWith(AndroidJUnit4::class)
-class HueDerivationAndroidTest {
+class HueDerivationTest {
 
     @Test
-    fun deriveHuePalette_doesNotInventHue_forGrayPrimary() {
+    fun deriveHuePalette_keepsGraySeedCloseToNeutral() {
         val mode = ThemeMode.Dark
         val neutral = neutralPaletteForMode(mode)
         val primary = Color(0xFF2A2A2A)
@@ -39,7 +36,7 @@ class HueDerivationAndroidTest {
     }
 
     @Test
-    fun deriveHuePalette_buildsMonetLikeContainers_forChromaticPrimary() {
+    fun deriveHuePalette_createsReadableMonetLayersForChromaticSeed() {
         val mode = ThemeMode.Light
         val neutral = neutralPaletteForMode(mode)
         val primary = Color(0xFF1E88E5)
@@ -79,4 +76,3 @@ class HueDerivationAndroidTest {
         return sqrt(dl * dl + da * da + db * db)
     }
 }
-
