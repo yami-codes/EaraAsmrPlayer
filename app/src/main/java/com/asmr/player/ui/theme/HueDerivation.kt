@@ -16,10 +16,15 @@ internal fun deriveHuePalette(
     primary: Color,
     mode: ThemeMode,
     neutral: NeutralPalette,
-    fallbackOnPrimary: Color
+    fallbackOnPrimary: Color,
+    forceMonochrome: Boolean = false
 ): HuePalette {
-    val sourceHct = sanitizedSourceHct(primary)
-    val scheme = dynamicSchemeFor(sourceHct, mode)
+    if (forceMonochrome) {
+        return deriveMonochromeHuePalette(mode, neutral, fallbackOnPrimary)
+    }
+
+    val sourceHct = sanitizedSourceHct(primary, forceMonochrome)
+    val scheme = dynamicSchemeFor(sourceHct, mode, forceMonochrome)
     val dynamicColors = MaterialDynamicColors()
 
     val primarySoft = Color(dynamicColors.primaryContainer().getArgb(scheme))
@@ -122,18 +127,142 @@ internal fun deriveHuePalette(
     )
 }
 
-private fun sanitizedSourceHct(primary: Color): Hct {
+private fun deriveMonochromeHuePalette(
+    mode: ThemeMode,
+    neutral: NeutralPalette,
+    fallbackOnPrimary: Color
+): HuePalette {
+    val primary = when (mode) {
+        ThemeMode.Light -> Color(0xFF5D6670)
+        ThemeMode.Dark -> Color(0xFFBBC4CE)
+        ThemeMode.SoftDark -> Color(0xFFAFB8C2)
+    }
+    val primarySoft = when (mode) {
+        ThemeMode.Light -> Color(0xFFDCE2E8)
+        ThemeMode.Dark -> Color(0xFF59616A)
+        ThemeMode.SoftDark -> Color(0xFF525A64)
+    }
+    val primaryStrong = when (mode) {
+        ThemeMode.Light -> Color(0xFF4E5660)
+        ThemeMode.Dark -> Color(0xFFCDD5DE)
+        ThemeMode.SoftDark -> Color(0xFFC1CAD4)
+    }
+    val secondary = when (mode) {
+        ThemeMode.Light -> Color(0xFF737C86)
+        ThemeMode.Dark -> Color(0xFFAAB3BD)
+        ThemeMode.SoftDark -> Color(0xFF9EA8B3)
+    }
+    val background = when (mode) {
+        ThemeMode.Light -> Color(0xFFF4F6F8)
+        ThemeMode.Dark -> Color(0xFF16181C)
+        ThemeMode.SoftDark -> Color(0xFF1A1D22)
+    }
+    val surface = when (mode) {
+        ThemeMode.Light -> Color(0xFFFFFFFF)
+        ThemeMode.Dark -> Color(0xFF20242A)
+        ThemeMode.SoftDark -> Color(0xFF232830)
+    }
+    val surfaceVariant = when (mode) {
+        ThemeMode.Light -> Color(0xFFE6EBF0)
+        ThemeMode.Dark -> Color(0xFF343A43)
+        ThemeMode.SoftDark -> Color(0xFF373E48)
+    }
+
+    val onPrimary = bestForeground(
+        background = primaryStrong,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color.White
+            ThemeMode.Dark -> Color(0xFF1F2328)
+            ThemeMode.SoftDark -> Color(0xFF1F2328)
+        },
+        fallback = fallbackOnPrimary
+    )
+    val onPrimaryContainer = bestForeground(
+        background = primarySoft,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color(0xFF2F353C)
+            ThemeMode.Dark -> Color(0xFFF3F6F9)
+            ThemeMode.SoftDark -> Color(0xFFEFF3F7)
+        },
+        fallback = neutral.onSurface
+    )
+    val onSecondary = bestForeground(
+        background = secondary,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color.White
+            ThemeMode.Dark -> Color(0xFF20242A)
+            ThemeMode.SoftDark -> Color(0xFF20242A)
+        },
+        fallback = onPrimary
+    )
+    val onBackground = bestForeground(
+        background = background,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color(0xFF252A31)
+            ThemeMode.Dark -> Color(0xFFE7ECF2)
+            ThemeMode.SoftDark -> Color(0xFFE4EAF0)
+        },
+        fallback = neutral.onBackground
+    )
+    val onSurface = bestForeground(
+        background = surface,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color(0xFF252A31)
+            ThemeMode.Dark -> Color(0xFFE7ECF2)
+            ThemeMode.SoftDark -> Color(0xFFE4EAF0)
+        },
+        fallback = neutral.onSurface
+    )
+    val onSurfaceVariant = bestForeground(
+        background = surfaceVariant,
+        candidate = when (mode) {
+            ThemeMode.Light -> Color(0xFF5B6470)
+            ThemeMode.Dark -> Color(0xFFC3CBD4)
+            ThemeMode.SoftDark -> Color(0xFFBAC3CD)
+        },
+        fallback = neutral.onSurfaceVariant
+    )
+
+    return HuePalette(
+        primary = primary,
+        primarySoft = primarySoft,
+        primaryStrong = primaryStrong,
+        onPrimary = onPrimary,
+        secondary = secondary,
+        onPrimaryContainer = onPrimaryContainer,
+        onSecondary = onSecondary,
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+        textPrimary = onSurface,
+        textSecondary = when (mode) {
+            ThemeMode.Light -> Color(0xFF68717C)
+            ThemeMode.Dark -> Color(0xFFB3BCC6)
+            ThemeMode.SoftDark -> Color(0xFFAAB4BE)
+        },
+        textTertiary = when (mode) {
+            ThemeMode.Light -> Color(0xFF88919B)
+            ThemeMode.Dark -> Color(0xFF8D97A2)
+            ThemeMode.SoftDark -> Color(0xFF87919C)
+        }
+    )
+}
+
+private fun sanitizedSourceHct(primary: Color, forceMonochrome: Boolean): Hct {
     val source = Hct.fromInt(primary.toArgb())
     val fixed = DislikeAnalyzer.fixIfDisliked(source)
-    return if (fixed.chroma < MONOCHROME_CHROMA_THRESHOLD) {
+    return if (forceMonochrome || fixed.chroma < MONOCHROME_CHROMA_THRESHOLD) {
         Hct.from(fixed.hue, 0.0, fixed.tone)
     } else {
         fixed
     }
 }
 
-private fun dynamicSchemeFor(source: Hct, mode: ThemeMode): DynamicScheme {
-    return if (source.chroma < MONOCHROME_CHROMA_THRESHOLD) {
+private fun dynamicSchemeFor(source: Hct, mode: ThemeMode, forceMonochrome: Boolean): DynamicScheme {
+    return if (forceMonochrome || source.chroma < MONOCHROME_CHROMA_THRESHOLD) {
         SchemeMonochrome(source, mode.isDark, 0.0)
     } else {
         SchemeTonalSpot(source, mode.isDark, 0.0)

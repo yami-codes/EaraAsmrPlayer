@@ -193,6 +193,8 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+private const val MONOCHROME_THEME_SENTINEL = 0x01000000
+
 private enum class OverlaySheet {
     Queue,
     SleepTimer
@@ -279,10 +281,15 @@ class MainActivity : ComponentActivity() {
             val staticHue: HuePalette? = remember(staticHueArgb, mode, neutral) {
                 staticHueArgb?.let { argb ->
                     deriveHuePalette(
-                        primary = Color(argb),
+                        primary = if (argb == MONOCHROME_THEME_SENTINEL) {
+                            if (mode.isDark) Color(0xFFAFB8C2) else Color(0xFF5D6670)
+                        } else {
+                            Color(argb)
+                        },
                         mode = mode,
                         neutral = neutral,
-                        fallbackOnPrimary = if (mode.isDark) Color.White else Color.Black
+                        fallbackOnPrimary = if (mode.isDark) Color.White else Color.Black,
+                        forceMonochrome = argb == MONOCHROME_THEME_SENTINEL
                     )
                 }
             }
