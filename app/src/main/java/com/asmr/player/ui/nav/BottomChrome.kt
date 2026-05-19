@@ -89,6 +89,7 @@ import kotlin.math.sqrt
 
 const val BottomNavBarTag = "bottomChromeNavBar"
 const val BottomNavOverflowTag = "bottomChromeOverflow"
+const val BottomChromeMiniPlayerTag = "bottomChromeMiniPlayer"
 
 private val BottomChromeOverlayHeightCompact = 96.dp
 private val BottomChromeOverlayHeightLarge = 108.dp
@@ -190,6 +191,15 @@ private data class BottomChromeMetrics(
 
 fun bottomChromeOverlayHeight(largeLayout: Boolean): Dp =
     if (largeLayout) BottomChromeOverlayHeightLarge else BottomChromeOverlayHeightCompact
+
+internal fun resolveBottomNavItemContainerColor(
+    activeContainer: Color,
+    selectedProgress: Float
+): Color {
+    val resolvedSelectedProgress = selectedProgress.coerceIn(0f, 1f)
+    if (resolvedSelectedProgress <= 0f) return Color.Transparent
+    return activeContainer.copy(alpha = activeContainer.alpha * resolvedSelectedProgress)
+}
 
 private fun bottomChromeMetrics(largeLayout: Boolean): BottomChromeMetrics =
     if (largeLayout) {
@@ -566,12 +576,13 @@ fun BottomChrome(
     navItems: List<BottomChromeNavItem> = bottomChromeNavItems(),
     overflowExpanded: Boolean = false,
     onOverflowExpandedChange: (Boolean) -> Unit = {},
-    onOverflowProtectedBoundsChange: (List<Rect>) -> Unit = {}
+    onOverflowProtectedBoundsChange: (List<Rect>) -> Unit = {},
+    miniPlayerContent: (@Composable (Modifier) -> Unit)? = null
 ) {
     BoxWithConstraints(modifier = modifier) {
         val metrics = remember(largeLayout) { bottomChromeMetrics(largeLayout) }
         val navExpanded = !miniPlayerVisible || miniPlayerDisplayMode == MiniPlayerDisplayMode.CoverOnly
-        val miniCollapsedWidth = if (largeLayout) 76.dp else 64.dp
+        val miniCollapsedWidth = if (largeLayout) 84.dp else 72.dp
         val chromeSpacing = if (largeLayout) 8.dp else 6.dp
         val expandedNavWidthLimit = maxWidth.coerceAtMost(metrics.preferredExpandedWidth)
         val miniWidthTarget = when {
@@ -580,17 +591,11 @@ fun BottomChrome(
                 (maxWidth - metrics.collapsedWidth - chromeSpacing).coerceAtLeast(if (largeLayout) 244.dp else 204.dp)
             else -> miniCollapsedWidth
         }
-        val navLayoutWidthTarget = when {
+        val navWidthTarget = when {
             !miniPlayerVisible -> expandedNavWidthLimit
             navExpanded -> (maxWidth - miniWidthTarget - chromeSpacing)
                 .coerceAtLeast(if (largeLayout) 108.dp else 92.dp)
                 .coerceAtMost(expandedNavWidthLimit)
-            else -> metrics.collapsedWidth
-        }
-        val navSurfaceWidthTarget = when {
-            !miniPlayerVisible -> navLayoutWidthTarget
-            navExpanded -> (maxWidth - miniWidthTarget - chromeSpacing)
-                .coerceAtLeast(navLayoutWidthTarget)
             else -> metrics.collapsedWidth
         }
         val miniWidth by animateDpAsState(
@@ -602,7 +607,7 @@ fun BottomChrome(
             label = "bottomChromeMiniWidth"
         )
         val navWidth by animateDpAsState(
-            targetValue = navSurfaceWidthTarget,
+            targetValue = navWidthTarget,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMediumLow
@@ -613,11 +618,15 @@ fun BottomChrome(
             !navExpanded -> 1
             else -> BottomNavExpandedSlotCount - 1
         }
+        val chromeArrangement = Arrangement.spacedBy(
+            space = chromeSpacing,
+            alignment = Alignment.CenterHorizontally
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { clip = false },
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = chromeArrangement,
             verticalAlignment = Alignment.Bottom
         ) {
             BottomNavigationPill(
@@ -626,8 +635,7 @@ fun BottomChrome(
                 selectionProgresses = selectionProgresses,
                 preferredPinnedRoute = preferredPinnedRoute,
                 expanded = navExpanded,
-                availableWidth = navLayoutWidthTarget,
-                surfaceTargetWidth = navSurfaceWidthTarget,
+                availableWidth = navWidthTarget,
                 currentWidth = navWidth,
                 metrics = metrics,
                 maxVisibleItems = maxVisibleItems,
@@ -640,14 +648,21 @@ fun BottomChrome(
             )
 
             if (miniPlayerVisible) {
-                MiniPlayer(
-                    displayMode = miniPlayerDisplayMode,
-                    onDisplayModeChange = onMiniPlayerDisplayModeChange,
-                    onOpenNowPlaying = onOpenNowPlaying,
-                    onOpenQueue = onOpenQueue,
-                    largeLayout = largeLayout,
-                    modifier = Modifier.width(miniWidth.coerceAtLeast(if (largeLayout) 84.dp else 72.dp))
-                )
+                val miniPlayerModifier = Modifier
+                    .width(miniWidth.coerceAtLeast(miniCollapsedWidth))
+                    .testTag(BottomChromeMiniPlayerTag)
+                if (miniPlayerContent != null) {
+                    miniPlayerContent(miniPlayerModifier)
+                } else {
+                    MiniPlayer(
+                        displayMode = miniPlayerDisplayMode,
+                        onDisplayModeChange = onMiniPlayerDisplayModeChange,
+                        onOpenNowPlaying = onOpenNowPlaying,
+                        onOpenQueue = onOpenQueue,
+                        largeLayout = largeLayout,
+                        modifier = miniPlayerModifier
+                    )
+                }
             }
         }
     }
@@ -661,7 +676,6 @@ private fun BottomNavigationPill(
     preferredPinnedRoute: String? = null,
     expanded: Boolean,
     availableWidth: Dp,
-    surfaceTargetWidth: Dp = availableWidth,
     currentWidth: Dp = availableWidth,
     metrics: BottomChromeMetrics = bottomChromeMetrics(largeLayout = false),
     maxVisibleItems: Int? = null,
@@ -685,7 +699,6 @@ private fun BottomNavigationPill(
         preferredPinnedRoute = preferredPinnedRoute,
         expanded = expanded,
         availableWidth = availableWidth,
-        surfaceTargetWidth = surfaceTargetWidth,
         currentWidth = currentWidth,
         metrics = metrics,
         maxVisibleItems = maxVisibleItems,
@@ -707,7 +720,6 @@ private fun BottomNavigationPillSurface(
     preferredPinnedRoute: String?,
     expanded: Boolean,
     availableWidth: Dp,
-    surfaceTargetWidth: Dp,
     currentWidth: Dp,
     metrics: BottomChromeMetrics,
     maxVisibleItems: Int? = null,
@@ -887,7 +899,7 @@ private fun BottomNavigationPillSurface(
         overflowRevealProgress = overflowRevealProgress
     )
     val interactionBlocked =
-        abs(currentWidth.value - surfaceTargetWidth.value) > 0.5f ||
+        abs(currentWidth.value - availableWidth.value) > 0.5f ||
             (overflowRevealProgress > 0.01f && overflowRevealProgress < 0.99f)
 
     SideEffect {
@@ -1260,13 +1272,11 @@ private fun BottomNavItemChip(
     val colorScheme = AsmrTheme.colorScheme
     val resolvedSelectedProgress = selectedProgress.coerceIn(0f, 1f)
     val activeContainer = colorScheme.primarySoft.copy(alpha = if (colorScheme.isDark) 0.52f else 0.95f)
-    val inactiveContainer = if (colorScheme.isDark) {
-        colorScheme.surfaceVariant.copy(alpha = 0.52f)
-    } else {
-        colorScheme.surfaceVariant.copy(alpha = 0.82f)
-    }
     val contentColor = lerp(colorScheme.textSecondary, colorScheme.primaryStrong, resolvedSelectedProgress)
-    val containerColor = lerp(inactiveContainer, activeContainer, resolvedSelectedProgress)
+    val containerColor = resolveBottomNavItemContainerColor(
+        activeContainer = activeContainer,
+        selectedProgress = resolvedSelectedProgress
+    )
     val scale = 1f + (0.04f * resolvedSelectedProgress)
     val iconScale = 1f + (0.16f * resolvedSelectedProgress)
     val glowAlpha = resolvedSelectedProgress
