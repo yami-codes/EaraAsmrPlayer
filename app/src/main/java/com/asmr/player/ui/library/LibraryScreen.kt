@@ -1507,7 +1507,7 @@ private fun AlbumItem(
             spacing = 8.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(listItemHeight),
+                .heightIn(min = listItemHeight),
             cover = {
                 Box(
                     modifier = Modifier
@@ -1581,7 +1581,6 @@ private fun AlbumItem(
 
                 BalancedColumn(
                     modifier = Modifier
-                        .fillMaxHeight()
                         .padding(top = 4.dp, bottom = 4.dp, end = 12.dp),
                     minGap = 4.dp,
                     maxGap = 12.dp,
