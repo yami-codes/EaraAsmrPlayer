@@ -74,6 +74,7 @@ import java.io.File
 import kotlin.math.abs
 
 private val SettingsPageHorizontalPadding = 8.dp
+private const val MONOCHROME_THEME_SENTINEL = 0x01000000
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -341,6 +342,10 @@ fun SettingsScreen(
                         color = null,
                         selected = currentHueArgb == null,
                         onClick = { viewModel.setStaticHueArgb(null) }
+                    )
+                    ThemeMonochromeDot(
+                        selected = currentHueArgb == MONOCHROME_THEME_SENTINEL,
+                        onClick = { viewModel.setStaticHueArgb(MONOCHROME_THEME_SENTINEL) }
                     )
                 // 浅色主题用深色调（深红、深蓝、墨綠等），深色/柔和深色主题用高饱和亮色
                 val presets = if (themeMode == "light") {
@@ -1308,6 +1313,24 @@ private fun ThemeColorDot(color: Color?, selected: Boolean, onClick: () -> Unit)
             .size(28.dp)
             .clip(CircleShape)
             .background(fill)
+            .border(borderWidth, borderColor, CircleShape)
+            .clickable(onClick = onClick)
+    )
+}
+
+@Composable
+private fun ThemeMonochromeDot(selected: Boolean, onClick: () -> Unit) {
+    val borderColor = if (selected) AsmrTheme.colorScheme.onSurface else AsmrTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+    val borderWidth = if (selected) 2.dp else 1.dp
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    colors = listOf(Color(0xFF68717C), Color(0xFFE1E7ED))
+                )
+            )
             .border(borderWidth, borderColor, CircleShape)
             .clickable(onClick = onClick)
     )

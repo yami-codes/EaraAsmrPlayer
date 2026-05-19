@@ -16,16 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
-import androidx.core.graphics.ColorUtils
-import androidx.palette.graphics.Palette
 import com.asmr.player.cache.CachePolicy
 import com.asmr.player.cache.ImageCacheEntryPoint
-import com.asmr.player.ui.common.adjustHslForUi
-import com.asmr.player.ui.common.computeCenterWeightedHintColorInt
-import com.asmr.player.ui.common.pickBestColorInt
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
@@ -56,22 +50,20 @@ fun rememberDynamicHuePalette(
     }
     val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
     val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
-    val key = "hue:cw:$regionKey:$baseKey:${mode.name}"
+    val seedKey = "hue:cw:$regionKey:$baseKey"
     
-    val animatable = remember(key) { // Removed fallbackHue.primary dependency to avoid reset on theme change
-        Animatable(DynamicHueCache.get(key) ?: fallbackHue.primary, ColorVectorConverter)
+    val animatable = remember(seedKey) {
+        Animatable(DynamicHueCache.get(seedKey) ?: fallbackHue.primary, ColorVectorConverter)
     }
 
 
-    val preferDarkBackground = mode.isDark
-    
-    LaunchedEffect(key, mode) { // Removed fallbackHue.primary from key to avoid restart on fallback change
+    LaunchedEffect(seedKey) {
         if (baseKey.isBlank()) {
             return@LaunchedEffect
         }
         
         // If we have it in cache, snap immediately to avoid animation if we are just scrolling/recomposing?
-        DynamicHueCache.get(key)?.let {
+        DynamicHueCache.get(seedKey)?.let {
             if (cachedTransitionDurationMs <= 0) animatable.snapTo(it)
             else animatable.animateTo(it, animationSpec = tween(cachedTransitionDurationMs))
             return@LaunchedEffect
@@ -83,7 +75,7 @@ fun rememberDynamicHuePalette(
         while (constrainedPrimary == null && attempt < 3) {
             if (attempt > 0) kotlinx.coroutines.delay(300)
             
-            constrainedPrimary = DynamicHueCache.getOrCompute(key) {
+            constrainedPrimary = DynamicHueCache.getOrCompute(seedKey) {
                 withContext(Dispatchers.Default) {
                     val m = artworkModel ?: return@withContext null
                     val img = runCatching {
@@ -97,23 +89,11 @@ fun rememberDynamicHuePalette(
                         
                     if (bitmap.width < 10 || bitmap.height < 10) return@withContext null
 
-                    val colorInt = runCatching {
-                        val palette = Palette.from(bitmap).generate()
-                        val hint = computeCenterWeightedHintColorInt(bitmap, centerRegionRatio)
-                        pickBestColorInt(
-                            palette = palette,
-                            fallbackColorInt = fallbackHue.primary.toArgb(),
-                            preferDarkBackground = preferDarkBackground,
-                            hintColorInt = hint
-                        )
-                    }.getOrNull() ?: fallbackHue.primary.toArgb()
-
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(colorInt, hsl)
-                    adjustHslForUi(hsl, preferDarkBackground)
-                    clampPrimaryHslForMode(hsl, mode)
-
-                    Color(ColorUtils.HSLToColor(hsl))
+                    monetSeedColorFromBitmap(
+                        bitmap = bitmap,
+                        fallbackColor = fallbackHue.primary,
+                        centerRegionRatio = centerRegionRatio
+                    )
                 }
             }
             attempt++
@@ -163,44 +143,30 @@ fun rememberDynamicHuePaletteFromVideoFrame(
     }
     val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
     val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
-    val key = "hue:vf:cw:$regionKey:$baseKey:${mode.name}"
+    val seedKey = "hue:vf:cw:$regionKey:$baseKey"
 
-    val animatable = remember(key) {
-        Animatable(DynamicHueCache.get(key) ?: fallbackHue.primary, ColorVectorConverter)
+    val animatable = remember(seedKey) {
+        Animatable(DynamicHueCache.get(seedKey) ?: fallbackHue.primary, ColorVectorConverter)
     }
 
-    val preferDarkBackground = mode.isDark
-
-    LaunchedEffect(key, mode) {
+    LaunchedEffect(seedKey) {
         if (baseKey.isBlank() || videoUri == null) return@LaunchedEffect
 
-        DynamicHueCache.get(key)?.let {
+        DynamicHueCache.get(seedKey)?.let {
             if (cachedTransitionDurationMs <= 0) animatable.snapTo(it)
             else animatable.animateTo(it, animationSpec = tween(cachedTransitionDurationMs))
             return@LaunchedEffect
         }
 
-        val constrainedPrimary = DynamicHueCache.getOrCompute(key) {
+        val constrainedPrimary = DynamicHueCache.getOrCompute(seedKey) {
             withContext(Dispatchers.Default) {
                 withTimeoutOrNull(timeoutMs) {
                     val bitmap = extractMeaningfulVideoFrameBitmap(context, videoUri, imageSizePx) ?: return@withTimeoutOrNull null
-                    val colorInt = runCatching {
-                        val palette = Palette.from(bitmap).generate()
-                        val hint = computeCenterWeightedHintColorInt(bitmap, centerRegionRatio)
-                        pickBestColorInt(
-                            palette = palette,
-                            fallbackColorInt = fallbackHue.primary.toArgb(),
-                            preferDarkBackground = preferDarkBackground,
-                            hintColorInt = hint
-                        )
-                    }.getOrNull() ?: fallbackHue.primary.toArgb()
-
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(colorInt, hsl)
-                    adjustHslForUi(hsl, preferDarkBackground)
-                    clampPrimaryHslForMode(hsl, mode)
-
-                    Color(ColorUtils.HSLToColor(hsl))
+                    monetSeedColorFromBitmap(
+                        bitmap = bitmap,
+                        fallbackColor = fallbackHue.primary,
+                        centerRegionRatio = centerRegionRatio
+                    )
                 }
             }
         }

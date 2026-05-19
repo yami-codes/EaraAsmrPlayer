@@ -739,7 +739,7 @@ private fun BottomNavigationPillSurface(
         }
     }
     val containerColor = colorScheme.primarySoft
-        .copy(alpha = if (colorScheme.isDark) 0.10f else 0.14f)
+        .copy(alpha = if (colorScheme.isDark) 0.05f else 0.08f)
         .compositeOver(colorScheme.surface)
     val borderColor = if (colorScheme.isDark) {
         Color.White.copy(alpha = 0.14f)
