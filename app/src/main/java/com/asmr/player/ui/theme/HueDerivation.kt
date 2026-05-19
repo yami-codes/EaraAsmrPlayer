@@ -11,6 +11,9 @@ import com.google.android.material.color.utilities.SchemeMonochrome
 import com.google.android.material.color.utilities.SchemeTonalSpot
 
 private const val MONOCHROME_CHROMA_THRESHOLD = 5.0
+private const val MONET_PRIMARY_STRONG_CHROMA_SCALE = 0.82
+private const val MONET_PRIMARY_SOFT_CHROMA_SCALE = 0.68
+private const val MONET_SECONDARY_CHROMA_SCALE = 0.76
 
 internal fun deriveHuePalette(
     primary: Color,
@@ -27,9 +30,18 @@ internal fun deriveHuePalette(
     val scheme = dynamicSchemeFor(sourceHct, mode, forceMonochrome)
     val dynamicColors = MaterialDynamicColors()
 
-    val primarySoft = Color(dynamicColors.primaryContainer().getArgb(scheme))
-    val primaryStrong = Color(dynamicColors.primary().getArgb(scheme))
-    val secondary = Color(dynamicColors.secondary().getArgb(scheme))
+    val primarySoft = softenDynamicAccentColor(
+        Color(dynamicColors.primaryContainer().getArgb(scheme)),
+        chromaScale = MONET_PRIMARY_SOFT_CHROMA_SCALE
+    )
+    val primaryStrong = softenDynamicAccentColor(
+        Color(dynamicColors.primary().getArgb(scheme)),
+        chromaScale = MONET_PRIMARY_STRONG_CHROMA_SCALE
+    )
+    val secondary = softenDynamicAccentColor(
+        Color(dynamicColors.secondary().getArgb(scheme)),
+        chromaScale = MONET_SECONDARY_CHROMA_SCALE
+    )
     val onPrimary = Color(dynamicColors.onPrimary().getArgb(scheme))
     val onPrimaryContainer = Color(dynamicColors.onPrimaryContainer().getArgb(scheme))
     val onSecondary = Color(dynamicColors.onSecondary().getArgb(scheme))
@@ -259,6 +271,17 @@ private fun sanitizedSourceHct(primary: Color, forceMonochrome: Boolean): Hct {
     } else {
         fixed
     }
+}
+
+private fun softenDynamicAccentColor(color: Color, chromaScale: Double): Color {
+    if (chromaScale >= 0.999) return color
+    val hct = Hct.fromInt(color.toArgb())
+    val softened = Hct.from(
+        hct.hue,
+        (hct.chroma * chromaScale).coerceAtLeast(0.0),
+        hct.tone
+    )
+    return Color(softened.toInt())
 }
 
 private fun dynamicSchemeFor(source: Hct, mode: ThemeMode, forceMonochrome: Boolean): DynamicScheme {

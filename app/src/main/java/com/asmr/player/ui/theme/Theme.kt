@@ -15,8 +15,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-val DefaultBrandPrimaryLight = Color(0xFF0B3D2E)
-val DefaultBrandPrimaryDark = Color(0xFF2E7D32)
+val DefaultBrandPrimaryLight = Color(0xFF5D6670)
+val DefaultBrandPrimaryDark = Color(0xFFAFB8C2)
 
 @Immutable
 data class AsmrColorScheme(
