@@ -72,6 +72,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -735,6 +737,12 @@ internal fun SearchToolbar(
     val colorScheme = AsmrTheme.colorScheme
     var scopeMenuExpanded by remember { mutableStateOf(false) }
     var languageMenuExpanded by remember { mutableStateOf(false) }
+    val dropdownContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (colorScheme.isDark) 0.16f else 0.26f
+    ).copy(alpha = if (colorScheme.isDark) 0.95f else 0.97f)
+        .compositeOver(colorScheme.background)
 
     LaunchedEffect(filterControlsLocked, searchSubmitLocked) {
         if (filterControlsLocked || searchSubmitLocked) {
@@ -775,7 +783,7 @@ internal fun SearchToolbar(
                     DropdownMenu(
                         expanded = scopeMenuExpanded,
                         onDismissRequest = { scopeMenuExpanded = false },
-                        modifier = Modifier.background(colorScheme.surface)
+                        modifier = Modifier.background(dropdownContainerColor)
                     ) {
                         DropdownMenuItem(
                             text = { Text("仅已购", color = colorScheme.textPrimary) },
@@ -852,7 +860,7 @@ internal fun SearchToolbar(
                         DropdownMenu(
                             expanded = languageMenuExpanded,
                             onDismissRequest = { languageMenuExpanded = false },
-                            modifier = Modifier.background(colorScheme.surface)
+                            modifier = Modifier.background(dropdownContainerColor)
                         ) {
                             listOf(
                                 "ja_JP" to "日语",
@@ -926,6 +934,17 @@ internal fun SearchPaginationHeader(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val isDark = colorScheme.isDark
+    val paginationContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (isDark) 0.06f else 0.10f
+    ).copy(alpha = if (isDark) 0.93f else 0.95f)
+        .compositeOver(colorScheme.background)
+    val paginationBorderColor = if (isDark) {
+        Color.White.copy(alpha = 0.14f)
+    } else {
+        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    }
 
     Box(
         modifier = Modifier
@@ -942,18 +961,14 @@ internal fun SearchPaginationHeader(
                     ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
                 )
                 .then(
-                    if (isDark) {
-                        Modifier.border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                    } else {
-                        Modifier
-                    }
+                    Modifier.border(
+                        width = 1.dp,
+                        color = paginationBorderColor,
+                        shape = RoundedCornerShape(14.dp)
+                    )
                 )
                 .clip(RoundedCornerShape(14.dp))
-                .background(if (isDark) colorScheme.surface else Color.White)
+                .background(paginationContainerColor)
                 .testTag(SEARCH_PAGINATION_TAG)
         ) {
             Box(
@@ -983,7 +998,7 @@ internal fun SearchPaginationHeader(
                     } else if (isDark) {
                         colorScheme.textTertiary
                     } else {
-                        Color.Gray
+                        colorScheme.textTertiary
                     }
                 )
             }
@@ -1018,7 +1033,7 @@ internal fun SearchPaginationHeader(
                     } else if (isDark) {
                         colorScheme.textTertiary
                     } else {
-                        Color.Gray
+                        colorScheme.textTertiary
                     }
                 )
             }

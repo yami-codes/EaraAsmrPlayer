@@ -49,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -760,6 +762,17 @@ private fun AlbumDetailTabChrome(
     val tabContainerShape = RoundedCornerShape(26.dp)
     val tabItemShape = RoundedCornerShape(18.dp)
     val collapseOvershootPx = with(LocalDensity.current) { AlbumDetailTabCollapseOvershoot.toPx() }
+    val tabContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (isDark) 0.18f else 0.28f
+    ).copy(alpha = if (isDark) 0.95f else 0.97f)
+        .compositeOver(colorScheme.background)
+    val tabBorderColor = if (isDark) {
+        colorScheme.primary.copy(alpha = 0.11f)
+    } else {
+        colorScheme.primary.copy(alpha = 0.09f)
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -792,21 +805,13 @@ private fun AlbumDetailTabChrome(
                     ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
                 )
                 .then(
-                    if (isDark) {
-                        Modifier.border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = tabContainerShape
-                        )
-                    } else {
-                        Modifier
-                    }
+                    Modifier.border(
+                        width = 1.dp,
+                        color = tabBorderColor,
+                        shape = tabContainerShape
+                    )
                 ),
-            color = if (isDark) {
-                colorScheme.surface.copy(alpha = 0.96f)
-            } else {
-                colorScheme.surface.copy(alpha = 0.96f)
-            },
+            color = tabContainerColor,
             contentColor = colorScheme.textPrimary,
             shape = tabContainerShape,
             tonalElevation = 0.dp,

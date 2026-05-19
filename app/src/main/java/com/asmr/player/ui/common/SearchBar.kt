@@ -33,6 +33,8 @@ import com.asmr.player.ui.theme.AsmrTheme
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,20 @@ fun CustomSearchBar(
     val colorScheme = AsmrTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val isDark = colorScheme.isDark
+    val containerBaseColor = if (isDark) {
+        lerp(colorScheme.surface, colorScheme.primarySoft, 0.05f)
+    } else {
+        lerp(colorScheme.surface, colorScheme.primarySoft, 0.08f)
+    }
+    val containerColor = containerBaseColor.copy(alpha = if (isDark) 0.93f else 0.95f)
+        .compositeOver(colorScheme.background)
+    val borderColor = if (isDark) {
+        Color.White.copy(alpha = 0.14f)
+    } else {
+        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    }
+    val textColor = colorScheme.textPrimary
+    val placeholderColor = colorScheme.textSecondary.copy(alpha = if (isDark) 0.72f else 0.82f)
     
     BasicTextField(
         value = value,
@@ -62,19 +78,17 @@ fun CustomSearchBar(
                 ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
             )
             .then(
-                if (isDark) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = CircleShape
-                    )
-                } else Modifier
+                Modifier.border(
+                    width = 1.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                )
             )
             .background(
-                color = if (isDark) colorScheme.surface else Color.White,
+                color = containerColor,
                 shape = CircleShape
             ),
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = if (isDark) colorScheme.textPrimary else Color.Black),
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor),
         singleLine = true,
         cursorBrush = SolidColor(colorScheme.primary),
         interactionSource = interactionSource,
@@ -96,7 +110,7 @@ fun CustomSearchBar(
                         Text(
                             text = placeholder,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = if (isDark) colorScheme.textSecondary.copy(alpha = 0.5f) else Color.Gray,
+                            color = placeholderColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -120,6 +134,18 @@ fun ActionButton(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val isDark = colorScheme.isDark
+    val containerBaseColor = if (isDark) {
+        lerp(colorScheme.surface, colorScheme.primarySoft, 0.05f)
+    } else {
+        lerp(colorScheme.surface, colorScheme.primarySoft, 0.08f)
+    }
+    val containerColor = containerBaseColor.copy(alpha = if (isDark) 0.93f else 0.95f)
+        .compositeOver(colorScheme.background)
+    val borderColor = if (isDark) {
+        Color.White.copy(alpha = 0.14f)
+    } else {
+        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    }
     Box(
         modifier = modifier
             .size(50.dp)
@@ -130,15 +156,13 @@ fun ActionButton(
                 ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
             )
             .then(
-                if (isDark) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = CircleShape
-                    )
-                } else Modifier
+                Modifier.border(
+                    width = 1.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                )
             )
-            .background(if (isDark) colorScheme.surface else Color.White, CircleShape)
+            .background(containerColor, CircleShape)
             .clip(CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -146,7 +170,7 @@ fun ActionButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isDark) colorScheme.onSurfaceVariant else Color.Black,
+            tint = colorScheme.onSurfaceVariant,
             modifier = Modifier.size(24.dp)
         )
     }

@@ -122,6 +122,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
@@ -1007,6 +1009,12 @@ internal fun LibraryChrome(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val collapseOvershootPx = with(LocalDensity.current) { LibraryChromeCollapseOvershoot.toPx() }
+    val chromeActionContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (colorScheme.isDark) 0.16f else 0.26f
+    ).copy(alpha = if (colorScheme.isDark) 0.95f else 0.97f)
+        .compositeOver(colorScheme.background)
 
     Row(
         modifier = modifier
@@ -1062,14 +1070,15 @@ internal fun LibraryChrome(
             )
             MaterialTheme(
                 colorScheme = materialColorScheme.copy(
-                    surface = dynamicContainerColor,
-                    surfaceContainer = dynamicContainerColor
+                    surface = chromeActionContainerColor,
+                    surfaceContainer = chromeActionContainerColor,
+                    surfaceVariant = chromeActionContainerColor
                 )
             ) {
                 DropdownMenu(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { onSortMenuExpandedChange(false) },
-                    modifier = Modifier.background(dynamicContainerColor)
+                    modifier = Modifier.background(chromeActionContainerColor)
                 ) {
                     DropdownMenuItem(
                         text = { Text("最近播放") },
