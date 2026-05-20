@@ -263,17 +263,27 @@ fun MainContainer(
     )
     val primaryContentStateHolder = rememberSaveableStateHolder()
     var primaryPagerScrollLocked by remember { mutableStateOf(false) }
+    var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
+    val visualPrimaryRoute = remember(activePrimaryRoute, pendingPrimaryNavigationRoute, primaryPagerRoutes) {
+        resolvePrimaryNavVisualRoute(
+            activeRoute = activePrimaryRoute,
+            pendingRoute = pendingPrimaryNavigationRoute,
+            pagerRoutes = primaryPagerRoutes
+        )
+    }
     val primaryNavSelectionProgresses by remember(
         primaryPagerState,
         primaryPagerRoutes,
-        activePrimaryRoute
+        activePrimaryRoute,
+        pendingPrimaryNavigationRoute
     ) {
         derivedStateOf {
             computePrimaryNavSelectionProgresses(
                 pagerRoutes = primaryPagerRoutes,
                 currentPage = primaryPagerState.currentPage,
                 currentPageOffsetFraction = primaryPagerState.currentPageOffsetFraction,
-                fallbackRoute = activePrimaryRoute
+                fallbackRoute = activePrimaryRoute,
+                lockedRoute = pendingPrimaryNavigationRoute
             )
         }
     }
@@ -327,7 +337,6 @@ fun MainContainer(
     var nowPlayingVolumeEventTick by remember { mutableLongStateOf(0L) }
     var lastNonZeroAppVolumePercent by rememberSaveable { mutableIntStateOf(AppVolume.DefaultPercent) }
     var hardwareVolumeOverlayBounds by remember { mutableStateOf<Rect?>(null) }
-    var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
     var libraryScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var searchScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var favoritesScrollToTopSignal by remember { mutableLongStateOf(0L) }
@@ -1587,7 +1596,7 @@ fun MainContainer(
                         .width(chromeWidth)
                 ) {
                     BottomChrome(
-                        activeRoute = activePrimaryRoute,
+                        activeRoute = visualPrimaryRoute,
                         selectionProgresses = primaryNavSelectionProgresses,
                         miniPlayerVisible = miniPlayerVisible,
                         miniPlayerDisplayMode = miniPlayerDisplayMode,
