@@ -29,4 +29,22 @@ class CoverArtworkBackgroundStyleAndroidTest {
         assertTrue(lowClarity.artworkAlpha < midClarity.artworkAlpha)
         assertTrue(midClarity.artworkAlpha < highClarity.artworkAlpha)
     }
+
+    @Test
+    fun lowClarity_keepsBackdropTintVisible_inDarkMode() {
+        val style = coverArtworkBackdropStyle(clarity = 0f, isDark = true)
+
+        assertTrue(style.baseTintAlpha >= 0.9f)
+        assertTrue(style.scrimAlpha <= 0.01f)
+        assertTrue(style.tintAlpha >= 0.26f)
+    }
+
+    @Test
+    fun lowClarity_avoidsWhiteWash_inLightMode() {
+        val style = coverArtworkBackdropStyle(clarity = 0f, isDark = false)
+
+        assertTrue(style.baseTintAlpha >= 0.82f)
+        assertTrue(style.overlayAlpha <= 0.02f)
+        assertEquals(0f, style.scrimAlpha, 0.0001f)
+    }
 }

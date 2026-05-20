@@ -28,6 +28,91 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
+fun PrewarmDynamicHuePalette(
+    artworkModel: Any?,
+    fallbackHue: HuePalette,
+    imageSizePx: Int = 256,
+    centerRegionRatio: Float = 0.62f
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext
+    val manager = remember(app) {
+        EntryPointAccessors.fromApplication(app, ImageCacheEntryPoint::class.java).imageCacheManager()
+    }
+    val rawBaseKey = artworkModel?.toString().orEmpty()
+    val lastNonBlankBaseKeyState = rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    if (rawBaseKey.isNotBlank() && rawBaseKey != lastNonBlankBaseKeyState.value) {
+        lastNonBlankBaseKeyState.value = rawBaseKey
+    }
+    val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
+    val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
+    val seedKey = "hue:cw:$regionKey:$baseKey"
+
+    LaunchedEffect(seedKey, baseKey) {
+        if (baseKey.isBlank()) return@LaunchedEffect
+        if (DynamicHueCache.get(seedKey) != null) return@LaunchedEffect
+
+        DynamicHueCache.getOrCompute(seedKey) {
+            withContext(Dispatchers.Default) {
+                val model = artworkModel ?: return@withContext null
+                val image = runCatching {
+                    manager.loadImage(
+                        model = model,
+                        size = IntSize(imageSizePx, imageSizePx),
+                        cachePolicy = CachePolicy.DEFAULT
+                    )
+                }.getOrNull() ?: return@withContext null
+                val bitmap = image.asAndroidBitmap()
+                if (bitmap.width < 10 || bitmap.height < 10) return@withContext null
+
+                monetSeedColorFromBitmap(
+                    bitmap = bitmap,
+                    fallbackColor = fallbackHue.primary,
+                    centerRegionRatio = centerRegionRatio
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PrewarmDynamicHuePaletteFromVideoFrame(
+    videoUri: Uri?,
+    fallbackHue: HuePalette,
+    imageSizePx: Int = 256,
+    centerRegionRatio: Float = 0.62f,
+    timeoutMs: Long = 2_500L
+) {
+    val context = LocalContext.current
+    val rawBaseKey = videoUri?.toString().orEmpty()
+    val lastNonBlankBaseKeyState = rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    if (rawBaseKey.isNotBlank() && rawBaseKey != lastNonBlankBaseKeyState.value) {
+        lastNonBlankBaseKeyState.value = rawBaseKey
+    }
+    val baseKey = if (rawBaseKey.isNotBlank()) rawBaseKey else lastNonBlankBaseKeyState.value
+    val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
+    val seedKey = "hue:vf:cw:$regionKey:$baseKey"
+
+    LaunchedEffect(seedKey, baseKey, videoUri) {
+        if (baseKey.isBlank() || videoUri == null) return@LaunchedEffect
+        if (DynamicHueCache.get(seedKey) != null) return@LaunchedEffect
+
+        DynamicHueCache.getOrCompute(seedKey) {
+            withContext(Dispatchers.Default) {
+                withTimeoutOrNull(timeoutMs) {
+                    val bitmap = extractMeaningfulVideoFrameBitmap(context, videoUri, imageSizePx) ?: return@withTimeoutOrNull null
+                    monetSeedColorFromBitmap(
+                        bitmap = bitmap,
+                        fallbackColor = fallbackHue.primary,
+                        centerRegionRatio = centerRegionRatio
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun rememberDynamicHuePalette(
     artworkModel: Any?,
     mode: ThemeMode,

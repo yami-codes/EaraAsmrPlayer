@@ -73,7 +73,6 @@ import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.player.rememberCoverDragPreviewState
 import com.asmr.player.ui.player.rememberCoverMotionState
 import com.asmr.player.ui.sidepanel.LocalRightPanelExpandedState
-import com.asmr.player.ui.common.rememberDominantColorCenterWeighted
 import com.asmr.player.ui.downloads.DownloadsScreen
 import com.asmr.player.ui.downloads.DownloadsViewModel
 import com.asmr.player.ui.downloads.DownloadItemState
@@ -117,8 +116,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.AsmrTheme
-import com.asmr.player.ui.common.PrewarmDominantColorCenterWeighted
-import com.asmr.player.ui.common.PrewarmVideoFrameDominantColorCenterWeighted
 import androidx.compose.ui.draw.blur
 import android.os.Build
 import android.graphics.RenderEffect

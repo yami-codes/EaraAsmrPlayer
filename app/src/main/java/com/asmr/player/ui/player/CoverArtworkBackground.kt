@@ -101,28 +101,28 @@ internal fun coverArtworkBackdropStyle(
             fraction = reveal
         ).dp,
         baseTintAlpha = lerpFloat(
-            start = if (isDark) 0.64f else 0.52f,
-            end = if (isDark) 0.12f else 0.04f,
+            start = if (isDark) 0.90f else 0.82f,
+            end = if (isDark) 0.40f else 0.26f,
             fraction = reveal
         ),
         artworkAlpha = lerpFloat(
-            start = if (isDark) 0.01f else 0.008f,
-            end = if (isDark) 0.96f else 0.985f,
+            start = if (isDark) 0.10f else 0.08f,
+            end = if (isDark) 0.98f else 0.99f,
             fraction = reveal
         ),
         overlayAlpha = lerpFloat(
-            start = if (isDark) 0.12f else 0.07f,
-            end = if (isDark) 0.02f else 0.008f,
+            start = if (isDark) 0.04f else 0.02f,
+            end = if (isDark) 0f else 0f,
             fraction = reveal
         ),
         tintAlpha = lerpFloat(
-            start = if (isDark) 0.10f else 0.08f,
-            end = if (isDark) 0.01f else 0.004f,
+            start = if (isDark) 0.26f else 0.18f,
+            end = if (isDark) 0.08f else 0.05f,
             fraction = reveal
         ),
         scrimAlpha = lerpFloat(
-            start = if (isDark) 0.15f else 0.015f,
-            end = if (isDark) 0.018f else 0f,
+            start = if (isDark) 0.01f else 0f,
+            end = if (isDark) 0f else 0f,
             fraction = reveal
         )
     )

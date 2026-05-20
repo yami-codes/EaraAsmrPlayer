@@ -37,7 +37,8 @@ data class AsmrColorScheme(
     val textTertiary: Color,
     val accent: Color,
     val danger: Color,
-    val isDark: Boolean
+    val isDark: Boolean,
+    val mode: ThemeMode
 )
 
 val LocalAsmrColorScheme = staticCompositionLocalOf {
@@ -67,7 +68,8 @@ val LocalAsmrColorScheme = staticCompositionLocalOf {
         textTertiary = hue.textTertiary,
         accent = hue.primaryStrong,
         danger = Color(0xFFAB0000),
-        isDark = mode.isDark
+        isDark = mode.isDark,
+        mode = mode
     )
 }
 
@@ -108,7 +110,8 @@ fun AsmrPlayerTheme(
             textTertiary = resolvedHue.textTertiary,
             accent = resolvedHue.primaryStrong,
             danger = Color(0xFFAB0000),
-            isDark = mode.isDark
+            isDark = mode.isDark,
+            mode = mode
         )
     }
 

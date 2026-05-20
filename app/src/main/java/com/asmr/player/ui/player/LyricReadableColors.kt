@@ -21,16 +21,17 @@ internal data class LyricReadableColors(
 @Composable
 internal fun rememberLyricReadableColors(
     accentColor: Color,
+    backdropTintColor: Color,
     coverBackgroundEnabled: Boolean,
     coverBackgroundClarity: Float
 ): LyricReadableColors {
     val colorScheme = AsmrTheme.colorScheme
-    return remember(accentColor, coverBackgroundEnabled, coverBackgroundClarity, colorScheme) {
+    return remember(accentColor, backdropTintColor, coverBackgroundEnabled, coverBackgroundClarity, colorScheme) {
         val emphasisAlpha = if (colorScheme.isDark) 0.82f else 0.68f
         val containerAlpha = if (colorScheme.isDark) 0.26f else 0.16f
         val containerBase = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.80f else 0.88f)
         val backdropEstimate = estimateLyricBackdropColor(
-            accentColor = accentColor,
+            backdropTintColor = backdropTintColor,
             backgroundColor = colorScheme.background,
             coverBackgroundEnabled = coverBackgroundEnabled,
             coverBackgroundClarity = coverBackgroundClarity,
@@ -75,7 +76,7 @@ private fun inactiveLyricTextColor(
 }
 
 private fun estimateLyricBackdropColor(
-    accentColor: Color,
+    backdropTintColor: Color,
     backgroundColor: Color,
     coverBackgroundEnabled: Boolean,
     coverBackgroundClarity: Float,
@@ -87,9 +88,9 @@ private fun estimateLyricBackdropColor(
         clarity = coverBackgroundClarity,
         isDark = isDark
     )
-    var estimated = accentColor
+    var estimated = backdropTintColor
     estimated = backgroundColor.copy(alpha = style.overlayAlpha).compositeOver(estimated)
-    estimated = accentColor.copy(alpha = style.tintAlpha).compositeOver(estimated)
+    estimated = backdropTintColor.copy(alpha = style.tintAlpha).compositeOver(estimated)
     if (style.scrimAlpha > 0f) {
         estimated = Color.Black.copy(alpha = style.scrimAlpha).compositeOver(estimated)
     }

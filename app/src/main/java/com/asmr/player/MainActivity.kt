@@ -73,7 +73,6 @@ import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.player.rememberCoverDragPreviewState
 import com.asmr.player.ui.player.rememberCoverMotionState
 import com.asmr.player.ui.sidepanel.LocalRightPanelExpandedState
-import com.asmr.player.ui.common.rememberDominantColorCenterWeighted
 import com.asmr.player.ui.downloads.DownloadsScreen
 import com.asmr.player.ui.downloads.DownloadsViewModel
 import com.asmr.player.ui.downloads.DownloadItemState
@@ -117,8 +116,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.AsmrTheme
-import com.asmr.player.ui.common.PrewarmDominantColorCenterWeighted
-import com.asmr.player.ui.common.PrewarmVideoFrameDominantColorCenterWeighted
+import com.asmr.player.ui.theme.PrewarmDynamicHuePalette
+import com.asmr.player.ui.theme.PrewarmDynamicHuePaletteFromVideoFrame
 import androidx.compose.ui.draw.blur
 import android.os.Build
 import android.graphics.RenderEffect
@@ -267,17 +266,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            if (isVideo && artworkUri == null) {
-                PrewarmVideoFrameDominantColorCenterWeighted(
-                    videoUri = videoUri,
-                    defaultColor = neutral.background
-                )
-            } else {
-                PrewarmDominantColorCenterWeighted(
-                    model = artworkUri,
-                    defaultColor = neutral.background
-                )
-            }
             val staticHue: HuePalette? = remember(staticHueArgb, mode, neutral) {
                 staticHueArgb?.let { argb ->
                     deriveHuePalette(
@@ -299,6 +287,17 @@ class MainActivity : ComponentActivity() {
                     mode = mode,
                     neutral = neutral,
                     fallbackOnPrimary = if (mode.isDark) Color.White else Color.Black
+                )
+            }
+            if (isVideo && artworkUri == null) {
+                PrewarmDynamicHuePaletteFromVideoFrame(
+                    videoUri = videoUri,
+                    fallbackHue = baseStaticHue
+                )
+            } else {
+                PrewarmDynamicHuePalette(
+                    artworkModel = artworkUri,
+                    fallbackHue = baseStaticHue
                 )
             }
             val globalHue = if (globalDynamicHueEnabled) {

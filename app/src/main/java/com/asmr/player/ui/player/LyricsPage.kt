@@ -30,7 +30,6 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.ui.theme.AsmrTheme
-import com.asmr.player.ui.common.rememberDominantColorCenterWeighted
 
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
@@ -56,12 +55,14 @@ internal fun LyricsPage(
     val position = playback.positionMs
     val colorScheme = AsmrTheme.colorScheme
     val artwork = playback.currentMediaItem?.mediaMetadata?.artworkUri
-    val dominantColor by rememberDominantColorCenterWeighted(
-        model = artwork,
-        defaultColor = colorScheme.background
+    val playerThemeColors = rememberPlayerThemeColors(
+        mediaItem = playback.currentMediaItem,
+        colorScheme = colorScheme,
+        coverBackgroundEnabled = coverBackgroundEnabled
     )
     val lyricColors = rememberLyricReadableColors(
-        accentColor = dominantColor,
+        accentColor = playerThemeColors.accentColor,
+        backdropTintColor = playerThemeColors.backdropTintColor,
         coverBackgroundEnabled = coverBackgroundEnabled,
         coverBackgroundClarity = coverBackgroundClarity
     )
@@ -101,7 +102,7 @@ internal fun LyricsPage(
                 enabled = coverBackgroundEnabled,
                 clarity = coverBackgroundClarity,
                 overlayBaseColor = colorScheme.background,
-                tintBaseColor = dominantColor,
+                tintBaseColor = playerThemeColors.backdropTintColor,
                 artworkAlignment = artworkAlignment,
                 isDark = colorScheme.isDark
             )
