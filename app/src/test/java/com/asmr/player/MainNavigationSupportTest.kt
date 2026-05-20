@@ -20,6 +20,39 @@ class MainNavigationSupportTest {
     }
 
     @Test
+    fun computePrimaryNavSelectionProgresses_locksToPendingRouteDuringProgrammaticJump() {
+        val result = computePrimaryNavSelectionProgresses(
+            pagerRoutes = listOf("library", "search", "favorites", "downloads"),
+            currentPage = 1,
+            currentPageOffsetFraction = 0.4f,
+            fallbackRoute = "library",
+            lockedRoute = "downloads"
+        )
+
+        assertEquals(mapOf("downloads" to 1f), result)
+    }
+
+    @Test
+    fun resolvePrimaryNavVisualRoute_prefersPendingRouteWhenItIsPrimary() {
+        assertEquals(
+            "downloads",
+            resolvePrimaryNavVisualRoute(
+                activeRoute = "search",
+                pendingRoute = "downloads",
+                pagerRoutes = listOf("library", "search", "downloads")
+            )
+        )
+        assertEquals(
+            "search",
+            resolvePrimaryNavVisualRoute(
+                activeRoute = "search",
+                pendingRoute = "album_detail/1",
+                pagerRoutes = listOf("library", "search", "downloads")
+            )
+        )
+    }
+
+    @Test
     fun resolveCurrentPrimaryDestinationRoute_handlesFavoritesSystemPlaylist() {
         assertEquals(
             "playlist_system/favorites",

@@ -211,10 +211,16 @@ internal fun computePrimaryNavSelectionProgresses(
     pagerRoutes: List<String>,
     currentPage: Int,
     currentPageOffsetFraction: Float,
-    fallbackRoute: String
+    fallbackRoute: String,
+    lockedRoute: String? = null
 ): Map<String, Float> {
     if (pagerRoutes.isEmpty()) {
         return mapOf(fallbackRoute to 1f)
+    }
+
+    val resolvedLockedRoute = lockedRoute?.takeIf { it in pagerRoutes }
+    if (resolvedLockedRoute != null) {
+        return mapOf(resolvedLockedRoute to 1f)
     }
 
     val selectionProgresses = LinkedHashMap<String, Float>(pagerRoutes.size)
@@ -232,6 +238,14 @@ internal fun computePrimaryNavSelectionProgresses(
     }
 
     return selectionProgresses
+}
+
+internal fun resolvePrimaryNavVisualRoute(
+    activeRoute: String,
+    pendingRoute: String?,
+    pagerRoutes: List<String>
+): String {
+    return pendingRoute?.takeIf { it in pagerRoutes } ?: activeRoute
 }
 
 internal fun resolveCurrentPrimaryDestinationRoute(

@@ -24,6 +24,7 @@ import com.asmr.player.ui.theme.AsmrPlayerTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.abs
 
 private const val BOTTOM_CHROME_UNDERLAY_TAG = "bottomChromeUnderlay"
 private const val BOTTOM_CHROME_ROOT_TAG = "bottomChromeRoot"
@@ -193,5 +194,20 @@ class BottomChromeTest {
 
         assertEquals(Color.Transparent, inactive)
         assertEquals(activeContainer, active)
+    }
+
+    @Test
+    fun partialNavItemContainer_preservesScaledAlpha() {
+        val activeContainer = Color(0xCCF2D4C3)
+
+        val partial = resolveBottomNavItemContainerColor(
+            activeContainer = activeContainer,
+            selectedProgress = 0.5f
+        )
+
+        assertEquals(activeContainer.red, partial.red, 0.0001f)
+        assertEquals(activeContainer.green, partial.green, 0.0001f)
+        assertEquals(activeContainer.blue, partial.blue, 0.0001f)
+        assertTrue(abs(partial.alpha - (activeContainer.alpha * 0.5f)) <= 0.0001f)
     }
 }

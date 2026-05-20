@@ -40,8 +40,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
@@ -1277,7 +1276,6 @@ private fun BottomNavItemChip(
         activeContainer = activeContainer,
         selectedProgress = resolvedSelectedProgress
     )
-    val scale = 1f + (0.04f * resolvedSelectedProgress)
     val iconScale = 1f + (0.16f * resolvedSelectedProgress)
     val glowAlpha = resolvedSelectedProgress
     val glowSize by animateDpAsState(
@@ -1289,6 +1287,7 @@ private fun BottomNavItemChip(
         label = "bottomNavItemGlowSize"
     )
     val glowColor = colorScheme.primaryStrong.copy(alpha = if (colorScheme.isDark) 0.22f else 0.18f)
+    val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
@@ -1304,54 +1303,48 @@ private fun BottomNavItemChip(
                     .background(glowColor, CircleShape)
             )
         }
-        ElevatedCard(
-            onClick = onClick,
-            enabled = enabled,
+        Box(
             modifier = Modifier
                 .size(metrics.chipSize)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
-            shape = CircleShape,
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = containerColor,
-                contentColor = contentColor
-            ),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
+                .background(containerColor, CircleShape)
+                .clip(CircleShape)
+                // ElevatedCard's state layer can briefly show a polygonal highlight during
+                // selection transitions on some devices. Use a plain circular surface instead.
+                .clickable(
+                    enabled = enabled,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.size(metrics.chipSize),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = item,
-                    transitionSpec = {
-                        (fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
-                            scaleIn(
-                                initialScale = 0.82f,
-                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                            )) togetherWith
-                            (fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
-                                scaleOut(
-                                    targetScale = 1.08f,
-                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
-                                )) using SizeTransform(clip = false)
-                    },
-                    label = "bottomNavItemIcon"
-                ) { targetItem ->
-                    Icon(
-                        imageVector = targetItem.icon,
-                        contentDescription = targetItem.label,
-                        modifier = Modifier
-                            .size(metrics.iconSize)
-                            .graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                            },
-                        tint = contentColor
-                    )
-                }
+            AnimatedContent(
+                targetState = item,
+                transitionSpec = {
+                    (fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                        scaleIn(
+                            initialScale = 0.82f,
+                            animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                        )) togetherWith
+                        (fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+                            scaleOut(
+                                targetScale = 1.08f,
+                                animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                            )) using SizeTransform(clip = false)
+                },
+                label = "bottomNavItemIcon"
+            ) { targetItem ->
+                Icon(
+                    imageVector = targetItem.icon,
+                    contentDescription = targetItem.label,
+                    modifier = Modifier
+                        .size(metrics.iconSize)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        },
+                    tint = contentColor
+                )
             }
         }
     }
