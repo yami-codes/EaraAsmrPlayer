@@ -2,11 +2,9 @@ package com.asmr.player.ui.player
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import com.asmr.player.playback.PlaybackSnapshot
-import com.asmr.player.ui.common.rememberComputedDominantColorCenterWeighted
 import com.asmr.player.ui.theme.AsmrTheme
 
 @Composable
@@ -33,9 +31,12 @@ internal fun PlayerSharedBackdrop(
     val artworkModel = remember(metadata?.artworkUri) {
         sanitizeBackdropArtworkModel(metadata?.artworkUri)
     }
-    val dominantColorResult by rememberComputedDominantColorCenterWeighted(
-        model = artworkModel,
-        defaultColor = colorScheme.background
+    val playerThemeColors = rememberPlayerThemeColors(
+        mediaItem = item,
+        colorScheme = colorScheme,
+        coverBackgroundEnabled = enabled,
+        transitionDurationMs = 0,
+        cachedTransitionDurationMs = 0
     )
 
     CoverArtworkBackground(
@@ -43,7 +44,7 @@ internal fun PlayerSharedBackdrop(
         enabled = enabled,
         clarity = clarity,
         overlayBaseColor = colorScheme.background,
-        tintBaseColor = dominantColorResult.color ?: colorScheme.primarySoft,
+        tintBaseColor = playerThemeColors.backdropTintColor,
         artworkAlignment = artworkAlignment,
         isDark = colorScheme.isDark
     )

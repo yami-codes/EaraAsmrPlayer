@@ -51,7 +51,6 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -94,8 +93,6 @@ import com.asmr.player.playback.AppVolume
 import com.asmr.player.playback.PlaybackSnapshot
 import com.asmr.player.ui.common.EqualizerPanel
 import com.asmr.player.ui.common.rememberProtectedAppVolumeChangeState
-import com.asmr.player.ui.common.rememberComputedDominantColorCenterWeighted
-import com.asmr.player.ui.common.rememberComputedVideoFrameDominantColorCenterWeighted
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.smoothScrollToIndex
 import com.asmr.player.ui.library.TagAssignDialog
@@ -199,7 +196,6 @@ internal fun NowPlayingScreen(
     val artworkModel = remember(metadata?.artworkUri) {
         sanitizeBackdropArtworkModel(metadata?.artworkUri)
     }
-    val videoUri = item?.localConfiguration?.uri
     val mimeType = item?.localConfiguration?.mimeType.orEmpty()
     val ext = uriText.substringBefore('#').substringBefore('?').substringAfterLast('.', "").lowercase()
     val isVideo = metadata?.extras?.getBoolean("is_video") == true ||
@@ -210,35 +206,20 @@ internal fun NowPlayingScreen(
     val tagViewModel: NowPlayingTagViewModel = hiltViewModel()
     val tagDialog by tagViewModel.dialogState.collectAsState()
     val availableTags by tagViewModel.availableTags.collectAsState()
-    val dominantColorResult by if (isVideo) {
-        rememberComputedVideoFrameDominantColorCenterWeighted(videoUri = videoUri, defaultColor = colorScheme.background)
-    } else {
-        rememberComputedDominantColorCenterWeighted(model = artworkModel, defaultColor = colorScheme.background)
-    }
-    val targetAccentColor = if (coverBackgroundEnabled) {
-        dominantColorResult.color ?: colorScheme.primarySoft
-    } else {
-        colorScheme.primary
-    }
-    val accentColor by animateColorAsState(
-        targetValue = targetAccentColor,
-        animationSpec = tween(
-            durationMillis = if (dominantColorResult.fromCache) 260 else 1000,
-            easing = FastOutSlowInEasing
-        ),
-        label = "nowPlayingAccentColor"
+    val playerThemeColors = rememberPlayerThemeColors(
+        mediaItem = item,
+        colorScheme = colorScheme,
+        coverBackgroundEnabled = coverBackgroundEnabled
     )
+    val accentColor = playerThemeColors.accentColor
     val lyricColors = rememberLyricReadableColors(
         accentColor = accentColor,
+        backdropTintColor = playerThemeColors.backdropTintColor,
         coverBackgroundEnabled = coverBackgroundEnabled,
         coverBackgroundClarity = coverBackgroundClarity
     )
-    val onAccentColor = if (accentColor.luminance() > 0.55f) Color.Black else Color.White
-    val videoBackdropColor = if (isVideo) {
-        if (coverBackgroundEnabled) accentColor else colorScheme.background
-    } else {
-        Color.Transparent
-    }
+    val onAccentColor = playerThemeColors.onAccentColor
+    val videoBackdropColor = if (isVideo) playerThemeColors.videoBackdropColor else Color.Transparent
     val progressDurationMs = when {
         playback.durationMs > 0L && resolvedDurationMs > 0L -> maxOf(playback.durationMs, resolvedDurationMs)
         playback.durationMs > 0L -> playback.durationMs
@@ -456,7 +437,7 @@ internal fun NowPlayingScreen(
                 enabled = coverBackgroundEnabled,
                 clarity = coverBackgroundClarity,
                 overlayBaseColor = colorScheme.background,
-                tintBaseColor = accentColor,
+                tintBaseColor = playerThemeColors.backdropTintColor,
                 artworkAlignment = coverPreviewAlignment,
                 isDark = colorScheme.isDark
             )
@@ -596,7 +577,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -817,7 +798,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -1074,7 +1055,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
