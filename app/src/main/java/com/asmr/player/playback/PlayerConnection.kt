@@ -90,6 +90,7 @@ class PlayerConnection @Inject constructor(
     private val sliceLoopEngine = SliceLoopEngine()
     private val currentSlices = MutableStateFlow<List<Slice>>(emptyList())
     private var didRestorePlaybackState: Boolean = false
+    private var restoreAttemptResolved: Boolean = false
     private val meteredWarnedMediaIds = LinkedHashSet<String>()
     private var lastMeteredWarnAtMs: Long = 0L
     private val connectMutex = Mutex()
@@ -216,6 +217,7 @@ class PlayerConnection @Inject constructor(
                             this@PlayerConnection.controller = null
                             _snapshot.value = _snapshot.value.copy(
                                 isConnected = false,
+                                startupRestoreResolved = restoreAttemptResolved,
                                 isPlaying = false
                             )
                             _queue.value = emptyList()
@@ -242,7 +244,11 @@ class PlayerConnection @Inject constructor(
 
                     if (shouldUpdateSnapshot) {
                         val prev = _snapshot.value
-                        _snapshot.value = player.toSnapshot(isConnected = true, audioSessionId = prev.audioSessionId)
+                        _snapshot.value = player.toSnapshot(
+                            isConnected = true,
+                            audioSessionId = prev.audioSessionId,
+                            startupRestoreResolved = restoreAttemptResolved
+                        )
                     }
                     if (
                         events.contains(Player.EVENT_TIMELINE_CHANGED) ||
@@ -279,14 +285,24 @@ class PlayerConnection @Inject constructor(
                 }
             }
         )
-            _snapshot.value = c.toSnapshot(isConnected = true, audioSessionId = _snapshot.value.audioSessionId)
+            _snapshot.value = c.toSnapshot(
+                isConnected = true,
+                audioSessionId = _snapshot.value.audioSessionId,
+                startupRestoreResolved = restoreAttemptResolved
+            )
             updateQueue()
 
             val restored = restorePlaybackStateIfNeeded(c)
+            restoreAttemptResolved = true
             if (!restored) {
                 val mode = runCatching { settingsRepository.playMode.first() }.getOrDefault(0)
                 applyPlayModeToController(c, mode)
             }
+            _snapshot.value = c.toSnapshot(
+                isConnected = true,
+                audioSessionId = _snapshot.value.audioSessionId,
+                startupRestoreResolved = restoreAttemptResolved
+            )
         
             try {
                 val cmd = androidx.media3.session.SessionCommand("GET_AUDIO_SESSION_ID", android.os.Bundle.EMPTY)
@@ -345,7 +361,11 @@ class PlayerConnection @Inject constructor(
         c.playWhenReady = false
 
         _queue.value = items
-        _snapshot.value = c.toSnapshot(isConnected = true, audioSessionId = _snapshot.value.audioSessionId)
+        _snapshot.value = c.toSnapshot(
+            isConnected = true,
+            audioSessionId = _snapshot.value.audioSessionId,
+            startupRestoreResolved = restoreAttemptResolved
+        )
         return true
     }
 
@@ -691,9 +711,14 @@ private fun applyPlayModeToController(controller: MediaController, mode: Int) {
     }
 }
 
-private fun Player.toSnapshot(isConnected: Boolean, audioSessionId: Int): PlaybackSnapshot {
+private fun Player.toSnapshot(
+    isConnected: Boolean,
+    audioSessionId: Int,
+    startupRestoreResolved: Boolean
+): PlaybackSnapshot {
     return PlaybackSnapshot(
         isConnected = isConnected,
+        startupRestoreResolved = startupRestoreResolved,
         isPlaying = isPlaying,
         playbackState = playbackState,
         repeatMode = repeatMode,
