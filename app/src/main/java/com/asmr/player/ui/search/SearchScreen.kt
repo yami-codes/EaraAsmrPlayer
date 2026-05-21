@@ -147,10 +147,18 @@ fun SearchScreen(
 ) {
     var keyword by rememberSaveable { mutableStateOf("") }
     var purchasedOnly by rememberSaveable { mutableStateOf(false) }
+    var presaleOnly by rememberSaveable { mutableStateOf(false) }
     var selectedLocale by rememberSaveable { mutableStateOf("ja_JP") }
     var selectedOrderName by rememberSaveable { mutableStateOf(SearchSortOption.Trend.name) }
     val selectedOrder = remember(selectedOrderName) {
         SearchSortOption.values().firstOrNull { it.name == selectedOrderName } ?: SearchSortOption.Trend
+    }
+    val selectedFilter = remember(selectedOrderName, purchasedOnly, presaleOnly) {
+        SearchFilterOption.fromState(
+            order = selectedOrder,
+            purchasedOnly = purchasedOnly,
+            presaleOnly = presaleOnly
+        )
     }
     val viewMode by viewModel.viewMode.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -182,10 +190,11 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(success?.pendingRequest, success?.order, success?.purchasedOnly, success?.locale) {
+    LaunchedEffect(success?.pendingRequest, success?.order, success?.purchasedOnly, success?.presaleOnly, success?.locale) {
         val state = success ?: return@LaunchedEffect
         if (!optionsSyncedFromState || state.pendingRequest == null) {
             purchasedOnly = state.purchasedOnly
+            presaleOnly = state.presaleOnly
             selectedLocale = state.locale ?: "ja_JP"
             selectedOrderName = state.order.name
             optionsSyncedFromState = true
@@ -540,8 +549,7 @@ fun SearchScreen(
                         modifier = Modifier.align(Alignment.TopCenter),
                         keyword = keyword,
                         onKeywordChange = { keyword = it },
-                        selectedOrder = selectedOrder,
-                        purchasedOnly = purchasedOnly,
+                        selectedFilter = selectedFilter,
                         selectedLocale = selectedLocale,
                         filterControlsLocked = filterControlsLocked,
                         searchSubmitLocked = searchSubmitLocked,
@@ -556,31 +564,26 @@ fun SearchScreen(
                         collapseFraction = chromeState.collapseFraction,
                         onMeasured = { size: IntSize -> chromeState.updateHeight(size.height.toFloat()) },
                         onSearchSubmit = ::submitSearch,
-                        onPurchasedOnlySelected = {
+                        onFilterSelected = { option ->
+                            val nextOrder = option.sortOption ?: selectedOrder
                             val accepted = viewModel.updateSearchOptions(
-                                order = selectedOrder,
-                                purchasedOnly = true,
+                                order = nextOrder,
+                                purchasedOnly = option.isPurchasedOnly,
+                                presaleOnly = option.isPresaleOnly,
                                 locale = selectedLocale
                             )
                             if (accepted) {
-                                purchasedOnly = true
+                                selectedOrderName = nextOrder.name
+                                purchasedOnly = option.isPurchasedOnly
+                                presaleOnly = option.isPresaleOnly
                             }
-                        },
-                        onOrderSelected = { order ->
-                            selectedOrderName = order.name
-                            purchasedOnly = false
-                            viewModel.updateSearchOptions(
-                                order = order,
-                                purchasedOnly = false,
-                                locale = selectedLocale
-                            )
                         },
                         onLocaleSelected = { locale ->
                             selectedLocale = locale
-                            purchasedOnly = false
                             viewModel.updateSearchOptions(
                                 order = selectedOrder,
-                                purchasedOnly = false,
+                                purchasedOnly = purchasedOnly,
+                                presaleOnly = presaleOnly,
                                 locale = locale
                             )
                         },
@@ -658,8 +661,7 @@ internal fun SearchChrome(
     modifier: Modifier = Modifier,
     keyword: String,
     onKeywordChange: (String) -> Unit,
-    selectedOrder: SearchSortOption,
-    purchasedOnly: Boolean,
+    selectedFilter: SearchFilterOption,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
@@ -674,8 +676,7 @@ internal fun SearchChrome(
     collapseFraction: Float,
     onMeasured: (IntSize) -> Unit,
     onSearchSubmit: () -> Unit,
-    onPurchasedOnlySelected: () -> Unit,
-    onOrderSelected: (SearchSortOption) -> Unit,
+    onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit
@@ -693,15 +694,13 @@ internal fun SearchChrome(
         SearchToolbar(
             keyword = keyword,
             onKeywordChange = onKeywordChange,
-            selectedOrder = selectedOrder,
-            purchasedOnly = purchasedOnly,
+            selectedFilter = selectedFilter,
             selectedLocale = selectedLocale,
             filterControlsLocked = filterControlsLocked,
             searchSubmitLocked = searchSubmitLocked,
             showSearchSpinner = showSearchSpinner,
             onSearchSubmit = onSearchSubmit,
-            onPurchasedOnlySelected = onPurchasedOnlySelected,
-            onOrderSelected = onOrderSelected,
+            onFilterSelected = onFilterSelected,
             onLocaleSelected = onLocaleSelected,
             rightPanelToggle = rightPanelToggle
         )
@@ -722,15 +721,13 @@ internal fun SearchChrome(
 internal fun SearchToolbar(
     keyword: String,
     onKeywordChange: (String) -> Unit,
-    selectedOrder: SearchSortOption,
-    purchasedOnly: Boolean,
+    selectedFilter: SearchFilterOption,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
     showSearchSpinner: Boolean,
     onSearchSubmit: () -> Unit,
-    onPurchasedOnlySelected: () -> Unit,
-    onOrderSelected: (SearchSortOption) -> Unit,
+    onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
     rightPanelToggle: (@Composable (Modifier) -> Unit)? = null
 ) {
@@ -765,7 +762,7 @@ internal fun SearchToolbar(
                 .weight(1f)
                 .testTag(SEARCH_INPUT_TAG),
             leadingIcon = {
-                val label = if (purchasedOnly) "仅已购" else selectedOrder.label
+                val label = selectedFilter.label
                 Box {
                     TextButton(
                         onClick = { scopeMenuExpanded = true },
@@ -785,19 +782,7 @@ internal fun SearchToolbar(
                         onDismissRequest = { scopeMenuExpanded = false },
                         modifier = Modifier.background(dropdownContainerColor)
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("仅已购", color = colorScheme.textPrimary) },
-                            onClick = {
-                                scopeMenuExpanded = false
-                                onPurchasedOnlySelected()
-                            }
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            thickness = 0.5.dp,
-                            color = colorScheme.textSecondary.copy(alpha = 0.2f)
-                        )
-                        SearchSortOption.values().forEachIndexed { index, option ->
+                        SearchFilterOption.values().forEachIndexed { index, option ->
                             if (index > 0) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -806,10 +791,15 @@ internal fun SearchToolbar(
                                 )
                             }
                             DropdownMenuItem(
-                                text = { Text(option.label, color = colorScheme.textPrimary) },
+                                text = {
+                                    Text(
+                                        text = option.label,
+                                        color = if (option == selectedFilter) colorScheme.primary else colorScheme.textPrimary
+                                    )
+                                },
                                 onClick = {
                                     scopeMenuExpanded = false
-                                    onOrderSelected(option)
+                                    onFilterSelected(option)
                                 }
                             )
                         }
