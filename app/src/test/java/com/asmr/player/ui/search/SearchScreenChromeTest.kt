@@ -48,15 +48,13 @@ class SearchScreenChromeTest {
                 SearchToolbar(
                     keyword = keyword,
                     onKeywordChange = { keyword = it },
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
                     showSearchSpinner = false,
                     onSearchSubmit = { submitCount += 1 },
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {}
                 )
             }
@@ -82,15 +80,13 @@ class SearchScreenChromeTest {
                     SearchToolbar(
                         keyword = "test",
                         onKeywordChange = {},
-                        selectedOrder = SearchSortOption.Trend,
-                        purchasedOnly = false,
+                        selectedFilter = SearchFilterOption.Trend,
                         selectedLocale = "ja_JP",
                         filterControlsLocked = true,
                         searchSubmitLocked = true,
                         showSearchSpinner = true,
                         onSearchSubmit = {},
-                        onPurchasedOnlySelected = {},
-                        onOrderSelected = {},
+                        onFilterSelected = {},
                         onLocaleSelected = {}
                     )
                     SearchPaginationHeader(
@@ -122,15 +118,13 @@ class SearchScreenChromeTest {
                     SearchToolbar(
                         keyword = "test",
                         onKeywordChange = {},
-                        selectedOrder = SearchSortOption.Trend,
-                        purchasedOnly = false,
+                        selectedFilter = SearchFilterOption.Trend,
                         selectedLocale = "ja_JP",
                         filterControlsLocked = true,
                         searchSubmitLocked = true,
                         showSearchSpinner = false,
                         onSearchSubmit = {},
-                        onPurchasedOnlySelected = {},
-                        onOrderSelected = {},
+                        onFilterSelected = {},
                         onLocaleSelected = {}
                     )
                     SearchPaginationHeader(
@@ -227,15 +221,13 @@ class SearchScreenChromeTest {
                 SearchToolbar(
                     keyword = keyword,
                     onKeywordChange = { keyword = it },
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
                     showSearchSpinner = false,
                     onSearchSubmit = { submitCount += 1 },
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {}
                 )
             }
@@ -262,8 +254,7 @@ class SearchScreenChromeTest {
                     modifier = Modifier,
                     keyword = "RJ123456",
                     onKeywordChange = {},
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
@@ -278,8 +269,7 @@ class SearchScreenChromeTest {
                     collapseFraction = chromeState.collapseFraction,
                     onMeasured = { chromeState.updateHeight(it.height.toFloat()) },
                     onSearchSubmit = {},
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {},
                     onPrev = {},
                     onNext = {}

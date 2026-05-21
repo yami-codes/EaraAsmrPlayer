@@ -23,6 +23,67 @@ import kotlin.math.absoluteValue
 import javax.inject.Inject
 import javax.inject.Singleton
 
+internal fun languageSegmentForLocale(locale: String?): String {
+    val normalized = locale?.trim().orEmpty()
+    return when {
+        normalized.startsWith("zh_CN", ignoreCase = true) -> "cn"
+        normalized.startsWith("zh_TW", ignoreCase = true) -> "tw"
+        normalized.startsWith("ja", ignoreCase = true) -> "jp"
+        else -> "cn"
+    }
+}
+
+internal fun buildDlsiteSearchUrls(
+    keyword: String,
+    page: Int,
+    order: String,
+    locale: String? = null,
+    presaleOnly: Boolean = false
+): List<String> {
+    val normalizedKeyword = keyword.trim()
+    val encodedKeyword = URLEncoder.encode(normalizedKeyword, "UTF-8")
+    val normalizedOrder = order.trim().ifBlank { "trend" }
+    val encodedOrder = URLEncoder.encode(normalizedOrder, "UTF-8")
+    val safePage = page.coerceAtLeast(1)
+
+    if (presaleOnly) {
+        val primaryBase =
+            "https://www.dlsite.com/maniax/fsr/=/ana_flg/on/order/$encodedOrder/work_type_category%5B0%5D/audio"
+        val primary = if (normalizedKeyword.isBlank()) {
+            "$primaryBase/page/$safePage"
+        } else {
+            "$primaryBase/keyword/$encodedKeyword/page/$safePage"
+        }
+
+        val language = languageSegmentForLocale(locale)
+        val fallbackBase =
+            "https://www.dlsite.com/maniax/fsr/=/language/$language/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/" +
+                "ana_flg/on/order%5B0%5D/$encodedOrder/work_type_category%5B0%5D/audio/per_page/30/show_type/3"
+        val fallback = if (normalizedKeyword.isBlank()) {
+            "$fallbackBase/page/$safePage"
+        } else {
+            "$fallbackBase/keyword/$encodedKeyword/page/$safePage"
+        }
+        return listOf(primary, fallback).distinct()
+    }
+
+    val language = languageSegmentForLocale(locale)
+    val modernBase =
+        "https://www.dlsite.com/maniax/fsr/=/language/$language/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/" +
+            "order%5B0%5D/$encodedOrder/work_type_category%5B0%5D/audio/per_page/30/show_type/3/from/fsr.again"
+    val modern = if (normalizedKeyword.isBlank()) {
+        "$modernBase/page/$safePage"
+    } else {
+        "$modernBase/keyword/$encodedKeyword/page/$safePage"
+    }
+    val legacy = if (normalizedKeyword.isBlank()) {
+        "https://www.dlsite.com/maniax/fsr/=/language/$language/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/page/$safePage/without_order/1/order/$encodedOrder"
+    } else {
+        "https://www.dlsite.com/maniax/fsr/=/language/$language/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/keyword/$encodedKeyword/page/$safePage/without_order/1/order/$encodedOrder"
+    }
+    return listOf(modern, legacy)
+}
+
 data class DlsiteWorkInfo(
     val album: Album,
     val galleryUrls: List<String>,
@@ -46,9 +107,8 @@ data class DlsiteRecommendations(
 class DLSiteScraper @Inject constructor(
     @ApplicationContext context: Context
 ) {
-    private val searchBaseUrlLegacy =
-        "https://www.dlsite.com/maniax/fsr/=/language/cn/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/keyword/"
     private val workBaseUrl = "https://www.dlsite.com/maniax/work/=/product_id/"
+    private val announceBaseUrl = "https://www.dlsite.com/maniax/announce/=/product_id/"
     
     private val authStore = DlsiteAuthStore(context)
     private val gson = Gson()
@@ -94,18 +154,22 @@ class DLSiteScraper @Inject constructor(
             .timeout(10000)
     }
 
-    private fun languageSegmentForLocale(locale: String?): String {
-        val l = locale?.trim().orEmpty()
-        return when {
-            l.startsWith("zh_CN", ignoreCase = true) -> "cn"
-            l.startsWith("zh_TW", ignoreCase = true) -> "tw"
-            l.startsWith("ja", ignoreCase = true) -> "jp"
-            else -> "cn"
-        }
-    }
-
     private fun parseRecommendHtml(doc: Document): List<DlsiteRecommendedWork> {
         return DlsiteRecommendHtmlParser.parse(doc)
+    }
+
+    private suspend fun fetchWorkDocument(workId: String, locale: String? = null): Document? {
+        val clean = workId.trim().uppercase()
+        if (clean.isBlank()) return null
+        val candidates = listOf(
+            "$workBaseUrl$clean.html",
+            "$announceBaseUrl$clean.html"
+        )
+        for (url in candidates) {
+            val doc = runCatching { runInterruptible { connect(url, locale = locale).get() } }.getOrNull() ?: continue
+            if (doc.selectFirst("#work_name") != null) return doc
+        }
+        return null
     }
 
     suspend fun getRecommendationsDetailV2(workId: String, locale: String? = null): DlsiteRecommendations =
@@ -201,44 +265,15 @@ class DLSiteScraper @Inject constructor(
         return embedUrl
     }
 
-    suspend fun search(keyword: String, page: Int = 1, order: String = "trend", locale: String? = null): List<Album> = withContext(Dispatchers.IO) {
-        val normalizedKeyword = keyword.trim()
-        val encodedKeyword = URLEncoder.encode(normalizedKeyword, "UTF-8")
-        val normalizedOrder = order.trim().ifBlank { "trend" }
-        fun buildUrls(): List<String> {
-            val p = page.coerceAtLeast(1)
-            val kw = encodedKeyword
-            val o = URLEncoder.encode(normalizedOrder, "UTF-8")
-            val lang = languageSegmentForLocale(locale)
-            val modernBase =
-                "https://www.dlsite.com/maniax/fsr/=/language/$lang/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/" +
-                    "order%5B0%5D/$o/work_type_category%5B0%5D/audio/per_page/30/show_type/3/from/fsr.again"
-            val modern = if (normalizedKeyword.isBlank()) {
-                "$modernBase/page/$p"
-            } else {
-                "$modernBase/keyword/$kw/page/$p"
-            }
-            val legacy = if (normalizedKeyword.isBlank()) {
-                "https://www.dlsite.com/maniax/fsr/=/language/$lang/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/page/$p/without_order/1/order/$o"
-            } else {
-                "https://www.dlsite.com/maniax/fsr/=/language/$lang/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/keyword/$kw/page/$p/without_order/1/order/$o"
-            }
-            return listOf(modern, legacy)
-        }
-
-        fun parseDoc(doc: Document): List<Album> {
+    suspend fun search(
+        keyword: String,
+        page: Int = 1,
+        order: String = "trend",
+        locale: String? = null,
+        presaleOnly: Boolean = false
+    ): List<Album> = withContext(Dispatchers.IO) {
+        fun parseItems(items: List<Element>, doc: Document): List<Album> {
             val results = mutableListOf<Album>()
-
-            val container = doc.selectFirst("#search_result_list.loading_display_open")
-                ?: doc.select("#search_result_list").lastOrNull()
-
-            var items = container?.select("table tr")?.toList().orEmpty().filter { it.select("th").isEmpty() }
-            if (items.isEmpty()) {
-                items = container?.select("li")?.toList().orEmpty()
-            }
-            if (items.isEmpty()) {
-                items = doc.select("#search_result_img_box li").toList()
-            }
 
             for (item in items) {
                 val titleTag = item.selectFirst(".work_name a") ?: continue
@@ -259,8 +294,21 @@ class DLSiteScraper @Inject constructor(
                     return first.split(Regex("\\s+")).firstOrNull().orEmpty().trim()
                 }
 
+                fun extractVueBoundImageSrc(expr: String): String {
+                    val trimmed = expr.trim()
+                    if (trimmed.isEmpty()) return ""
+                    val direct = Regex("""['\"](//[^'\"]+|https?://[^'\"]+|/[^'\"]+)['\"]""")
+                        .findAll(trimmed)
+                        .map { it.groupValues.getOrNull(1).orEmpty().trim() }
+                        .firstOrNull { candidate ->
+                            candidate.isNotBlank() && !candidate.startsWith("data:", ignoreCase = true)
+                        }
+                    return direct.orEmpty()
+                }
+
                 fun pickBestImageUrl(img: Element): String {
                     val candidates = sequenceOf(
+                        extractVueBoundImageSrc(img.attr(":src")),
                         img.attr("data-src"),
                         img.attr("data-original"),
                         img.attr("data-lazy"),
@@ -309,10 +357,36 @@ class DLSiteScraper @Inject constructor(
                     )
                 )
             }
+
             return results
         }
 
-        val urls = buildUrls()
+        fun parseDoc(doc: Document): List<Album> {
+            val container = doc.selectFirst("#search_result_list.loading_display_open")
+                ?: doc.select("#search_result_list").lastOrNull()
+
+            val candidates = listOf(
+                container?.select("li")?.toList().orEmpty(),
+                doc.select("#search_result_img_box li").toList(),
+                container?.select("table tr")?.toList().orEmpty().filter { it.select("th").isEmpty() }
+            )
+
+            for (items in candidates) {
+                if (items.isEmpty()) continue
+                val parsed = parseItems(items, doc)
+                if (parsed.isNotEmpty()) return parsed
+            }
+
+            return emptyList()
+        }
+
+        val urls = buildDlsiteSearchUrls(
+            keyword = keyword,
+            page = page,
+            order = order,
+            locale = locale,
+            presaleOnly = presaleOnly
+        )
         var lastEmpty: List<Album> = emptyList()
         for (u in urls) {
             Log.d("DLSiteScraper", "Searching URL: $u")
@@ -333,8 +407,7 @@ class DLSiteScraper @Inject constructor(
     }
 
     suspend fun getWorkInfo(workId: String, locale: String? = null): DlsiteWorkInfo? = withContext(Dispatchers.IO) {
-        val url = "$workBaseUrl$workId.html"
-        val doc = runCatching { runInterruptible { connect(url, locale = locale).get() } }.getOrNull() ?: return@withContext null
+        val doc = fetchWorkDocument(workId, locale = locale) ?: return@withContext null
 
         val title = doc.selectFirst("#work_name")?.text()?.trim() ?: return@withContext null
         val circle = doc.selectFirst(".maker_name a")?.text()?.trim() ?: ""
@@ -483,8 +556,7 @@ class DLSiteScraper @Inject constructor(
         }
 
         suspend fun internal(workId0: String, allowFallback: Boolean): List<Track> {
-            val url = "$workBaseUrl$workId0.html"
-            val doc = runInterruptible { connect(url, locale = locale).get() }
+            val doc = fetchWorkDocument(workId0, locale = locale) ?: return emptyList()
             val tracks = mutableListOf<Track>()
 
             tracks.addAll(parseTrackListFromDoc(doc))
