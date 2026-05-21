@@ -27,6 +27,31 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
+internal fun dynamicHueCacheKeyForArtwork(
+    artworkModel: Any?,
+    centerRegionRatio: Float = 0.62f
+): String? {
+    val baseKey = artworkModel?.toString().orEmpty().trim()
+    if (baseKey.isBlank()) return null
+    val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
+    return "hue:cw:$regionKey:$baseKey"
+}
+
+internal fun dynamicHueCacheKeyForVideo(
+    videoUri: Uri?,
+    centerRegionRatio: Float = 0.62f
+): String? {
+    val baseKey = videoUri?.toString().orEmpty().trim()
+    if (baseKey.isBlank()) return null
+    val regionKey = (centerRegionRatio * 100).toInt().coerceIn(10, 100)
+    return "hue:vf:cw:$regionKey:$baseKey"
+}
+
+internal fun peekDynamicHueSeedColor(cacheKey: String?): Color? {
+    val key = cacheKey?.trim().takeUnless { it.isNullOrBlank() } ?: return null
+    return DynamicHueCache.get(key)
+}
+
 @Composable
 fun PrewarmDynamicHuePalette(
     artworkModel: Any?,

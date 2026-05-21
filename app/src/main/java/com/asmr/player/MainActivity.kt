@@ -40,6 +40,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -148,6 +149,7 @@ import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
 
 import com.asmr.player.data.local.datastore.SettingsDataStore
+import com.asmr.player.data.local.datastore.ThemeBootstrapPreferences
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.util.MessageManager
@@ -165,6 +167,9 @@ import com.asmr.player.ui.theme.neutralPaletteForMode
 import com.asmr.player.ui.theme.rememberDynamicHuePalette
 import com.asmr.player.ui.theme.rememberDynamicHuePaletteFromVideoFrame
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.ui.theme.dynamicHueCacheKeyForArtwork
+import com.asmr.player.ui.theme.dynamicHueCacheKeyForVideo
+import com.asmr.player.ui.theme.peekDynamicHueSeedColor
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
@@ -179,6 +184,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
@@ -210,12 +216,17 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    private lateinit var initialThemeBootstrapPreferences: ThemeBootstrapPreferences
+
     private val volumeKeyEventTick = MutableStateFlow(0L)
     private var volumeKeyEventSeq = 0L
 
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        initialThemeBootstrapPreferences = runBlocking {
+            settingsDataStore.loadThemeBootstrapPreferences()
+        }
         val recentAlbumsPanelExpandedInitial = false
         val startRouteFromIntent = intent.getStringExtra("start_route")
         setContent {
@@ -224,25 +235,32 @@ class MainActivity : ComponentActivity() {
             val playerViewModel: PlayerViewModel = hiltViewModel()
             val libraryViewModel: LibraryViewModel = hiltViewModel()
             val volumeKeyTick by volumeKeyEventTick.asStateFlow().collectAsState()
+            var themeBootstrap by remember {
+                mutableStateOf(initialThemeBootstrapPreferences)
+            }
+            LaunchedEffect(settingsDataStore) {
+                settingsDataStore.themeBootstrapPreferences.collect { value ->
+                    themeBootstrap = value
+                }
+            }
             val themeMediaSource by remember(playerViewModel) {
                 playerViewModel.playback
                     .map { it.currentMediaItem.toThemeMediaSource() }
                     .distinctUntilChanged()
             }.collectAsState(initial = ThemeMediaSource())
+            val playbackSnapshot by playerViewModel.playback.collectAsState()
             val systemDark = isSystemInDarkTheme()
-            val themePref by settingsDataStore.theme.collectAsState(initial = "system")
-            val mode = when (themePref.lowercase()) {
-                "light" -> ThemeMode.Light
-                "soft_dark" -> ThemeMode.SoftDark
-                "dark" -> ThemeMode.Dark
-                "system" -> if (systemDark) ThemeMode.Dark else ThemeMode.Light
-                else -> if (systemDark) ThemeMode.Dark else ThemeMode.Light
-            }
+            val themePref = themeBootstrap.theme
+            val mode = resolveThemeMode(themePref = themePref, systemDark = systemDark)
             val artworkUri = themeMediaSource.artworkUri
             val videoUri = themeMediaSource.videoUri
             val isVideo = themeMediaSource.isVideo
-            val globalDynamicHueEnabled by settingsDataStore.dynamicPlayerHueEnabled.collectAsState(initial = false)
-            val staticHueArgb by settingsDataStore.staticHueArgb.collectAsState(initial = null)
+            val globalDynamicHueEnabled = themeBootstrap.dynamicPlayerHueEnabled
+            val staticHueArgb = resolveStaticHueArgb(
+                themePref = themePref,
+                staticHueArgbLight = themeBootstrap.staticHueArgbLight,
+                staticHueArgbDark = themeBootstrap.staticHueArgbDark
+            )
             val coverBackgroundEnabled by settingsDataStore.coverBackgroundEnabled.collectAsState(initial = true)
             val coverBackgroundClarity by settingsDataStore.coverBackgroundClarity.collectAsState(initial = 0.35f)
             val coverPreviewMode by settingsDataStore.coverPreviewMode.collectAsState(initial = CoverPreviewMode.Disabled)
@@ -281,6 +299,34 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            val activeSourceKey = remember(themeMediaSource) {
+                themeMediaSource.dynamicThemeSourceKey()
+            }
+            val bootstrapDynamicHueSeedArgb = remember(
+                globalDynamicHueEnabled,
+                playbackSnapshot.startupRestoreResolved,
+                activeSourceKey,
+                themeBootstrap.lastDynamicHueSourceKey,
+                themeBootstrap.lastDynamicHueSeedArgb
+            ) {
+                resolveBootstrapDynamicHueSeedArgb(
+                    dynamicHueEnabled = globalDynamicHueEnabled,
+                    playbackRestoreResolved = playbackSnapshot.startupRestoreResolved,
+                    currentSourceKey = activeSourceKey,
+                    persistedSourceKey = themeBootstrap.lastDynamicHueSourceKey,
+                    persistedSeedArgb = themeBootstrap.lastDynamicHueSeedArgb
+                )
+            }
+            val bootstrapDynamicHue: HuePalette? = remember(bootstrapDynamicHueSeedArgb, mode, neutral) {
+                bootstrapDynamicHueSeedArgb?.let { argb ->
+                    deriveHuePalette(
+                        primary = Color(argb),
+                        mode = mode,
+                        neutral = neutral,
+                        fallbackOnPrimary = if (mode.isDark) Color.White else Color.Black
+                    )
+                }
+            }
             val baseStaticHue = remember(mode, neutral, staticHue) {
                 staticHue ?: deriveHuePalette(
                     primary = if (mode.isDark) DefaultBrandPrimaryDark else DefaultBrandPrimaryLight,
@@ -289,15 +335,18 @@ class MainActivity : ComponentActivity() {
                     fallbackOnPrimary = if (mode.isDark) Color.White else Color.Black
                 )
             }
+            val dynamicFallbackHue = remember(baseStaticHue, bootstrapDynamicHue) {
+                bootstrapDynamicHue ?: baseStaticHue
+            }
             if (isVideo && artworkUri == null) {
                 PrewarmDynamicHuePaletteFromVideoFrame(
                     videoUri = videoUri,
-                    fallbackHue = baseStaticHue
+                    fallbackHue = dynamicFallbackHue
                 )
             } else {
                 PrewarmDynamicHuePalette(
                     artworkModel = artworkUri,
-                    fallbackHue = baseStaticHue
+                    fallbackHue = dynamicFallbackHue
                 )
             }
             val globalHue = if (globalDynamicHueEnabled) {
@@ -306,7 +355,7 @@ class MainActivity : ComponentActivity() {
                         videoUri = videoUri,
                         mode = mode,
                         neutral = neutral,
-                        fallbackHue = baseStaticHue,
+                        fallbackHue = dynamicFallbackHue,
                         transitionDurationMs = 0,
                         cachedTransitionDurationMs = 0
                     )
@@ -315,13 +364,57 @@ class MainActivity : ComponentActivity() {
                         artworkModel = artworkUri,
                         mode = mode,
                         neutral = neutral,
-                        fallbackHue = baseStaticHue,
+                        fallbackHue = dynamicFallbackHue,
                         transitionDurationMs = 0,
                         cachedTransitionDurationMs = 0
                     )
                 }
                 state.value
             } else baseStaticHue
+
+            val dynamicHueCacheKey = remember(isVideo, artworkUri, videoUri) {
+                if (isVideo && artworkUri == null) {
+                    dynamicHueCacheKeyForVideo(videoUri)
+                } else {
+                    dynamicHueCacheKeyForArtwork(artworkUri)
+                }
+            }
+            val persistableDynamicHueSeedArgb = remember(globalDynamicHueEnabled, dynamicHueCacheKey, globalHue) {
+                if (!globalDynamicHueEnabled) {
+                    null
+                } else {
+                    peekDynamicHueSeedColor(dynamicHueCacheKey)?.toArgb()
+                }
+            }
+
+            LaunchedEffect(globalDynamicHueEnabled, activeSourceKey, persistableDynamicHueSeedArgb) {
+                if (globalDynamicHueEnabled && activeSourceKey != null && persistableDynamicHueSeedArgb != null) {
+                    settingsDataStore.setLastDynamicHueSeed(
+                        sourceKey = activeSourceKey,
+                        argb = persistableDynamicHueSeedArgb
+                    )
+                }
+            }
+
+            LaunchedEffect(
+                globalDynamicHueEnabled,
+                playbackSnapshot.startupRestoreResolved,
+                activeSourceKey,
+                themeBootstrap.lastDynamicHueSourceKey,
+                themeBootstrap.lastDynamicHueSeedArgb
+            ) {
+                if (
+                    shouldClearPersistedDynamicHueSeed(
+                        dynamicHueEnabled = globalDynamicHueEnabled,
+                        playbackRestoreResolved = playbackSnapshot.startupRestoreResolved,
+                        currentSourceKey = activeSourceKey,
+                        persistedSourceKey = themeBootstrap.lastDynamicHueSourceKey,
+                        persistedSeedArgb = themeBootstrap.lastDynamicHueSeedArgb
+                    )
+                ) {
+                    settingsDataStore.clearLastDynamicHueSeed()
+                }
+            }
 
             var overlaySheet by remember { mutableStateOf<OverlaySheet?>(null) }
 
