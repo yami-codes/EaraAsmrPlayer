@@ -690,12 +690,14 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     dlsiteInfo: Album?,
     galleryUrls: List<String>,
     trialTracks: List<Track>,
+    trialDownloadEnabled: Boolean,
     isLoading: Boolean,
     asmrOneTree: List<AsmrOneTrackNodeResponse>,
     isLoadingAsmrOne: Boolean,
     isLoadingTrial: Boolean,
     onRefreshAsmrOne: () -> Unit,
     onRefreshTrial: () -> Unit,
+    onDownloadTrial: () -> Unit,
     onPlayTracks: (Album, List<Track>, Track) -> Unit,
     onPlayMediaItems: (List<MediaItem>, Int) -> Unit,
     onAddToQueue: (Track) -> Boolean,
@@ -1057,6 +1059,9 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshTrial, enabled = !isLoading && !isLoadingTrial) {
                     Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                }
+                IconButton(onClick = onDownloadTrial, enabled = trialDownloadEnabled) {
+                    Icon(Icons.Default.Download, contentDescription = "下载")
                 }
             }
         }

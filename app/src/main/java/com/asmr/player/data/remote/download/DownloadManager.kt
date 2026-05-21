@@ -1042,14 +1042,6 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         emptyList()
     }
     val prefix = dir.absolutePath.trimEnd('\\', '/') + File.separator
-    val existingLocalTargetsByKey = LinkedHashMap<String, TrackEntity>()
-    val existingLocalTargetsByKeyNoGroup = LinkedHashMap<String, TrackEntity>()
-    existingTracks
-        .filter { it.path.isNotBlank() && !it.path.startsWith(prefix) && !it.path.trim().startsWith("http", ignoreCase = true) }
-        .forEach { t ->
-            existingLocalTargetsByKey.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t)
-            existingLocalTargetsByKeyNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t)
-        }
     val toDelete = existingTracks.filter { it.path.startsWith(dir.absolutePath) }.map { it.id }
     if (toDelete.isNotEmpty()) {
         runCatching { trackDao.deleteSubtitlesForTracks(toDelete) }
@@ -1058,30 +1050,7 @@ private suspend fun upsertDownloadedAlbumToLibrary(
 
     val filteredAudioFiles = ArrayList<File>(audioFiles.size)
     audioFiles.forEach { f ->
-        val group = if (f.parentFile != null && f.parentFile?.absolutePath != dir.absolutePath) f.parentFile?.name.orEmpty() else ""
-        val key = TrackKeyNormalizer.buildKey(f.nameWithoutExtension.ifBlank { "track" }, group, null)
-        val keyNoGroup = TrackKeyNormalizer.buildKey(f.nameWithoutExtension.ifBlank { "track" }, "", null)
-        val duplicateLocalTrack = existingLocalTargetsByKey[key] ?: existingLocalTargetsByKeyNoGroup[keyNoGroup]
-        if (duplicateLocalTrack != null) {
-            val entries = parseBestSubtitle(f)
-            if (entries.isNotEmpty()) {
-                runCatching { trackDao.deleteSubtitlesForTrack(duplicateLocalTrack.id) }
-                runCatching {
-                    trackDao.insertSubtitles(
-                        entries.map { e ->
-                            SubtitleEntity(
-                                trackId = duplicateLocalTrack.id,
-                                startMs = e.startMs,
-                                endMs = e.endMs,
-                                text = e.text
-                            )
-                        }
-                    )
-                }
-            }
-        } else {
-            filteredAudioFiles += f
-        }
+        filteredAudioFiles += f
     }
 
     val newTracks = filteredAudioFiles.map { f ->
