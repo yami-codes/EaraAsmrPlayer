@@ -258,6 +258,8 @@ internal data class AsmrOneLeafDownload(
     val duration: Double?
 )
 
+internal const val DlsiteTrialDownloadDirectoryName = "体验版"
+
 internal fun flattenAsmrOneTracks(tree: List<AsmrOneTrackNodeResponse>): List<Track> {
     val leaves = flattenAsmrOneLeafDownloads(tree)
     return leaves.map {
@@ -267,6 +269,86 @@ internal fun flattenAsmrOneTracks(tree: List<AsmrOneTrackNodeResponse>): List<Tr
             path = it.url,
             duration = it.duration ?: 0.0
         )
+    }
+}
+
+internal fun filterDownloadableMediaTree(tree: List<AsmrOneTrackNodeResponse>): List<AsmrOneTrackNodeResponse> {
+    return tree.mapNotNull { node ->
+        val filteredChildren = filterDownloadableMediaTree(node.children.orEmpty())
+        val url = (node.mediaDownloadUrl ?: node.streamUrl).orEmpty().trim()
+        when {
+            filteredChildren.isNotEmpty() -> node.copy(children = filteredChildren)
+            url.isBlank() -> null
+            else -> when (treeFileTypeForNode(node.title.orEmpty(), url)) {
+                TreeFileType.Audio,
+                TreeFileType.Video -> node.copy(children = null)
+                else -> null
+            }
+        }
+    }
+}
+
+internal fun buildDlsiteTrialDownloadTree(trialTracks: List<Track>): List<AsmrOneTrackNodeResponse> {
+    var mediaIndex = 1
+    return trialTracks.mapNotNull { track ->
+        val url = track.path.trim()
+        if (!url.startsWith("http", ignoreCase = true)) return@mapNotNull null
+
+        val mediaType = inferDlsiteTrialMediaType(track.title, url) ?: return@mapNotNull null
+        val ext = inferDlsiteTrialDownloadExtension(url, mediaType) ?: return@mapNotNull null
+        val fallbackTitle = if (mediaType == TreeFileType.Video) "体验视频" else "体验音频"
+        val safeTitle = sanitizeDlsiteTrialFileBaseName(track.title, fallbackTitle)
+        val fileName = "${mediaIndex.toString().padStart(2, '0')}_$safeTitle.$ext"
+        mediaIndex += 1
+
+        AsmrOneTrackNodeResponse(
+            title = fileName,
+            mediaDownloadUrl = url
+        )
+    }
+}
+
+private fun inferDlsiteTrialMediaType(title: String, url: String): TreeFileType? {
+    val normalizedUrl = url.trim()
+    val normalizedTitle = title.trim()
+    if (normalizedTitle.contains("ZIP", ignoreCase = true)) return null
+    if (normalizedUrl.contains("trial_download", ignoreCase = true)) return null
+    if (isVideoPreviewUrl(normalizedUrl)) return TreeFileType.Video
+
+    return when (treeFileTypeForNode(normalizedTitle, normalizedUrl)) {
+        TreeFileType.Audio -> TreeFileType.Audio
+        TreeFileType.Video -> TreeFileType.Video
+        else -> if (normalizedUrl.startsWith("http", ignoreCase = true)) TreeFileType.Audio else null
+    }
+}
+
+private fun sanitizeDlsiteTrialFileBaseName(title: String, fallback: String): String {
+    return title.trim()
+        .substringBeforeLast('.')
+        .ifBlank { fallback }
+        .replace(Regex("""[\\/:*?\"<>|]"""), "_")
+}
+
+private fun inferDlsiteTrialDownloadExtension(url: String, mediaType: TreeFileType): String? {
+    val ext = url
+        .substringBefore('#')
+        .substringBefore('?')
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .substringAfterLast('.', "")
+        .lowercase()
+
+    if (ext.isNotBlank()) {
+        return when (treeFileTypeForName("sample.$ext")) {
+            mediaType -> ext
+            else -> null
+        }
+    }
+
+    return when (mediaType) {
+        TreeFileType.Audio -> "mp3"
+        TreeFileType.Video -> "mp4"
+        else -> null
     }
 }
 

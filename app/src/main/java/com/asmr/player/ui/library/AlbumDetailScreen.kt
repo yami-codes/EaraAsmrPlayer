@@ -147,7 +147,8 @@ private enum class AlbumPrimaryAction {
 
 private enum class OnlineDownloadSource {
     AsmrOne,
-    DlsitePlay
+    DlsitePlay,
+    DlsiteTrial
 }
 
 internal data class PreparedTrackPlayback(
@@ -278,6 +279,9 @@ fun AlbumDetailScreen(
                     val model = state.model
                     val album = model.displayAlbum
                     val asmrOneTree = model.asmrOneTree
+                    val trialDownloadTree = remember(model.dlsiteTrialTracks) {
+                        buildDlsiteTrialDownloadTree(model.dlsiteTrialTracks)
+                    }
                     val shouldPlayInitialAnimations = !initialIntroSettled && !userSelectedTab
                     val shouldAnimateHeaderIntro = !userSelectedTab
                     val availableTags by viewModel.availableTags.collectAsState()
@@ -496,12 +500,17 @@ fun AlbumDetailScreen(
                                         dlsiteInfo = model.dlsiteInfo,
                                         galleryUrls = model.dlsiteGalleryUrls,
                                         trialTracks = model.dlsiteTrialTracks,
+                                        trialDownloadEnabled = trialDownloadTree.isNotEmpty(),
                                         isLoading = model.isLoadingDlsite,
                                         asmrOneTree = asmrOneTree,
                                         isLoadingAsmrOne = model.isLoadingAsmrOne,
                                         isLoadingTrial = model.isLoadingDlsiteTrial,
                                         onRefreshAsmrOne = { viewModel.refreshAsmrOneSection() },
                                         onRefreshTrial = { viewModel.refreshDlsiteTrialSection() },
+                                        onDownloadTrial = {
+                                            downloadSource = OnlineDownloadSource.DlsiteTrial
+                                            showAsmrDownloadDialog = true
+                                        },
                                         onPlayTracks = onPlayTracks,
                                         onPlayMediaItems = onPlayMediaItems,
                                         onAddToQueue = { track ->
@@ -605,10 +614,10 @@ fun AlbumDetailScreen(
 
                 val canSaveOnline = selectedTab == 1 && asmrOneTree.isNotEmpty()
                 if (showAsmrDownloadDialog) {
-                    val downloadTree = if (downloadSource == OnlineDownloadSource.DlsitePlay) {
-                        model.dlsitePlayTree
-                    } else {
-                        asmrOneTree
+                    val downloadTree = when (downloadSource) {
+                        OnlineDownloadSource.AsmrOne -> asmrOneTree
+                        OnlineDownloadSource.DlsitePlay -> model.dlsitePlayTree
+                        OnlineDownloadSource.DlsiteTrial -> trialDownloadTree
                     }
                     AsmrOneDownloadDialog(
                         albumTitle = album.title,
@@ -618,6 +627,7 @@ fun AlbumDetailScreen(
                             when (downloadSource) {
                                 OnlineDownloadSource.AsmrOne -> viewModel.downloadAsmrOneSelected(selected)
                                 OnlineDownloadSource.DlsitePlay -> viewModel.downloadDlsitePlaySelected(selected)
+                                OnlineDownloadSource.DlsiteTrial -> viewModel.downloadDlsiteTrialSelected(selected)
                             }
                             showAsmrDownloadDialog = false
                         }
