@@ -148,16 +148,18 @@ fun SearchScreen(
     var keyword by rememberSaveable { mutableStateOf("") }
     var purchasedOnly by rememberSaveable { mutableStateOf(false) }
     var presaleOnly by rememberSaveable { mutableStateOf(false) }
+    var chineseTranslatedOnly by rememberSaveable { mutableStateOf(false) }
     var selectedLocale by rememberSaveable { mutableStateOf("ja_JP") }
     var selectedOrderName by rememberSaveable { mutableStateOf(SearchSortOption.Trend.name) }
     val selectedOrder = remember(selectedOrderName) {
         SearchSortOption.values().firstOrNull { it.name == selectedOrderName } ?: SearchSortOption.Trend
     }
-    val selectedFilter = remember(selectedOrderName, purchasedOnly, presaleOnly) {
+    val selectedFilter = remember(selectedOrderName, purchasedOnly, presaleOnly, chineseTranslatedOnly) {
         SearchFilterOption.fromState(
             order = selectedOrder,
             purchasedOnly = purchasedOnly,
-            presaleOnly = presaleOnly
+            presaleOnly = presaleOnly,
+            chineseTranslatedOnly = chineseTranslatedOnly
         )
     }
     val viewMode by viewModel.viewMode.collectAsState()
@@ -190,11 +192,19 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(success?.pendingRequest, success?.order, success?.purchasedOnly, success?.presaleOnly, success?.locale) {
+    LaunchedEffect(
+        success?.pendingRequest,
+        success?.order,
+        success?.purchasedOnly,
+        success?.presaleOnly,
+        success?.chineseTranslatedOnly,
+        success?.locale
+    ) {
         val state = success ?: return@LaunchedEffect
         if (!optionsSyncedFromState || state.pendingRequest == null) {
             purchasedOnly = state.purchasedOnly
             presaleOnly = state.presaleOnly
+            chineseTranslatedOnly = state.chineseTranslatedOnly
             selectedLocale = state.locale ?: "ja_JP"
             selectedOrderName = state.order.name
             optionsSyncedFromState = true
@@ -570,12 +580,14 @@ fun SearchScreen(
                                 order = nextOrder,
                                 purchasedOnly = option.isPurchasedOnly,
                                 presaleOnly = option.isPresaleOnly,
+                                chineseTranslatedOnly = option.isChineseTranslated,
                                 locale = selectedLocale
                             )
                             if (accepted) {
                                 selectedOrderName = nextOrder.name
                                 purchasedOnly = option.isPurchasedOnly
                                 presaleOnly = option.isPresaleOnly
+                                chineseTranslatedOnly = option.isChineseTranslated
                             }
                         },
                         onLocaleSelected = { locale ->
@@ -584,6 +596,7 @@ fun SearchScreen(
                                 order = selectedOrder,
                                 purchasedOnly = purchasedOnly,
                                 presaleOnly = presaleOnly,
+                                chineseTranslatedOnly = chineseTranslatedOnly,
                                 locale = locale
                             )
                         },
@@ -762,7 +775,6 @@ internal fun SearchToolbar(
                 .weight(1f)
                 .testTag(SEARCH_INPUT_TAG),
             leadingIcon = {
-                val label = selectedFilter.label
                 Box {
                     TextButton(
                         onClick = { scopeMenuExpanded = true },
@@ -775,7 +787,22 @@ internal fun SearchToolbar(
                             contentColor = colorScheme.primary
                         )
                     ) {
-                        Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = selectedFilter.icon,
+                                contentDescription = null,
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = selectedFilter.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1
+                            )
+                        }
                     }
                     DropdownMenu(
                         expanded = scopeMenuExpanded,
@@ -792,10 +819,21 @@ internal fun SearchToolbar(
                             }
                             DropdownMenuItem(
                                 text = {
-                                    Text(
-                                        text = option.label,
-                                        color = if (option == selectedFilter) colorScheme.primary else colorScheme.textPrimary
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = option.icon,
+                                            contentDescription = null,
+                                            tint = if (option == selectedFilter) colorScheme.primary else colorScheme.textSecondary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = option.label,
+                                            color = if (option == selectedFilter) colorScheme.primary else colorScheme.textPrimary
+                                        )
+                                    }
                                 },
                                 onClick = {
                                     scopeMenuExpanded = false

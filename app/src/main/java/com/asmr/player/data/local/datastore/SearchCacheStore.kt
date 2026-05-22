@@ -20,6 +20,7 @@ data class LastSearchStateV1(
     val orderName: String,
     val purchasedOnly: Boolean,
     val presaleOnly: Boolean = false,
+    val chineseTranslatedOnly: Boolean = false,
     val locale: String?,
     val page: Int,
     val canGoNext: Boolean,

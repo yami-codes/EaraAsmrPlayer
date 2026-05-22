@@ -38,13 +38,31 @@ internal fun buildDlsiteSearchUrls(
     page: Int,
     order: String,
     locale: String? = null,
-    presaleOnly: Boolean = false
+    presaleOnly: Boolean = false,
+    chineseTranslatedOnly: Boolean = false
 ): List<String> {
     val normalizedKeyword = keyword.trim()
     val encodedKeyword = URLEncoder.encode(normalizedKeyword, "UTF-8")
     val normalizedOrder = order.trim().ifBlank { "trend" }
     val encodedOrder = URLEncoder.encode(normalizedOrder, "UTF-8")
     val safePage = page.coerceAtLeast(1)
+
+    if (chineseTranslatedOnly) {
+        val translationBase =
+            "https://www.dlsite.com/maniax/works/translation?langs%5B0%5D=CHI_HANS&work_type%5B0%5D=SOU&order=$encodedOrder"
+        val translation = buildString {
+            append(translationBase)
+            if (normalizedKeyword.isNotBlank()) {
+                append("&keyword=")
+                append(encodedKeyword)
+            }
+            if (safePage > 1) {
+                append("&page=")
+                append(safePage)
+            }
+        }
+        return listOf(translation)
+    }
 
     if (presaleOnly) {
         val primaryBase =
@@ -101,6 +119,11 @@ data class DlsiteRecommendations(
     val circleWorks: List<DlsiteRecommendedWork> = emptyList(),
     val sameVoiceWorks: List<DlsiteRecommendedWork> = emptyList(),
     val alsoBoughtWorks: List<DlsiteRecommendedWork> = emptyList()
+)
+
+data class DlsiteSearchResult(
+    val items: List<Album>,
+    val canGoNext: Boolean
 )
 
 @Singleton
@@ -270,8 +293,9 @@ class DLSiteScraper @Inject constructor(
         page: Int = 1,
         order: String = "trend",
         locale: String? = null,
-        presaleOnly: Boolean = false
-    ): List<Album> = withContext(Dispatchers.IO) {
+        presaleOnly: Boolean = false,
+        chineseTranslatedOnly: Boolean = false
+    ): DlsiteSearchResult = withContext(Dispatchers.IO) {
         fun parseItems(items: List<Element>, doc: Document): List<Album> {
             val results = mutableListOf<Album>()
 
@@ -361,7 +385,24 @@ class DLSiteScraper @Inject constructor(
             return results
         }
 
-        fun parseDoc(doc: Document): List<Album> {
+        fun parseCanGoNext(doc: Document, itemCount: Int): Boolean {
+            val infoScript = doc.select("script")
+                .firstOrNull { it.data().contains("\"page_info\"") }
+                ?.data()
+                .orEmpty()
+            val pageInfo = Regex("""\"page_info\":\{\"count\":(\d+),\"first_indice\":(\d+),\"last_indice\":(\d+)\}""")
+                .find(infoScript)
+            if (pageInfo != null) {
+                val total = pageInfo.groupValues.getOrNull(1)?.toIntOrNull() ?: 0
+                val lastIndex = pageInfo.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
+                if (total > 0 && lastIndex > 0) {
+                    return lastIndex < total
+                }
+            }
+            return itemCount >= if (chineseTranslatedOnly) 100 else 30
+        }
+
+        fun parseDoc(doc: Document): DlsiteSearchResult {
             val container = doc.selectFirst("#search_result_list.loading_display_open")
                 ?: doc.select("#search_result_list").lastOrNull()
 
@@ -374,10 +415,15 @@ class DLSiteScraper @Inject constructor(
             for (items in candidates) {
                 if (items.isEmpty()) continue
                 val parsed = parseItems(items, doc)
-                if (parsed.isNotEmpty()) return parsed
+                if (parsed.isNotEmpty()) {
+                    return DlsiteSearchResult(
+                        items = parsed,
+                        canGoNext = parseCanGoNext(doc, parsed.size)
+                    )
+                }
             }
 
-            return emptyList()
+            return DlsiteSearchResult(items = emptyList(), canGoNext = false)
         }
 
         val urls = buildDlsiteSearchUrls(
@@ -385,14 +431,15 @@ class DLSiteScraper @Inject constructor(
             page = page,
             order = order,
             locale = locale,
-            presaleOnly = presaleOnly
+            presaleOnly = presaleOnly,
+            chineseTranslatedOnly = chineseTranslatedOnly
         )
-        var lastEmpty: List<Album> = emptyList()
+        var lastEmpty = DlsiteSearchResult(items = emptyList(), canGoNext = false)
         for (u in urls) {
             Log.d("DLSiteScraper", "Searching URL: $u")
             val doc = runInterruptible { connect(u, locale = locale).get() }
             val parsed = parseDoc(doc)
-            if (parsed.isNotEmpty()) return@withContext parsed
+            if (parsed.items.isNotEmpty()) return@withContext parsed
             lastEmpty = parsed
         }
         lastEmpty
