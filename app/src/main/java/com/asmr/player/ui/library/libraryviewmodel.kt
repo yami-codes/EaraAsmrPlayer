@@ -1158,7 +1158,7 @@ class LibraryViewModel @Inject constructor(
             keyword = entity.title.trim(),
             baseWorkno = entity.rjCode.ifBlank { entity.workId }.trim().uppercase(),
             search = { searchKeyword, locale ->
-                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale)
+                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale).items
             },
             fetchLanguageEditions = { productId ->
                 dlsiteProductInfoClient.fetchLanguageEditions(productId)

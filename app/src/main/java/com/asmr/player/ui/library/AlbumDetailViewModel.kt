@@ -433,7 +433,7 @@ class AlbumDetailViewModel @Inject constructor(
             keyword = entity.title.trim(),
             baseWorkno = baseWorkno,
             search = { searchKeyword, locale ->
-                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale)
+                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale).items
             },
             fetchLanguageEditions = { productId ->
                 dlsiteProductInfoClient.fetchLanguageEditions(productId)

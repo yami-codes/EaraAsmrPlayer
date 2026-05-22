@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -108,6 +109,35 @@ class SearchScreenChromeTest {
         composeRule.onNodeWithTag(SEARCH_SUBMIT_SPINNER_TAG).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.TestTag, SEARCH_SUBMIT_SPINNER_TAG)
         )
+    }
+
+    @Test
+    fun scopeMenu_displaysIconsAndUpdatedFilterOptions() {
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "",
+                    onKeywordChange = {},
+                    selectedFilter = SearchFilterOption.ChineseTranslated,
+                    selectedLocale = "zh_CN",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onFilterSelected = {},
+                    onLocaleSelected = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_SCOPE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithText("中文作品").assertExists()
+        composeRule.onNodeWithText("已购").assertExists()
+        composeRule.onNodeWithText("预售").assertExists()
+        composeRule.onNodeWithText("人气顺序").assertExists()
+        composeRule.onNodeWithText("最新发售").assertExists()
+        composeRule.onNodeWithText("销量最高").assertExists()
+        composeRule.onNodeWithText("价格最高").assertExists()
     }
 
     @Test

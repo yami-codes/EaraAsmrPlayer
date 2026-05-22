@@ -65,6 +65,7 @@ class SearchViewModel @Inject constructor(
     private var currentOrder: SearchSortOption = SearchSortOption.Trend
     private var purchasedOnly: Boolean = false
     private var presaleOnly: Boolean = false
+    private var chineseTranslatedOnly: Boolean = false
     private var enrichJob: Job? = null
     private var asmrOneJob: Job? = null
     private var cacheWriteJob: Job? = null
@@ -98,6 +99,7 @@ class SearchViewModel @Inject constructor(
             } else {
                 purchasedOnly = initialPurchasedOnly
                 presaleOnly = false
+                chineseTranslatedOnly = false
                 currentLocale = initialLocale
                 lastRequestedKeyword = initialKeyword.trim()
                 requestPage(lastRequestedKeyword, 1, SearchPendingRequestKind.Search)
@@ -148,23 +150,26 @@ class SearchViewModel @Inject constructor(
         order: SearchSortOption = currentOrder,
         purchasedOnly: Boolean = this.purchasedOnly,
         presaleOnly: Boolean = this.presaleOnly,
+        chineseTranslatedOnly: Boolean = this.chineseTranslatedOnly,
         locale: String? = currentLocale
     ): Boolean {
         val current = _uiState.value as? SearchUiState.Success ?: return false
         if (current.isBusy) return false
         if (purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning("请先登录 DLsite 后再使用\"仅已购\"搜索")
+            messageManager.showWarning("请先登录 DLsite 后再使用\"已购\"搜索")
             return false
         }
         if (
             currentOrder == order &&
             this.purchasedOnly == purchasedOnly &&
             this.presaleOnly == presaleOnly &&
+            this.chineseTranslatedOnly == chineseTranslatedOnly &&
             currentLocale == locale
         ) return true
         currentOrder = order
         this.purchasedOnly = purchasedOnly
         this.presaleOnly = presaleOnly
+        this.chineseTranslatedOnly = chineseTranslatedOnly
         currentLocale = locale
         requestPage(current.keyword, 1, SearchPendingRequestKind.Search)
         return true
@@ -215,7 +220,8 @@ class SearchViewModel @Inject constructor(
                     page = page,
                     order = currentOrder,
                     purchasedOnly = purchasedOnly,
-                    presaleOnly = presaleOnly
+                    presaleOnly = presaleOnly,
+                    chineseTranslatedOnly = chineseTranslatedOnly
                 )
                 _uiState.value = SearchUiState.Success(
                     results = pageResult.items,
@@ -224,6 +230,7 @@ class SearchViewModel @Inject constructor(
                     order = currentOrder,
                     purchasedOnly = purchasedOnly,
                     presaleOnly = presaleOnly,
+                    chineseTranslatedOnly = chineseTranslatedOnly,
                     locale = currentLocale,
                     canGoPrev = page > 1,
                     canGoNext = pageResult.canGoNext,
@@ -269,6 +276,7 @@ class SearchViewModel @Inject constructor(
                     currentOrder = previousSuccess.order
                     purchasedOnly = previousSuccess.purchasedOnly
                     presaleOnly = previousSuccess.presaleOnly
+                    chineseTranslatedOnly = previousSuccess.chineseTranslatedOnly
                     currentLocale = previousSuccess.locale
                     _uiState.value = previousSuccess.copy(
                         pendingRequest = null,
@@ -311,7 +319,8 @@ class SearchViewModel @Inject constructor(
         page: Int,
         order: SearchSortOption,
         purchasedOnly: Boolean,
-        presaleOnly: Boolean
+        presaleOnly: Boolean,
+        chineseTranslatedOnly: Boolean
     ): SearchPageResult {
         if (purchasedOnly) {
             val resp = dlsitePlayLibraryClient.searchPurchased(keyword, page, pageSize)
@@ -319,7 +328,7 @@ class SearchViewModel @Inject constructor(
         }
         val normalizedKeyword = keyword.trim()
         val normalizedRj = normalizedKeyword.uppercase()
-        if (!presaleOnly && page == 1 && Regex("""RJ\d{6,}""").matches(normalizedRj)) {
+        if (!presaleOnly && !chineseTranslatedOnly && page == 1 && Regex("""RJ\d{6,}""").matches(normalizedRj)) {
             val preferred = currentLocale
             val info = when {
                 !preferred.isNullOrBlank() -> {
@@ -340,14 +349,15 @@ class SearchViewModel @Inject constructor(
                 return SearchPageResult(items = listOf(album), canGoNext = false)
             }
         }
-        val items = dlsiteScraper.search(
+        val result = dlsiteScraper.search(
             keyword = keyword,
             page = page,
             order = order.dlsiteOrder,
             locale = currentLocale,
-            presaleOnly = presaleOnly
+            presaleOnly = presaleOnly,
+            chineseTranslatedOnly = chineseTranslatedOnly
         )
-        return SearchPageResult(items = items, canGoNext = items.size >= pageSize)
+        return SearchPageResult(items = result.items, canGoNext = result.canGoNext)
     }
 
     private fun startEnrichDlsiteDetails(keyword: String, page: Int, baseItems: List<Album>) {
@@ -415,6 +425,7 @@ class SearchViewModel @Inject constructor(
         currentOrder = order
         purchasedOnly = cached.purchasedOnly
         presaleOnly = cached.presaleOnly
+        chineseTranslatedOnly = cached.chineseTranslatedOnly
         currentLocale = cached.locale
         _uiState.value = SearchUiState.Success(
             results = cached.results,
@@ -423,6 +434,7 @@ class SearchViewModel @Inject constructor(
             order = order,
             purchasedOnly = cached.purchasedOnly,
             presaleOnly = cached.presaleOnly,
+            chineseTranslatedOnly = cached.chineseTranslatedOnly,
             locale = cached.locale,
             canGoPrev = page > 1,
             canGoNext = cached.canGoNext,
@@ -451,6 +463,7 @@ class SearchViewModel @Inject constructor(
                         orderName = latest.order.name,
                         purchasedOnly = latest.purchasedOnly,
                         presaleOnly = latest.presaleOnly,
+                        chineseTranslatedOnly = latest.chineseTranslatedOnly,
                         locale = latest.locale,
                         page = latest.page,
                         canGoNext = latest.canGoNext,
@@ -463,7 +476,7 @@ class SearchViewModel @Inject constructor(
 
     private fun toUserMessage(e: Throwable): String {
         val raw = e.message.orEmpty()
-        if (raw.contains("请先登录")) return "请先登录后再使用\"仅已购\"搜索"
+        if (raw.contains("请先登录")) return "请先登录后再使用\"已购\"搜索"
         return when (e) {
             is SocketTimeoutException -> "连接超时，请稍后重试"
             is IOException -> "网络连接失败，请检查网络后重试"
@@ -832,6 +845,7 @@ sealed class SearchUiState {
         val order: SearchSortOption,
         val purchasedOnly: Boolean,
         val presaleOnly: Boolean,
+        val chineseTranslatedOnly: Boolean,
         val locale: String?,
         val canGoPrev: Boolean,
         val canGoNext: Boolean,

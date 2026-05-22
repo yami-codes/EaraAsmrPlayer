@@ -39,4 +39,21 @@ class DLSiteScraperUrlBuilderTest {
         assertTrue(urls.last().contains("/without_order/1/order/trend"))
         assertTrue(urls.none { it.contains("ana_flg/on") })
     }
+
+    @Test
+    fun buildDlsiteSearchUrls_usesChineseTranslationListingWhenRequested() {
+        val urls = buildDlsiteSearchUrls(
+            keyword = "耳",
+            page = 2,
+            order = "price_d",
+            locale = "zh_CN",
+            chineseTranslatedOnly = true
+        )
+
+        assertEquals(1, urls.size)
+        assertEquals(
+            "https://www.dlsite.com/maniax/works/translation?langs%5B0%5D=CHI_HANS&work_type%5B0%5D=SOU&order=price_d&keyword=%E8%80%B3&page=2",
+            urls.first()
+        )
+    }
 }
