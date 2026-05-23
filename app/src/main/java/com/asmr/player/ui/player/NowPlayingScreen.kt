@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.SystemClock
+import android.view.KeyEvent as AndroidKeyEvent
 import android.view.LayoutInflater
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -54,6 +56,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -78,6 +85,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
 import com.asmr.player.R
+import com.asmr.player.HardwareVolumeOverlay
 import com.asmr.player.data.lyrics.lyricsTargetContextFromMediaItem
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
@@ -164,6 +172,7 @@ internal fun NowPlayingScreen(
     windowSizeClass: WindowSizeClass,
     hardwareVolumeEventTick: Long,
     onInlineVolumeControlVisibilityChanged: (Boolean) -> Unit = {},
+    onEqualizerVisibilityChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onRouteExitStarted: (exitDurationMs: Int) -> Unit = {},
     onShowQueue: () -> Unit,
@@ -417,14 +426,26 @@ internal fun NowPlayingScreen(
             !useSplitLayout &&
             !isPhoneLandscape
     val latestOnInlineVolumeControlVisibilityChanged by rememberUpdatedState(onInlineVolumeControlVisibilityChanged)
+    val latestOnEqualizerVisibilityChanged by rememberUpdatedState(onEqualizerVisibilityChanged)
 
     SideEffect {
         latestOnInlineVolumeControlVisibilityChanged(usesInlineVolumeControl)
     }
 
+    SideEffect {
+        latestOnEqualizerVisibilityChanged(showEqualizer)
+    }
+
+    LaunchedEffect(showEqualizer) {
+        if (showEqualizer) {
+            volumeControlExpanded = false
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             latestOnInlineVolumeControlVisibilityChanged(false)
+            latestOnEqualizerVisibilityChanged(false)
         }
     }
 
@@ -1337,6 +1358,31 @@ internal fun NowPlayingScreen(
         if (showEqualizer) {
             val eqSettings by viewModel.sessionEqualizer.collectAsState()
             val customPresets by viewModel.customPresets.collectAsState()
+            val appVolumePercent by viewModel.appVolumePercent.collectAsState()
+            val equalizerFocusRequester = remember { FocusRequester() }
+            var showEqualizerVolumeOverlay by remember { mutableStateOf(false) }
+            var equalizerVolumeOverlayInteracting by remember { mutableStateOf(false) }
+            var equalizerVolumeOverlayHoldTick by remember { mutableLongStateOf(0L) }
+            var equalizerVolumeOverlayBounds by remember { mutableStateOf<Rect?>(null) }
+            var lastNonZeroEqualizerVolume by remember { mutableIntStateOf(AppVolume.DefaultPercent) }
+            LaunchedEffect(equalizerFocusRequester) {
+                equalizerFocusRequester.requestFocus()
+            }
+            LaunchedEffect(appVolumePercent) {
+                if (appVolumePercent > 0) {
+                    lastNonZeroEqualizerVolume = appVolumePercent
+                }
+            }
+            LaunchedEffect(showEqualizerVolumeOverlay, equalizerVolumeOverlayHoldTick, equalizerVolumeOverlayInteracting) {
+                if (!showEqualizerVolumeOverlay) return@LaunchedEffect
+                if (equalizerVolumeOverlayInteracting) return@LaunchedEffect
+                val snapshot = equalizerVolumeOverlayHoldTick
+                delay(2_000)
+                if (!equalizerVolumeOverlayInteracting && equalizerVolumeOverlayHoldTick == snapshot) {
+                    showEqualizerVolumeOverlay = false
+                    equalizerVolumeOverlayBounds = null
+                }
+            }
             ModalBottomSheet(
                 onDismissRequest = { showEqualizer = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -1344,7 +1390,30 @@ internal fun NowPlayingScreen(
                 contentColor = colorScheme.onSurface
             ) {
                 val scrollState = rememberScrollState()
-                Box(modifier = Modifier.fillMaxHeight()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .focusRequester(equalizerFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (event.nativeKeyEvent.keyCode) {
+                                AndroidKeyEvent.KEYCODE_VOLUME_UP -> {
+                                    viewModel.adjustAppVolumePercent(AppVolume.StepPercent)
+                                    showEqualizerVolumeOverlay = true
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                    true
+                                }
+                                AndroidKeyEvent.KEYCODE_VOLUME_DOWN -> {
+                                    viewModel.adjustAppVolumePercent(-AppVolume.StepPercent)
+                                    showEqualizerVolumeOverlay = true
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                ) {
                     EqualizerPanel(
                         settings = eqSettings,
                         customPresets = customPresets,
@@ -1361,6 +1430,56 @@ internal fun NowPlayingScreen(
                             .verticalScroll(scrollState)
                             .padding(bottom = 32.dp)
                     )
+                    if (showEqualizerVolumeOverlay) {
+                        DismissOutsideBoundsOverlay(
+                            targetBoundsInRoot = equalizerVolumeOverlayBounds,
+                            onDismiss = {
+                                showEqualizerVolumeOverlay = false
+                                equalizerVolumeOverlayBounds = null
+                            }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(end = 18.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showEqualizerVolumeOverlay,
+                            enter = fadeIn(animationSpec = tween(140)) + slideInHorizontally(animationSpec = tween(180)) { it / 3 },
+                            exit = fadeOut(animationSpec = tween(160)) + slideOutHorizontally(animationSpec = tween(180)) { it / 3 }
+                        ) {
+                            HardwareVolumeOverlay(
+                                modifier = Modifier.onGloballyPositioned { coordinates ->
+                                    equalizerVolumeOverlayBounds = coordinates.boundsInRoot()
+                                },
+                                volumePercent = appVolumePercent,
+                                audioOutputRouteKind = audioOutputRouteKind,
+                                onVolumeChange = {
+                                    viewModel.setAppVolumePercent(it)
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                },
+                                onToggleMute = {
+                                    if (appVolumePercent > 0) {
+                                        viewModel.setAppVolumePercent(0)
+                                    } else {
+                                        viewModel.setAppVolumePercent(
+                                            lastNonZeroEqualizerVolume.coerceAtLeast(AppVolume.StepPercent)
+                                        )
+                                    }
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                },
+                                onInteractionActiveChanged = { active ->
+                                    equalizerVolumeOverlayInteracting = active
+                                    if (!active) {
+                                        equalizerVolumeOverlayHoldTick += 1L
+                                    }
+                                },
+                                warningSessionState = warningSessionState
+                            )
+                        }
+                    }
                 }
             }
         }

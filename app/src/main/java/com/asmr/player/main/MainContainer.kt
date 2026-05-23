@@ -352,6 +352,7 @@ fun MainContainer(
     val activity = remember(context) { context.findActivity() }
     var nowPlayingVisible by rememberSaveable { mutableStateOf(false) }
     var nowPlayingUsesInlineVolumeControl by remember { mutableStateOf(false) }
+    var nowPlayingEqualizerVisible by remember { mutableStateOf(false) }
     var nowPlayingBackdropActive by rememberSaveable { mutableStateOf(false) }
     var nowPlayingBackdropExitDurationMs by rememberSaveable {
         mutableIntStateOf(NowPlayingMotionSpec.totalExitDurationMs(NowPlayingMotionLayout.PORTRAIT))
@@ -555,6 +556,7 @@ fun MainContainer(
     LaunchedEffect(nowPlayingVisible) {
         if (!nowPlayingVisible) {
             nowPlayingUsesInlineVolumeControl = false
+            nowPlayingEqualizerVisible = false
             return@LaunchedEffect
         }
         showHardwareVolumeOverlay = false
@@ -670,7 +672,7 @@ fun MainContainer(
         if (volumeKeyEventTick <= 0L) return@LaunchedEffect
         if (volumeKeyEventTick == lastHandledVolumeKeyTick) return@LaunchedEffect
         lastHandledVolumeKeyTick = volumeKeyEventTick
-        if (nowPlayingUsesInlineVolumeControl) {
+        if (nowPlayingUsesInlineVolumeControl && !nowPlayingEqualizerVisible) {
             showHardwareVolumeOverlay = false
             nowPlayingVolumeEventTick = volumeKeyEventTick
             return@LaunchedEffect
@@ -679,9 +681,9 @@ fun MainContainer(
         hardwareVolumeOverlayHoldTick = volumeKeyEventTick
     }
 
-    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingUsesInlineVolumeControl) {
+    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingUsesInlineVolumeControl, nowPlayingEqualizerVisible) {
         if (!showHardwareVolumeOverlay) return@LaunchedEffect
-        if (nowPlayingUsesInlineVolumeControl) {
+        if (nowPlayingUsesInlineVolumeControl && !nowPlayingEqualizerVisible) {
             showHardwareVolumeOverlay = false
             hardwareVolumeOverlayBounds = null
             return@LaunchedEffect
@@ -1668,6 +1670,7 @@ fun MainContainer(
                     windowSizeClass = windowSizeClass,
                     hardwareVolumeEventTick = nowPlayingVolumeEventTick,
                     onInlineVolumeControlVisibilityChanged = { nowPlayingUsesInlineVolumeControl = it },
+                    onEqualizerVisibilityChanged = { nowPlayingEqualizerVisible = it },
                     onBack = closeNowPlaying,
                     onRouteExitStarted = { exitDurationMs ->
                         nowPlayingBackdropExitDurationMs = exitDurationMs
