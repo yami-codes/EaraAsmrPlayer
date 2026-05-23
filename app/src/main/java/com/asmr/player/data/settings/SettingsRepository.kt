@@ -347,6 +347,23 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun ensureAppVolumePercentInitialized(defaultPercent: Int): Int {
+        return withContext(Dispatchers.IO) {
+            var resolved = AppVolume.clampPercent(defaultPercent)
+            context.settingsDataStore.edit { prefs ->
+                val stored = prefs[SettingsKeys.APP_VOLUME_PERCENT]
+                resolved = if (stored == null) {
+                    AppVolume.clampPercent(defaultPercent).also {
+                        prefs[SettingsKeys.APP_VOLUME_PERCENT] = it
+                    }
+                } else {
+                    AppVolume.clampPercent(stored)
+                }
+            }
+            resolved
+        }
+    }
+
     suspend fun adjustAppVolumePercent(deltaPercent: Int): Int {
         return withContext(Dispatchers.IO) {
             var updated = AppVolume.DefaultPercent

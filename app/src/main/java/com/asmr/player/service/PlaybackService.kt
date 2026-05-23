@@ -75,6 +75,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
@@ -216,7 +217,9 @@ class PlaybackService : MediaSessionService() {
         }
         applyPlaybackRuntimeSettings(runtimeSettings)
         runBlocking {
-            settingsRepository.setAppVolumePercent(appVolumeBoostController.currentVolumePercent())
+            settingsRepository.ensureAppVolumePercentInitialized(
+                appVolumeBoostController.currentVolumePercent()
+            )
         }
         runCatching {
             val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
@@ -996,15 +999,15 @@ class PlaybackService : MediaSessionService() {
         effectApplyJob = serviceScope.launch {
             combine(
                 audioEffectController.equalizerSettings,
-                sessionSettings,
-                settingsRepository.appVolumePercent
-            ) { global, session, appVolumePercent ->
-                (session ?: global) to appVolumePercent
-            }.collect { (settings, appVolumePercent) ->
+                sessionSettings
+            ) { global, session ->
+                session ?: global
+            }
+                .distinctUntilChanged()
+                .collect { settings ->
                 lastEffectiveSettings = settings
                 graphicEqualizerAudioProcessor.setEnabled(settings.enabled)
                 graphicEqualizerAudioProcessor.setBandLevels(settings.bandLevels)
-                sessionPlayer.setBaseVolume(appVolumeBoostController.applyVolumePercent(appVolumePercent))
                 gainAudioProcessor.setGain(1f)
                 val stereoEnabled = settings.stereoEnabled
                 val panActive = stereoEnabled && (settings.orbitEnabled || settings.orbitAzimuthDeg != 0f)
@@ -1020,6 +1023,15 @@ class PlaybackService : MediaSessionService() {
                 stereoOrbitAudioProcessor.setDistance(settings.orbitDistance)
                 stereoOrbitAudioProcessor.setAzimuthDeg(settings.orbitAzimuthDeg)
             }
+        }
+        serviceScope.launch {
+            settingsRepository.appVolumePercent
+                .distinctUntilChanged()
+                .collect { appVolumePercent ->
+                    sessionPlayer.setBaseVolume(
+                        appVolumeBoostController.applyVolumePercent(appVolumePercent)
+                    )
+                }
         }
     }
 

@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.first
 
 @RunWith(RobolectricTestRunner::class)
 class SettingsRepositoryTest {
@@ -54,5 +55,27 @@ class SettingsRepositoryTest {
             ),
             repository.loadPlaybackRuntimeSettings()
         )
+    }
+
+    @Test
+    fun ensureAppVolumePercentInitialized_seedsWhenUnset() = runBlocking {
+        val resolved = repository.ensureAppVolumePercentInitialized(46)
+
+        assertEquals(46, resolved)
+        assertEquals(46, repository.appVolumePercentValue())
+    }
+
+    @Test
+    fun ensureAppVolumePercentInitialized_keepsStoredValue() = runBlocking {
+        repository.setAppVolumePercent(72)
+
+        val resolved = repository.ensureAppVolumePercentInitialized(32)
+
+        assertEquals(72, resolved)
+        assertEquals(72, repository.appVolumePercentValue())
+    }
+
+    private suspend fun SettingsRepository.appVolumePercentValue(): Int {
+        return appVolumePercent.first()
     }
 }
