@@ -83,6 +83,10 @@ class SettingsRepository @Inject constructor(
         val vtMaxDb = prefs[SettingsKeys.FX_VOLUME_THRESHOLD_MAX_DB] ?: -6f
         val loudnessTargetDb = prefs[SettingsKeys.FX_VOLUME_LOUDNESS_TARGET_DB] ?: -18f
         val volumeThresholdExpanded = prefs[SettingsKeys.UI_FX_VOLUME_THRESHOLD_EXPANDED] ?: true
+        val sceneEffectEnabled = prefs[SettingsKeys.FX_SCENE_ENABLED] ?: false
+        val sceneEffectPresetId = prefs[SettingsKeys.FX_SCENE_PRESET_ID] ?: SceneEffectPresets.DefaultPresetId
+        val sceneEffectAmount = (prefs[SettingsKeys.FX_SCENE_AMOUNT] ?: SceneEffectPresets.DefaultAmount).coerceIn(0, 100)
+        val sceneEffectExpanded = prefs[SettingsKeys.UI_FX_SCENE_EXPANDED] ?: true
         val stereoEnabled = prefs[SettingsKeys.FX_STEREO_ENABLED] ?: false
         val stereoExpanded = prefs[SettingsKeys.UI_FX_STEREO_EXPANDED] ?: true
         val orbitAzimuthDeg = prefs[SettingsKeys.FX_ORBIT_AZIMUTH_DEG] ?: 0f
@@ -114,6 +118,10 @@ class SettingsRepository @Inject constructor(
             volumeThresholdMinDb = vtMinDb,
             volumeThresholdMaxDb = vtMaxDb,
             volumeLoudnessTargetDb = loudnessTargetDb,
+            sceneEffectEnabled = sceneEffectEnabled,
+            sceneEffectPresetId = sceneEffectPresetId,
+            sceneEffectAmount = sceneEffectAmount,
+            sceneEffectExpanded = sceneEffectExpanded,
             speedPitchEnabled = speedPitchEnabled,
             speedPitchExpanded = speedPitchExpanded,
             equalizerExpanded = equalizerExpanded
@@ -278,8 +286,12 @@ class SettingsRepository @Inject constructor(
                 prefs[SettingsKeys.FX_VOLUME_THRESHOLD_MIN_DB] = settings.volumeThresholdMinDb
                 prefs[SettingsKeys.FX_VOLUME_THRESHOLD_MAX_DB] = settings.volumeThresholdMaxDb
                 prefs[SettingsKeys.FX_VOLUME_LOUDNESS_TARGET_DB] = settings.volumeLoudnessTargetDb
+                prefs[SettingsKeys.FX_SCENE_ENABLED] = settings.sceneEffectEnabled
+                prefs[SettingsKeys.FX_SCENE_PRESET_ID] = settings.sceneEffectPresetId
+                prefs[SettingsKeys.FX_SCENE_AMOUNT] = settings.sceneEffectAmount.coerceIn(0, 100)
                 prefs[SettingsKeys.UI_FX_CHANNEL_EXPANDED] = settings.channelExpanded
                 prefs[SettingsKeys.UI_FX_VOLUME_THRESHOLD_EXPANDED] = settings.volumeThresholdExpanded
+                prefs[SettingsKeys.UI_FX_SCENE_EXPANDED] = settings.sceneEffectExpanded
                 prefs[SettingsKeys.UI_FX_SPEED_PITCH_ENABLED] = settings.speedPitchEnabled
                 prefs[SettingsKeys.UI_FX_SPEED_PITCH_EXPANDED] = settings.speedPitchExpanded
                 prefs[SettingsKeys.UI_FX_STEREO_EXPANDED] = settings.stereoExpanded

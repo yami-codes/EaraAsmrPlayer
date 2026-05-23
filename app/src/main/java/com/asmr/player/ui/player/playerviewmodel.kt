@@ -217,6 +217,9 @@ class PlayerViewModel @Inject constructor(
                         putFloat("volumeThresholdMinDb", settings.volumeThresholdMinDb)
                         putFloat("volumeThresholdMaxDb", settings.volumeThresholdMaxDb)
                         putFloat("volumeLoudnessTargetDb", settings.volumeLoudnessTargetDb)
+                        putBoolean("sceneEffectEnabled", settings.sceneEffectEnabled)
+                        putString("sceneEffectPresetId", settings.sceneEffectPresetId)
+                        putInt("sceneEffectAmount", settings.sceneEffectAmount)
                     }
                     playerConnection.sendCustomCommand("UPDATE_SESSION_EQ", bundle)
                 }
