@@ -281,7 +281,8 @@ internal fun filterDownloadableMediaTree(tree: List<AsmrOneTrackNodeResponse>): 
             url.isBlank() -> null
             else -> when (treeFileTypeForNode(node.title.orEmpty(), url)) {
                 TreeFileType.Audio,
-                TreeFileType.Video -> node.copy(children = null)
+                TreeFileType.Video,
+                TreeFileType.Image -> node.copy(children = null)
                 else -> null
             }
         }

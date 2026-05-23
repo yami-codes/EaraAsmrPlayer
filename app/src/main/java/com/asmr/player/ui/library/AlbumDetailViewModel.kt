@@ -2331,8 +2331,9 @@ class AlbumDetailViewModel @Inject constructor(
         val leaves = flattenAsmrOneLeafDownloads(tree)
         val audioExts = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
         val videoExts = setOf("mp4", "mkv", "webm", "mov", "m4v", "m3u8")
+        val imageExts = setOf("jpg", "jpeg", "png", "webp", "gif")
         val subExts = setOf("lrc", "srt", "vtt")
-        val mediaExts = audioExts + videoExts
+        val mediaExts = audioExts + videoExts + imageExts
 
         val initialSelected = if (selectedLeafPaths.isEmpty()) {
             leaves.filter { leaf ->
