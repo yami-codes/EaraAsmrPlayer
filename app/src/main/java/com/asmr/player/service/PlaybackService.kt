@@ -54,6 +54,7 @@ import com.asmr.player.playback.AppVolumeBoostController
 import com.asmr.player.playback.GraphicEqualizerAudioProcessor
 import com.asmr.player.playback.PlaybackMediaCache
 import com.asmr.player.playback.RoutingPlaybackDataSource
+import com.asmr.player.playback.SceneEffectAudioProcessor
 import com.asmr.player.playback.StereoFftAnalyzer
 import com.asmr.player.playback.StereoOrbitAudioProcessor
 import com.asmr.player.playback.StereoPcmRingBuffer
@@ -96,6 +97,7 @@ class PlaybackService : MediaSessionService() {
     private val gainAudioProcessor = GainAudioProcessor()
     private val balanceAudioProcessor = BalanceAudioProcessor()
     private val stereoOrbitAudioProcessor = StereoOrbitAudioProcessor()
+    private val sceneEffectAudioProcessor = SceneEffectAudioProcessor()
     private val channelModeAudioProcessor = ChannelModeAudioProcessor()
     private val volumeThresholdAudioProcessor = VolumeThresholdAudioProcessor()
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -297,6 +299,7 @@ class PlaybackService : MediaSessionService() {
                     gainAudioProcessor,
                     balanceAudioProcessor,
                     stereoOrbitAudioProcessor,
+                    sceneEffectAudioProcessor,
                     channelModeAudioProcessor,
                     volumeThresholdAudioProcessor,
                     spectrumTapAudioProcessor
@@ -824,6 +827,9 @@ class PlaybackService : MediaSessionService() {
                             val vtMinDb = if (args.containsKey("volumeThresholdMinDb")) args.getFloat("volumeThresholdMinDb") else prev.volumeThresholdMinDb
                             val vtMaxDb = if (args.containsKey("volumeThresholdMaxDb")) args.getFloat("volumeThresholdMaxDb") else prev.volumeThresholdMaxDb
                             val loudnessTargetDb = if (args.containsKey("volumeLoudnessTargetDb")) args.getFloat("volumeLoudnessTargetDb") else prev.volumeLoudnessTargetDb
+                            val sceneEffectEnabled = if (args.containsKey("sceneEffectEnabled")) args.getBoolean("sceneEffectEnabled") else prev.sceneEffectEnabled
+                            val sceneEffectPresetId = args.getString("sceneEffectPresetId") ?: prev.sceneEffectPresetId
+                            val sceneEffectAmount = if (args.containsKey("sceneEffectAmount")) args.getInt("sceneEffectAmount") else prev.sceneEffectAmount
                             sessionSettings.value = prev.copy(
                                 enabled = enabled,
                                 bandLevels = levels,
@@ -845,7 +851,10 @@ class PlaybackService : MediaSessionService() {
                                 volumeThresholdMode = vtMode,
                                 volumeThresholdMinDb = vtMinDb,
                                 volumeThresholdMaxDb = vtMaxDb,
-                                volumeLoudnessTargetDb = loudnessTargetDb
+                                volumeLoudnessTargetDb = loudnessTargetDb,
+                                sceneEffectEnabled = sceneEffectEnabled,
+                                sceneEffectPresetId = sceneEffectPresetId,
+                                sceneEffectAmount = sceneEffectAmount
                             )
                             return com.google.common.util.concurrent.Futures.immediateFuture(
                                 androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS, android.os.Bundle.EMPTY)
@@ -1017,6 +1026,9 @@ class PlaybackService : MediaSessionService() {
                 volumeThresholdAudioProcessor.setMode(settings.volumeThresholdMode)
                 volumeThresholdAudioProcessor.setThresholds(settings.volumeThresholdMinDb, settings.volumeThresholdMaxDb)
                 volumeThresholdAudioProcessor.setLoudnessTargetDb(settings.volumeLoudnessTargetDb)
+                sceneEffectAudioProcessor.setEnabled(settings.sceneEffectEnabled)
+                sceneEffectAudioProcessor.setPreset(settings.sceneEffectPresetId)
+                sceneEffectAudioProcessor.setAmount(settings.sceneEffectAmount)
                 stereoOrbitAudioProcessor.setEnabled(settings.stereoEnabled)
                 stereoOrbitAudioProcessor.setAutoOrbitEnabled(settings.orbitEnabled)
                 stereoOrbitAudioProcessor.setOrbitSpeedDegPerSec(settings.orbitSpeed)

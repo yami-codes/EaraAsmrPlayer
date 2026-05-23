@@ -3,6 +3,7 @@ package com.asmr.player.data.settings
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -73,6 +74,30 @@ class SettingsRepositoryTest {
 
         assertEquals(72, resolved)
         assertEquals(72, repository.appVolumePercentValue())
+    }
+
+    @Test
+    fun equalizerSettings_includeSceneEffectDefaultsAndStoredValues() = runBlocking {
+        val defaults = repository.equalizerSettings.first()
+        assertFalse(defaults.sceneEffectEnabled)
+        assertEquals(SceneEffectPresets.DefaultPresetId, defaults.sceneEffectPresetId)
+        assertEquals(SceneEffectPresets.DefaultAmount, defaults.sceneEffectAmount)
+        assertEquals(true, defaults.sceneEffectExpanded)
+
+        repository.updateEqualizerSettings(
+            defaults.copy(
+                sceneEffectEnabled = true,
+                sceneEffectPresetId = "tunnel",
+                sceneEffectAmount = 73,
+                sceneEffectExpanded = false
+            )
+        )
+
+        val stored = repository.equalizerSettings.first()
+        assertEquals(true, stored.sceneEffectEnabled)
+        assertEquals("tunnel", stored.sceneEffectPresetId)
+        assertEquals(73, stored.sceneEffectAmount)
+        assertEquals(false, stored.sceneEffectExpanded)
     }
 
     private suspend fun SettingsRepository.appVolumePercentValue(): Int {
