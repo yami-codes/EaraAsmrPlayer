@@ -1699,6 +1699,55 @@ class AlbumDetailViewModel @Inject constructor(
         )
     }
 
+    fun downloadDlsitePlayLosslessArchive() {
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        val model = current.model
+        if (model.dlsitePlayTree.isEmpty()) return
+
+        val album = model.displayAlbum
+        val workno = normalizeRj(
+            model.dlsitePlayWorkno
+                .ifBlank { model.dlsiteWorkno }
+                .ifBlank { model.rjCode }
+                .ifBlank { album.rjCode.ifBlank { album.workId } }
+        )
+        if (workno.isBlank()) {
+            messageManager.showError("无法确定 DLsite Play 作品编号")
+            return
+        }
+
+        val folderName = safeFolderName(album.rjCode.ifBlank { album.workId }.ifBlank { workno }.ifBlank { album.title })
+        val baseDir = File(context.getExternalFilesDir(null), "albums")
+        val targetDir = File(baseDir, folderName)
+        if (!targetDir.exists()) targetDir.mkdirs()
+
+        enqueueRemoteDownloadCover(
+            album = album,
+            targetRootDir = targetDir,
+            taskKey = "album:$folderName",
+            taskSubtitle = album.title
+        )
+
+        downloadManager.enqueueDownload(
+            url = "https://play.dlsite.com/api/v3/download?workno=$workno",
+            fileName = "dlsite_lossless_archive.zip",
+            targetDir = targetDir.absolutePath,
+            taskRootDir = targetDir.absolutePath,
+            relativePath = "dlsite_lossless_archive.zip",
+            taskSubtitle = album.title,
+            tags = listOf("album:$folderName"),
+            albumTitle = album.title,
+            albumCircle = album.circle,
+            albumCv = album.cv,
+            albumTagsCsv = album.tags.joinToString(","),
+            albumCoverUrl = album.coverUrl,
+            albumWorkId = album.workId,
+            albumRjCode = album.rjCode
+        )
+
+        messageManager.showInfo("正在加入无损下载队列：${album.title}")
+    }
+
     fun downloadDlsiteTrialSelected(selectedLeafPaths: Set<String>) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         enqueueRemoteTreeSelectionDownload(

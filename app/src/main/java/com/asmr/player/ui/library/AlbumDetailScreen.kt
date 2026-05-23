@@ -374,6 +374,10 @@ fun AlbumDetailScreen(
                                     }
                                     showAsmrDownloadDialog = true
                                 },
+                                showDlsitePlayLossless = tab == 2,
+                                onLosslessDownloadClick = {
+                                    viewModel.downloadDlsitePlayLosslessArchive()
+                                },
                                 onSaveClick = {
                                     showOnlineSaveDialog = true
                                 },
@@ -382,6 +386,7 @@ fun AlbumDetailScreen(
                                     2 -> model.dlsitePlayTree.isNotEmpty()
                                     else -> false
                                 },
+                                losslessDownloadEnabled = tab == 2 && model.dlsitePlayTree.isNotEmpty(),
                                 saveEnabled = canSaveOnlineForTab,
                                 showGroupButton = isLocalTab && model.localAlbum != null,
                                 onOpenGroupPicker = onOpenGroupPicker,
@@ -913,8 +918,11 @@ private fun AlbumHeader(
     onDlsiteLangSelected: (String) -> Unit,
     canSaveOnline: Boolean,
     onDownloadClick: () -> Unit,
+    showDlsitePlayLossless: Boolean,
+    onLosslessDownloadClick: () -> Unit,
     onSaveClick: () -> Unit,
     downloadEnabled: Boolean,
+    losslessDownloadEnabled: Boolean,
     saveEnabled: Boolean,
     showGroupButton: Boolean,
     onOpenGroupPicker: (albumId: Long) -> Unit,
@@ -1143,7 +1151,8 @@ private fun AlbumHeader(
                                     .weight(1f)
                             ) {
                                 val radius = 10.dp
-                                val leftShape = if (canSaveOnline) {
+                                val hasSecondaryPrimaryAction = canSaveOnline || showDlsitePlayLossless
+                                val leftShape = if (hasSecondaryPrimaryAction) {
                                     RoundedCornerShape(topStart = radius, bottomStart = radius, topEnd = 0.dp, bottomEnd = 0.dp)
                                 } else {
                                     RoundedCornerShape(radius)
@@ -1165,7 +1174,25 @@ private fun AlbumHeader(
                                     Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                 }
 
-                                if (canSaveOnline) {
+                                if (showDlsitePlayLossless) {
+                                    Button(
+                                        onClick = onLosslessDownloadClick,
+                                        enabled = losslessDownloadEnabled,
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .weight(1f),
+                                        shape = rightShape,
+                                        contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colorScheme.primary.copy(alpha = 0.14f),
+                                            contentColor = colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Spacer(modifier = Modifier.width(primaryIconGap))
+                                        Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                    }
+                                } else if (canSaveOnline) {
                                     Button(
                                         onClick = onSaveClick,
                                         enabled = saveEnabled,
