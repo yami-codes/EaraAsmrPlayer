@@ -1,10 +1,12 @@
 package com.asmr.player.data.remote.download
 
 import android.content.Context
+import android.util.Log
 import androidx.room.withTransaction
 import androidx.work.*
 import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
+import com.asmr.player.data.remote.auth.mergeDlsiteCookieHeaders
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.data.local.db.entities.AlbumEntity
 import com.asmr.player.data.local.db.entities.AlbumFtsEntity
@@ -24,6 +26,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import kotlinx.coroutines.CoroutineScope
@@ -39,14 +44,72 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.text.SimpleDateFormat
+import java.nio.charset.Charset
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executors
+import java.util.zip.ZipFile
 import kotlin.math.max
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private class SessionCookieJar : CookieJar {
+    private val store = LinkedHashMap<String, MutableList<Cookie>>()
+
+    override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+        val key = url.host.lowercase()
+        val list = store.getOrPut(key) { mutableListOf() }
+        cookies.forEach { cookie ->
+            list.removeAll { it.name == cookie.name && it.path == cookie.path && it.domain == cookie.domain }
+            list.add(cookie)
+        }
+    }
+
+    override fun loadForRequest(url: HttpUrl): List<Cookie> {
+        val host = url.host.lowercase()
+        val path = url.encodedPath
+        val now = System.currentTimeMillis()
+        val out = mutableListOf<Cookie>()
+        store.values.forEach { cookies ->
+            cookies.removeAll { it.expiresAt < now }
+            cookies.forEach { cookie ->
+                val domainMatches = if (cookie.hostOnly) {
+                    host == cookie.domain.lowercase()
+                } else {
+                    host == cookie.domain.lowercase() || host.endsWith(".${cookie.domain.lowercase()}")
+                }
+                val pathMatches = path.startsWith(cookie.path)
+                if (domainMatches && pathMatches) out += cookie
+            }
+        }
+        return out
+    }
+
+    fun seedFromHeader(header: String, url: String) {
+        val httpUrl = runCatching { url.toHttpUrl() }.getOrNull() ?: return
+        header.split(';')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .forEach { item ->
+                val idx = item.indexOf('=')
+                if (idx <= 0) return@forEach
+                val name = item.substring(0, idx).trim()
+                val value = item.substring(idx + 1).trim()
+                if (name.isBlank()) return@forEach
+                val cookie = Cookie.Builder()
+                    .name(name)
+                    .value(value)
+                    .domain(httpUrl.host)
+                    .path("/")
+                    .build()
+                saveFromResponse(httpUrl, listOf(cookie))
+            }
+    }
+}
 
 @Singleton
 class DownloadManager @Inject constructor(
@@ -639,29 +702,43 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
             }
 
             val entryPoint = EntryPointAccessors.fromApplication(applicationContext, DownloadWorkerEntryPoint::class.java)
-            val client = entryPoint.okHttpClient()
+            val baseClient = entryPoint.okHttpClient()
             val requestBuilder = Request.Builder()
                 .url(url)
                 .header("User-Agent", NetworkHeaders.USER_AGENT)
             
             var existingBytes = if (file.exists()) file.length().coerceAtLeast(0L) else 0L
             val lowerUrl = url.lowercase()
+            val sessionCookieJar = SessionCookieJar()
             if (lowerUrl.contains("play.dlsite.com")) {
-                val cookie = buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getPlayCookie())
+                val cookie = mergeDlsiteCookieHeaders(
+                    buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getDlsiteCookie()),
+                    buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getPlayCookie())
+                )
                 requestBuilder
                     .addHeader("Referer", "https://play.dlsite.com/library")
                     .addHeader("Accept-Language", NetworkHeaders.ACCEPT_LANGUAGE)
                 if (cookie.isNotBlank()) {
                     requestBuilder.addHeader("Cookie", cookie)
+                    sessionCookieJar.seedFromHeader(cookie, url)
                 }
             } else if (lowerUrl.contains("dlsite")) {
-                val cookie = buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getDlsiteCookie())
+                val cookie = mergeDlsiteCookieHeaders(
+                    buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getDlsiteCookie()),
+                    buildDlsiteCookieHeader(DlsiteAuthStore(applicationContext).getPlayCookie())
+                )
                 requestBuilder
-                    .addHeader("Referer", NetworkHeaders.REFERER_DLSITE)
+                    .addHeader("Referer", "https://play.dlsite.com/")
                     .addHeader("Accept-Language", NetworkHeaders.ACCEPT_LANGUAGE)
                 if (cookie.isNotBlank()) {
                     requestBuilder.addHeader("Cookie", cookie)
+                    sessionCookieJar.seedFromHeader(cookie, url)
                 }
+            }
+            val client = if (lowerUrl.contains("dlsite")) {
+                baseClient.newBuilder().cookieJar(sessionCookieJar).build()
+            } else {
+                baseClient
             }
             if (existingBytes > 0L) {
                 requestBuilder.addHeader("Range", "bytes=$existingBytes-")
@@ -678,9 +755,37 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 pendingTrafficBytes = 0L
             }
 
+            suspend fun failCurrentDownload(
+                downloadedBytes: Long = downloaded.coerceAtLeast(0L),
+                totalBytes: Long = -1L
+            ): ListenableWorker.Result {
+                runCatching {
+                    dao.updateItemProgress(
+                        workId = workId,
+                        state = WorkInfo.State.FAILED.name,
+                        downloaded = downloadedBytes,
+                        total = totalBytes,
+                        speed = 0L,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                }
+                return ListenableWorker.Result.failure(
+                    workDataOf(
+                        "fileName" to fileName,
+                        "targetDir" to targetDir,
+                        "filePath" to File(targetDir, fileName).absolutePath,
+                        "relativePath" to relativePath,
+                        "taskKey" to resolvedTaskKey
+                    )
+                )
+            }
+
             client.newCall(requestBuilder.build()).execute().use { response ->
-                if (!response.isSuccessful) return ListenableWorker.Result.failure()
-                val body = response.body ?: return ListenableWorker.Result.failure()
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "download failed code=${response.code} url=${response.request.url}")
+                    return failCurrentDownload(totalBytes = existingBytes.coerceAtLeast(0L))
+                }
+                val body = response.body ?: return failCurrentDownload(totalBytes = existingBytes.coerceAtLeast(0L))
                 val supportsRange = response.code == 206 && existingBytes > 0L
                 if (!supportsRange && existingBytes > 0L) {
                     existingBytes = 0L
@@ -828,6 +933,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
     }
 
     companion object {
+        private const val TAG = "DownloadWorker"
         private const val DOWNLOAD_BUFFER_SIZE = 64 * 1024
         private const val PROGRESS_UPDATE_INTERVAL_MS = 1_000L
 
@@ -897,10 +1003,13 @@ class FinalizeDownloadTaskWorker(context: Context, parameters: WorkerParameters)
                 val done = items.isNotEmpty() && items.all { it.state == WorkInfo.State.SUCCEEDED.name }
                 if (!done) return@withTransaction
 
+                val rootDirFile = File(task.rootDir.ifBlank { taskRootDir })
+                runCatching { finalizeDlsiteLosslessArchiveIfNeeded(rootDirFile, items) }
+
                 upsertDownloadedAlbumToLibrary(
                     db = db,
                     appContext = applicationContext,
-                    rootDir = task.rootDir.ifBlank { taskRootDir },
+                    rootDir = rootDirFile.absolutePath,
                     taskTitle = task.title.ifBlank { taskTitle },
                     taskSubtitle = task.subtitle.ifBlank { taskSubtitle },
                     albumTitle = albumTitle,
@@ -922,6 +1031,118 @@ class FinalizeDownloadTaskWorker(context: Context, parameters: WorkerParameters)
         } catch (_: Exception) {
             ListenableWorker.Result.success()
         }
+    }
+}
+
+private fun File.copyFrom(input: InputStream) {
+    parentFile?.mkdirs()
+    FileOutputStream(this).use { output ->
+        input.copyTo(output)
+    }
+}
+
+private fun scoreZipEntryNames(names: List<String>): Int {
+    if (names.isEmpty()) return Int.MIN_VALUE
+    var score = 0
+    names.forEach { name ->
+        if (name.isBlank()) {
+            score -= 100
+            return@forEach
+        }
+        if ('\uFFFD' in name) score -= 500
+        if (name.contains('?')) score -= 20
+        if (name.any { it.code in 0xE000..0xF8FF }) score -= 50
+        if (name.any { it.isLetterOrDigit() }) score += 10
+        if (name.any { it.code in 0x3040..0x30FF }) score += 15
+        if (name.any { it.code in 0x4E00..0x9FFF }) score += 15
+        if (name.any { it in listOf('【', '】', '〜', '～', '・', '「', '」', '（', '）', '！') }) score += 8
+        if (name.endsWith("/")) score += 1
+    }
+    return score
+}
+
+private data class ZipCharsetCandidate(
+    val charset: Charset?,
+    val score: Int
+)
+
+private inline fun <T> useBestEffortZipFile(zipFile: File, block: (ZipFile) -> T): T {
+    val charsets = listOf(
+        null,
+        Charsets.UTF_8,
+        Charset.forName("MS932"),
+        Charset.forName("Shift_JIS"),
+        Charset.forName("GB18030"),
+        Charset.forName("Big5")
+    )
+
+    var best: ZipCharsetCandidate? = null
+    var lastError: Throwable? = null
+
+    charsets.forEach { charset ->
+        val zip = runCatching {
+            if (charset == null) ZipFile(zipFile) else ZipFile(zipFile, charset)
+        }.getOrElse {
+            lastError = it
+            return@forEach
+        }
+        zip.use { archive ->
+            val names = runCatching {
+                archive.entries().asSequence().map { it.name }.take(200).toList()
+            }.getOrElse {
+                lastError = it
+                return@use
+            }
+            val score = scoreZipEntryNames(names)
+            if (best == null || score > best!!.score) {
+                best = ZipCharsetCandidate(charset = charset, score = score)
+            }
+        }
+    }
+
+    val selectedCharset = best?.charset
+    val selectedZip = runCatching {
+        if (selectedCharset == null) ZipFile(zipFile) else ZipFile(zipFile, selectedCharset)
+    }.getOrElse {
+        throw (lastError ?: it)
+    }
+    selectedZip.use { return block(it) }
+}
+
+private fun unzipIntoRootDirectory(zipFile: File, rootDir: File) {
+    useBestEffortZipFile(zipFile) { archive ->
+        archive.entries().asSequence().forEach { entry ->
+            val rawName = entry.name.replace('\\', '/').trimStart('/')
+            if (rawName.isBlank()) return@forEach
+            val outFile = File(rootDir, rawName)
+            val canonicalRoot = rootDir.canonicalFile
+            val canonicalOut = outFile.canonicalFile
+            if (!canonicalOut.path.startsWith(canonicalRoot.path)) return@forEach
+            if (entry.isDirectory) {
+                canonicalOut.mkdirs()
+            } else {
+                archive.getInputStream(entry).use { input ->
+                    canonicalOut.copyFrom(input)
+                }
+            }
+        }
+    }
+}
+
+private fun finalizeDlsiteLosslessArchiveIfNeeded(rootDir: File, items: List<DownloadItemEntity>) {
+    if (!rootDir.isDirectory) return
+    val archive = items.asSequence()
+        .map { item -> File(item.filePath.ifBlank { File(item.targetDir, item.fileName).absolutePath }) }
+        .firstOrNull { file ->
+            file.exists() &&
+                file.isFile &&
+                file.parentFile?.absolutePath == rootDir.absolutePath &&
+                file.extension.equals("zip", ignoreCase = true)
+        }
+        ?: return
+    runCatching {
+        unzipIntoRootDirectory(archive, rootDir)
+        archive.delete()
     }
 }
 
