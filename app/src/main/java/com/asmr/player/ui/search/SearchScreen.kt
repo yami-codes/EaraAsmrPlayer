@@ -71,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
@@ -78,6 +79,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.layout.onSizeChanged
@@ -136,6 +138,29 @@ private fun Modifier.consumeTapThrough(): Modifier =
             } while (event.changes.any { it.pressed })
         }
     }
+
+@Composable
+private fun SearchFilterIconView(
+    icon: SearchFilterIcon,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    when (icon) {
+        is SearchFilterIcon.Vector -> Icon(
+            painter = rememberVectorPainter(icon.imageVector),
+            contentDescription = null,
+            tint = tint,
+            modifier = modifier
+        )
+
+        is SearchFilterIcon.Drawable -> Icon(
+            painter = painterResource(icon.resId),
+            contentDescription = null,
+            tint = tint,
+            modifier = modifier
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -791,9 +816,8 @@ internal fun SearchToolbar(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = selectedFilter.icon,
-                                contentDescription = null,
+                            SearchFilterIconView(
+                                icon = selectedFilter.icon,
                                 tint = colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -823,9 +847,8 @@ internal fun SearchToolbar(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = option.icon,
-                                            contentDescription = null,
+                                        SearchFilterIconView(
+                                            icon = option.icon,
                                             tint = if (option == selectedFilter) colorScheme.primary else colorScheme.textSecondary,
                                             modifier = Modifier.size(18.dp)
                                         )
