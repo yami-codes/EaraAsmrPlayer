@@ -6,6 +6,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -71,6 +73,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.compositeOver
@@ -113,6 +116,7 @@ internal const val SEARCH_LANGUAGE_BUTTON_TAG = "search_language_button"
 internal const val SEARCH_CLEAR_BUTTON_TAG = "search_clear_button"
 internal const val SEARCH_SUBMIT_BUTTON_TAG = "search_submit_button"
 internal const val SEARCH_SUBMIT_SPINNER_TAG = "search_submit_spinner"
+internal const val SEARCH_FIRST_PAGE_BUTTON_TAG = "search_first_page_button"
 internal const val SEARCH_PREV_BUTTON_TAG = "search_prev_button"
 internal const val SEARCH_NEXT_BUTTON_TAG = "search_next_button"
 internal const val SEARCH_PAGINATION_TAG = "search_pagination"
@@ -625,6 +629,10 @@ fun SearchScreen(
                                 locale = locale
                             )
                         },
+                        onFirstPage = {
+                            scrollResultsToTop()
+                            viewModel.firstPage()
+                        },
                         onPrev = {
                             scrollResultsToTop()
                             viewModel.prevPage()
@@ -716,6 +724,7 @@ internal fun SearchChrome(
     onSearchSubmit: () -> Unit,
     onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
+    onFirstPage: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit
 ) {
@@ -748,6 +757,7 @@ internal fun SearchChrome(
                 canGoPrev = canGoPrev,
                 canGoNext = canGoNext,
                 controlsLocked = controlsLocked,
+                onFirstPage = onFirstPage,
                 onPrev = onPrev,
                 onNext = onNext
             )
@@ -980,11 +990,13 @@ internal fun SearchPaginationHeader(
     canGoPrev: Boolean,
     canGoNext: Boolean,
     controlsLocked: Boolean,
+    onFirstPage: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val isDark = colorScheme.isDark
+    val canGoFirst = canGoPrev
     val paginationContainerColor = lerp(
         colorScheme.surface,
         colorScheme.primarySoft,
@@ -1000,14 +1012,14 @@ internal fun SearchPaginationHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = SearchPageHorizontalPadding, vertical = 2.dp)
+            .padding(horizontal = SearchPageHorizontalPadding, vertical = 1.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (isDark) 12.dp else 8.dp,
-                    shape = RoundedCornerShape(14.dp),
+                    elevation = if (isDark) 10.dp else 6.dp,
+                    shape = RoundedCornerShape(12.dp),
                     spotColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f),
                     ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
                 )
@@ -1015,10 +1027,10 @@ internal fun SearchPaginationHeader(
                     Modifier.border(
                         width = 1.dp,
                         color = paginationBorderColor,
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     )
                 )
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(paginationContainerColor)
                 .testTag(SEARCH_PAGINATION_TAG)
         ) {
@@ -1031,64 +1043,83 @@ internal fun SearchPaginationHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-            IconButton(
-                onClick = onPrev,
-                enabled = canGoPrev && !controlsLocked,
-                modifier = Modifier
-                    .size(36.dp)
-                    .testTag(SEARCH_PREV_BUTTON_TAG)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    tint = if (canGoPrev && !controlsLocked) {
-                        colorScheme.primary
-                    } else if (isDark) {
-                        colorScheme.textTertiary
-                    } else {
-                        colorScheme.textTertiary
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SearchPaginationIconButton(
+                            onClick = onFirstPage,
+                            enabled = canGoFirst && !controlsLocked,
+                            imageVector = Icons.Default.SkipPrevious,
+                            contentDescription = "回到第一页",
+                            modifier = Modifier.testTag(SEARCH_FIRST_PAGE_BUTTON_TAG)
+                        )
+                        SearchPaginationIconButton(
+                            onClick = onPrev,
+                            enabled = canGoPrev && !controlsLocked,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "上一页",
+                            modifier = Modifier.testTag(SEARCH_PREV_BUTTON_TAG)
+                        )
                     }
-                )
-            }
+                }
 
-            Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "第 ${page.coerceAtLeast(1)} 页",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDark) colorScheme.textPrimary else Color.Black
+                    )
+                }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "第 ${page.coerceAtLeast(1)} 页",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isDark) colorScheme.textPrimary else Color.Black
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            IconButton(
-                onClick = onNext,
-                enabled = canGoNext && !controlsLocked,
-                modifier = Modifier
-                    .size(36.dp)
-                    .testTag(SEARCH_NEXT_BUTTON_TAG)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = if (canGoNext && !controlsLocked) {
-                        colorScheme.primary
-                    } else if (isDark) {
-                        colorScheme.textTertiary
-                    } else {
-                        colorScheme.textTertiary
-                    }
-                )
-            }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    SearchPaginationIconButton(
+                        onClick = onNext,
+                        enabled = canGoNext && !controlsLocked,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "下一页",
+                        modifier = Modifier.testTag(SEARCH_NEXT_BUTTON_TAG)
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun SearchPaginationIconButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    imageVector: ImageVector,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    Box(
+        modifier = modifier
+            .size(30.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = if (enabled) colorScheme.primary else colorScheme.textTertiary,
+            modifier = Modifier.size(17.dp)
+        )
     }
 }

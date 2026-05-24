@@ -1417,6 +1417,7 @@ internal data class PlaylistAddTarget(
     val albumWorkId: String = "",
     val trackGroup: String = "",
     val lyricsRelativePathNoExt: String = "",
+    val remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList(),
     val mimeType: String? = null,
     val isVideo: Boolean = false
 ) {
@@ -1434,6 +1435,7 @@ internal data class PlaylistAddTarget(
             albumWorkId = albumWorkId,
             trackGroup = trackGroup,
             lyricsRelativePathNoExt = lyricsRelativePathNoExt,
+            remoteSubtitleSources = remoteSubtitleSources,
             mimeType = mimeType,
             isVideo = isVideo
         )

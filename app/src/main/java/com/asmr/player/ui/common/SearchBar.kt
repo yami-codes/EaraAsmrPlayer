@@ -70,7 +70,7 @@ fun CustomSearchBar(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
-            .height(50.dp)
+            .height(48.dp)
             .shadow(
                 elevation = if (isDark) 12.dp else 8.dp,
                 shape = CircleShape,
@@ -98,12 +98,12 @@ fun CustomSearchBar(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (leadingIcon != null) {
                     leadingIcon()
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty()) {
@@ -118,7 +118,7 @@ fun CustomSearchBar(
                     innerTextField()
                 }
                 if (trailingIcon != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     trailingIcon()
                 }
             }
