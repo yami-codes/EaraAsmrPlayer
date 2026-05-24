@@ -1,5 +1,7 @@
 package com.asmr.player.domain.model
 
+import com.asmr.player.util.RemoteSubtitleSource
+
 data class Track(
     val id: Long = 0L,
     val albumId: Long,
@@ -7,6 +9,7 @@ data class Track(
     val path: String,
     val duration: Double = 0.0,
     val group: String = "",
-    val lyricsRelativePathNoExt: String = ""
+    val lyricsRelativePathNoExt: String = "",
+    val remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList()
 )
 

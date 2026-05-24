@@ -699,7 +699,7 @@ internal fun buildRemoteTreeIndex(
                         group = path.substringBeforeLast('/', "").substringAfterLast('/', ""),
                         lyricsRelativePathNoExt = path.substringBeforeLast('.')
                     )
-                )
+                ).copy(remoteSubtitleSources = subtitleSources)
                 TreeFileType.Video -> PlaylistAddTarget.fromVideo(album, leaf.displayTitle, leaf.url)
                 else -> null
             }
@@ -1167,7 +1167,8 @@ fun toTrack(): Track {
             path = url,
             duration = duration ?: 0.0,
             group = group,
-            lyricsRelativePathNoExt = normalizedRelativePath.substringBeforeLast('.')
+            lyricsRelativePathNoExt = normalizedRelativePath.substringBeforeLast('.'),
+            remoteSubtitleSources = subtitles
         )
     }
 }

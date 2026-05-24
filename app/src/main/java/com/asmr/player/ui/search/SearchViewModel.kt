@@ -187,6 +187,12 @@ class SearchViewModel @Inject constructor(
         requestPage(current.keyword, current.page - 1, SearchPendingRequestKind.Page)
     }
 
+    fun firstPage() {
+        val current = _uiState.value as? SearchUiState.Success ?: return
+        if (!current.canGoPrev || current.isBusy) return
+        requestPage(current.keyword, 1, SearchPendingRequestKind.Page)
+    }
+
     fun refreshPage() {
         val current = _uiState.value as? SearchUiState.Success ?: return
         if (current.isBusy) return
