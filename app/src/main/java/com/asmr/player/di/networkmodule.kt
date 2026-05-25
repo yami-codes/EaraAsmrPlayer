@@ -56,9 +56,13 @@ object NetworkModule {
                 builder.header("Origin", "https://www.asmr.one")
                 builder.header("Referer", "https://www.asmr.one/")
             } else if (host.contains("dlsite.")) {
-                builder.header("Referer", "https://www.dlsite.com/")
+                if (request.header("Referer") == null) {
+                    builder.header("Referer", "https://www.dlsite.com/")
+                }
             } else if (host.contains("byteair.volces.com")) {
-                builder.header("Referer", "https://www.dlsite.com/")
+                if (request.header("Referer") == null) {
+                    builder.header("Referer", "https://www.dlsite.com/")
+                }
             }
             
             try {

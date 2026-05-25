@@ -55,11 +55,15 @@ object SettingsKeys {
     val FX_VOLUME_THRESHOLD_MIN_DB = floatPreferencesKey("fx_volume_threshold_min_db")
     val FX_VOLUME_THRESHOLD_MAX_DB = floatPreferencesKey("fx_volume_threshold_max_db")
     val FX_VOLUME_LOUDNESS_TARGET_DB = floatPreferencesKey("fx_volume_loudness_target_db")
+    val FX_SCENE_ENABLED = booleanPreferencesKey("fx_scene_enabled")
+    val FX_SCENE_PRESET_ID = stringPreferencesKey("fx_scene_preset_id")
+    val FX_SCENE_AMOUNT = intPreferencesKey("fx_scene_amount")
 
     val FX_STEREO_ENABLED = booleanPreferencesKey("fx_stereo_enabled")
 
     val UI_FX_CHANNEL_EXPANDED = booleanPreferencesKey("ui_fx_channel_expanded")
     val UI_FX_VOLUME_THRESHOLD_EXPANDED = booleanPreferencesKey("ui_fx_volume_threshold_expanded")
+    val UI_FX_SCENE_EXPANDED = booleanPreferencesKey("ui_fx_scene_expanded")
     val UI_FX_SPEED_PITCH_ENABLED = booleanPreferencesKey("ui_fx_speed_pitch_enabled")
     val UI_FX_SPEED_PITCH_EXPANDED = booleanPreferencesKey("ui_fx_speed_pitch_expanded")
     val UI_FX_STEREO_EXPANDED = booleanPreferencesKey("ui_fx_stereo_expanded")

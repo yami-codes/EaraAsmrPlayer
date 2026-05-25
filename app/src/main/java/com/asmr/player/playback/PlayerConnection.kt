@@ -14,6 +14,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.asmr.player.data.local.db.dao.AlbumDao
 import com.asmr.player.data.local.db.dao.TrackDao
+import com.asmr.player.data.lyrics.EXTRA_REMOTE_SUBTITLE_SOURCES_JSON
 import com.asmr.player.data.repository.TrackSliceRepository
 import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.service.PlaybackService
@@ -23,6 +24,7 @@ import com.asmr.player.util.MessageManager
 import com.asmr.player.playback.AppVolume
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.asmr.player.util.NetworkMeteredChecker
+import com.asmr.player.util.RemoteSubtitleSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -90,6 +92,7 @@ class PlayerConnection @Inject constructor(
     private val sliceLoopEngine = SliceLoopEngine()
     private val currentSlices = MutableStateFlow<List<Slice>>(emptyList())
     private var didRestorePlaybackState: Boolean = false
+    private var restoreAttemptResolved: Boolean = false
     private val meteredWarnedMediaIds = LinkedHashSet<String>()
     private var lastMeteredWarnAtMs: Long = 0L
     private val connectMutex = Mutex()
@@ -216,6 +219,7 @@ class PlayerConnection @Inject constructor(
                             this@PlayerConnection.controller = null
                             _snapshot.value = _snapshot.value.copy(
                                 isConnected = false,
+                                startupRestoreResolved = restoreAttemptResolved,
                                 isPlaying = false
                             )
                             _queue.value = emptyList()
@@ -242,7 +246,11 @@ class PlayerConnection @Inject constructor(
 
                     if (shouldUpdateSnapshot) {
                         val prev = _snapshot.value
-                        _snapshot.value = player.toSnapshot(isConnected = true, audioSessionId = prev.audioSessionId)
+                        _snapshot.value = player.toSnapshot(
+                            isConnected = true,
+                            audioSessionId = prev.audioSessionId,
+                            startupRestoreResolved = restoreAttemptResolved
+                        )
                     }
                     if (
                         events.contains(Player.EVENT_TIMELINE_CHANGED) ||
@@ -279,14 +287,24 @@ class PlayerConnection @Inject constructor(
                 }
             }
         )
-            _snapshot.value = c.toSnapshot(isConnected = true, audioSessionId = _snapshot.value.audioSessionId)
+            _snapshot.value = c.toSnapshot(
+                isConnected = true,
+                audioSessionId = _snapshot.value.audioSessionId,
+                startupRestoreResolved = restoreAttemptResolved
+            )
             updateQueue()
 
             val restored = restorePlaybackStateIfNeeded(c)
+            restoreAttemptResolved = true
             if (!restored) {
                 val mode = runCatching { settingsRepository.playMode.first() }.getOrDefault(0)
                 applyPlayModeToController(c, mode)
             }
+            _snapshot.value = c.toSnapshot(
+                isConnected = true,
+                audioSessionId = _snapshot.value.audioSessionId,
+                startupRestoreResolved = restoreAttemptResolved
+            )
         
             try {
                 val cmd = androidx.media3.session.SessionCommand("GET_AUDIO_SESSION_ID", android.os.Bundle.EMPTY)
@@ -326,8 +344,35 @@ class PlayerConnection @Inject constructor(
         if (c.mediaItemCount > 0) return false
 
         val saved = playbackStateStore.load() ?: return false
-        val persisted = saved.queue.map { it.copy(mediaId = it.mediaId.trim(), uri = it.uri.trim()) }
-            .filter { it.mediaId.isNotBlank() }
+        val persisted = runCatching { saved.queue }.getOrNull().orEmpty()
+            .mapNotNull { item ->
+                val mediaId = runCatching { item.mediaId }.getOrNull().orEmpty().trim()
+                if (mediaId.isBlank()) return@mapNotNull null
+                val uri = runCatching { item.uri }.getOrNull().orEmpty().trim()
+                val remoteSubtitleSources = runCatching { item.remoteSubtitleSources }.getOrNull().orEmpty()
+                    .mapNotNull { sourceItem ->
+                        val url = runCatching { sourceItem.url }.getOrNull().orEmpty().trim()
+                        if (url.isBlank()) return@mapNotNull null
+                        PersistedRemoteSubtitleSource(
+                            url = url,
+                            language = sourceItem.language,
+                            ext = sourceItem.ext
+                        )
+                    }
+                PersistedPlaybackQueueItem(
+                    mediaId = mediaId,
+                    uri = uri,
+                    mimeType = item.mimeType,
+                    title = item.title,
+                    artist = item.artist,
+                    albumTitle = item.albumTitle,
+                    artworkUri = item.artworkUri,
+                    albumId = item.albumId,
+                    trackId = item.trackId,
+                    rjCode = item.rjCode,
+                    remoteSubtitleSources = remoteSubtitleSources
+                )
+            }
         if (persisted.isEmpty()) return false
         val items = buildMediaItemsFromPersistedItems(persisted)
         if (items.isEmpty()) return false
@@ -345,7 +390,11 @@ class PlayerConnection @Inject constructor(
         c.playWhenReady = false
 
         _queue.value = items
-        _snapshot.value = c.toSnapshot(isConnected = true, audioSessionId = _snapshot.value.audioSessionId)
+        _snapshot.value = c.toSnapshot(
+            isConnected = true,
+            audioSessionId = _snapshot.value.audioSessionId,
+            startupRestoreResolved = restoreAttemptResolved
+        )
         return true
     }
 
@@ -378,10 +427,28 @@ class PlayerConnection @Inject constructor(
                     path = track.path,
                     duration = track.duration,
                     group = track.group,
-                    lyricsRelativePathNoExt = ""
+                    lyricsRelativePathNoExt = "",
+                    remoteSubtitleSources = persisted.remoteSubtitleSources.mapNotNull { persistedSource ->
+                        val url = persistedSource.url.trim()
+                        if (url.isBlank()) return@mapNotNull null
+                        RemoteSubtitleSource(
+                            url = url,
+                            language = persistedSource.language.orEmpty().ifBlank { "default" },
+                            ext = persistedSource.ext.orEmpty().ifBlank { url.substringAfterLast('.', "vtt") }
+                        )
+                    }
                 )
                 MediaItemFactory.fromTrack(album, t)
             } else {
+                val restoredRemoteSubtitleSources = persisted.remoteSubtitleSources.mapNotNull { persistedSource ->
+                    val url = persistedSource.url.trim()
+                    if (url.isBlank()) return@mapNotNull null
+                    RemoteSubtitleSource(
+                        url = url,
+                        language = persistedSource.language.orEmpty().ifBlank { "default" },
+                        ext = persistedSource.ext.orEmpty().ifBlank { url.substringAfterLast('.', "vtt") }
+                    )
+                }
                 val uri = toPlayableUri(persisted.uri.ifBlank { id })
                 val title = persisted.title.orEmpty().ifBlank { deriveTitleFromId(id) }
                 val meta = MediaMetadata.Builder()
@@ -394,6 +461,9 @@ class PlayerConnection @Inject constructor(
                             if (persisted.albumId != null) putLong("album_id", persisted.albumId)
                             if (persisted.trackId != null) putLong("track_id", persisted.trackId)
                             if (!persisted.rjCode.isNullOrBlank()) putString("rj_code", persisted.rjCode)
+                            encodeRemoteSubtitleSources(restoredRemoteSubtitleSources)?.let { encoded ->
+                                putString(EXTRA_REMOTE_SUBTITLE_SOURCES_JSON, encoded)
+                            }
                         }
                     )
                     .build()
@@ -444,6 +514,33 @@ class PlayerConnection @Inject constructor(
         }
     }
 
+    private fun decodeRemoteSubtitleSources(raw: String?): List<PersistedRemoteSubtitleSource> {
+        val trimmed = raw.orEmpty().trim()
+        if (trimmed.isBlank()) return emptyList()
+        return trimmed.split('\n').mapNotNull { line ->
+            val parts = line.split('\t')
+            val url = parts.getOrNull(0).orEmpty().trim()
+            if (url.isBlank()) return@mapNotNull null
+            PersistedRemoteSubtitleSource(
+                url = url,
+                language = parts.getOrNull(1)?.trim().orEmpty().ifBlank { "default" },
+                ext = parts.getOrNull(2)?.trim().orEmpty().ifBlank { url.substringAfterLast('.', "vtt") }
+            )
+        }
+    }
+
+    private fun encodeRemoteSubtitleSources(sources: List<RemoteSubtitleSource>): String? {
+        val normalized = sources.mapNotNull { source ->
+            val url = source.url.trim()
+            if (url.isBlank()) return@mapNotNull null
+            val language = source.language.trim().ifBlank { "default" }
+            val ext = source.ext.trim().ifBlank { url.substringAfterLast('.', "vtt") }
+            listOf(url, language, ext).joinToString("\t")
+        }
+        if (normalized.isEmpty()) return null
+        return normalized.joinToString("\n")
+    }
+
     private suspend fun savePlaybackState() {
         val c = controller ?: return
         val items = _queue.value.ifEmpty { (0 until c.mediaItemCount).map { idx -> c.getMediaItemAt(idx) } }
@@ -467,7 +564,8 @@ class PlayerConnection @Inject constructor(
                 artworkUri = meta.artworkUri?.toString(),
                 albumId = albumId,
                 trackId = trackId,
-                rjCode = rjCode
+                rjCode = rjCode,
+                remoteSubtitleSources = decodeRemoteSubtitleSources(extras?.getString(EXTRA_REMOTE_SUBTITLE_SOURCES_JSON))
             )
         }
         if (persistedQueue.isEmpty()) return
@@ -691,9 +789,14 @@ private fun applyPlayModeToController(controller: MediaController, mode: Int) {
     }
 }
 
-private fun Player.toSnapshot(isConnected: Boolean, audioSessionId: Int): PlaybackSnapshot {
+private fun Player.toSnapshot(
+    isConnected: Boolean,
+    audioSessionId: Int,
+    startupRestoreResolved: Boolean
+): PlaybackSnapshot {
     return PlaybackSnapshot(
         isConnected = isConnected,
+        startupRestoreResolved = startupRestoreResolved,
         isPlaying = isPlaying,
         playbackState = playbackState,
         repeatMode = repeatMode,

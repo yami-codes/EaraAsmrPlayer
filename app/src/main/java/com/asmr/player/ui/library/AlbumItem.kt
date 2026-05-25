@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,6 +50,10 @@ private val AlbumItemHorizontalPadding = 8.dp
 private val AlbumItemVerticalPadding = 2.dp
 private val AlbumItemMetaLineVerticalPadding = 1.dp
 private val AlbumItemCoverContentSpacing = 8.dp
+private val AlbumGridInfoHorizontalPadding = 6.dp
+private val AlbumGridInfoVerticalPadding = 8.dp
+internal const val ALBUM_ITEM_CARD_TAG = "album_item_card"
+internal const val ALBUM_ITEM_STATS_TAG = "album_item_stats"
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -91,6 +94,7 @@ fun AlbumItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = AlbumItemHorizontalPadding, vertical = AlbumItemVerticalPadding)
+            .testTag(ALBUM_ITEM_CARD_TAG)
             .clip(shape)
             .background(colorScheme.surface.copy(alpha = 0.5f))
             .combinedClickable(
@@ -104,7 +108,7 @@ fun AlbumItem(
             spacing = AlbumItemCoverContentSpacing,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(listItemHeight),
+                .heightIn(min = listItemHeight),
             cover = {
                 Box(
                     modifier = Modifier
@@ -133,7 +137,6 @@ fun AlbumItem(
             content = {
                 Column(
                     modifier = Modifier
-                        .fillMaxHeight()
                         .padding(top = 3.dp, bottom = 3.dp, end = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
@@ -154,6 +157,7 @@ fun AlbumItem(
                             rjOnClick = onRjClick?.let { click -> { click(rj) } },
                             circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
                             leadingVisual = Icon,
+                            order = AlbumPrimaryMetaOrder.CircleThenRj,
                         )
                     }
 
@@ -215,7 +219,9 @@ fun AlbumItem(
                                 color = colorScheme.textTertiary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(ALBUM_ITEM_STATS_TAG)
                             )
                         }
                     }
@@ -353,7 +359,7 @@ fun AlbumGridItem(
         }
         
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = AlbumGridInfoHorizontalPadding, vertical = AlbumGridInfoVerticalPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(

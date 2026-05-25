@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -88,8 +89,6 @@ import com.asmr.player.playback.AppVolume
 import com.asmr.player.playback.PlaybackSnapshot
 import com.asmr.player.ui.common.EqualizerPanel
 import com.asmr.player.ui.common.rememberProtectedAppVolumeChangeState
-import com.asmr.player.ui.common.rememberComputedDominantColorCenterWeighted
-import com.asmr.player.ui.common.rememberComputedVideoFrameDominantColorCenterWeighted
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.smoothScrollToIndex
 import com.asmr.player.ui.library.TagAssignDialog
@@ -174,7 +173,7 @@ internal fun PlayerSurfaceHeader(
             }
             IconButton(onClick = onShowQueue) {
                 Icon(
-                    Icons.Default.PlaylistPlay,
+                    Icons.AutoMirrored.Filled.PlaylistPlay,
                     contentDescription = null,
                     modifier = Modifier.size(if (isLandscape) 22.dp else 24.dp),
                     tint = colorScheme.onSurface

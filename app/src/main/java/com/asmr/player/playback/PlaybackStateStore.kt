@@ -37,7 +37,14 @@ data class PersistedPlaybackQueueItem(
     val artworkUri: String?,
     val albumId: Long?,
     val trackId: Long?,
-    val rjCode: String?
+    val rjCode: String?,
+    val remoteSubtitleSources: List<PersistedRemoteSubtitleSource> = emptyList()
+)
+
+data class PersistedRemoteSubtitleSource(
+    val url: String,
+    val language: String?,
+    val ext: String?
 )
 
 data class PersistedPlaybackStateV2(
@@ -100,7 +107,8 @@ class PlaybackStateStore @Inject constructor(
                         artworkUri = null,
                         albumId = null,
                         trackId = null,
-                        rjCode = null
+                        rjCode = null,
+                        remoteSubtitleSources = emptyList()
                     )
                 },
                 currentIndex = v1.currentIndex,

@@ -6,10 +6,22 @@ import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.data.settings.settingsDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class ThemeBootstrapPreferences(
+    val theme: String = "system",
+    val dynamicPlayerHueEnabled: Boolean = false,
+    val staticHueArgbLight: Int? = null,
+    val staticHueArgbDark: Int? = null,
+    val lastDynamicHueSourceKey: String? = null,
+    val lastDynamicHueSeedArgb: Int? = null
+)
 
 @Singleton
 class SettingsDataStore @Inject constructor(
@@ -21,6 +33,8 @@ class SettingsDataStore @Inject constructor(
     private val dynamicPlayerHueEnabledKey = booleanPreferencesKey("dynamic_player_hue_enabled")
     private val staticHueArgbLightKey = intPreferencesKey("static_hue_argb_light")
     private val staticHueArgbDarkKey = intPreferencesKey("static_hue_argb_dark")
+    private val lastDynamicHueSourceKeyKey = stringPreferencesKey("last_dynamic_hue_source_key")
+    private val lastDynamicHueSeedArgbKey = intPreferencesKey("last_dynamic_hue_seed_argb")
     private val coverBackgroundEnabledKey = booleanPreferencesKey("cover_background_enabled")
     private val coverBackgroundClarityKey = floatPreferencesKey("cover_background_clarity")
     private val coverPreviewModeKey = stringPreferencesKey("cover_preview_mode")
@@ -48,6 +62,22 @@ class SettingsDataStore @Inject constructor(
         val isDark = themeMode == "dark" || themeMode == "soft_dark"
         val key = if (isDark) staticHueArgbDarkKey else staticHueArgbLightKey
         if (prefs.contains(key)) prefs[key] else null
+    }
+    val lastDynamicHueSourceKey: Flow<String?> = context.settingsDataStore.data.map { prefs ->
+        prefs[lastDynamicHueSourceKeyKey]
+    }
+    val lastDynamicHueSeedArgb: Flow<Int?> = context.settingsDataStore.data.map { prefs ->
+        if (prefs.contains(lastDynamicHueSeedArgbKey)) prefs[lastDynamicHueSeedArgbKey] else null
+    }
+    val themeBootstrapPreferences: Flow<ThemeBootstrapPreferences> = context.settingsDataStore.data.map { prefs ->
+        ThemeBootstrapPreferences(
+            theme = prefs[themeKey] ?: "system",
+            dynamicPlayerHueEnabled = prefs[dynamicPlayerHueEnabledKey] ?: false,
+            staticHueArgbLight = if (prefs.contains(staticHueArgbLightKey)) prefs[staticHueArgbLightKey] else null,
+            staticHueArgbDark = if (prefs.contains(staticHueArgbDarkKey)) prefs[staticHueArgbDarkKey] else null,
+            lastDynamicHueSourceKey = prefs[lastDynamicHueSourceKeyKey],
+            lastDynamicHueSeedArgb = if (prefs.contains(lastDynamicHueSeedArgbKey)) prefs[lastDynamicHueSeedArgbKey] else null
+        )
     }
     val coverBackgroundEnabled: Flow<Boolean> = context.settingsDataStore.data.map { it[coverBackgroundEnabledKey] ?: true }
     val coverBackgroundClarity: Flow<Float> = context.settingsDataStore.data.map { it[coverBackgroundClarityKey] ?: 0.35f }
@@ -93,6 +123,28 @@ class SettingsDataStore @Inject constructor(
             } else {
                 prefs[key] = argb
             }
+        }
+    }
+
+    suspend fun loadThemeBootstrapPreferences(): ThemeBootstrapPreferences {
+        return withContext(Dispatchers.IO) {
+            themeBootstrapPreferences.first()
+        }
+    }
+
+    suspend fun setLastDynamicHueSeed(sourceKey: String, argb: Int) {
+        val normalizedSourceKey = sourceKey.trim()
+        if (normalizedSourceKey.isBlank()) return
+        context.settingsDataStore.edit { prefs ->
+            prefs[lastDynamicHueSourceKeyKey] = normalizedSourceKey
+            prefs[lastDynamicHueSeedArgbKey] = argb
+        }
+    }
+
+    suspend fun clearLastDynamicHueSeed() {
+        context.settingsDataStore.edit { prefs ->
+            prefs.remove(lastDynamicHueSourceKeyKey)
+            prefs.remove(lastDynamicHueSeedArgbKey)
         }
     }
 

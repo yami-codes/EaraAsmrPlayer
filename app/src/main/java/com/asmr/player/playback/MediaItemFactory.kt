@@ -7,10 +7,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.asmr.player.data.lyrics.EXTRA_ALBUM_WORK_ID
 import com.asmr.player.data.lyrics.EXTRA_LYRICS_RELATIVE_PATH_NO_EXT
+import com.asmr.player.data.lyrics.EXTRA_REMOTE_SUBTITLE_SOURCES_JSON
 import com.asmr.player.data.lyrics.EXTRA_TRACK_GROUP
 import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import com.asmr.player.util.RemoteSubtitleSource
 import java.io.File
 
 data class MediaItemRequest(
@@ -26,6 +28,7 @@ data class MediaItemRequest(
     val albumWorkId: String = "",
     val trackGroup: String = "",
     val lyricsRelativePathNoExt: String = "",
+    val remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList(),
     val mimeType: String? = null,
     val isVideo: Boolean = false
 )
@@ -55,7 +58,8 @@ object MediaItemFactory {
                 trackGroup = track.group,
                 lyricsRelativePathNoExt = track.lyricsRelativePathNoExt.ifBlank {
                     deriveLyricsRelativePathNoExt(track.path, album.getAllLocalPaths())
-                }
+                },
+                remoteSubtitleSources = track.remoteSubtitleSources
             )
         )
     }
@@ -73,6 +77,7 @@ object MediaItemFactory {
         albumWorkId: String = "",
         trackGroup: String = "",
         lyricsRelativePathNoExt: String = "",
+        remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList(),
         mimeType: String? = null,
         isVideo: Boolean = false
     ): MediaItem {
@@ -90,6 +95,7 @@ object MediaItemFactory {
                 albumWorkId = albumWorkId,
                 trackGroup = trackGroup,
                 lyricsRelativePathNoExt = lyricsRelativePathNoExt,
+                remoteSubtitleSources = remoteSubtitleSources,
                 mimeType = mimeType,
                 isVideo = isVideo
             )
@@ -110,6 +116,9 @@ object MediaItemFactory {
                     if (request.trackGroup.isNotBlank()) putString(EXTRA_TRACK_GROUP, request.trackGroup)
                     if (request.lyricsRelativePathNoExt.isNotBlank()) {
                         putString(EXTRA_LYRICS_RELATIVE_PATH_NO_EXT, request.lyricsRelativePathNoExt)
+                    }
+                    encodeRemoteSubtitleSources(request.remoteSubtitleSources)?.let { encoded ->
+                        putString(EXTRA_REMOTE_SUBTITLE_SOURCES_JSON, encoded)
                     }
                     if (request.isVideo) putBoolean("is_video", true)
                 }
@@ -170,5 +179,17 @@ object MediaItemFactory {
             "mov" -> "video/quicktime"
             else -> null
         }
+    }
+
+    private fun encodeRemoteSubtitleSources(sources: List<RemoteSubtitleSource>): String? {
+        val normalized = sources.mapNotNull { source ->
+            val url = source.url.trim()
+            if (url.isBlank()) return@mapNotNull null
+            val language = source.language.trim().ifBlank { "default" }
+            val ext = source.ext.trim().ifBlank { url.substringAfterLast('.', "vtt") }
+            listOf(url, language, ext).joinToString("\t")
+        }
+        if (normalized.isEmpty()) return null
+        return normalized.joinToString("\n")
     }
 }

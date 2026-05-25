@@ -31,12 +31,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,6 +92,11 @@ fun MiniPlayer(
     val barHeight = if (largeLayout) 64.dp else 56.dp
     val coverSize = if (largeLayout) 60.dp else 52.dp
     val coverInset = 2.dp
+    val miniPlayerBorderColor = if (colorScheme.isDark) {
+        Color.White.copy(alpha = 0.14f)
+    } else {
+        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    }
 
     var optimisticIsPlaying by remember { mutableStateOf<Boolean?>(null) }
     var stableMediaId by remember { mutableStateOf(currentMediaId) }
@@ -163,9 +170,12 @@ fun MiniPlayer(
                             bottomEnd = if (largeLayout) 26.dp else 22.dp
                         ),
                         colors = CardDefaults.elevatedCardColors(
-                            containerColor = colorScheme.primarySoft
-                                .copy(alpha = if (colorScheme.isDark) 0.10f else 0.16f)
-                                .compositeOver(colorScheme.surface)
+                            containerColor = lerp(
+                                colorScheme.surface,
+                                colorScheme.primarySoft,
+                                if (colorScheme.isDark) 0.05f else 0.08f
+                            ).copy(alpha = if (colorScheme.isDark) 0.93f else 0.95f)
+                                .compositeOver(colorScheme.background)
                         ),
                         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                     ) {
@@ -255,7 +265,7 @@ fun MiniPlayer(
                                         modifier = Modifier.size(controlsButtonSize)
                                     ) {
                                         Icon(
-                                        imageVector = Icons.Default.PlaylistPlay,
+                                        imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
                                         contentDescription = null,
                                         tint = colorScheme.onSurface,
                                         modifier = Modifier.size(queueIconSize)
@@ -274,6 +284,20 @@ fun MiniPlayer(
                             )
                         }
                     }
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .border(
+                                width = 1.dp,
+                                color = miniPlayerBorderColor,
+                                shape = RoundedCornerShape(
+                                    topStart = coverSize / 2,
+                                    bottomStart = coverSize / 2,
+                                    topEnd = if (largeLayout) 26.dp else 22.dp,
+                                    bottomEnd = if (largeLayout) 26.dp else 22.dp
+                                )
+                            )
+                    )
                 }
             }
         }
@@ -292,6 +316,11 @@ private fun MiniPlayerCoverOnly(
     val compactMinWidth = if (largeLayout) 76.dp else 64.dp
     val barHeight = if (largeLayout) 64.dp else 56.dp
     val coverSize = if (largeLayout) 60.dp else 52.dp
+    val miniPlayerBorderColor = if (colorScheme.isDark) {
+        Color.White.copy(alpha = 0.14f)
+    } else {
+        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    }
     Box(
         modifier = modifier
             .widthIn(min = compactMinWidth)
@@ -303,6 +332,7 @@ private fun MiniPlayerCoverOnly(
                 .size(coverSize)
                 .clip(CircleShape)
                 .background(colorScheme.surface)
+                .border(width = 1.dp, color = miniPlayerBorderColor, shape = CircleShape)
                 .clickable(onClick = onExpand),
             contentAlignment = Alignment.Center
         ) {

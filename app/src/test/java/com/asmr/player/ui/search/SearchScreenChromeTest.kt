@@ -1,6 +1,10 @@
 package com.asmr.player.ui.search
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,10 +18,13 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.asmr.player.ui.common.CollapsibleHeaderState
 import com.asmr.player.ui.theme.AsmrPlayerTheme
@@ -42,15 +49,13 @@ class SearchScreenChromeTest {
                 SearchToolbar(
                     keyword = keyword,
                     onKeywordChange = { keyword = it },
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
                     showSearchSpinner = false,
                     onSearchSubmit = { submitCount += 1 },
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {}
                 )
             }
@@ -76,15 +81,13 @@ class SearchScreenChromeTest {
                     SearchToolbar(
                         keyword = "test",
                         onKeywordChange = {},
-                        selectedOrder = SearchSortOption.Trend,
-                        purchasedOnly = false,
+                        selectedFilter = SearchFilterOption.Trend,
                         selectedLocale = "ja_JP",
                         filterControlsLocked = true,
                         searchSubmitLocked = true,
                         showSearchSpinner = true,
                         onSearchSubmit = {},
-                        onPurchasedOnlySelected = {},
-                        onOrderSelected = {},
+                        onFilterSelected = {},
                         onLocaleSelected = {}
                     )
                     SearchPaginationHeader(
@@ -109,6 +112,35 @@ class SearchScreenChromeTest {
     }
 
     @Test
+    fun scopeMenu_displaysIconsAndUpdatedFilterOptions() {
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "",
+                    onKeywordChange = {},
+                    selectedFilter = SearchFilterOption.ChineseTranslated,
+                    selectedLocale = "zh_CN",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onFilterSelected = {},
+                    onLocaleSelected = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_SCOPE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithText("中文作品").assertExists()
+        composeRule.onNodeWithText("已购").assertExists()
+        composeRule.onNodeWithText("预售").assertExists()
+        composeRule.onNodeWithText("人气顺序").assertExists()
+        composeRule.onNodeWithText("最新发售").assertExists()
+        composeRule.onNodeWithText("销量最高").assertExists()
+        composeRule.onNodeWithText("价格最高").assertExists()
+    }
+
+    @Test
     fun pagePending_disablesChromeAndShowsPaginationSpinner() {
         composeRule.setContent {
             AsmrPlayerTheme {
@@ -116,15 +148,13 @@ class SearchScreenChromeTest {
                     SearchToolbar(
                         keyword = "test",
                         onKeywordChange = {},
-                        selectedOrder = SearchSortOption.Trend,
-                        purchasedOnly = false,
+                        selectedFilter = SearchFilterOption.Trend,
                         selectedLocale = "ja_JP",
                         filterControlsLocked = true,
                         searchSubmitLocked = true,
                         showSearchSpinner = false,
                         onSearchSubmit = {},
-                        onPurchasedOnlySelected = {},
-                        onOrderSelected = {},
+                        onFilterSelected = {},
                         onLocaleSelected = {}
                     )
                     SearchPaginationHeader(
@@ -147,6 +177,68 @@ class SearchScreenChromeTest {
     }
 
     @Test
+    fun paginationBlankAreaTap_doesNotPassThroughToUnderlyingContent() {
+        var underlayClicks = 0
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                Box(modifier = Modifier.size(width = 360.dp, height = 72.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { underlayClicks += 1 }
+                    )
+                    SearchPaginationHeader(
+                        page = 2,
+                        canGoPrev = true,
+                        canGoNext = true,
+                        controlsLocked = false,
+                        onPrev = {},
+                        onNext = {}
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_PAGINATION_TAG)
+            .performTouchInput {
+                down(center.copy(x = center.x, y = center.y))
+                up()
+            }
+
+        composeRule.runOnIdle {
+            assertEquals(0, underlayClicks)
+        }
+    }
+
+    @Test
+    fun paginationButtons_remainClickable() {
+        var prevCount = 0
+        var nextCount = 0
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchPaginationHeader(
+                    page = 2,
+                    canGoPrev = true,
+                    canGoNext = true,
+                    controlsLocked = false,
+                    onPrev = { prevCount += 1 },
+                    onNext = { nextCount += 1 }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_PREV_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(SEARCH_NEXT_BUTTON_TAG).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, prevCount)
+            assertEquals(1, nextCount)
+        }
+    }
+
+    @Test
     fun clearButton_clearsKeywordWithoutSubmitting() {
         var submitCount by mutableIntStateOf(0)
         var latestKeyword = "RJ123456"
@@ -159,15 +251,13 @@ class SearchScreenChromeTest {
                 SearchToolbar(
                     keyword = keyword,
                     onKeywordChange = { keyword = it },
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
                     showSearchSpinner = false,
                     onSearchSubmit = { submitCount += 1 },
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {}
                 )
             }
@@ -194,8 +284,7 @@ class SearchScreenChromeTest {
                     modifier = Modifier,
                     keyword = "RJ123456",
                     onKeywordChange = {},
-                    selectedOrder = SearchSortOption.Trend,
-                    purchasedOnly = false,
+                    selectedFilter = SearchFilterOption.Trend,
                     selectedLocale = "ja_JP",
                     filterControlsLocked = false,
                     searchSubmitLocked = false,
@@ -210,8 +299,7 @@ class SearchScreenChromeTest {
                     collapseFraction = chromeState.collapseFraction,
                     onMeasured = { chromeState.updateHeight(it.height.toFloat()) },
                     onSearchSubmit = {},
-                    onPurchasedOnlySelected = {},
-                    onOrderSelected = {},
+                    onFilterSelected = {},
                     onLocaleSelected = {},
                     onPrev = {},
                     onNext = {}

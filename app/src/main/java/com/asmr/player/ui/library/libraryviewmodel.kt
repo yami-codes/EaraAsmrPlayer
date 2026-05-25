@@ -834,10 +834,6 @@ class LibraryViewModel @Inject constructor(
     }
     
     private fun isSubdirectory(child: Uri, parent: Uri): Boolean {
-        // 比较 URI 的路径部分
-        val childPath = child.toString()
-        val parentPath = parent.toString()
-        
         // 如果是相同的 URI scheme 和 authority
         if (child.scheme != parent.scheme || child.authority != parent.authority) {
             return false
@@ -1162,7 +1158,7 @@ class LibraryViewModel @Inject constructor(
             keyword = entity.title.trim(),
             baseWorkno = entity.rjCode.ifBlank { entity.workId }.trim().uppercase(),
             search = { searchKeyword, locale ->
-                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale)
+                dlsiteScraper.search(searchKeyword, page = 1, order = "trend", locale = locale).items
             },
             fetchLanguageEditions = { productId ->
                 dlsiteProductInfoClient.fetchLanguageEditions(productId)
@@ -1931,14 +1927,6 @@ class LibraryViewModel @Inject constructor(
         audioFiles.sortBy { it.absolutePath }
 
         val allExistingTracks = trackDao.getTracksForAlbumOnce(albumId)
-        val existingLocalTargetsByKey = LinkedHashMap<String, TrackEntity>()
-        val existingLocalTargetsByKeyNoGroup = LinkedHashMap<String, TrackEntity>()
-        allExistingTracks
-            .filter { it.path.isNotBlank() && !it.path.startsWith(prefix) && !it.path.trim().startsWith("http", ignoreCase = true) }
-            .forEach { t ->
-                existingLocalTargetsByKey.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t)
-                existingLocalTargetsByKeyNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t)
-            }
 
         val existingTracks = allExistingTracks
             .filter { it.path.startsWith(prefix) }
@@ -1969,17 +1957,7 @@ class LibraryViewModel @Inject constructor(
             val group =
                 if (relPath.contains("/")) relPath.substringBeforeLast('/').substringAfterLast('/', relPath.substringBeforeLast('/')) else ""
             val audioPath = audio.absolutePath
-            val key = TrackKeyNormalizer.buildKey(trackTitle, group, null)
-            val keyNoGroup = TrackKeyNormalizer.buildKey(trackTitle, "", null)
-            val duplicateLocalTrack = existingLocalTargetsByKey[key] ?: existingLocalTargetsByKeyNoGroup[keyNoGroup]
             val relativePathNoExt = relPath.substringBeforeLast('.')
-            if (duplicateLocalTrack != null) {
-                val parsed = parseBestSubtitle(relativePathNoExt)
-                if (parsed.isNotEmpty()) {
-                    subtitleEntriesByExistingTrackId[duplicateLocalTrack.id] = parsed
-                }
-                return@forEach
-            }
             seenPaths.add(audioPath)
 
             val parsed = parseBestSubtitle(relativePathNoExt)
@@ -2154,38 +2132,7 @@ class LibraryViewModel @Inject constructor(
                     trackDao.deleteTracksByIds(toDelete)
                 }
 
-                val existingLocalTargetsByKey = LinkedHashMap<String, TrackEntity>()
-                val existingLocalTargetsByKeyNoGroup = LinkedHashMap<String, TrackEntity>()
-                allExistingTracks
-                    .filter { it.path.isNotBlank() && !it.path.startsWith(albumPath) && !it.path.trim().startsWith("http", ignoreCase = true) }
-                    .forEach { t ->
-                        existingLocalTargetsByKey.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t)
-                        existingLocalTargetsByKeyNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t)
-                    }
-
-                val filteredTrackSpecs = trackSpecs.filter { spec ->
-                    val key = TrackKeyNormalizer.buildKey(spec.title, spec.group, null)
-                    val keyNoGroup = TrackKeyNormalizer.buildKey(spec.title, "", null)
-                    val existingTarget = existingLocalTargetsByKey[key] ?: existingLocalTargetsByKeyNoGroup[keyNoGroup]
-                    if (existingTarget != null) {
-                        val entries = subtitlesByAudioPath[spec.path].orEmpty()
-                        if (entries.isNotEmpty()) {
-                            trackDao.deleteSubtitlesForTrack(existingTarget.id)
-                            trackDao.insertSubtitles(
-                                entries.map { e ->
-                                    SubtitleEntity(
-                                        trackId = existingTarget.id,
-                                        startMs = e.startMs,
-                                        endMs = e.endMs,
-                                        text = e.text
-                                    )
-                                }
-                            )
-                            wroteAnySubtitles = true
-                        }
-                    }
-                    existingTarget == null
-                }
+                val filteredTrackSpecs = trackSpecs
 
                 val tracksToInsert = filteredTrackSpecs.map { spec ->
                     TrackEntity(
@@ -2221,16 +2168,13 @@ class LibraryViewModel @Inject constructor(
 
                 val allAfterInsert = trackDao.getTracksForAlbumOnce(insertedAlbumId)
                 val localAfterInsert = allAfterInsert.filter { !it.path.trim().startsWith("http", ignoreCase = true) }
-                val localKeyToId = LinkedHashMap<String, Long>()
+                val localPathToId = LinkedHashMap<String, Long>()
                 localAfterInsert.forEach { t ->
-                    localKeyToId.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t.id)
-                    localKeyToId.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t.id)
+                    localPathToId.putIfAbsent(t.path, t.id)
                 }
                 val onlineTracks = allAfterInsert.filter { it.path.trim().startsWith("http", ignoreCase = true) }
                 onlineTracks.forEach { online ->
-                    val key = TrackKeyNormalizer.buildKey(online.title, online.group, null)
-                    val keyNoGroup = TrackKeyNormalizer.buildKey(online.title, "", null)
-                    val targetId = localKeyToId[key] ?: localKeyToId[keyNoGroup]
+                    val targetId = localPathToId[online.path]
                     if (targetId != null) {
                         val sourceSubs = trackDao.getSubtitlesForTrack(online.id)
                         if (sourceSubs.isNotEmpty()) {
@@ -2398,7 +2342,6 @@ class LibraryViewModel @Inject constructor(
                         albumDao.deleteAlbum(entity)
                         return@forEach
                     }
-                    anyValid = true
                 }
 
                 var updated = entity
@@ -2541,14 +2484,6 @@ class LibraryViewModel @Inject constructor(
                 .distinct()
 
             val allExistingTracks = trackDao.getTracksForAlbumOnce(albumId)
-            val existingLocalTargetsByKey = LinkedHashMap<String, TrackEntity>()
-            val existingLocalTargetsByKeyNoGroup = LinkedHashMap<String, TrackEntity>()
-            allExistingTracks
-                .filter { it.path.isNotBlank() && !it.path.startsWith(treePrefix) && !it.path.trim().startsWith("http", ignoreCase = true) }
-                .forEach { t ->
-                    existingLocalTargetsByKey.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t)
-                    existingLocalTargetsByKeyNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t)
-                }
 
             val toDelete = allExistingTracks.filter { it.path.startsWith(treePrefix) }.map { it.id }
             if (toDelete.isNotEmpty()) {
@@ -2556,29 +2491,7 @@ class LibraryViewModel @Inject constructor(
                 trackDao.deleteTracksByIds(toDelete)
             }
 
-            val filteredTrackSpecs = trackSpecs.filter { spec ->
-                val key = TrackKeyNormalizer.buildKey(spec.title, spec.group, null)
-                val keyNoGroup = TrackKeyNormalizer.buildKey(spec.title, "", null)
-                val existingTarget = existingLocalTargetsByKey[key] ?: existingLocalTargetsByKeyNoGroup[keyNoGroup]
-                if (existingTarget != null) {
-                    val entries = subtitlesByAudioPath[spec.path].orEmpty()
-                    if (entries.isNotEmpty()) {
-                        trackDao.deleteSubtitlesForTrack(existingTarget.id)
-                        trackDao.insertSubtitles(
-                            entries.map { e ->
-                                SubtitleEntity(
-                                    trackId = existingTarget.id,
-                                    startMs = e.startMs,
-                                    endMs = e.endMs,
-                                    text = e.text
-                                )
-                            }
-                        )
-                        wroteAnySubtitles = true
-                    }
-                }
-                existingTarget == null
-            }
+            val filteredTrackSpecs = trackSpecs
 
             val tracksToInsert = filteredTrackSpecs.map { spec ->
                 TrackEntity(

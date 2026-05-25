@@ -36,6 +36,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -142,10 +144,11 @@ internal fun AsmrOneDownloadDialog(
     onDismiss: () -> Unit,
     onConfirm: (Set<String>) -> Unit
 ) {
-    val leaves = remember(trackTree) { flattenAsmrOneTracksForUi(trackTree) }
-    val leafPathsByFolder = remember(trackTree) { buildLeafPathIndex(trackTree) }
+    val mediaTree = remember(trackTree) { filterDownloadableMediaTree(trackTree) }
+    val leafPaths = remember(mediaTree) { flattenAsmrOneLeafDownloads(mediaTree).map { it.relativePath } }
+    val leafPathsByFolder = remember(mediaTree) { buildLeafPathIndex(mediaTree) }
     val expanded = remember { mutableStateListOf<String>() }
-    val selected = remember(trackTree) { mutableStateListOf<String>().apply { addAll(leaves.map { it.relativePath }) } }
+    val selected = remember(trackTree) { mutableStateListOf<String>().apply { addAll(leafPaths) } }
     val listState = rememberLazyListState()
 
     Dialog(
@@ -171,7 +174,7 @@ internal fun AsmrOneDownloadDialog(
                     )
                     TextButton(
                         onClick = { onConfirm(selected.toSet()) },
-                        enabled = leaves.isNotEmpty() && selected.isNotEmpty()
+                        enabled = leafPaths.isNotEmpty() && selected.isNotEmpty()
                     ) { Text("开始下载") }
                 }
 
@@ -185,11 +188,11 @@ internal fun AsmrOneDownloadDialog(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(onClick = {
                             selected.clear()
-                            selected.addAll(leaves.map { it.relativePath })
+                            selected.addAll(leafPaths)
                         }) { Text("全选") }
                         OutlinedButton(onClick = { selected.clear() }) { Text("全不选") }
                     }
-                    if (leaves.isEmpty()) {
+                    if (leafPaths.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -199,7 +202,7 @@ internal fun AsmrOneDownloadDialog(
                             Text("没有可下载的音频/视频文件")
                         }
                     } else {
-                        val entries = flattenAsmrOneTreeForUi(trackTree, expanded.toSet()).entries
+                        val entries = flattenAsmrOneTreeForUi(mediaTree, expanded.toSet()).entries
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.fillMaxSize().thinScrollbar(listState)
@@ -207,12 +210,12 @@ internal fun AsmrOneDownloadDialog(
                             itemsIndexed(items = entries, key = { _, it -> it.path }) { index, entry ->
                                 when (entry) {
                                     is AsmrTreeUiEntry.Folder -> {
-                                        val leafPaths = leafPathsByFolder[entry.path].orEmpty()
-                                        val checkedCount = leafPaths.count { selected.contains(it) }
+                                        val folderLeafPaths = leafPathsByFolder[entry.path].orEmpty()
+                                        val checkedCount = folderLeafPaths.count { selected.contains(it) }
                                         val state = when {
-                                            leafPaths.isEmpty() -> ToggleableState.Off
+                                            folderLeafPaths.isEmpty() -> ToggleableState.Off
                                             checkedCount == 0 -> ToggleableState.Off
-                                            checkedCount == leafPaths.size -> ToggleableState.On
+                                            checkedCount == folderLeafPaths.size -> ToggleableState.On
                                             else -> ToggleableState.Indeterminate
                                         }
                                         AsmrTreeFolderCheckboxRow(
@@ -224,12 +227,12 @@ internal fun AsmrOneDownloadDialog(
                                                 if (expanded.contains(entry.path)) expanded.remove(entry.path) else expanded.add(entry.path)
                                             },
                                             onToggleCheck = {
-                                                if (leafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
+                                                if (folderLeafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
                                                 val shouldSelectAll = state != ToggleableState.On
                                                 if (shouldSelectAll) {
-                                                    leafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
+                                                    folderLeafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
                                                 } else {
-                                                    selected.removeAll(leafPaths.toSet())
+                                                    selected.removeAll(folderLeafPaths.toSet())
                                                 }
                                             }
                                         )
@@ -553,7 +556,7 @@ private fun AsmrTreeFolderCheckboxRow(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = onToggleExpand, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -833,10 +836,10 @@ internal fun FilePreviewDialog(
                     )
                     if (canNavigate) {
                         IconButton(onClick = { currentIndex = (currentIndex - 1 + initialCandidates.size) % initialCandidates.size }) {
-                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "上一项")
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "上一项")
                         }
                         IconButton(onClick = { currentIndex = (currentIndex + 1) % initialCandidates.size }) {
-                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "下一项")
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下一项")
                         }
                     }
                     if (canFullscreen) {

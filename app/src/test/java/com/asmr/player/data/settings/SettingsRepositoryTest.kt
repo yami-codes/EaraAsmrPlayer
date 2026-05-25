@@ -3,12 +3,14 @@ package com.asmr.player.data.settings
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.first
 
 @RunWith(RobolectricTestRunner::class)
 class SettingsRepositoryTest {
@@ -54,5 +56,51 @@ class SettingsRepositoryTest {
             ),
             repository.loadPlaybackRuntimeSettings()
         )
+    }
+
+    @Test
+    fun ensureAppVolumePercentInitialized_seedsWhenUnset() = runBlocking {
+        val resolved = repository.ensureAppVolumePercentInitialized(46)
+
+        assertEquals(46, resolved)
+        assertEquals(46, repository.appVolumePercentValue())
+    }
+
+    @Test
+    fun ensureAppVolumePercentInitialized_keepsStoredValue() = runBlocking {
+        repository.setAppVolumePercent(72)
+
+        val resolved = repository.ensureAppVolumePercentInitialized(32)
+
+        assertEquals(72, resolved)
+        assertEquals(72, repository.appVolumePercentValue())
+    }
+
+    @Test
+    fun equalizerSettings_includeSceneEffectDefaultsAndStoredValues() = runBlocking {
+        val defaults = repository.equalizerSettings.first()
+        assertFalse(defaults.sceneEffectEnabled)
+        assertEquals(SceneEffectPresets.DefaultPresetId, defaults.sceneEffectPresetId)
+        assertEquals(SceneEffectPresets.DefaultAmount, defaults.sceneEffectAmount)
+        assertEquals(true, defaults.sceneEffectExpanded)
+
+        repository.updateEqualizerSettings(
+            defaults.copy(
+                sceneEffectEnabled = true,
+                sceneEffectPresetId = "tunnel",
+                sceneEffectAmount = 73,
+                sceneEffectExpanded = false
+            )
+        )
+
+        val stored = repository.equalizerSettings.first()
+        assertEquals(true, stored.sceneEffectEnabled)
+        assertEquals("tunnel", stored.sceneEffectPresetId)
+        assertEquals(73, stored.sceneEffectAmount)
+        assertEquals(false, stored.sceneEffectExpanded)
+    }
+
+    private suspend fun SettingsRepository.appVolumePercentValue(): Int {
+        return appVolumePercent.first()
     }
 }

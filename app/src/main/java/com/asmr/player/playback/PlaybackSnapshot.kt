@@ -6,6 +6,7 @@ import androidx.media3.common.C
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 data class PlaybackSnapshot(
     val isConnected: Boolean = false,
+    val startupRestoreResolved: Boolean = false,
     val isPlaying: Boolean = false,
     val playbackState: Int = 0,
     val repeatMode: Int = 0,

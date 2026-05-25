@@ -33,6 +33,10 @@ data class EqualizerSettings(
     val volumeThresholdMinDb: Float = -24f,
     val volumeThresholdMaxDb: Float = -6f,
     val volumeLoudnessTargetDb: Float = -18f,
+    val sceneEffectEnabled: Boolean = false,
+    val sceneEffectPresetId: String = SceneEffectPresets.DefaultPresetId,
+    val sceneEffectAmount: Int = SceneEffectPresets.DefaultAmount,
+    val sceneEffectExpanded: Boolean = true,
     val speedPitchEnabled: Boolean = true,
     val speedPitchExpanded: Boolean = true,
     val equalizerExpanded: Boolean = true
@@ -64,6 +68,10 @@ class AudioEffectController @Inject constructor(
         val vtMaxDb = prefs[SettingsKeys.FX_VOLUME_THRESHOLD_MAX_DB] ?: -6f
         val loudnessTargetDb = prefs[SettingsKeys.FX_VOLUME_LOUDNESS_TARGET_DB] ?: -18f
         val volumeThresholdExpanded = prefs[SettingsKeys.UI_FX_VOLUME_THRESHOLD_EXPANDED] ?: true
+        val sceneEffectEnabled = prefs[SettingsKeys.FX_SCENE_ENABLED] ?: false
+        val sceneEffectPresetId = prefs[SettingsKeys.FX_SCENE_PRESET_ID] ?: SceneEffectPresets.DefaultPresetId
+        val sceneEffectAmount = (prefs[SettingsKeys.FX_SCENE_AMOUNT] ?: SceneEffectPresets.DefaultAmount).coerceIn(0, 100)
+        val sceneEffectExpanded = prefs[SettingsKeys.UI_FX_SCENE_EXPANDED] ?: true
         val stereoEnabled = prefs[SettingsKeys.FX_STEREO_ENABLED] ?: false
         val stereoExpanded = prefs[SettingsKeys.UI_FX_STEREO_EXPANDED] ?: true
         val orbitAzimuthDeg = prefs[SettingsKeys.FX_ORBIT_AZIMUTH_DEG] ?: 0f
@@ -95,6 +103,10 @@ class AudioEffectController @Inject constructor(
             volumeThresholdMinDb = vtMinDb,
             volumeThresholdMaxDb = vtMaxDb,
             volumeLoudnessTargetDb = loudnessTargetDb,
+            sceneEffectEnabled = sceneEffectEnabled,
+            sceneEffectPresetId = sceneEffectPresetId,
+            sceneEffectAmount = sceneEffectAmount,
+            sceneEffectExpanded = sceneEffectExpanded,
             speedPitchEnabled = speedPitchEnabled,
             speedPitchExpanded = speedPitchExpanded,
             equalizerExpanded = equalizerExpanded

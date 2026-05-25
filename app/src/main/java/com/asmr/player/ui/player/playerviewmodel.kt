@@ -217,6 +217,9 @@ class PlayerViewModel @Inject constructor(
                         putFloat("volumeThresholdMinDb", settings.volumeThresholdMinDb)
                         putFloat("volumeThresholdMaxDb", settings.volumeThresholdMaxDb)
                         putFloat("volumeLoudnessTargetDb", settings.volumeLoudnessTargetDb)
+                        putBoolean("sceneEffectEnabled", settings.sceneEffectEnabled)
+                        putString("sceneEffectPresetId", settings.sceneEffectPresetId)
+                        putInt("sceneEffectAmount", settings.sceneEffectAmount)
                     }
                     playerConnection.sendCustomCommand("UPDATE_SESSION_EQ", bundle)
                 }
@@ -307,13 +310,6 @@ class PlayerViewModel @Inject constructor(
     fun addToQueue() {
         val item = playback.value.currentMediaItem ?: return
         showQueueAddSummary(playerConnection.addMediaItems(listOf(item)))
-        return
-        val added = playerConnection.addMediaItem(item)
-        if (added) {
-            messageManager.showSuccess("已加入播放队列")
-        } else {
-            messageManager.showInfo("已在播放队列中")
-        }
     }
 
     fun addTrackToQueue(album: Album, track: Track): Boolean {
@@ -321,13 +317,6 @@ class PlayerViewModel @Inject constructor(
         val summary = playerConnection.addMediaItems(listOf(item))
         showQueueAddSummary(summary)
         return summary.addedCount > 0
-        val added = playerConnection.addMediaItem(item)
-        if (added) {
-            messageManager.showSuccess("已加入播放队列")
-        } else {
-            messageManager.showInfo("已在播放队列中")
-        }
-        return added
     }
 
     fun addMediaItemsToQueue(items: List<MediaItem>) {

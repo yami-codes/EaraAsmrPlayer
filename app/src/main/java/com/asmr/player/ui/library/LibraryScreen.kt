@@ -122,6 +122,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
@@ -175,6 +177,8 @@ private val LibraryPageHorizontalPadding = 8.dp
 private val LibraryTrackListHeaderCornerRadius = 10.dp
 private val LibraryTrackListItemCornerRadius = 10.dp
 private val LibraryAlbumItemVerticalPadding = 2.dp
+private val LibraryAlbumGridInfoHorizontalPadding = 6.dp
+private val LibraryAlbumGridInfoVerticalPadding = 8.dp
 
 private fun Album.withUserTags(userTags: List<String>): Album {
     if (userTags.isEmpty()) return this
@@ -1005,6 +1009,12 @@ internal fun LibraryChrome(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val collapseOvershootPx = with(LocalDensity.current) { LibraryChromeCollapseOvershoot.toPx() }
+    val chromeActionContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (colorScheme.isDark) 0.16f else 0.26f
+    ).copy(alpha = if (colorScheme.isDark) 0.95f else 0.97f)
+        .compositeOver(colorScheme.background)
 
     Row(
         modifier = modifier
@@ -1060,14 +1070,15 @@ internal fun LibraryChrome(
             )
             MaterialTheme(
                 colorScheme = materialColorScheme.copy(
-                    surface = dynamicContainerColor,
-                    surfaceContainer = dynamicContainerColor
+                    surface = chromeActionContainerColor,
+                    surfaceContainer = chromeActionContainerColor,
+                    surfaceVariant = chromeActionContainerColor
                 )
             ) {
                 DropdownMenu(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { onSortMenuExpandedChange(false) },
-                    modifier = Modifier.background(dynamicContainerColor)
+                    modifier = Modifier.background(chromeActionContainerColor)
                 ) {
                     DropdownMenuItem(
                         text = { Text("最近播放") },
@@ -1396,7 +1407,7 @@ private fun AlbumGridItem(
         }
         
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = LibraryAlbumGridInfoHorizontalPadding, vertical = LibraryAlbumGridInfoVerticalPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
@@ -1496,7 +1507,7 @@ private fun AlbumItem(
             spacing = 8.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(listItemHeight),
+                .heightIn(min = listItemHeight),
             cover = {
                 Box(
                     modifier = Modifier
@@ -1570,7 +1581,6 @@ private fun AlbumItem(
 
                 BalancedColumn(
                     modifier = Modifier
-                        .fillMaxHeight()
                         .padding(top = 4.dp, bottom = 4.dp, end = 12.dp),
                     minGap = 4.dp,
                     maxGap = 12.dp,
@@ -1591,6 +1601,7 @@ private fun AlbumItem(
                         rjOnClick = onRjClick?.let { click -> { click(rj) } },
                         circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
                         leadingVisual = AlbumMetaLeadingVisual.Icon,
+                        order = AlbumPrimaryMetaOrder.CircleThenRj,
                     )
 
                     if (album.cv.isNotBlank()) {

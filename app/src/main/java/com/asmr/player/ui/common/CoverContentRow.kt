@@ -50,8 +50,9 @@ fun CoverContentRow(
 
         layout(width = maxWidth, height = finalHeight) {
             val coverY = ((finalHeight - coverWidthPx) / 2).coerceAtLeast(0)
+            val contentY = ((finalHeight - contentPlaceable.height) / 2).coerceAtLeast(0)
             coverPlaceable.placeRelative(0, coverY)
-            contentPlaceable.placeRelative(coverWidthPx + spacingPx, 0)
+            contentPlaceable.placeRelative(coverWidthPx + spacingPx, contentY)
         }
     }
 }

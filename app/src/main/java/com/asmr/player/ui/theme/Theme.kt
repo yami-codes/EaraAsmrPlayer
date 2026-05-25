@@ -15,8 +15,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-val DefaultBrandPrimaryLight = Color(0xFF0B3D2E)
-val DefaultBrandPrimaryDark = Color(0xFF2E7D32)
+val DefaultBrandPrimaryLight = Color(0xFF5D6670)
+val DefaultBrandPrimaryDark = Color(0xFFAFB8C2)
 
 @Immutable
 data class AsmrColorScheme(
@@ -37,7 +37,8 @@ data class AsmrColorScheme(
     val textTertiary: Color,
     val accent: Color,
     val danger: Color,
-    val isDark: Boolean
+    val isDark: Boolean,
+    val mode: ThemeMode
 )
 
 val LocalAsmrColorScheme = staticCompositionLocalOf {
@@ -55,19 +56,20 @@ val LocalAsmrColorScheme = staticCompositionLocalOf {
         primaryStrong = hue.primaryStrong,
         onPrimary = hue.onPrimary,
         primaryContainer = hue.primarySoft,
-        onPrimaryContainer = neutral.onSurface,
-        background = neutral.background,
-        onBackground = neutral.onBackground,
-        surface = neutral.surface,
-        onSurface = neutral.onSurface,
-        surfaceVariant = neutral.surfaceVariant,
-        onSurfaceVariant = neutral.onSurfaceVariant,
-        textPrimary = neutral.textPrimary,
-        textSecondary = neutral.textSecondary,
-        textTertiary = neutral.textTertiary,
+        onPrimaryContainer = hue.onPrimaryContainer,
+        background = hue.background,
+        onBackground = hue.onBackground,
+        surface = hue.surface,
+        onSurface = hue.onSurface,
+        surfaceVariant = hue.surfaceVariant,
+        onSurfaceVariant = hue.onSurfaceVariant,
+        textPrimary = hue.textPrimary,
+        textSecondary = hue.textSecondary,
+        textTertiary = hue.textTertiary,
         accent = hue.primaryStrong,
         danger = Color(0xFFAB0000),
-        isDark = mode.isDark
+        isDark = mode.isDark,
+        mode = mode
     )
 }
 
@@ -87,7 +89,7 @@ fun AsmrPlayerTheme(
         )
     }
     val materialColorScheme = remember(resolvedHue, neutral, mode) {
-        materialColorSchemeFor(mode, neutral, resolvedHue)
+        materialColorSchemeFor(mode, resolvedHue)
     }
     val asmrColorScheme = remember(resolvedHue, neutral, mode) {
         AsmrColorScheme(
@@ -96,19 +98,20 @@ fun AsmrPlayerTheme(
             primaryStrong = resolvedHue.primaryStrong,
             onPrimary = resolvedHue.onPrimary,
             primaryContainer = resolvedHue.primarySoft,
-            onPrimaryContainer = neutral.onSurface,
-            background = neutral.background,
-            onBackground = neutral.onBackground,
-            surface = neutral.surface,
-            onSurface = neutral.onSurface,
-            surfaceVariant = neutral.surfaceVariant,
-            onSurfaceVariant = neutral.onSurfaceVariant,
-            textPrimary = neutral.textPrimary,
-            textSecondary = neutral.textSecondary,
-            textTertiary = neutral.textTertiary,
+            onPrimaryContainer = resolvedHue.onPrimaryContainer,
+            background = resolvedHue.background,
+            onBackground = resolvedHue.onBackground,
+            surface = resolvedHue.surface,
+            onSurface = resolvedHue.onSurface,
+            surfaceVariant = resolvedHue.surfaceVariant,
+            onSurfaceVariant = resolvedHue.onSurfaceVariant,
+            textPrimary = resolvedHue.textPrimary,
+            textSecondary = resolvedHue.textSecondary,
+            textTertiary = resolvedHue.textTertiary,
             accent = resolvedHue.primaryStrong,
             danger = Color(0xFFAB0000),
-            isDark = mode.isDark
+            isDark = mode.isDark,
+            mode = mode
         )
     }
 
@@ -132,7 +135,6 @@ fun AsmrPlayerTheme(
 
 private fun materialColorSchemeFor(
     mode: ThemeMode,
-    neutral: NeutralPalette,
     hue: HuePalette
 ): ColorScheme {
     return if (mode.isDark) {
@@ -140,32 +142,32 @@ private fun materialColorSchemeFor(
             primary = hue.primaryStrong,
             onPrimary = hue.onPrimary,
             primaryContainer = hue.primarySoft,
-            onPrimaryContainer = neutral.onSurface,
-            secondary = hue.primary,
-            onSecondary = hue.onPrimary,
-            background = neutral.background,
-            onBackground = neutral.onBackground,
-            surface = neutral.surface,
+            onPrimaryContainer = hue.onPrimaryContainer,
+            secondary = hue.secondary,
+            onSecondary = hue.onSecondary,
+            background = hue.background,
+            onBackground = hue.onBackground,
+            surface = hue.surface,
             surfaceTint = Color.Transparent,
-            onSurface = neutral.onSurface,
-            surfaceVariant = neutral.surfaceVariant,
-            onSurfaceVariant = neutral.onSurfaceVariant
+            onSurface = hue.onSurface,
+            surfaceVariant = hue.surfaceVariant,
+            onSurfaceVariant = hue.onSurfaceVariant
         )
     } else {
         lightColorScheme(
             primary = hue.primaryStrong,
             onPrimary = hue.onPrimary,
             primaryContainer = hue.primarySoft,
-            onPrimaryContainer = neutral.onSurface,
-            secondary = hue.primary,
-            onSecondary = hue.onPrimary,
-            background = neutral.background,
-            onBackground = neutral.onBackground,
-            surface = neutral.surface,
+            onPrimaryContainer = hue.onPrimaryContainer,
+            secondary = hue.secondary,
+            onSecondary = hue.onSecondary,
+            background = hue.background,
+            onBackground = hue.onBackground,
+            surface = hue.surface,
             surfaceTint = Color.Transparent,
-            onSurface = neutral.onSurface,
-            surfaceVariant = neutral.surfaceVariant,
-            onSurfaceVariant = neutral.onSurfaceVariant
+            onSurface = hue.onSurface,
+            surfaceVariant = hue.surfaceVariant,
+            onSurfaceVariant = hue.onSurfaceVariant
         )
     }
 }

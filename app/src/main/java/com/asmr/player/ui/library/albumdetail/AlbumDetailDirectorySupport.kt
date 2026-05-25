@@ -107,6 +107,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -164,6 +166,45 @@ internal sealed class AsmrTreeUiEntry {
         val isPlayable: Boolean,
         val url: String? = null
     ) : AsmrTreeUiEntry()
+}
+
+private val DirectoryBrowserPanelCornerRadius = 10.dp
+private val DirectoryFolderRowCornerRadius = 10.dp
+private val DirectoryBrowserPanelVerticalPadding = 4.dp
+
+internal enum class DirectoryFolderPosition {
+    Single,
+    First,
+    Middle,
+    Last,
+}
+
+private fun directoryFolderPosition(index: Int, total: Int): DirectoryFolderPosition {
+    return when {
+        total <= 1 -> DirectoryFolderPosition.Single
+        index == 0 -> DirectoryFolderPosition.First
+        index == total - 1 -> DirectoryFolderPosition.Last
+        else -> DirectoryFolderPosition.Middle
+    }
+}
+
+private fun directoryFolderShape(position: DirectoryFolderPosition): RoundedCornerShape {
+    return when (position) {
+        DirectoryFolderPosition.Single -> RoundedCornerShape(DirectoryFolderRowCornerRadius)
+        DirectoryFolderPosition.First -> RoundedCornerShape(
+            topStart = DirectoryFolderRowCornerRadius,
+            topEnd = DirectoryFolderRowCornerRadius,
+            bottomStart = 0.dp,
+            bottomEnd = 0.dp,
+        )
+        DirectoryFolderPosition.Middle -> RoundedCornerShape(0.dp)
+        DirectoryFolderPosition.Last -> RoundedCornerShape(
+            topStart = 0.dp,
+            topEnd = 0.dp,
+            bottomStart = DirectoryFolderRowCornerRadius,
+            bottomEnd = DirectoryFolderRowCornerRadius,
+        )
+    }
 }
 
 internal sealed class LocalTreeUiEntry {
@@ -541,7 +582,6 @@ internal fun buildRemoteTreeIndex(
 ): RemoteTreeIndex {
     val root = RemoteTreeNode(name = "", path = "")
     val subtitleExts = setOf("lrc", "srt", "vtt")
-    val mediaExts = setOf("mp3", "wav", "flac", "m4a", "ogg", "aac", "opus", "mp4", "mkv", "webm", "mov", "m4v")
 
     fun sanitize(name: String): String {
         return name.trim().ifEmpty { "item" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
@@ -659,7 +699,7 @@ internal fun buildRemoteTreeIndex(
                         group = path.substringBeforeLast('/', "").substringAfterLast('/', ""),
                         lyricsRelativePathNoExt = path.substringBeforeLast('.')
                     )
-                )
+                ).copy(remoteSubtitleSources = subtitleSources)
                 TreeFileType.Video -> PlaylistAddTarget.fromVideo(album, leaf.displayTitle, leaf.url)
                 else -> null
             }
@@ -987,17 +1027,17 @@ internal fun buildLocalTreeIndexByScanning(
         } else {
             val rootDir = java.io.File(albumPath)
             if (rootDir.exists()) {
-                rootDir.walkTopDown().forEach { file ->
-                    if (!file.isFile) return@forEach
+                rootDir.walkTopDown().forEach fileLoop@{ file ->
+                    if (!file.isFile) return@fileLoop
                     val type = treeFileTypeForName(file.name)
-                    if (type == TreeFileType.Other || type == TreeFileType.Subtitle) return@forEach
+                    if (type == TreeFileType.Other || type == TreeFileType.Subtitle) return@fileLoop
                     val track = trackByAbsolutePath[file.absolutePath]
-                    if (type == TreeFileType.Audio && track == null) return@forEach
+                    if (type == TreeFileType.Audio && track == null) return@fileLoop
 
                     val rawRel = runCatching { file.relativeTo(rootDir).path }.getOrElse { file.name }
                     val rel = rawRel.replace('\\', '/').trim().trimStart('/')
                     val segments = rel.split('/').filter { it.isNotBlank() }
-                    if (segments.isEmpty()) return@forEach
+                    if (segments.isEmpty()) return@fileLoop
 
                     var cur = root
                     segments.forEachIndexed { idx, seg ->
@@ -1127,7 +1167,8 @@ fun toTrack(): Track {
             path = url,
             duration = duration ?: 0.0,
             group = group,
-            lyricsRelativePathNoExt = normalizedRelativePath.substringBeforeLast('.')
+            lyricsRelativePathNoExt = normalizedRelativePath.substringBeforeLast('.'),
+            remoteSubtitleSources = subtitles
         )
     }
 }
@@ -1745,130 +1786,6 @@ internal fun DirectoryBrowserPanel(
 }
 
 @Composable
-internal fun DirectoryBatchBarEmbedded(
-    targets: List<PlaylistAddTarget>,
-    summaryText: String,
-    onAddToFavorites: (List<MediaItem>) -> Unit,
-    onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
-    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit
-) {
-    val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
-    val hasMediaItems = mediaItems.isNotEmpty()
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "当前目录 ${mediaItems.size} 个音频/视频文件",
-            style = MaterialTheme.typography.bodySmall,
-            color = AsmrTheme.colorScheme.textPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            FilledTonalButton(
-                onClick = { onAddToFavorites(mediaItems) },
-                enabled = hasMediaItems,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Icon(Icons.Default.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("收藏", style = MaterialTheme.typography.labelMedium)
-            }
-            OutlinedButton(
-                onClick = { onOpenBatchPlaylistPicker(mediaItems) },
-                enabled = hasMediaItems,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("列表", style = MaterialTheme.typography.labelMedium)
-            }
-            OutlinedButton(
-                onClick = { onAddMediaItemsToQueue(mediaItems) },
-                enabled = hasMediaItems,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("队列", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-internal fun DirectoryBatchBar(
-    targets: List<PlaylistAddTarget>,
-    onAddToFavorites: (List<MediaItem>) -> Unit,
-    onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
-    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
-    embedded: Boolean = false
-) {
-    val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
-    val hasMediaItems = mediaItems.isNotEmpty()
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = AsmrTheme.colorScheme.surface.copy(alpha = 0.72f),
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "当前目录 ${mediaItems.size} 个音频/视频文件",
-                style = MaterialTheme.typography.titleSmall,
-                color = AsmrTheme.colorScheme.textPrimary
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = { onAddToFavorites(mediaItems) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.FavoriteBorder, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("收藏")
-                }
-                OutlinedButton(
-                    onClick = { onOpenBatchPlaylistPicker(mediaItems) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("列表")
-                }
-                OutlinedButton(
-                    onClick = { onAddMediaItemsToQueue(mediaItems) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("队列")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 internal fun DirectoryBatchBarEmbeddedV2(
     targets: List<PlaylistAddTarget>,
     summaryText: String,
@@ -1878,7 +1795,6 @@ internal fun DirectoryBatchBarEmbeddedV2(
 ) {
     val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
     val hasMediaItems = mediaItems.isNotEmpty()
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2013,7 +1929,7 @@ internal fun DirectoryFolderRowV2(
             color = colorScheme.textPrimary
         )
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = colorScheme.textSecondary,
             modifier = Modifier.size(18.dp)
@@ -2166,12 +2082,12 @@ internal fun DirectoryBrowserPanelV2(
     }
 
     Surface(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(DirectoryBrowserPanelCornerRadius),
         tonalElevation = 1.dp,
         color = AsmrTheme.colorScheme.surface.copy(alpha = 0.44f),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = DirectoryBrowserPanelVerticalPadding)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             CompactDirectoryBreadcrumbContentV2(
@@ -2302,7 +2218,7 @@ internal fun DirectoryFolderRow(
                 color = colorScheme.textPrimary
             )
             Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = colorScheme.textSecondary
             )
@@ -2367,13 +2283,15 @@ internal fun CompactDirectoryBreadcrumbContentV3(
 @Composable
 internal fun DirectoryFolderRowV3(
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    position: DirectoryFolderPosition = DirectoryFolderPosition.Single,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 56.dp)
+            .clip(directoryFolderShape(position))
             .background(colorScheme.primary.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 12.dp),
@@ -2395,7 +2313,7 @@ internal fun DirectoryFolderRowV3(
             color = colorScheme.textPrimary
         )
         Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = colorScheme.textSecondary,
             modifier = Modifier.size(18.dp)
@@ -2415,7 +2333,6 @@ internal fun DirectoryBatchBarEmbeddedV4(
 ) {
     val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
     val hasMediaItems = mediaItems.isNotEmpty()
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2631,12 +2548,12 @@ internal fun DirectoryBrowserPanelV4(
     }
 
     Surface(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(DirectoryBrowserPanelCornerRadius),
         tonalElevation = 1.dp,
         color = AsmrTheme.colorScheme.surface.copy(alpha = 0.44f),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = DirectoryBrowserPanelVerticalPadding)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             CompactDirectoryBreadcrumbContentV3(
@@ -2751,164 +2668,14 @@ internal fun DirectoryBrowserPanelV4(
                         key = { folder -> "$folderKeyPrefix:${folder.path}" },
                         contentType = { "folder" }
                     ) { folder ->
+                        val position = directoryFolderPosition(
+                            index = folders.indexOf(folder),
+                            total = folders.size,
+                        )
                         DirectoryFolderRowV3(
                             title = folder.title,
-                            onClick = { onNavigate(folder.path) }
-                        )
-                    }
-                    items(
-                        items = files,
-                        key = { file -> "$fileKeyPrefix:${file.path}" },
-                        contentType = { "file" }
-                    ) { file ->
-                        val isSelected = selectedPaths.contains(file.path)
-                        fileContent(
-                            file,
-                            selectionMode,
-                            isSelected,
-                            {
-                                selectionMode = true
-                                if (!selectedPaths.contains(file.path)) {
-                                    selectedPaths.add(file.path)
-                                }
-                            },
-                            { checked ->
-                                if (checked) {
-                                    if (!selectedPaths.contains(file.path)) {
-                                        selectedPaths.add(file.path)
-                                    }
-                                    selectionMode = true
-                                } else {
-                                    selectedPaths.remove(file.path)
-                                    if (selectedPaths.isEmpty()) {
-                                        selectionMode = false
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun DirectoryBrowserPanelV3(
-    panelKey: String,
-    currentPath: String,
-    breadcrumbs: List<DirectoryBreadcrumbSegment>,
-    batchTargets: List<PlaylistAddTarget>,
-    folders: List<DirectoryFolderItem>,
-    files: List<DirectoryFileItem>,
-    onNavigate: (String) -> Unit,
-    onAddToFavorites: (List<MediaItem>) -> Unit,
-    onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
-    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
-    preferredPath: String = "",
-    onTogglePreferredPath: ((Boolean) -> Unit)? = null,
-    folderKeyPrefix: String,
-    fileKeyPrefix: String,
-    emptyText: String = "当前目录暂无文件",
-    fileContent: @Composable (
-        file: DirectoryFileItem,
-        selectionMode: Boolean,
-        selected: Boolean,
-        enterSelectionMode: () -> Unit,
-        onSelectedChange: (Boolean) -> Unit
-    ) -> Unit
-) {
-    val browserListState = rememberSaveable("dir-panel-v3:$panelKey", saver = LazyListState.Saver) {
-        LazyListState()
-    }
-    var selectionMode by remember(panelKey, currentPath) { mutableStateOf(false) }
-    val selectedPaths = remember(panelKey, currentPath) { mutableStateListOf<String>() }
-    val selectedFiles = remember(files, selectedPaths.toList()) {
-        val selectedSet = selectedPaths.toSet()
-        files.filter { selectedSet.contains(it.path) }
-    }
-    val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
-        if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
-    }
-    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
-        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
-    }
-    val batchHintText = remember(selectionMode) {
-        if (selectionMode) "点击文件可增减选择" else "长按可批量操作"
-    }
-    val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
-    val fixedHeight = remember(screenHeight) {
-        (screenHeight * 0.48f).coerceIn(240.dp, 460.dp)
-    }
-
-    LaunchedEffect(panelKey, currentPath) {
-        browserListState.scrollToItem(0)
-    }
-
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        tonalElevation = 1.dp,
-        color = AsmrTheme.colorScheme.surface.copy(alpha = 0.44f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            CompactDirectoryBreadcrumbContentV3(
-                currentPath = currentPath,
-                breadcrumbs = breadcrumbs,
-                onNavigate = onNavigate
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
-            )
-            DirectoryBatchBarEmbeddedV4(
-                targets = activeTargets,
-                summaryText = batchSummaryText,
-                hintText = batchHintText,
-                showActions = selectionMode,
-                onAddToFavorites = onAddToFavorites,
-                onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
-                onAddMediaItemsToQueue = onAddMediaItemsToQueue
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
-            )
-            LazyColumn(
-                state = browserListState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(fixedHeight)
-                    .thinScrollbar(browserListState),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                if (folders.isEmpty() && files.isEmpty()) {
-                    item(key = "empty") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(fixedHeight - 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = emptyText,
-                                color = AsmrTheme.colorScheme.textSecondary
-                            )
-                        }
-                    }
-                } else {
-                    items(
-                        items = folders,
-                        key = { folder -> "$folderKeyPrefix:${folder.path}" },
-                        contentType = { "folder" }
-                    ) { folder ->
-                        DirectoryFolderRowV3(
-                            title = folder.title,
-                            onClick = { onNavigate(folder.path) }
+                            onClick = { onNavigate(folder.path) },
+                            position = position,
                         )
                     }
                     items(
@@ -2976,7 +2743,7 @@ internal fun DirectoryFileRow(
         TreeFileType.Subtitle -> Icons.Default.Subtitles
         TreeFileType.Text -> Icons.Default.Description
         TreeFileType.Pdf -> Icons.Default.PictureAsPdf
-        TreeFileType.Other -> Icons.Default.InsertDriveFile
+        TreeFileType.Other -> Icons.AutoMirrored.Filled.InsertDriveFile
     }
     val iconTint = when (file.fileType) {
         TreeFileType.Audio -> colorScheme.primary
@@ -3237,7 +3004,7 @@ internal fun TreeFolderRow(
             },
             trailingContent = {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = colorScheme.textTertiary,
                     modifier = Modifier.size(20.dp)
@@ -3274,7 +3041,7 @@ internal fun TreeFileRow(
         TreeFileType.Subtitle -> Icons.Default.Subtitles
         TreeFileType.Text -> Icons.Default.Description
         TreeFileType.Pdf -> Icons.Default.PictureAsPdf
-        TreeFileType.Other -> Icons.Default.InsertDriveFile
+        TreeFileType.Other -> Icons.AutoMirrored.Filled.InsertDriveFile
     }
     val iconTint = when (fileType) {
         TreeFileType.Audio -> colorScheme.primary

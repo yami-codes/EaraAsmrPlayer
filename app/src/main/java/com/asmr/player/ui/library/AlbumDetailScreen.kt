@@ -43,13 +43,14 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -146,7 +147,8 @@ private enum class AlbumPrimaryAction {
 
 private enum class OnlineDownloadSource {
     AsmrOne,
-    DlsitePlay
+    DlsitePlay,
+    DlsiteTrial
 }
 
 internal data class PreparedTrackPlayback(
@@ -163,7 +165,8 @@ internal data class PreparedMediaPlayback(
 private val AlbumDetailTabContentGap = 12.dp
 private val AlbumDetailTabCollapseOvershoot = 10.dp
 private const val AlbumDetailInitialIntroDurationMs = 1200L
-private val AlbumDetailHorizontalPadding = 8.dp
+internal val AlbumDetailHorizontalPadding = 8.dp
+private val AlbumDetailHeaderCornerRadius = 10.dp
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -196,7 +199,6 @@ fun AlbumDetailScreen(
     onAddMediaItemsToFavorites: (List<MediaItem>) -> Unit = {},
     onOpenPlaylistPicker: (MediaItem) -> Unit = {},
     onOpenGroupPicker: (albumId: Long) -> Unit = { _ -> },
-    onPlayVideo: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onOpenDlsiteLogin: () -> Unit = {},
     onOpenAlbumByRj: (String) -> Unit = {},
     initialTab: Int? = null,
@@ -277,12 +279,14 @@ fun AlbumDetailScreen(
                     val model = state.model
                     val album = model.displayAlbum
                     val asmrOneTree = model.asmrOneTree
+                    val trialDownloadTree = remember(model.dlsiteTrialTracks) {
+                        buildDlsiteTrialDownloadTree(model.dlsiteTrialTracks)
+                    }
                     val shouldPlayInitialAnimations = !initialIntroSettled && !userSelectedTab
                     val shouldAnimateHeaderIntro = !userSelectedTab
                     val availableTags by viewModel.availableTags.collectAsState()
                     val userTagsByTrackId by viewModel.userTagsByTrackId.collectAsState()
                     val libraryViewModel: LibraryViewModel = hiltViewModel()
-                    val tagManagerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                     var showTagManager by remember { mutableStateOf(false) }
                     var tagManageTrack by remember { mutableStateOf<Track?>(null) }
                     val context = LocalContext.current
@@ -370,6 +374,10 @@ fun AlbumDetailScreen(
                                     }
                                     showAsmrDownloadDialog = true
                                 },
+                                showDlsitePlayLossless = tab == 2,
+                                onLosslessDownloadClick = {
+                                    viewModel.downloadDlsitePlayLosslessArchive()
+                                },
                                 onSaveClick = {
                                     showOnlineSaveDialog = true
                                 },
@@ -378,6 +386,7 @@ fun AlbumDetailScreen(
                                     2 -> model.dlsitePlayTree.isNotEmpty()
                                     else -> false
                                 },
+                                losslessDownloadEnabled = tab == 2 && model.dlsitePlayTree.isNotEmpty(),
                                 saveEnabled = canSaveOnlineForTab,
                                 showGroupButton = isLocalTab && model.localAlbum != null,
                                 onOpenGroupPicker = onOpenGroupPicker,
@@ -403,7 +412,6 @@ fun AlbumDetailScreen(
                             }
                             2 -> {
                                 viewModel.ensureDlsiteLoaded()
-                                viewModel.ensureDlsitePlayLoaded()
                             }
                         }
                     }
@@ -452,9 +460,7 @@ fun AlbumDetailScreen(
                                                 chromeState = tabChromeState,
                                                 album = local,
                                                 header = { headerContent(tab) },
-                                                onPlayTracks = onPlayTracks,
                                                 onPlayMediaItems = onPlayMediaItems,
-                                                onPlayVideo = onPlayVideo,
                                                 onAddToQueue = { track ->
                                                     onAddToQueue(local, track)
                                                 },
@@ -499,12 +505,17 @@ fun AlbumDetailScreen(
                                         dlsiteInfo = model.dlsiteInfo,
                                         galleryUrls = model.dlsiteGalleryUrls,
                                         trialTracks = model.dlsiteTrialTracks,
+                                        trialDownloadEnabled = trialDownloadTree.isNotEmpty(),
                                         isLoading = model.isLoadingDlsite,
                                         asmrOneTree = asmrOneTree,
                                         isLoadingAsmrOne = model.isLoadingAsmrOne,
                                         isLoadingTrial = model.isLoadingDlsiteTrial,
                                         onRefreshAsmrOne = { viewModel.refreshAsmrOneSection() },
                                         onRefreshTrial = { viewModel.refreshDlsiteTrialSection() },
+                                        onDownloadTrial = {
+                                            downloadSource = OnlineDownloadSource.DlsiteTrial
+                                            showAsmrDownloadDialog = true
+                                        },
                                         onPlayTracks = onPlayTracks,
                                         onPlayMediaItems = onPlayMediaItems,
                                         onAddToQueue = { track ->
@@ -549,11 +560,10 @@ fun AlbumDetailScreen(
                                         rjCode = model.rjCode,
                                         tree = model.dlsitePlayTree,
                                         isLoading = model.isLoadingDlsitePlay,
+                                        shouldAutoLoad = selectedTab == 2,
                                         onOpenLogin = onOpenDlsiteLogin,
                                         onEnsureLoaded = { viewModel.ensureDlsitePlayLoaded() },
-                                        onPlayTracks = onPlayTracks,
                                         onPlayMediaItems = onPlayMediaItems,
-                                        onPlayVideo = onPlayVideo,
                                         onAddToQueue = { track ->
                                             onAddToQueue(album, track)
                                         },
@@ -609,10 +619,10 @@ fun AlbumDetailScreen(
 
                 val canSaveOnline = selectedTab == 1 && asmrOneTree.isNotEmpty()
                 if (showAsmrDownloadDialog) {
-                    val downloadTree = if (downloadSource == OnlineDownloadSource.DlsitePlay) {
-                        model.dlsitePlayTree
-                    } else {
-                        asmrOneTree
+                    val downloadTree = when (downloadSource) {
+                        OnlineDownloadSource.AsmrOne -> asmrOneTree
+                        OnlineDownloadSource.DlsitePlay -> model.dlsitePlayTree
+                        OnlineDownloadSource.DlsiteTrial -> trialDownloadTree
                     }
                     AsmrOneDownloadDialog(
                         albumTitle = album.title,
@@ -622,6 +632,7 @@ fun AlbumDetailScreen(
                             when (downloadSource) {
                                 OnlineDownloadSource.AsmrOne -> viewModel.downloadAsmrOneSelected(selected)
                                 OnlineDownloadSource.DlsitePlay -> viewModel.downloadDlsitePlaySelected(selected)
+                                OnlineDownloadSource.DlsiteTrial -> viewModel.downloadDlsiteTrialSelected(selected)
                             }
                             showAsmrDownloadDialog = false
                         }
@@ -766,6 +777,17 @@ private fun AlbumDetailTabChrome(
     val tabContainerShape = RoundedCornerShape(26.dp)
     val tabItemShape = RoundedCornerShape(18.dp)
     val collapseOvershootPx = with(LocalDensity.current) { AlbumDetailTabCollapseOvershoot.toPx() }
+    val tabContainerColor = lerp(
+        colorScheme.surface,
+        colorScheme.primarySoft,
+        if (isDark) 0.18f else 0.28f
+    ).copy(alpha = if (isDark) 0.95f else 0.97f)
+        .compositeOver(colorScheme.background)
+    val tabBorderColor = if (isDark) {
+        colorScheme.primary.copy(alpha = 0.11f)
+    } else {
+        colorScheme.primary.copy(alpha = 0.09f)
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -798,21 +820,13 @@ private fun AlbumDetailTabChrome(
                     ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
                 )
                 .then(
-                    if (isDark) {
-                        Modifier.border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = tabContainerShape
-                        )
-                    } else {
-                        Modifier
-                    }
+                    Modifier.border(
+                        width = 1.dp,
+                        color = tabBorderColor,
+                        shape = tabContainerShape
+                    )
                 ),
-            color = if (isDark) {
-                colorScheme.surface.copy(alpha = 0.96f)
-            } else {
-                colorScheme.surface.copy(alpha = 0.96f)
-            },
+            color = tabContainerColor,
             contentColor = colorScheme.textPrimary,
             shape = tabContainerShape,
             tonalElevation = 0.dp,
@@ -904,8 +918,11 @@ private fun AlbumHeader(
     onDlsiteLangSelected: (String) -> Unit,
     canSaveOnline: Boolean,
     onDownloadClick: () -> Unit,
+    showDlsitePlayLossless: Boolean,
+    onLosslessDownloadClick: () -> Unit,
     onSaveClick: () -> Unit,
     downloadEnabled: Boolean,
+    losslessDownloadEnabled: Boolean,
     saveEnabled: Boolean,
     showGroupButton: Boolean,
     onOpenGroupPicker: (albumId: Long) -> Unit,
@@ -942,7 +959,7 @@ private fun AlbumHeader(
     val headerContainerModifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 12.dp)
-        .clip(RoundedCornerShape(24.dp))
+        .clip(RoundedCornerShape(AlbumDetailHeaderCornerRadius))
         .background(colorScheme.surface.copy(alpha = 0.5f))
     val langCandidates = remember(dlsiteEditions) {
         dlsiteEditions
@@ -1134,7 +1151,8 @@ private fun AlbumHeader(
                                     .weight(1f)
                             ) {
                                 val radius = 10.dp
-                                val leftShape = if (canSaveOnline) {
+                                val hasSecondaryPrimaryAction = canSaveOnline || showDlsitePlayLossless
+                                val leftShape = if (hasSecondaryPrimaryAction) {
                                     RoundedCornerShape(topStart = radius, bottomStart = radius, topEnd = 0.dp, bottomEnd = 0.dp)
                                 } else {
                                     RoundedCornerShape(radius)
@@ -1156,7 +1174,25 @@ private fun AlbumHeader(
                                     Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                 }
 
-                                if (canSaveOnline) {
+                                if (showDlsitePlayLossless) {
+                                    Button(
+                                        onClick = onLosslessDownloadClick,
+                                        enabled = losslessDownloadEnabled,
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .weight(1f),
+                                        shape = rightShape,
+                                        contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colorScheme.primary.copy(alpha = 0.14f),
+                                            contentColor = colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Spacer(modifier = Modifier.width(primaryIconGap))
+                                        Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                    }
+                                } else if (canSaveOnline) {
                                     Button(
                                         onClick = onSaveClick,
                                         enabled = saveEnabled,
@@ -1381,6 +1417,7 @@ internal data class PlaylistAddTarget(
     val albumWorkId: String = "",
     val trackGroup: String = "",
     val lyricsRelativePathNoExt: String = "",
+    val remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList(),
     val mimeType: String? = null,
     val isVideo: Boolean = false
 ) {
@@ -1398,6 +1435,7 @@ internal data class PlaylistAddTarget(
             albumWorkId = albumWorkId,
             trackGroup = trackGroup,
             lyricsRelativePathNoExt = lyricsRelativePathNoExt,
+            remoteSubtitleSources = remoteSubtitleSources,
             mimeType = mimeType,
             isVideo = isVideo
         )

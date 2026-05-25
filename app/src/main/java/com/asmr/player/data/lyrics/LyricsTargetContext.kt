@@ -4,11 +4,13 @@ import androidx.media3.common.MediaItem
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.playback.MediaItemRequest
+import com.asmr.player.util.RemoteSubtitleSource
 import com.asmr.player.util.TrackKeyNormalizer
 
 const val EXTRA_ALBUM_WORK_ID = "album_work_id"
 const val EXTRA_LYRICS_RELATIVE_PATH_NO_EXT = "lyrics_relative_path_no_ext"
 const val EXTRA_TRACK_GROUP = "track_group"
+const val EXTRA_REMOTE_SUBTITLE_SOURCES_JSON = "remote_subtitle_sources_json"
 
 data class LyricsTargetContext(
     val mediaId: String,
@@ -20,7 +22,8 @@ data class LyricsTargetContext(
     val trackId: Long,
     val albumId: Long,
     val albumIdentity: String,
-    val relativePathNoExt: String
+    val relativePathNoExt: String,
+    val remoteSubtitleSources: List<RemoteSubtitleSource> = emptyList()
 )
 
 fun lyricsTargetContextFromMediaItem(item: MediaItem?): LyricsTargetContext? {
@@ -37,6 +40,7 @@ fun lyricsTargetContextFromMediaItem(item: MediaItem?): LyricsTargetContext? {
     val workId = extras?.getString(EXTRA_ALBUM_WORK_ID).orEmpty()
     val albumIdentity = rjCode.trim().ifBlank { workId.trim() }
     val relativePathNoExt = extras?.getString(EXTRA_LYRICS_RELATIVE_PATH_NO_EXT).orEmpty()
+    val remoteSubtitleSources = decodeRemoteSubtitleSources(extras?.getString(EXTRA_REMOTE_SUBTITLE_SOURCES_JSON))
     return buildLyricsTargetContext(
         mediaId = mediaId,
         title = title,
@@ -44,7 +48,8 @@ fun lyricsTargetContextFromMediaItem(item: MediaItem?): LyricsTargetContext? {
         trackId = trackId,
         albumId = albumId,
         albumIdentity = albumIdentity,
-        relativePathNoExt = relativePathNoExt
+        relativePathNoExt = relativePathNoExt,
+        remoteSubtitleSources = remoteSubtitleSources
     )
 }
 
@@ -63,7 +68,8 @@ fun lyricsTargetContextFromTrack(album: Album, track: Track): LyricsTargetContex
         trackId = track.id,
         albumId = album.id,
         albumIdentity = albumIdentity,
-        relativePathNoExt = relativePathNoExt
+        relativePathNoExt = relativePathNoExt,
+        remoteSubtitleSources = emptyList()
     )
 }
 
@@ -78,7 +84,8 @@ fun lyricsTargetContextFromRequest(request: MediaItemRequest): LyricsTargetConte
         trackId = request.trackId,
         albumId = request.albumId,
         albumIdentity = albumIdentity,
-        relativePathNoExt = request.lyricsRelativePathNoExt
+        relativePathNoExt = request.lyricsRelativePathNoExt,
+        remoteSubtitleSources = request.remoteSubtitleSources
     )
 }
 
@@ -98,7 +105,8 @@ private fun buildLyricsTargetContext(
     trackId: Long,
     albumId: Long,
     albumIdentity: String,
-    relativePathNoExt: String
+    relativePathNoExt: String,
+    remoteSubtitleSources: List<RemoteSubtitleSource>
 ): LyricsTargetContext {
     val normalizedRelativePath = TrackKeyNormalizer.normalizeRelativePath(relativePathNoExt)
     val exactTargetKey = buildExactTargetKey(
@@ -130,8 +138,25 @@ private fun buildLyricsTargetContext(
         trackId = trackId,
         albumId = albumId,
         albumIdentity = normalizeAlbumIdentity(albumIdentity),
-        relativePathNoExt = normalizedRelativePath
+        relativePathNoExt = normalizedRelativePath,
+        remoteSubtitleSources = remoteSubtitleSources
     )
+}
+
+private fun decodeRemoteSubtitleSources(raw: String?): List<RemoteSubtitleSource> {
+    val trimmed = raw.orEmpty().trim()
+    if (trimmed.isBlank()) return emptyList()
+    return trimmed.split('\n')
+        .mapNotNull { line ->
+            val parts = line.split('\t')
+            val url = parts.getOrNull(0).orEmpty().trim()
+            if (url.isBlank()) return@mapNotNull null
+            RemoteSubtitleSource(
+                url = url,
+                language = parts.getOrNull(1).orEmpty().ifBlank { "default" },
+                ext = parts.getOrNull(2).orEmpty().ifBlank { url.substringAfterLast('.', "vtt") }
+            )
+        }
 }
 
 private fun buildCanonicalMediaId(

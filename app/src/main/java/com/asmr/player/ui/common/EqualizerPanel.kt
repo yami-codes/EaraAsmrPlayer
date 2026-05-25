@@ -40,6 +40,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.asmr.player.data.settings.AsmrPreset
 import com.asmr.player.data.settings.EqualizerPresets
 import com.asmr.player.data.settings.EqualizerSettings
+import com.asmr.player.data.settings.SceneEffectPresets
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlin.math.abs
 
@@ -79,6 +80,7 @@ fun EqualizerPanel(
     val allPresets = remember(customPresets) {
         EqualizerPresets.DefaultPresets + customPresets
     }
+    val scenePresets = remember { SceneEffectPresets.All }
     
     var showSaveDialog by remember { mutableStateOf(false) }
     var newPresetName by remember { mutableStateOf("") }
@@ -340,6 +342,20 @@ fun EqualizerPanel(
         )
     }
 
+    fun updateSceneEffect(
+        enabled: Boolean? = null,
+        presetId: String? = null,
+        amount: Int? = null
+    ) {
+        onSettingsChanged(
+            settings.copy(
+                sceneEffectEnabled = enabled ?: settings.sceneEffectEnabled,
+                sceneEffectPresetId = presetId ?: settings.sceneEffectPresetId,
+                sceneEffectAmount = (amount ?: settings.sceneEffectAmount).coerceIn(0, 100)
+            )
+        )
+    }
+
     @Composable
     fun ModuleCard(
         title: String,
@@ -502,6 +518,175 @@ fun EqualizerPanel(
                         onValueChange = { updateVolumeThreshold(maxDb = it) },
                         valueRange = -60f..0f,
                         enabled = vtEnabled,
+                        colors = sliderColors
+                    )
+                }
+            }
+        }
+
+        val sceneEnabled = settings.sceneEffectEnabled
+        val activeScenePreset = remember(settings.sceneEffectPresetId) {
+            SceneEffectPresets.resolve(settings.sceneEffectPresetId)
+        }
+        ModuleCard(
+            title = "场景效果",
+            enabled = sceneEnabled,
+            onEnabledChange = { updateSceneEffect(enabled = it) },
+            expanded = settings.sceneEffectExpanded,
+            onExpandedChange = { onSettingsChanged(settings.copy(sceneEffectExpanded = it)) },
+            onReset = {
+                updateSceneEffect(
+                    presetId = SceneEffectPresets.DefaultPresetId,
+                    amount = SceneEffectPresets.DefaultAmount
+                )
+            },
+            resetEnabled = sceneEnabled ||
+                settings.sceneEffectPresetId != SceneEffectPresets.DefaultPresetId ||
+                settings.sceneEffectAmount != SceneEffectPresets.DefaultAmount
+        ) {
+            var sceneExpanded by remember { mutableStateOf(false) }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("场景预设", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    InfoTip(
+                        key = "scene_preset",
+                        title = "场景效果",
+                        text = "通过带限、声场收窄和延迟反射来模拟常见空间或传输介质。推荐先选预设，再微调强度。"
+                    )
+                }
+                ExposedDropdownMenuBox(
+                    expanded = sceneExpanded,
+                    onExpandedChange = { if (sceneEnabled) sceneExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "预设",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = materialColorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = materialColorScheme.surface.copy(alpha = 0.55f),
+                        contentColor = materialColorScheme.onSurface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            width = 1.dp,
+                            color = materialColorScheme.outlineVariant.copy(alpha = 0.65f)
+                        ),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .clickable(enabled = sceneEnabled) { sceneExpanded = true }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = activeScenePreset.label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.widthIn(min = 0.dp, max = 124.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = activeScenePreset.description,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = materialColorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = sceneExpanded)
+                        }
+                    }
+                    MaterialTheme(
+                        colorScheme = materialColorScheme.copy(
+                            surface = moduleCardContainerColor,
+                            surfaceVariant = moduleCardContainerColor
+                        )
+                    ) {
+                        DropdownMenu(
+                            expanded = sceneExpanded,
+                            onDismissRequest = { sceneExpanded = false },
+                            modifier = Modifier
+                                .exposedDropdownSize(matchTextFieldWidth = true)
+                                .background(moduleCardContainerColor, RoundedCornerShape(14.dp))
+                        ) {
+                            scenePresets.forEachIndexed { index, preset ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                        thickness = 0.5.dp,
+                                        color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = preset.label,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.widthIn(min = 0.dp, max = 124.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                text = preset.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = materialColorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        updateSceneEffect(enabled = true, presetId = preset.id)
+                                        sceneExpanded = false
+                                    },
+                                    enabled = sceneEnabled,
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = materialColorScheme.onSurface,
+                                        leadingIconColor = materialColorScheme.onSurface,
+                                        trailingIconColor = materialColorScheme.onSurface,
+                                        disabledTextColor = materialColorScheme.onSurface.copy(alpha = 0.38f),
+                                        disabledLeadingIconColor = materialColorScheme.onSurface.copy(alpha = 0.38f),
+                                        disabledTrailingIconColor = materialColorScheme.onSurface.copy(alpha = 0.38f)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("效果强度", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        InfoTip(
+                            key = "scene_amount",
+                            title = "效果强度",
+                            text = "强度越高，场景特征越明显。像电话音、被窝闷声这类预设在高强度下会更有辨识度。"
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text("${settings.sceneEffectAmount}%", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Slider(
+                        value = settings.sceneEffectAmount.toFloat(),
+                        onValueChange = { updateSceneEffect(enabled = true, amount = it.toInt()) },
+                        valueRange = 0f..100f,
+                        enabled = sceneEnabled,
                         colors = sliderColors
                     )
                 }

@@ -73,7 +73,6 @@ import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.player.rememberCoverDragPreviewState
 import com.asmr.player.ui.player.rememberCoverMotionState
 import com.asmr.player.ui.sidepanel.LocalRightPanelExpandedState
-import com.asmr.player.ui.common.rememberDominantColorCenterWeighted
 import com.asmr.player.ui.downloads.DownloadsScreen
 import com.asmr.player.ui.downloads.DownloadsViewModel
 import com.asmr.player.ui.downloads.DownloadItemState
@@ -117,8 +116,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.AsmrTheme
-import com.asmr.player.ui.common.PrewarmDominantColorCenterWeighted
-import com.asmr.player.ui.common.PrewarmVideoFrameDominantColorCenterWeighted
 import androidx.compose.ui.draw.blur
 import android.os.Build
 import android.graphics.RenderEffect
@@ -211,10 +208,16 @@ internal fun computePrimaryNavSelectionProgresses(
     pagerRoutes: List<String>,
     currentPage: Int,
     currentPageOffsetFraction: Float,
-    fallbackRoute: String
+    fallbackRoute: String,
+    lockedRoute: String? = null
 ): Map<String, Float> {
     if (pagerRoutes.isEmpty()) {
         return mapOf(fallbackRoute to 1f)
+    }
+
+    val resolvedLockedRoute = lockedRoute?.takeIf { it in pagerRoutes }
+    if (resolvedLockedRoute != null) {
+        return mapOf(resolvedLockedRoute to 1f)
     }
 
     val selectionProgresses = LinkedHashMap<String, Float>(pagerRoutes.size)
@@ -232,6 +235,14 @@ internal fun computePrimaryNavSelectionProgresses(
     }
 
     return selectionProgresses
+}
+
+internal fun resolvePrimaryNavVisualRoute(
+    activeRoute: String,
+    pendingRoute: String?,
+    pagerRoutes: List<String>
+): String {
+    return pendingRoute?.takeIf { it in pagerRoutes } ?: activeRoute
 }
 
 internal fun resolveCurrentPrimaryDestinationRoute(
@@ -262,6 +273,26 @@ internal fun NavHostController.navigateSingleTop(route: String, popUpToRoute: St
         }
     }
 }
+
+internal fun NavHostController.navigatePrimaryRoute(
+    route: String,
+    popUpToRoute: String = Routes.Library
+) {
+    navigate(route) {
+        launchSingleTop = true
+        restoreState = false
+        popUpTo(popUpToRoute) {
+            inclusive = false
+            saveState = false
+        }
+    }
+}
+
+internal fun shouldScrollPrimaryRouteToTop(
+    requestedRoute: String,
+    activePrimaryRoute: String,
+    currentPrimaryRoute: String?
+): Boolean = requestedRoute == activePrimaryRoute && currentPrimaryRoute == requestedRoute
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -311,7 +342,11 @@ internal data class ThemeMediaSource(
 internal fun MediaItem?.toThemeMediaSource(): ThemeMediaSource {
     val item = this ?: return ThemeMediaSource()
     val metadata = item.mediaMetadata
-    val artworkUri = metadata.artworkUri
+    val artworkUri = metadata.artworkUri?.takeUnless { uri ->
+        val uriTextValue = uri.toString()
+        uri.scheme.equals("android.resource", ignoreCase = true) ||
+            uriTextValue.contains("ic_placeholder", ignoreCase = true)
+    }
     val videoUri = item.localConfiguration?.uri
     val mimeType = item.localConfiguration?.mimeType.orEmpty()
     val uriText = videoUri?.toString().orEmpty()

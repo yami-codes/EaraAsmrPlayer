@@ -5,6 +5,7 @@ import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class AlbumDetailDirectorySupportTest {
@@ -132,5 +133,72 @@ class AlbumDetailDirectorySupportTest {
 
         assertTrue(file.subtitleSources.isNotEmpty())
         assertEquals("https://example.com/subs/01.lrc", file.subtitleSources.first().url)
+    }
+
+    @Test
+    fun buildDlsiteTrialDownloadTree_keepsOnlyPlayableMediaWithStableNames() {
+        val tree = buildDlsiteTrialDownloadTree(
+            listOf(
+                Track(albumId = 0L, title = "试听音频", path = "https://example.com/trial/audio/sample.mp3"),
+                Track(albumId = 0L, title = "试看视频", path = "https://example.com/trial/video/preview.mp4"),
+                Track(albumId = 0L, title = "无扩展资源", path = "https://example.com/trial/audio/stream")
+            )
+        )
+
+        val paths = flattenAsmrOneLeafDownloads(tree).map { it.relativePath }
+
+        assertEquals(
+            listOf(
+                "01_试听音频.mp3",
+                "02_试看视频.mp4",
+                "03_无扩展资源.mp3"
+            ),
+            paths
+        )
+    }
+
+    @Test
+    fun filterDownloadableMediaTree_removesSubtitleAndImageLeaves() {
+        val filtered = filterDownloadableMediaTree(
+            listOf(
+                AsmrOneTrackNodeResponse(title = "audio.mp3", mediaDownloadUrl = "https://example.com/audio.mp3"),
+                AsmrOneTrackNodeResponse(title = "cover.jpg", mediaDownloadUrl = "https://example.com/cover.jpg"),
+                AsmrOneTrackNodeResponse(title = "sub.srt", mediaDownloadUrl = "https://example.com/sub.srt")
+            )
+        )
+
+        val leafPaths = flattenAsmrOneLeafDownloads(filtered).map { it.relativePath }
+
+        assertEquals(listOf("audio.mp3"), leafPaths)
+        assertFalse(leafPaths.contains("cover.jpg"))
+        assertFalse(leafPaths.contains("sub.srt"))
+    }
+
+    @Test
+    fun buildLocalTreeIndexFromLeaves_keepsSameNameFilesFromDifferentDirectories() {
+        val tracks = listOf(
+            Track(albumId = 9L, title = "same", path = "/album/one/same.mp3", group = "one"),
+            Track(albumId = 9L, title = "same", path = "/album/体验版/same.mp3", group = "体验版")
+        )
+        val leaves = listOf(
+            LocalTreeLeafCacheEntry(
+                relativePath = "one/same.mp3",
+                absolutePath = "/album/one/same.mp3",
+                fileType = TreeFileType.Audio,
+                sizeBytes = 100L
+            ),
+            LocalTreeLeafCacheEntry(
+                relativePath = "体验版/same.mp3",
+                absolutePath = "/album/体验版/same.mp3",
+                fileType = TreeFileType.Audio,
+                sizeBytes = 120L
+            )
+        )
+
+        val index = buildLocalTreeIndexFromLeaves(leaves = leaves, tracks = tracks)
+        val flattened = flattenLocalTreeIndex(index, expanded = setOf("one", "体验版"))
+
+        val paths = flattened.entries.filterIsInstance<LocalTreeUiEntry.File>().map { it.path }.sorted()
+        assertEquals(listOf("one/same.mp3", "体验版/same.mp3"), paths)
     }
 }

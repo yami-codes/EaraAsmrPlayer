@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Audiotrack
@@ -75,7 +76,6 @@ import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.player.rememberCoverDragPreviewState
 import com.asmr.player.ui.player.rememberCoverMotionState
 import com.asmr.player.ui.sidepanel.LocalRightPanelExpandedState
-import com.asmr.player.ui.common.rememberDominantColorCenterWeighted
 import com.asmr.player.ui.downloads.DownloadsScreen
 import com.asmr.player.ui.downloads.DownloadsViewModel
 import com.asmr.player.ui.downloads.DownloadItemState
@@ -103,7 +103,6 @@ import com.asmr.player.ui.nav.Routes
 import com.asmr.player.ui.nav.bottomChromeNavItems
 import com.asmr.player.ui.nav.bottomChromeOverlayHeight
 import com.asmr.player.ui.nav.isPrimaryRoute
-import com.asmr.player.ui.nav.resolvePrimaryPagerRoutes
 import com.asmr.player.ui.nav.resolvePrimaryRoute
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.splash.EaraSplashOverlay
@@ -119,8 +118,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.AsmrTheme
-import com.asmr.player.ui.common.PrewarmDominantColorCenterWeighted
-import com.asmr.player.ui.common.PrewarmVideoFrameDominantColorCenterWeighted
 import androidx.compose.ui.draw.blur
 import android.os.Build
 import android.graphics.RenderEffect
@@ -211,6 +208,7 @@ fun MainContainer(
     playerViewModel: PlayerViewModel,
     libraryViewModel: LibraryViewModel,
     settingsDataStore: SettingsDataStore,
+    messageManager: MessageManager,
     recentAlbumsPanelExpandedInitial: Boolean,
     startRouteFromIntent: String?,
     onShowQueue: () -> Unit,
@@ -229,6 +227,7 @@ fun MainContainer(
     val navigator = remember(navController) { AppNavigator(navController) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val hasPreviousBackStackEntry = navController.previousBackStackEntry != null
     val currentPlaylistSystemType = navBackStackEntry?.arguments?.getString("type")
     val startRoute = remember(startRouteFromIntent) {
         startRouteFromIntent?.trim().orEmpty()
@@ -247,23 +246,11 @@ fun MainContainer(
         playlistSystemType = currentPlaylistSystemType
     )
     val bottomNavItems = remember { bottomChromeNavItems() }
-    val fixedBottomNavRoutes = remember(bottomNavItems) {
-        bottomNavItems.take(3).map { it.route }.toSet()
-    }
-    val bottomNavRoutes = remember(bottomNavItems) { bottomNavItems.map { it.route }.toSet() }
     val storedMiniPlayerDisplayMode by settingsDataStore.miniPlayerDisplayMode.collectAsState(
         initial = MiniPlayerDisplayMode.CoverOnly.name
     )
-    val storedBottomChromePinnedRoute by settingsDataStore.bottomChromePinnedRoute.collectAsState(initial = null)
     var miniPlayerDisplayMode by rememberSaveable { mutableStateOf(MiniPlayerDisplayMode.CoverOnly) }
-    var bottomChromePinnedRoute by rememberSaveable { mutableStateOf<String?>(null) }
-    val primaryPagerRoutes = remember(bottomNavItems, activePrimaryRoute, bottomChromePinnedRoute) {
-        resolvePrimaryPagerRoutes(
-            navItems = bottomNavItems,
-            activeRoute = activePrimaryRoute,
-            preferredPinnedRoute = bottomChromePinnedRoute
-        )
-    }
+    val primaryPagerRoutes = remember(bottomNavItems) { bottomNavItems.map { it.route } }
     val initialPrimaryPage = remember(initialDestination, primaryPagerRoutes) {
         primaryPagerRoutes.indexOf(initialDestination).takeIf { it >= 0 } ?: 0
     }
@@ -273,17 +260,27 @@ fun MainContainer(
     )
     val primaryContentStateHolder = rememberSaveableStateHolder()
     var primaryPagerScrollLocked by remember { mutableStateOf(false) }
+    var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
+    val visualPrimaryRoute = remember(activePrimaryRoute, pendingPrimaryNavigationRoute, primaryPagerRoutes) {
+        resolvePrimaryNavVisualRoute(
+            activeRoute = activePrimaryRoute,
+            pendingRoute = pendingPrimaryNavigationRoute,
+            pagerRoutes = primaryPagerRoutes
+        )
+    }
     val primaryNavSelectionProgresses by remember(
         primaryPagerState,
         primaryPagerRoutes,
-        activePrimaryRoute
+        activePrimaryRoute,
+        pendingPrimaryNavigationRoute
     ) {
         derivedStateOf {
             computePrimaryNavSelectionProgresses(
                 pagerRoutes = primaryPagerRoutes,
                 currentPage = primaryPagerState.currentPage,
                 currentPageOffsetFraction = primaryPagerState.currentPageOffsetFraction,
-                fallbackRoute = activePrimaryRoute
+                fallbackRoute = activePrimaryRoute,
+                lockedRoute = pendingPrimaryNavigationRoute
             )
         }
     }
@@ -296,7 +293,11 @@ fun MainContainer(
         if (startRoute.isBlank() || startRoute == initialDestination) return@LaunchedEffect
         withFrameNanos { }
         withFrameNanos { }
-        navController.navigateSingleTop(startRoute)
+        if (isPrimaryRoute(startRoute)) {
+            navController.navigatePrimaryRoute(startRoute)
+        } else {
+            navController.navigateSingleTop(startRoute)
+        }
     }
     var blockNavTouches by remember { mutableStateOf(false) }
     var lastRouteForTouchBlock by remember { mutableStateOf(currentPrimaryRoute ?: currentRoute) }
@@ -329,12 +330,10 @@ fun MainContainer(
     var hardwareVolumeOverlayInteracting by remember { mutableStateOf(false) }
     var hardwareVolumeOverlayHoldTick by remember { mutableLongStateOf(0L) }
     var lastHandledVolumeKeyTick by remember { mutableLongStateOf(0L) }
+    var lastLibraryBackPressElapsedRealtime by remember { mutableLongStateOf(0L) }
     var nowPlayingVolumeEventTick by remember { mutableLongStateOf(0L) }
     var lastNonZeroAppVolumePercent by rememberSaveable { mutableIntStateOf(AppVolume.DefaultPercent) }
     var hardwareVolumeOverlayBounds by remember { mutableStateOf<Rect?>(null) }
-    var bottomChromeOverflowExpanded by remember { mutableStateOf(false) }
-    var bottomChromeOverflowProtectedBounds by remember { mutableStateOf<List<Rect>>(emptyList()) }
-    var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
     var libraryScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var searchScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var favoritesScrollToTopSignal by remember { mutableLongStateOf(0L) }
@@ -353,6 +352,7 @@ fun MainContainer(
     val activity = remember(context) { context.findActivity() }
     var nowPlayingVisible by rememberSaveable { mutableStateOf(false) }
     var nowPlayingUsesInlineVolumeControl by remember { mutableStateOf(false) }
+    var nowPlayingEqualizerVisible by remember { mutableStateOf(false) }
     var nowPlayingBackdropActive by rememberSaveable { mutableStateOf(false) }
     var nowPlayingBackdropExitDurationMs by rememberSaveable {
         mutableIntStateOf(NowPlayingMotionSpec.totalExitDurationMs(NowPlayingMotionLayout.PORTRAIT))
@@ -436,12 +436,12 @@ fun MainContainer(
                 pendingPrimaryNavigationRoute = route
                 primaryPagerState.animateScrollToPage(targetPage)
                 if (currentPrimaryRouteState.value != route) {
-                    navController.navigateSingleTop(route, popUpToRoute = Routes.Library)
+                    navController.navigatePrimaryRoute(route)
                 }
             }
         } else {
             pendingPrimaryNavigationRoute = null
-            navController.navigateSingleTop(route, popUpToRoute = Routes.Library)
+            navController.navigatePrimaryRoute(route)
         }
     }
 
@@ -492,7 +492,7 @@ fun MainContainer(
                 val currentPrimary = currentPrimaryRouteState.value ?: return@collect
                 val targetRoute = primaryPagerRoutes.getOrNull(page) ?: return@collect
                 if (targetRoute != currentPrimary) {
-                    navController.navigateSingleTop(targetRoute, popUpToRoute = Routes.Library)
+                    navController.navigatePrimaryRoute(targetRoute)
                 }
             }
     }
@@ -501,8 +501,6 @@ fun MainContainer(
         showHardwareVolumeOverlay = false
         hardwareVolumeOverlayInteracting = false
         hardwareVolumeOverlayBounds = null
-        bottomChromeOverflowExpanded = false
-        bottomChromeOverflowProtectedBounds = emptyList()
         if (pendingDetailNavigation && currentRoute?.startsWith("album_detail") == true) {
             pendingDetailNavigation = false
         }
@@ -541,6 +539,12 @@ fun MainContainer(
         }
     }
 
+    LaunchedEffect(currentPrimaryRoute, hasPreviousBackStackEntry, nowPlayingVisible, drawerState.isOpen) {
+        if (currentPrimaryRoute != Routes.Library || hasPreviousBackStackEntry || nowPlayingVisible || drawerState.isOpen) {
+            lastLibraryBackPressElapsedRealtime = 0L
+        }
+    }
+
     LaunchedEffect(storedMiniPlayerDisplayMode) {
         miniPlayerDisplayMode = runCatching {
             MiniPlayerDisplayMode.valueOf(storedMiniPlayerDisplayMode)
@@ -549,20 +553,15 @@ fun MainContainer(
         }
     }
 
-    LaunchedEffect(storedBottomChromePinnedRoute) {
-        bottomChromePinnedRoute = storedBottomChromePinnedRoute
-    }
-
     LaunchedEffect(nowPlayingVisible) {
         if (!nowPlayingVisible) {
             nowPlayingUsesInlineVolumeControl = false
+            nowPlayingEqualizerVisible = false
             return@LaunchedEffect
         }
         showHardwareVolumeOverlay = false
         hardwareVolumeOverlayInteracting = false
         hardwareVolumeOverlayBounds = null
-        bottomChromeOverflowExpanded = false
-        bottomChromeOverflowProtectedBounds = emptyList()
         nowPlayingVolumeEventTick = 0L
     }
 
@@ -673,7 +672,7 @@ fun MainContainer(
         if (volumeKeyEventTick <= 0L) return@LaunchedEffect
         if (volumeKeyEventTick == lastHandledVolumeKeyTick) return@LaunchedEffect
         lastHandledVolumeKeyTick = volumeKeyEventTick
-        if (nowPlayingUsesInlineVolumeControl) {
+        if (nowPlayingUsesInlineVolumeControl && !nowPlayingEqualizerVisible) {
             showHardwareVolumeOverlay = false
             nowPlayingVolumeEventTick = volumeKeyEventTick
             return@LaunchedEffect
@@ -682,9 +681,9 @@ fun MainContainer(
         hardwareVolumeOverlayHoldTick = volumeKeyEventTick
     }
 
-    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingUsesInlineVolumeControl) {
+    LaunchedEffect(showHardwareVolumeOverlay, hardwareVolumeOverlayHoldTick, hardwareVolumeOverlayInteracting, nowPlayingUsesInlineVolumeControl, nowPlayingEqualizerVisible) {
         if (!showHardwareVolumeOverlay) return@LaunchedEffect
-        if (nowPlayingUsesInlineVolumeControl) {
+        if (nowPlayingUsesInlineVolumeControl && !nowPlayingEqualizerVisible) {
             showHardwareVolumeOverlay = false
             hardwareVolumeOverlayBounds = null
             return@LaunchedEffect
@@ -705,6 +704,22 @@ fun MainContainer(
     BackHandler(pendingDetailNavigation && currentRoute == Routes.Search) {
         pendingDetailNavigation = false
         cancelPendingDetailNavigation = true
+    }
+
+    BackHandler(
+        enabled = currentPrimaryRoute == Routes.Library &&
+            !hasPreviousBackStackEntry &&
+            !drawerState.isOpen &&
+            !pendingDetailNavigation &&
+            !nowPlayingVisible
+    ) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastLibraryBackPressElapsedRealtime <= 2_000L) {
+            activity?.finish()
+        } else {
+            lastLibraryBackPressElapsedRealtime = now
+            messageManager.showInfo("再按一次返回退出应用")
+        }
     }
 
     val drawerGesturesEnabled = false
@@ -772,7 +787,7 @@ fun MainContainer(
                                             currentRoute?.startsWith("album_detail_online") == true
                                     val isAlbumDetailFromLibrary =
                                         currentRoute?.startsWith("album_detail/") == true &&
-                                            currentRoute?.startsWith("album_detail_rj") != true
+                                            !currentRoute.startsWith("album_detail_rj")
                                     val isSelected = when (route) {
                                         "library" -> currentRoute == route || isAlbumDetailFromLibrary
                                         "search" -> currentRoute == route || isAlbumDetailFromSearch
@@ -941,7 +956,7 @@ fun MainContainer(
                                             actionIconContentColor = topBarContentColor
                                         ),
                                         navigationIcon = {
-                                            if (showBackButton && navController.previousBackStackEntry != null) {
+                                            if (showBackButton && hasPreviousBackStackEntry) {
                                                 IconButton(onClick = { navController.popBackStack() }) {
                                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                                                 }
@@ -963,7 +978,7 @@ fun MainContainer(
                                                         val icon = when (normalized) {
                                                             1 -> Icons.Default.GridView
                                                             2 -> Icons.Default.Audiotrack
-                                                            else -> Icons.Default.ViewList
+                                                            else -> Icons.AutoMirrored.Filled.ViewList
                                                         }
                                                         IconButton(onClick = { viewMenuExpanded = true }) {
                                                             Icon(imageVector = icon, contentDescription = "切换视图")
@@ -982,7 +997,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑列表") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.Default.ViewList, contentDescription = null)
+                                                                    Icon(Icons.AutoMirrored.Filled.ViewList, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1027,7 +1042,7 @@ fun MainContainer(
                                                 val viewMode by searchViewModel.viewMode.collectAsState()
                                                 IconButton(onClick = { searchViewModel.setViewMode(if (viewMode == 1) 0 else 1) }) {
                                                     Icon(
-                                                        imageVector = if (viewMode == 1) Icons.Default.ViewList else Icons.Default.ViewModule,
+                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.ViewModule,
                                                         contentDescription = null
                                                     )
                                                 }
@@ -1293,12 +1308,8 @@ fun MainContainer(
                         onOpenPlaylistPicker = { item ->
                             albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
-                        onOpenGroupPicker = { albumId ->
-                            navController.navigateSingleTop("group_picker?albumId=$albumId")
-                        },
-                        onPlayVideo = { title, uriOrPath, artwork, artist ->
-                            playerViewModel.playVideo(title, uriOrPath, artwork, artist)
-                            openNowPlaying()
+                        onOpenGroupPicker = { targetAlbumId ->
+                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
                         },
                         onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
                         onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
@@ -1345,12 +1356,8 @@ fun MainContainer(
                         onOpenPlaylistPicker = { item ->
                             albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
                         },
-                        onOpenGroupPicker = { albumId ->
-                            navController.navigateSingleTop("group_picker?albumId=$albumId")
-                        },
-                        onPlayVideo = { title, uriOrPath, artwork, artist ->
-                            playerViewModel.playVideo(title, uriOrPath, artwork, artist)
-                            openNowPlaying()
+                        onOpenGroupPicker = { targetAlbumId ->
+                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
                         },
                         onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
                         onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
@@ -1386,10 +1393,6 @@ fun MainContainer(
                         },
                         onOpenGroupPicker = { albumId ->
                             navController.navigateSingleTop("group_picker?albumId=$albumId")
-                        },
-                        onPlayVideo = { title, uriOrPath, artwork, artist ->
-                            playerViewModel.playVideo(title, uriOrPath, artwork, artist)
-                            openNowPlaying()
                         },
                         onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
                         onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
@@ -1562,6 +1565,7 @@ fun MainContainer(
             BoxWithConstraints(
                 modifier = Modifier.fillMaxSize()
             ) {
+                val bottomChromeHorizontalPadding = if (useLargeBottomChrome) 16.dp else 12.dp
                 val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
                 val canUseRightPanel = !isCompactWidth &&
                     !isPhone &&
@@ -1582,31 +1586,21 @@ fun MainContainer(
                     animationSpec = tween(durationMillis = if (rightPanelExpanded) 220 else 180),
                     label = "miniPlayerReservedRight"
                 )
-                val chromeWidth = (maxWidth - reservedRight - 48.dp).coerceAtLeast(0.dp)
-                if (bottomChromeOverflowExpanded) {
-                    DismissOutsideBoundsOverlay(
-                        protectedBoundsInRoot = bottomChromeOverflowProtectedBounds,
-                        onDismiss = { bottomChromeOverflowExpanded = false }
-                    )
-                }
+                val chromeWidth = (maxWidth - reservedRight - (bottomChromeHorizontalPadding * 2)).coerceAtLeast(0.dp)
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .graphicsLayer { clip = false }
-                        .padding(start = 22.dp, bottom = 24.dp)
+                        .padding(start = bottomChromeHorizontalPadding, bottom = 24.dp)
                         .width(chromeWidth)
                 ) {
                     BottomChrome(
-                        activeRoute = activePrimaryRoute,
+                        activeRoute = visualPrimaryRoute,
                         selectionProgresses = primaryNavSelectionProgresses,
-                        preferredPinnedRoute = bottomChromePinnedRoute,
                         miniPlayerVisible = miniPlayerVisible,
                         miniPlayerDisplayMode = miniPlayerDisplayMode,
                         largeLayout = useLargeBottomChrome,
                         navItems = bottomNavItems,
-                        overflowExpanded = bottomChromeOverflowExpanded,
-                        onOverflowExpandedChange = { bottomChromeOverflowExpanded = it },
-                        onOverflowProtectedBoundsChange = { bottomChromeOverflowProtectedBounds = it },
                         onMiniPlayerDisplayModeChange = { nextMode ->
                             miniPlayerDisplayMode = nextMode
                             scope.launch { settingsDataStore.setMiniPlayerDisplayMode(nextMode.name) }
@@ -1618,24 +1612,15 @@ fun MainContainer(
                         },
                         onOpenQueue = onShowQueue,
                         onNavigate = { route ->
-                            if (route == activePrimaryRoute) {
+                            if (shouldScrollPrimaryRouteToTop(
+                                    requestedRoute = route,
+                                    activePrimaryRoute = activePrimaryRoute,
+                                    currentPrimaryRoute = currentPrimaryRoute
+                                )) {
                                 triggerPrimaryRouteScrollToTop(route)
                                 return@BottomChrome
                             }
-                            val projectedPagerRoutes = if (route in bottomNavRoutes && route !in fixedBottomNavRoutes) {
-                                resolvePrimaryPagerRoutes(
-                                    navItems = bottomNavItems,
-                                    activeRoute = activePrimaryRoute,
-                                    preferredPinnedRoute = route
-                                )
-                            } else {
-                                primaryPagerRoutes
-                            }
-                            if (route in bottomNavRoutes && route !in fixedBottomNavRoutes) {
-                                bottomChromePinnedRoute = route
-                                scope.launch { settingsDataStore.setBottomChromePinnedRoute(route) }
-                            }
-                            openPrimaryRoute(route, projectedPagerRoutes)
+                            openPrimaryRoute(route)
                         }
                     )
                 }
@@ -1685,6 +1670,7 @@ fun MainContainer(
                     windowSizeClass = windowSizeClass,
                     hardwareVolumeEventTick = nowPlayingVolumeEventTick,
                     onInlineVolumeControlVisibilityChanged = { nowPlayingUsesInlineVolumeControl = it },
+                    onEqualizerVisibilityChanged = { nowPlayingEqualizerVisible = it },
                     onBack = closeNowPlaying,
                     onRouteExitStarted = { exitDurationMs ->
                         nowPlayingBackdropExitDurationMs = exitDurationMs

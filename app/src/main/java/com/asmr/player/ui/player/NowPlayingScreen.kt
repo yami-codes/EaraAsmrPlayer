@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.SystemClock
+import android.view.KeyEvent as AndroidKeyEvent
 import android.view.LayoutInflater
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,6 +26,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -50,10 +53,14 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -78,6 +85,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.PlayerView
 import com.asmr.player.R
+import com.asmr.player.HardwareVolumeOverlay
 import com.asmr.player.data.lyrics.lyricsTargetContextFromMediaItem
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
@@ -93,8 +101,6 @@ import com.asmr.player.playback.AppVolume
 import com.asmr.player.playback.PlaybackSnapshot
 import com.asmr.player.ui.common.EqualizerPanel
 import com.asmr.player.ui.common.rememberProtectedAppVolumeChangeState
-import com.asmr.player.ui.common.rememberComputedDominantColorCenterWeighted
-import com.asmr.player.ui.common.rememberComputedVideoFrameDominantColorCenterWeighted
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.smoothScrollToIndex
 import com.asmr.player.ui.library.TagAssignDialog
@@ -166,6 +172,7 @@ internal fun NowPlayingScreen(
     windowSizeClass: WindowSizeClass,
     hardwareVolumeEventTick: Long,
     onInlineVolumeControlVisibilityChanged: (Boolean) -> Unit = {},
+    onEqualizerVisibilityChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onRouteExitStarted: (exitDurationMs: Int) -> Unit = {},
     onShowQueue: () -> Unit,
@@ -198,7 +205,6 @@ internal fun NowPlayingScreen(
     val artworkModel = remember(metadata?.artworkUri) {
         sanitizeBackdropArtworkModel(metadata?.artworkUri)
     }
-    val videoUri = item?.localConfiguration?.uri
     val mimeType = item?.localConfiguration?.mimeType.orEmpty()
     val ext = uriText.substringBefore('#').substringBefore('?').substringAfterLast('.', "").lowercase()
     val isVideo = metadata?.extras?.getBoolean("is_video") == true ||
@@ -209,35 +215,20 @@ internal fun NowPlayingScreen(
     val tagViewModel: NowPlayingTagViewModel = hiltViewModel()
     val tagDialog by tagViewModel.dialogState.collectAsState()
     val availableTags by tagViewModel.availableTags.collectAsState()
-    val dominantColorResult by if (isVideo) {
-        rememberComputedVideoFrameDominantColorCenterWeighted(videoUri = videoUri, defaultColor = colorScheme.background)
-    } else {
-        rememberComputedDominantColorCenterWeighted(model = artworkModel, defaultColor = colorScheme.background)
-    }
-    val targetAccentColor = if (coverBackgroundEnabled) {
-        dominantColorResult.color ?: colorScheme.primarySoft
-    } else {
-        colorScheme.primary
-    }
-    val accentColor by animateColorAsState(
-        targetValue = targetAccentColor,
-        animationSpec = tween(
-            durationMillis = if (dominantColorResult.fromCache) 260 else 1000,
-            easing = FastOutSlowInEasing
-        ),
-        label = "nowPlayingAccentColor"
+    val playerThemeColors = rememberPlayerThemeColors(
+        mediaItem = item,
+        colorScheme = colorScheme,
+        coverBackgroundEnabled = coverBackgroundEnabled
     )
+    val accentColor = playerThemeColors.accentColor
     val lyricColors = rememberLyricReadableColors(
         accentColor = accentColor,
+        backdropTintColor = playerThemeColors.backdropTintColor,
         coverBackgroundEnabled = coverBackgroundEnabled,
         coverBackgroundClarity = coverBackgroundClarity
     )
-    val onAccentColor = if (accentColor.luminance() > 0.55f) Color.Black else Color.White
-    val videoBackdropColor = if (isVideo) {
-        if (coverBackgroundEnabled) accentColor else colorScheme.background
-    } else {
-        Color.Transparent
-    }
+    val onAccentColor = playerThemeColors.onAccentColor
+    val videoBackdropColor = if (isVideo) playerThemeColors.videoBackdropColor else Color.Transparent
     val progressDurationMs = when {
         playback.durationMs > 0L && resolvedDurationMs > 0L -> maxOf(playback.durationMs, resolvedDurationMs)
         playback.durationMs > 0L -> playback.durationMs
@@ -435,14 +426,26 @@ internal fun NowPlayingScreen(
             !useSplitLayout &&
             !isPhoneLandscape
     val latestOnInlineVolumeControlVisibilityChanged by rememberUpdatedState(onInlineVolumeControlVisibilityChanged)
+    val latestOnEqualizerVisibilityChanged by rememberUpdatedState(onEqualizerVisibilityChanged)
 
     SideEffect {
         latestOnInlineVolumeControlVisibilityChanged(usesInlineVolumeControl)
     }
 
+    SideEffect {
+        latestOnEqualizerVisibilityChanged(showEqualizer)
+    }
+
+    LaunchedEffect(showEqualizer) {
+        if (showEqualizer) {
+            volumeControlExpanded = false
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             latestOnInlineVolumeControlVisibilityChanged(false)
+            latestOnEqualizerVisibilityChanged(false)
         }
     }
 
@@ -455,7 +458,7 @@ internal fun NowPlayingScreen(
                 enabled = coverBackgroundEnabled,
                 clarity = coverBackgroundClarity,
                 overlayBaseColor = colorScheme.background,
-                tintBaseColor = accentColor,
+                tintBaseColor = playerThemeColors.backdropTintColor,
                 artworkAlignment = coverPreviewAlignment,
                 isDark = colorScheme.isDark
             )
@@ -558,7 +561,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.Default.PlaylistPlay,
+                                Icons.AutoMirrored.Filled.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(32.dp)
@@ -595,7 +598,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -781,7 +784,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.Default.PlaylistPlay,
+                                Icons.AutoMirrored.Filled.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
@@ -816,7 +819,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -1014,7 +1017,7 @@ internal fun NowPlayingScreen(
                             }
                             IconButton(onClick = onShowQueue) {
                                 Icon(
-                                    Icons.Default.PlaylistPlay,
+                                    Icons.AutoMirrored.Filled.PlaylistPlay,
                                     contentDescription = null,
                                     tint = colorScheme.onSurface,
                                     modifier = Modifier.size(28.dp)
@@ -1073,7 +1076,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) accentColor else colorScheme.background,
+                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -1355,6 +1358,31 @@ internal fun NowPlayingScreen(
         if (showEqualizer) {
             val eqSettings by viewModel.sessionEqualizer.collectAsState()
             val customPresets by viewModel.customPresets.collectAsState()
+            val appVolumePercent by viewModel.appVolumePercent.collectAsState()
+            val equalizerFocusRequester = remember { FocusRequester() }
+            var showEqualizerVolumeOverlay by remember { mutableStateOf(false) }
+            var equalizerVolumeOverlayInteracting by remember { mutableStateOf(false) }
+            var equalizerVolumeOverlayHoldTick by remember { mutableLongStateOf(0L) }
+            var equalizerVolumeOverlayBounds by remember { mutableStateOf<Rect?>(null) }
+            var lastNonZeroEqualizerVolume by remember { mutableIntStateOf(AppVolume.DefaultPercent) }
+            LaunchedEffect(equalizerFocusRequester) {
+                equalizerFocusRequester.requestFocus()
+            }
+            LaunchedEffect(appVolumePercent) {
+                if (appVolumePercent > 0) {
+                    lastNonZeroEqualizerVolume = appVolumePercent
+                }
+            }
+            LaunchedEffect(showEqualizerVolumeOverlay, equalizerVolumeOverlayHoldTick, equalizerVolumeOverlayInteracting) {
+                if (!showEqualizerVolumeOverlay) return@LaunchedEffect
+                if (equalizerVolumeOverlayInteracting) return@LaunchedEffect
+                val snapshot = equalizerVolumeOverlayHoldTick
+                delay(2_000)
+                if (!equalizerVolumeOverlayInteracting && equalizerVolumeOverlayHoldTick == snapshot) {
+                    showEqualizerVolumeOverlay = false
+                    equalizerVolumeOverlayBounds = null
+                }
+            }
             ModalBottomSheet(
                 onDismissRequest = { showEqualizer = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -1362,7 +1390,30 @@ internal fun NowPlayingScreen(
                 contentColor = colorScheme.onSurface
             ) {
                 val scrollState = rememberScrollState()
-                Box(modifier = Modifier.fillMaxHeight()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .focusRequester(equalizerFocusRequester)
+                        .focusable()
+                        .onPreviewKeyEvent { event ->
+                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (event.nativeKeyEvent.keyCode) {
+                                AndroidKeyEvent.KEYCODE_VOLUME_UP -> {
+                                    viewModel.adjustAppVolumePercent(AppVolume.StepPercent)
+                                    showEqualizerVolumeOverlay = true
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                    true
+                                }
+                                AndroidKeyEvent.KEYCODE_VOLUME_DOWN -> {
+                                    viewModel.adjustAppVolumePercent(-AppVolume.StepPercent)
+                                    showEqualizerVolumeOverlay = true
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                    true
+                                }
+                                else -> false
+                            }
+                        }
+                ) {
                     EqualizerPanel(
                         settings = eqSettings,
                         customPresets = customPresets,
@@ -1379,6 +1430,56 @@ internal fun NowPlayingScreen(
                             .verticalScroll(scrollState)
                             .padding(bottom = 32.dp)
                     )
+                    if (showEqualizerVolumeOverlay) {
+                        DismissOutsideBoundsOverlay(
+                            targetBoundsInRoot = equalizerVolumeOverlayBounds,
+                            onDismiss = {
+                                showEqualizerVolumeOverlay = false
+                                equalizerVolumeOverlayBounds = null
+                            }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(end = 18.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showEqualizerVolumeOverlay,
+                            enter = fadeIn(animationSpec = tween(140)) + slideInHorizontally(animationSpec = tween(180)) { it / 3 },
+                            exit = fadeOut(animationSpec = tween(160)) + slideOutHorizontally(animationSpec = tween(180)) { it / 3 }
+                        ) {
+                            HardwareVolumeOverlay(
+                                modifier = Modifier.onGloballyPositioned { coordinates ->
+                                    equalizerVolumeOverlayBounds = coordinates.boundsInRoot()
+                                },
+                                volumePercent = appVolumePercent,
+                                audioOutputRouteKind = audioOutputRouteKind,
+                                onVolumeChange = {
+                                    viewModel.setAppVolumePercent(it)
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                },
+                                onToggleMute = {
+                                    if (appVolumePercent > 0) {
+                                        viewModel.setAppVolumePercent(0)
+                                    } else {
+                                        viewModel.setAppVolumePercent(
+                                            lastNonZeroEqualizerVolume.coerceAtLeast(AppVolume.StepPercent)
+                                        )
+                                    }
+                                    equalizerVolumeOverlayHoldTick += 1L
+                                },
+                                onInteractionActiveChanged = { active ->
+                                    equalizerVolumeOverlayInteracting = active
+                                    if (!active) {
+                                        equalizerVolumeOverlayHoldTick += 1L
+                                    }
+                                },
+                                warningSessionState = warningSessionState
+                            )
+                        }
+                    }
                 }
             }
         }
