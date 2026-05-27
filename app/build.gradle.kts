@@ -61,6 +61,11 @@ android {
         }
     }
 
+    val listenTogetherBaseUrl =
+        System.getenv("LISTEN_TOGETHER_BASE_URL")
+            ?: (project.findProperty("LISTEN_TOGETHER_BASE_URL") as? String)
+            ?: "http://192.168.71.9:8787"
+
     defaultConfig {
         applicationId = "com.asmr.player"
         minSdk = 24
@@ -69,6 +74,7 @@ android {
         versionName = "1.1.0"
         buildConfigField("String", "UPDATE_REPO_OWNER", "\"eValDoll\"")
         buildConfigField("String", "UPDATE_REPO_NAME", "\"EaraAsmrPlayer\"")
+        buildConfigField("String", "LISTEN_TOGETHER_BASE_URL", "\"$listenTogetherBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -163,6 +169,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Jsoup
     implementation("org.jsoup:jsoup:1.17.2")

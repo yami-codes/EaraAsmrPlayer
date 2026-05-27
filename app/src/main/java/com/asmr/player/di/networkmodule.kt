@@ -21,11 +21,16 @@ import com.asmr.player.data.remote.TrafficStatsInterceptor
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.DlsiteAntiHotlink
+import com.google.gson.Gson
 import java.io.IOException
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson = Gson()
 
     @Provides
     @Singleton

@@ -109,6 +109,8 @@ import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.SubtitleEntry
 import com.asmr.player.util.SubtitleIndexFinder
+import com.asmr.player.listentogether.ListenTogetherStatus
+import com.asmr.player.listentogether.ListenTogetherUiState
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -165,6 +167,299 @@ private fun AnimatedContentTransitionScope<NowPlayingSurfaceMode>.nowPlayingSurf
     return enter togetherWith exit using SizeTransform(clip = false)
 }
 
+internal sealed interface ListenTogetherAudiencePresentation {
+    data class Status(val text: String) : ListenTogetherAudiencePresentation
+
+    data class Audience(val companionCount: Int) : ListenTogetherAudiencePresentation
+}
+
+internal fun resolveListenTogetherAudiencePresentation(
+    state: ListenTogetherUiState
+): ListenTogetherAudiencePresentation? = when {
+    !state.available && state.status == ListenTogetherStatus.Unsupported ->
+        ListenTogetherAudiencePresentation.Status("\u5f53\u524d\u97f3\u9891\u65e0\u6cd5\u53c2\u4e0e\u4e00\u8d77\u542c")
+    state.listenerCount != null ->
+        ListenTogetherAudiencePresentation.Audience(
+            companionCount = (state.listenerCount - 1).coerceAtLeast(0)
+        )
+    else ->
+        ListenTogetherAudiencePresentation.Audience(companionCount = 0)
+}
+
+private fun <S> AnimatedContentTransitionScope<S>.listenTogetherLineTransform(): ContentTransform {
+    val enter = fadeIn(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    ) + slideInVertically(
+        initialOffsetY = {
+            (it * NowPlayingMotionSpec.PlayerForegroundFloatOffsetFraction).roundToInt()
+        },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    ) + scaleIn(
+        initialScale = NowPlayingMotionSpec.PlayerForegroundInitialScale,
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    )
+    val exit = fadeOut(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    ) + slideOutVertically(
+        targetOffsetY = {
+            (it * NowPlayingMotionSpec.PlayerForegroundSinkOffsetFraction).roundToInt()
+        },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    ) + scaleOut(
+        targetScale = NowPlayingMotionSpec.PlayerForegroundTargetScale,
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    )
+    return enter togetherWith exit using SizeTransform(clip = false)
+}
+
+private fun <S> AnimatedContentTransitionScope<S>.listenTogetherInlineTransform(): ContentTransform {
+    val enter = fadeIn(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> fullHeight / 3 },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    )
+    val exit = fadeOut(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    ) + slideOutVertically(
+        targetOffsetY = { fullHeight -> -(fullHeight / 3) },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    )
+    return enter togetherWith exit using SizeTransform(clip = false)
+}
+
+private fun AnimatedContentTransitionScope<Int>.listenTogetherCounterTransform(): ContentTransform {
+    val direction = if (targetState >= initialState) 1 else -1
+    val enter = fadeIn(
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing)
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> direction * fullHeight },
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing)
+    )
+    val exit = fadeOut(
+        animationSpec = tween(durationMillis = 140, easing = FastOutLinearInEasing)
+    ) + slideOutVertically(
+        targetOffsetY = { fullHeight -> -direction * fullHeight },
+        animationSpec = tween(durationMillis = 140, easing = FastOutLinearInEasing)
+    )
+    return enter togetherWith exit using SizeTransform(clip = false)
+}
+
+private fun listenTogetherPresentationKey(
+    presentation: ListenTogetherAudiencePresentation?
+): String = when (presentation) {
+    null -> "hidden"
+    is ListenTogetherAudiencePresentation.Status -> "status:${presentation.text}"
+    is ListenTogetherAudiencePresentation.Audience -> "audience"
+}
+
+@Composable
+private fun ListenTogetherAudienceCountText(
+    companionCount: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val textStyle = MaterialTheme.typography.labelSmall
+
+    AnimatedContent(
+        targetState = companionCount > 0,
+        transitionSpec = { listenTogetherInlineTransform() },
+        label = "listenTogetherAudienceMode"
+    ) { hasCompanions ->
+        if (hasCompanions) {
+            Row(
+                modifier = modifier,
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnimatedContent(
+                    targetState = companionCount,
+                    transitionSpec = { listenTogetherCounterTransform() },
+                    label = "listenTogetherAudienceCounter"
+                ) { value ->
+                    Text(
+                        text = value.toString(),
+                        style = textStyle.copy(fontWeight = FontWeight.SemiBold),
+                        color = color,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    text = " \u4eba\u6b63\u5728\u548c\u4f60\u4e00\u8d77\u542c",
+                    style = textStyle,
+                    color = color,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        } else {
+            Text(
+                text = "\u5b64\u72ec\u8d4f\u9274\u4e2d",
+                modifier = modifier,
+                style = textStyle,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ListenTogetherAudienceLine(
+    state: ListenTogetherUiState,
+    modifier: Modifier = Modifier,
+    accentColor: Color = AsmrTheme.colorScheme.primary
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val presentation = resolveListenTogetherAudiencePresentation(state)
+    var visible by remember { mutableStateOf(false) }
+    var hasShownPresentation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(presentation) {
+        if (presentation == null) {
+            visible = false
+            hasShownPresentation = false
+        } else {
+            if (!hasShownPresentation) {
+                visible = false
+                delay(80)
+                visible = true
+                hasShownPresentation = true
+            } else {
+                visible = true
+            }
+        }
+    }
+
+    Box(modifier = modifier.height(18.dp)) {
+        AnimatedVisibility(
+            visible = visible && presentation != null,
+            enter = fadeIn(
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+                    easing = LinearOutSlowInEasing
+                )
+            ) + slideInVertically(
+                initialOffsetY = { fullHeight -> fullHeight / 3 },
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+                    easing = LinearOutSlowInEasing
+                )
+            ),
+            exit = fadeOut(
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+                    easing = FastOutLinearInEasing
+                )
+            ) + slideOutVertically(
+                targetOffsetY = { fullHeight -> -(fullHeight / 4) },
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+                    easing = FastOutLinearInEasing
+                )
+            ),
+            label = "listenTogetherAudienceVisibility"
+        ) {
+            val targetPresentation = presentation ?: return@AnimatedVisibility
+            Row(
+                modifier = Modifier
+                    .animateContentSize(
+                        animationSpec = tween(
+                            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+                            easing = LinearOutSlowInEasing
+                        )
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_users_round),
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp),
+                    tint = accentColor.copy(alpha = 0.82f)
+                )
+                when (targetPresentation) {
+                    is ListenTogetherAudiencePresentation.Status -> Text(
+                        text = targetPresentation.text,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.textTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    is ListenTogetherAudiencePresentation.Audience -> ListenTogetherAudienceCountText(
+                        companionCount = targetPresentation.companionCount,
+                        color = colorScheme.textTertiary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistWithListenTogetherInfo(
+    artist: String,
+    listenTogetherState: ListenTogetherUiState,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    badgeAlignment: Alignment = Alignment.TopStart,
+    textAlignment: Alignment = Alignment.CenterStart,
+    accentColor: Color = AsmrTheme.colorScheme.primary
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        ListenTogetherAudienceLine(
+            state = listenTogetherState,
+            modifier = Modifier
+                .align(badgeAlignment)
+                .offset(y = (-18).dp),
+            accentColor = accentColor
+        )
+        Text(
+            text = artist,
+            modifier = Modifier.align(textAlignment),
+            style = style,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = textAlign
+        )
+    }
+}
+
 @Composable
 @androidx.media3.common.util.UnstableApi
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -195,6 +490,7 @@ internal fun NowPlayingScreen(
     val resolvedDurationMs by viewModel.resolvedDurationMs.collectAsState()
     val sliceUiState by viewModel.sliceUiState.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
+    val listenTogetherUiState by viewModel.listenTogetherUiState.collectAsState()
     val lyricsState by lyricsViewModel.uiState.collectAsState()
     val item = playback.currentMediaItem
     val metadata = item?.mediaMetadata
@@ -640,13 +936,13 @@ internal fun NowPlayingScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // 艺术家 (标题已移动到 header)
-                        Text(
-                            text = metadata?.artist?.toString().orEmpty(),
+                        ArtistWithListenTogetherInfo(
+                            artist = metadata?.artist?.toString().orEmpty(),
+                            listenTogetherState = listenTogetherUiState,
                             modifier = Modifier.then(infoMotion),
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.textSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            accentColor = accentColor
                         )
 
                         if (!isVideo) {
@@ -1027,8 +1323,9 @@ internal fun NowPlayingScreen(
                     }
 
                     // 艺术家
-                    Text(
-                        text = metadata?.artist?.toString().orEmpty(),
+                    ArtistWithListenTogetherInfo(
+                        artist = metadata?.artist?.toString().orEmpty(),
+                        listenTogetherState = listenTogetherUiState,
                         style = MaterialTheme.typography.bodySmall.copy(
                             shadow = if (colorScheme.isDark) {
                                 Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 2f)
@@ -1037,12 +1334,13 @@ internal fun NowPlayingScreen(
                             }
                         ),
                         color = colorScheme.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(coverMotion),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        badgeAlignment = Alignment.TopCenter,
+                        textAlignment = Alignment.Center,
+                        accentColor = accentColor
                     )
 
                     // 封面

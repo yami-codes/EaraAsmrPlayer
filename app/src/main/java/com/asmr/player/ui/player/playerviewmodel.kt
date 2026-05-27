@@ -1,5 +1,7 @@
 package com.asmr.player.ui.player
 
+import android.content.Context
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
@@ -12,7 +14,14 @@ import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.data.local.db.dao.TrackDao
 import com.asmr.player.data.settings.SettingsRepository
+import com.asmr.player.listentogether.ListenTogetherIdentityResolver
+import com.asmr.player.listentogether.ListenTogetherRepository
+import com.asmr.player.listentogether.ListenTogetherStatus
+import com.asmr.player.listentogether.ListenTogetherTrackIdentity
+import com.asmr.player.listentogether.ListenTogetherUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +37,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import javax.inject.Inject
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -58,11 +71,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val ONLINE_MANUAL_LYRICS_MESSAGE = "在线音频如需替换歌词，请先下载音频到本地"
+private const val ONLINE_MANUAL_LYRICS_MESSAGE = "\u5728\u7ebf\u97f3\u9891\u5982\u9700\u66ff\u6362\u6b4c\u8bcd\uff0c\u8bf7\u5148\u4e0b\u8f7d\u97f3\u9891\u5230\u672c\u5730"
 
 @HiltViewModel
 @OptIn(FlowPreview::class)
 class PlayerViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val playerConnection: PlayerConnection,
     private val settingsRepository: SettingsRepository,
     private val playlistRepository: PlaylistRepository,
@@ -70,6 +84,8 @@ class PlayerViewModel @Inject constructor(
     private val trackSliceRepository: TrackSliceRepository,
     private val slicePlaybackController: SlicePlaybackController,
     private val manualLyricsSourceRepository: ManualLyricsSourceRepository,
+    private val listenTogetherIdentityResolver: ListenTogetherIdentityResolver,
+    private val listenTogetherRepository: ListenTogetherRepository,
     private val messageManager: MessageManager
 ) : ViewModel() {
     val playback: StateFlow<PlaybackSnapshot> = playerConnection.snapshot
@@ -114,6 +130,21 @@ class PlayerViewModel @Inject constructor(
 
     val customPresets: StateFlow<List<AsmrPreset>> = settingsRepository.customEqualizerPresets
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _listenTogetherUiState = MutableStateFlow(
+        ListenTogetherUiState(
+            backendConfigured = listenTogetherRepository.isBackendConfigured,
+            status = if (listenTogetherRepository.isBackendConfigured) {
+                ListenTogetherStatus.Preparing
+            } else {
+                ListenTogetherStatus.BackendUnavailable
+            }
+        )
+    )
+    val listenTogetherUiState: StateFlow<ListenTogetherUiState> = _listenTogetherUiState
+
+    private var listenTogetherSyncJob: Job? = null
+    private var activeListenTogetherIdentity: ListenTogetherTrackIdentity? = null
 
     fun setSleepTimerMinutes(minutes: Int) {
         if (minutes <= 0) {
@@ -227,6 +258,12 @@ class PlayerViewModel @Inject constructor(
 
         viewModelScope.launch {
             trackMediaIdFlow.collect { }
+        }
+
+        viewModelScope.launch {
+            playback.collectLatest { snapshot ->
+                handleListenTogetherState(snapshot)
+            }
         }
 
     }
@@ -735,6 +772,17 @@ class PlayerViewModel @Inject constructor(
 
     fun playerOrNull(): Player? = playerConnection.getControllerOrNull()
 
+    override fun onCleared() {
+        listenTogetherSyncJob?.cancel()
+        val identity = activeListenTogetherIdentity
+        if (identity != null) {
+            viewModelScope.launch {
+                runCatching { listenTogetherRepository.leave(identity) }
+            }
+        }
+        super.onCleared()
+    }
+
     private suspend fun resolveDurationMs(item: MediaItem?, fallback: Long): Long {
         val safeFallback = fallback.coerceAtLeast(0L)
         if (item == null) return safeFallback
@@ -759,6 +807,148 @@ class PlayerViewModel @Inject constructor(
                 if (d > 0.0) return@withContext (d * 1000.0).roundToLong()
             }
             safeFallback
+        }
+    }
+
+    private suspend fun handleListenTogetherState(snapshot: PlaybackSnapshot) {
+        val item = snapshot.currentMediaItem
+        if (item == null) {
+            stopListenTogether(clearCount = true)
+            _listenTogetherUiState.value = ListenTogetherUiState(
+                available = false,
+                listenerCount = null,
+                currentIdentity = null,
+                syncing = false,
+                backendConfigured = listenTogetherRepository.isBackendConfigured,
+                status = ListenTogetherStatus.Preparing
+            )
+            return
+        }
+
+        val currentIdentity = activeListenTogetherIdentity
+        if (currentIdentity != null && currentIdentity.mediaId == item.mediaId) {
+            _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
+                syncing = listenTogetherRepository.isBackendConfigured,
+                backendConfigured = listenTogetherRepository.isBackendConfigured,
+                status = when {
+                    !listenTogetherRepository.isBackendConfigured -> ListenTogetherStatus.BackendUnavailable
+                    _listenTogetherUiState.value.status == ListenTogetherStatus.Error -> ListenTogetherStatus.Error
+                    else -> ListenTogetherStatus.Ready
+                }
+            )
+            return
+        }
+
+        stopListenTogether(clearCount = false)
+        _listenTogetherUiState.value = ListenTogetherUiState(
+            available = false,
+            listenerCount = null,
+            currentIdentity = null,
+            syncing = true,
+            backendConfigured = listenTogetherRepository.isBackendConfigured,
+            status = ListenTogetherStatus.Preparing
+        )
+
+        val identity = runCatching {
+            listenTogetherIdentityResolver.resolve(
+                context = appContext,
+                mediaItem = item,
+                fallbackRjCode = item.mediaMetadata.extras?.getString("rj_code")
+            )
+        }.getOrNull()
+
+        if (identity == null) {
+            _listenTogetherUiState.value = ListenTogetherUiState(
+                available = false,
+                listenerCount = null,
+                currentIdentity = null,
+                syncing = false,
+                backendConfigured = listenTogetherRepository.isBackendConfigured,
+                status = ListenTogetherStatus.Unsupported
+            )
+            return
+        }
+
+        activeListenTogetherIdentity = identity
+        _listenTogetherUiState.value = ListenTogetherUiState(
+            available = true,
+            listenerCount = if (listenTogetherRepository.isBackendConfigured) null else 1,
+            currentIdentity = identity,
+            syncing = listenTogetherRepository.isBackendConfigured,
+            backendConfigured = listenTogetherRepository.isBackendConfigured,
+            status = if (listenTogetherRepository.isBackendConfigured) {
+                ListenTogetherStatus.Ready
+            } else {
+                ListenTogetherStatus.BackendUnavailable
+            }
+        )
+        startListenTogetherSync(identity)
+    }
+
+    private fun startListenTogetherSync(identity: ListenTogetherTrackIdentity) {
+        listenTogetherSyncJob?.cancel()
+        listenTogetherSyncJob = viewModelScope.launch {
+            if (!listenTogetherRepository.isBackendConfigured) {
+                _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
+                    listenerCount = 1,
+                    syncing = false,
+                    status = ListenTogetherStatus.BackendUnavailable
+                )
+                return@launch
+            }
+
+            while (currentCoroutineContext().isActive) {
+                val snapshot = playback.value
+                if (snapshot.currentMediaItem?.mediaId != identity.mediaId) {
+                    break
+                }
+                runCatching {
+                    listenTogetherRepository.upsertPresence(
+                        identity = identity,
+                        playbackPositionMs = snapshot.positionMs,
+                        isPlaying = snapshot.isPlaying
+                    )
+                }.onSuccess { response ->
+                    _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
+                        available = true,
+                        listenerCount = response?.listenerCount ?: _listenTogetherUiState.value.listenerCount,
+                        currentIdentity = identity,
+                        syncing = true,
+                        backendConfigured = true,
+                        status = ListenTogetherStatus.Ready
+                    )
+                    delay(response?.heartbeatIntervalMs?.coerceIn(5_000L, 60_000L) ?: 15_000L)
+                }.onFailure {
+                    _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
+                        available = true,
+                        currentIdentity = identity,
+                        syncing = false,
+                        backendConfigured = true,
+                        status = ListenTogetherStatus.Error
+                    )
+                    delay(15_000L)
+                }
+            }
+        }
+    }
+
+    private fun stopListenTogether(clearCount: Boolean) {
+        listenTogetherSyncJob?.cancel()
+        listenTogetherSyncJob = null
+        val identity = activeListenTogetherIdentity
+        activeListenTogetherIdentity = null
+        if (identity != null) {
+            viewModelScope.launch {
+                runCatching { listenTogetherRepository.leave(identity) }
+            }
+        }
+        if (clearCount) {
+            _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
+                listenerCount = null,
+                currentIdentity = null,
+                available = false,
+                syncing = false
+            )
         }
     }
 }

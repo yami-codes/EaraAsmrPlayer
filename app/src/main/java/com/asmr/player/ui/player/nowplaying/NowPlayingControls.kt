@@ -120,6 +120,7 @@ internal fun PlaybackControls(
     bottomPadding: Dp = 0.dp,
     actionRowModifier: Modifier = Modifier,
     coreControlsModifier: Modifier = Modifier,
+    supplementalAction: (@Composable () -> Unit)? = null,
     primaryColor: Color = AsmrTheme.colorScheme.primary,
     onPrimaryColor: Color = AsmrTheme.colorScheme.onPrimary
 ) {
@@ -226,6 +227,8 @@ internal fun PlaybackControls(
                         modifier = Modifier.size(24.dp)
                     )
                 }
+
+                supplementalAction?.invoke()
             }
         }
 
@@ -321,6 +324,9 @@ internal fun PlaybackControls(
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
+            }
+            if (!showActionRow) {
+                supplementalAction?.invoke()
             }
         }
     }
