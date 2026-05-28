@@ -64,7 +64,7 @@ android {
     val listenTogetherBaseUrl =
         System.getenv("LISTEN_TOGETHER_BASE_URL")
             ?: (project.findProperty("LISTEN_TOGETHER_BASE_URL") as? String)
-            ?: "http://192.168.71.9:8787"
+            ?: "https://earaasmr.com"
 
     defaultConfig {
         applicationId = "com.asmr.player"
