@@ -61,6 +61,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -360,6 +361,7 @@ fun AlbumDetailScreen(
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
                             AlbumHeader(
                                 album = if (isLocalTab) (model.localAlbum ?: album) else album,
+                                listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
                                 dlsiteUrl = model.dlsiteWorkno.takeIf { it.isNotBlank() }?.let { "https://www.dlsite.com/maniax/work/=/product_id/$it.html" }.orEmpty(),
                                 asmrOneUrl = model.asmrOneWorkId?.takeIf { it.isNotBlank() }?.let { "https://asmr.one/work/$it" }.orEmpty(),
                                 dlsiteEditions = if (isLocalTab) emptyList() else model.dlsiteEditions,
@@ -911,6 +913,7 @@ private fun AlbumDetailTabChrome(
 @OptIn(ExperimentalLayoutApi::class)
 private fun AlbumHeader(
     album: Album,
+    listenTogetherRjListenerCount: Int?,
     dlsiteUrl: String,
     asmrOneUrl: String,
     dlsiteEditions: List<DlsiteLanguageEdition>,
@@ -1042,20 +1045,59 @@ private fun AlbumHeader(
                     )
                     }
                     val circle = album.circle.trim()
-                    if (rj.isNotBlank() || circle.isNotBlank()) {
+                    val showMetaRow = rj.isNotBlank() || circle.isNotBlank() || listenTogetherRjListenerCount != null
+                    if (showMetaRow) {
                         AlbumHeaderInfoReveal(
                             revealKey = "$headerAnimationScopeKey:meta",
                             delayMillis = 40,
                             enabled = animateIntro
                         ) {
-                            AlbumPrimaryMetaRow(
-                                rjCode = rj,
-                                circle = circle,
-                                rjOnClick = { copyMeta("RJ", rj) },
-                                circleOnClick = { copyMeta("社团", circle) },
-                                appearance = AlbumMetaAppearance.OnImage,
-                                leadingVisual = AlbumMetaLeadingVisual.Icon,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AlbumPrimaryMetaRow(
+                                    rjCode = rj,
+                                    circle = circle,
+                                    modifier = Modifier.weight(1f),
+                                    rjOnClick = { copyMeta("RJ", rj) },
+                                    circleOnClick = { copyMeta("社团", circle) },
+                                    appearance = AlbumMetaAppearance.OnImage,
+                                    leadingVisual = AlbumMetaLeadingVisual.Icon,
+                                )
+                                if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.16f),
+                                        contentColor = Color.White.copy(alpha = 0.96f),
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            width = 0.5.dp,
+                                            color = Color.White.copy(alpha = 0.2f)
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = 0.96f),
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.96f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

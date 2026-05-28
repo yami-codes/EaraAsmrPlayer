@@ -3,6 +3,7 @@ package com.asmr.player.ui.player
 import com.asmr.player.listentogether.ListenTogetherStatus
 import com.asmr.player.listentogether.ListenTogetherUiState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ListenTogetherAudiencePresentationTest {
@@ -13,10 +14,7 @@ class ListenTogetherAudiencePresentationTest {
             ListenTogetherUiState()
         )
 
-        assertEquals(
-            ListenTogetherAudiencePresentation.Audience(companionCount = 0),
-            presentation
-        )
+        assertNull(presentation)
     }
 
     @Test
@@ -60,10 +58,7 @@ class ListenTogetherAudiencePresentationTest {
             )
         )
 
-        assertEquals(
-            ListenTogetherAudiencePresentation.Audience(companionCount = 0),
-            presentation
-        )
+        assertNull(presentation)
     }
 
     @Test
@@ -92,6 +87,21 @@ class ListenTogetherAudiencePresentationTest {
 
         assertEquals(
             ListenTogetherAudiencePresentation.Audience(companionCount = 0),
+            presentation
+        )
+    }
+
+    @Test
+    fun onlineAudioShowsSkippedMessage() {
+        val presentation = resolveListenTogetherAudiencePresentation(
+            ListenTogetherUiState(
+                available = false,
+                status = ListenTogetherStatus.OnlineSkipped
+            )
+        )
+
+        assertEquals(
+            ListenTogetherAudiencePresentation.Status("在线音频不参与统计"),
             presentation
         )
     }

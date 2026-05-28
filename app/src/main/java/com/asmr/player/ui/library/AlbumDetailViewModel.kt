@@ -44,6 +44,7 @@ import com.asmr.player.data.lyrics.LyricsLoader
 import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import com.asmr.player.listentogether.ListenTogetherRepository
 import com.asmr.player.ui.common.queryTrackFileSize
 import com.asmr.player.util.OnlineLyricsStore
 import com.asmr.player.util.RemoteSubtitleSource
@@ -59,6 +60,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,6 +77,7 @@ import com.asmr.player.util.TagNormalizer
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.stateIn
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -102,6 +105,7 @@ class AlbumDetailViewModel @Inject constructor(
     private val downloadManager: DownloadManager,
     private val lyricsLoader: LyricsLoader,
     private val syncCoordinator: SyncCoordinator,
+    private val listenTogetherRepository: ListenTogetherRepository,
     @Named("image") private val imageOkHttpClient: OkHttpClient,
     val messageManager: MessageManager,
     @ApplicationContext private val context: Context
@@ -181,8 +185,45 @@ class AlbumDetailViewModel @Inject constructor(
     private val listScrollByKey = linkedMapOf<String, Pair<Int, Int>>()
     private val treeCurrentPathByKey = linkedMapOf<String, String>()
     private val remoteFileSizeCache = linkedMapOf<String, Long?>()
+    private var listenTogetherRjSummaryJob: Job? = null
     private val preferredTreePathPrefs by lazy {
         context.getSharedPreferences("album_detail_tree_prefs", Context.MODE_PRIVATE)
+    }
+
+    init {
+        viewModelScope.launch {
+            uiState
+                .map { (it as? AlbumDetailUiState.Success)?.model?.rjCode?.trim().orEmpty().uppercase() }
+                .distinctUntilChanged()
+                .collect { rj ->
+                    listenTogetherRjSummaryJob?.cancel()
+                    listenTogetherRjSummaryJob = if (rj.isBlank()) {
+                        null
+                    } else {
+                        viewModelScope.launch {
+                            while (true) {
+                                refreshListenTogetherRjSummary(rj)
+                                delay(15_000L)
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    private suspend fun refreshListenTogetherRjSummary(rjCode: String) {
+        val normalizedRj = rjCode.trim().uppercase()
+        if (normalizedRj.isBlank()) return
+        val summary = runCatching {
+            listenTogetherRepository.getRjSummary(normalizedRj)
+        }.getOrNull() ?: return
+        val listenerCount = summary.listenerCount.coerceAtLeast(0)
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        if (!current.model.rjCode.trim().uppercase().equals(normalizedRj, ignoreCase = true)) return
+        if (current.model.listenTogetherRjListenerCount == listenerCount) return
+        _uiState.value = AlbumDetailUiState.Success(
+            model = current.model.copy(listenTogetherRjListenerCount = listenerCount)
+        )
     }
 
     private suspend fun isAsmrOneCollected(rj: String, timeoutMs: Long = 1_200L): Boolean? {
@@ -524,6 +565,7 @@ class AlbumDetailViewModel @Inject constructor(
                     model = AlbumDetailModel(
                         baseRjCode = rj,
                         rjCode = rj,
+                        listenTogetherRjListenerCount = null,
                         displayAlbum = displayAlbum,
                         localAlbum = localAlbum,
                         dlsiteInfo = null,
@@ -546,7 +588,6 @@ class AlbumDetailViewModel @Inject constructor(
                         isLoadingDlsitePlay = false
                     )
                 )
-
                 localTracksObserveJob?.cancel()
                 localTracksObserveJob = null
                 val localId = localAlbum?.id ?: 0L

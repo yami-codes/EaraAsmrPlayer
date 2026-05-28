@@ -54,6 +54,13 @@ data class ListenTogetherPresenceResponse(
     val serverTimeEpochMs: Long? = null
 )
 
+data class ListenTogetherRjSummaryResponse(
+    val rjCode: String,
+    val listenerCount: Int,
+    val sessionCount: Int = 0,
+    val serverTimeEpochMs: Long? = null
+)
+
 data class ListenTogetherUiState(
     val available: Boolean = false,
     val listenerCount: Int? = null,
@@ -66,6 +73,7 @@ data class ListenTogetherUiState(
 enum class ListenTogetherStatus {
     Preparing,
     Ready,
+    OnlineSkipped,
     Unsupported,
     BackendUnavailable,
     Error

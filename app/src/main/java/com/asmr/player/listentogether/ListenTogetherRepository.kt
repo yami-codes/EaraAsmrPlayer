@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.IOException
 import java.util.UUID
 import kotlin.text.Charsets.UTF_8
@@ -66,6 +67,17 @@ class ListenTogetherRepository @Inject constructor(
         postJson<Unit>("presence/leave", payload, null)
     }
 
+    suspend fun getRjSummary(rjCode: String): ListenTogetherRjSummaryResponse? {
+        if (!isBackendConfigured) return null
+        val normalizedRj = rjCode.trim().uppercase()
+        if (normalizedRj.isBlank()) return null
+        return getJson(
+            path = "presence/rj-summary",
+            queryParameters = mapOf("rj" to normalizedRj),
+            responseClass = ListenTogetherRjSummaryResponse::class.java
+        )
+    }
+
     private suspend fun <T : Any> postJson(path: String, body: Any, responseClass: Class<T>?): T? {
         return withContext(Dispatchers.IO) {
             val request = Request.Builder()
@@ -82,6 +94,44 @@ class ListenTogetherRepository @Inject constructor(
                     throw IOException("ListenTogether request failed: ${response.code}")
                 }
                 if (responseClass == null) return@withContext null
+                val raw = response.body?.string().orEmpty()
+                if (raw.isBlank()) return@withContext null
+                gson.fromJson(raw, responseClass)
+            }
+        }
+    }
+
+    private suspend fun <T : Any> getJson(
+        path: String,
+        queryParameters: Map<String, String>,
+        responseClass: Class<T>
+    ): T? {
+        return withContext(Dispatchers.IO) {
+            val url = resolveUrl(path)
+                .toHttpUrlOrNull()
+                ?.newBuilder()
+                ?.apply {
+                    queryParameters.forEach { (key, value) ->
+                        addQueryParameter(key, value)
+                    }
+                }
+                ?.build()
+                ?: throw IOException("Invalid ListenTogether URL: $path")
+
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", userAgent)
+                .header("X-Listen-Together-App", appHeaderValue)
+                .header("X-Listen-Together-Client-Session-Id", clientSessionId)
+                .header("X-Listen-Together-Device-Fingerprint", deviceFingerprint)
+                .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
+                .get()
+                .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("ListenTogether request failed: ${response.code}")
+                }
                 val raw = response.body?.string().orEmpty()
                 if (raw.isBlank()) return@withContext null
                 gson.fromJson(raw, responseClass)

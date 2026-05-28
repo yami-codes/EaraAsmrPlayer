@@ -176,14 +176,18 @@ internal sealed interface ListenTogetherAudiencePresentation {
 internal fun resolveListenTogetherAudiencePresentation(
     state: ListenTogetherUiState
 ): ListenTogetherAudiencePresentation? = when {
+    state.status == ListenTogetherStatus.OnlineSkipped ->
+        ListenTogetherAudiencePresentation.Status("在线音频不参与统计")
     !state.available && state.status == ListenTogetherStatus.Unsupported ->
-        ListenTogetherAudiencePresentation.Status("\u5f53\u524d\u97f3\u9891\u65e0\u6cd5\u53c2\u4e0e\u4e00\u8d77\u542c")
+        ListenTogetherAudiencePresentation.Status("当前音频无法参与一起听")
     state.listenerCount != null ->
         ListenTogetherAudiencePresentation.Audience(
             companionCount = (state.listenerCount - 1).coerceAtLeast(0)
         )
-    else ->
+    state.available ->
         ListenTogetherAudiencePresentation.Audience(companionCount = 0)
+    else ->
+        null
 }
 
 private fun <S> AnimatedContentTransitionScope<S>.listenTogetherLineTransform(): ContentTransform {
@@ -275,14 +279,6 @@ private fun AnimatedContentTransitionScope<Int>.listenTogetherCounterTransform()
     return enter togetherWith exit using SizeTransform(clip = false)
 }
 
-private fun listenTogetherPresentationKey(
-    presentation: ListenTogetherAudiencePresentation?
-): String = when (presentation) {
-    null -> "hidden"
-    is ListenTogetherAudiencePresentation.Status -> "status:${presentation.text}"
-    is ListenTogetherAudiencePresentation.Audience -> "audience"
-}
-
 @Composable
 private fun ListenTogetherAudienceCountText(
     companionCount: Int,
@@ -315,7 +311,7 @@ private fun ListenTogetherAudienceCountText(
                     )
                 }
                 Text(
-                    text = " \u4eba\u6b63\u5728\u548c\u4f60\u4e00\u8d77\u542c",
+                    text = " 人正在和你一起听",
                     style = textStyle,
                     color = color,
                     maxLines = 1,
@@ -324,7 +320,7 @@ private fun ListenTogetherAudienceCountText(
             }
         } else {
             Text(
-                text = "\u5b64\u72ec\u8d4f\u9274\u4e2d",
+                text = "孤独赏鉴中",
                 modifier = modifier,
                 style = textStyle,
                 color = color,
@@ -343,55 +339,16 @@ private fun ListenTogetherAudienceLine(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val presentation = resolveListenTogetherAudiencePresentation(state)
-    var visible by remember { mutableStateOf(false) }
-    var hasShownPresentation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(presentation) {
-        if (presentation == null) {
-            visible = false
-            hasShownPresentation = false
-        } else {
-            if (!hasShownPresentation) {
-                visible = false
-                delay(80)
-                visible = true
-                hasShownPresentation = true
-            } else {
-                visible = true
-            }
-        }
-    }
-
     Box(modifier = modifier.height(18.dp)) {
-        AnimatedVisibility(
-            visible = visible && presentation != null,
-            enter = fadeIn(
-                animationSpec = tween(
-                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-                    easing = LinearOutSlowInEasing
-                )
-            ) + slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight / 3 },
-                animationSpec = tween(
-                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-                    easing = LinearOutSlowInEasing
-                )
-            ),
-            exit = fadeOut(
-                animationSpec = tween(
-                    durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
-                    easing = FastOutLinearInEasing
-                )
-            ) + slideOutVertically(
-                targetOffsetY = { fullHeight -> -(fullHeight / 4) },
-                animationSpec = tween(
-                    durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
-                    easing = FastOutLinearInEasing
-                )
-            ),
-            label = "listenTogetherAudienceVisibility"
-        ) {
-            val targetPresentation = presentation ?: return@AnimatedVisibility
+        AnimatedContent(
+            targetState = presentation,
+            transitionSpec = { listenTogetherLineTransform() },
+            label = "listenTogetherAudiencePresentation"
+        ) { targetPresentation ->
+            if (targetPresentation == null) {
+                Spacer(modifier = Modifier.fillMaxWidth())
+                return@AnimatedContent
+            }
             Row(
                 modifier = Modifier
                     .animateContentSize(

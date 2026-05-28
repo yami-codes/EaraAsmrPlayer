@@ -825,6 +825,19 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
+        if (item.isOnlineMedia()) {
+            stopListenTogether(clearCount = true)
+            _listenTogetherUiState.value = ListenTogetherUiState(
+                available = false,
+                listenerCount = null,
+                currentIdentity = null,
+                syncing = false,
+                backendConfigured = listenTogetherRepository.isBackendConfigured,
+                status = ListenTogetherStatus.OnlineSkipped
+            )
+            return
+        }
+
         val currentIdentity = activeListenTogetherIdentity
         if (currentIdentity != null && currentIdentity.mediaId == item.mediaId) {
             _listenTogetherUiState.value = _listenTogetherUiState.value.copy(

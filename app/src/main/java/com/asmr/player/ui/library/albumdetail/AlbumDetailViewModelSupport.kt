@@ -146,6 +146,7 @@ internal fun extractRemoteFileSize(response: Response): Long? {
 data class AlbumDetailModel(
     val baseRjCode: String,
     val rjCode: String,
+    val listenTogetherRjListenerCount: Int?,
     val displayAlbum: Album,
     val localAlbum: Album?,
     val dlsiteInfo: Album?,
