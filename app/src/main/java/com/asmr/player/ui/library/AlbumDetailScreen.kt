@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.library
+package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -1067,33 +1067,39 @@ private fun AlbumHeader(
                                 )
                                 if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Surface(
-                                        color = Color.White.copy(alpha = 0.16f),
-                                        contentColor = Color.White.copy(alpha = 0.96f),
-                                        shape = RoundedCornerShape(999.dp),
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            width = 0.5.dp,
-                                            color = Color.White.copy(alpha = 0.2f)
-                                        )
+                                    AlbumHeaderInfoReveal(
+                                        revealKey = "$headerAnimationScopeKey:listenTogetherRjCount",
+                                        delayMillis = 60,
+                                        enabled = animateIntro
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.16f),
+                                            contentColor = Color.White.copy(alpha = 0.96f),
+                                            shape = RoundedCornerShape(999.dp),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                width = 0.5.dp,
+                                                color = Color.White.copy(alpha = 0.2f)
+                                            )
                                         ) {
-                                            Icon(
-                                                painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
-                                                contentDescription = null,
-                                                tint = Color.White.copy(alpha = 0.96f),
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                            Text(
-                                                text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = Color.White.copy(alpha = 0.96f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
+                                                    contentDescription = null,
+                                                    tint = Color.White.copy(alpha = 0.96f),
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.White.copy(alpha = 0.96f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
                                         }
                                     }
                                 }

@@ -190,50 +190,6 @@ internal fun resolveListenTogetherAudiencePresentation(
         null
 }
 
-private fun <S> AnimatedContentTransitionScope<S>.listenTogetherLineTransform(): ContentTransform {
-    val enter = fadeIn(
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-            easing = LinearOutSlowInEasing
-        )
-    ) + slideInVertically(
-        initialOffsetY = {
-            (it * NowPlayingMotionSpec.PlayerForegroundFloatOffsetFraction).roundToInt()
-        },
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-            easing = LinearOutSlowInEasing
-        )
-    ) + scaleIn(
-        initialScale = NowPlayingMotionSpec.PlayerForegroundInitialScale,
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-            easing = LinearOutSlowInEasing
-        )
-    )
-    val exit = fadeOut(
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
-            easing = FastOutLinearInEasing
-        )
-    ) + slideOutVertically(
-        targetOffsetY = {
-            (it * NowPlayingMotionSpec.PlayerForegroundSinkOffsetFraction).roundToInt()
-        },
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
-            easing = FastOutLinearInEasing
-        )
-    ) + scaleOut(
-        targetScale = NowPlayingMotionSpec.PlayerForegroundTargetScale,
-        animationSpec = tween(
-            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
-            easing = FastOutLinearInEasing
-        )
-    )
-    return enter togetherWith exit using SizeTransform(clip = false)
-}
-
 private fun <S> AnimatedContentTransitionScope<S>.listenTogetherInlineTransform(): ContentTransform {
     val enter = fadeIn(
         animationSpec = tween(
@@ -286,9 +242,19 @@ private fun ListenTogetherAudienceCountText(
     modifier: Modifier = Modifier
 ) {
     val textStyle = MaterialTheme.typography.labelSmall
+    var lastNonZeroCount by remember { mutableIntStateOf(0) }
+
+    val displayCount = when {
+        companionCount > 0 -> {
+            lastNonZeroCount = companionCount
+            companionCount
+        }
+        lastNonZeroCount > 0 -> lastNonZeroCount
+        else -> 0
+    }
 
     AnimatedContent(
-        targetState = companionCount > 0,
+        targetState = displayCount > 0,
         transitionSpec = { listenTogetherInlineTransform() },
         label = "listenTogetherAudienceMode"
     ) { hasCompanions ->
@@ -299,7 +265,7 @@ private fun ListenTogetherAudienceCountText(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AnimatedContent(
-                    targetState = companionCount,
+                    targetState = displayCount,
                     transitionSpec = { listenTogetherCounterTransform() },
                     label = "listenTogetherAudienceCounter"
                 ) { value ->
@@ -335,50 +301,55 @@ private fun ListenTogetherAudienceCountText(
 private fun ListenTogetherAudienceLine(
     state: ListenTogetherUiState,
     modifier: Modifier = Modifier,
-    accentColor: Color = AsmrTheme.colorScheme.primary
+    accentColor: Color = AsmrTheme.colorScheme.primary,
+    pageEntranceSettled: Boolean = true
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val presentation = resolveListenTogetherAudiencePresentation(state)
-    Box(modifier = modifier.height(18.dp)) {
-        AnimatedContent(
-            targetState = presentation,
-            transitionSpec = { listenTogetherLineTransform() },
-            label = "listenTogetherAudiencePresentation"
-        ) { targetPresentation ->
-            if (targetPresentation == null) {
-                Spacer(modifier = Modifier.fillMaxWidth())
-                return@AnimatedContent
-            }
-            Row(
-                modifier = Modifier
-                    .animateContentSize(
-                        animationSpec = tween(
-                            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
-                            easing = LinearOutSlowInEasing
-                        )
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_users_round),
-                    contentDescription = null,
-                    modifier = Modifier.size(13.dp),
-                    tint = accentColor.copy(alpha = 0.82f)
+
+    val displayTarget = if (pageEntranceSettled) presentation else null
+
+    Box(
+        modifier = modifier.height(18.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.animateContentSize(
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+                    easing = LinearOutSlowInEasing
                 )
-                when (targetPresentation) {
+            ),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_users_round),
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = accentColor.copy(alpha = 0.82f)
+            )
+            AnimatedContent(
+                targetState = displayTarget,
+                transitionSpec = {
+                    fadeIn(tween(300, easing = LinearOutSlowInEasing)) togetherWith
+                        fadeOut(tween(200, easing = FastOutLinearInEasing))
+                },
+                label = "listenTogetherAudienceText"
+            ) { target ->
+                when (target) {
                     is ListenTogetherAudiencePresentation.Status -> Text(
-                        text = targetPresentation.text,
+                        text = target.text,
                         style = MaterialTheme.typography.labelSmall,
                         color = colorScheme.textTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-
                     is ListenTogetherAudiencePresentation.Audience -> ListenTogetherAudienceCountText(
-                        companionCount = targetPresentation.companionCount,
+                        companionCount = target.companionCount,
                         color = colorScheme.textTertiary
                     )
+                    null -> {}
                 }
             }
         }
@@ -395,7 +366,8 @@ private fun ArtistWithListenTogetherInfo(
     textAlign: TextAlign = TextAlign.Start,
     badgeAlignment: Alignment = Alignment.TopStart,
     textAlignment: Alignment = Alignment.CenterStart,
-    accentColor: Color = AsmrTheme.colorScheme.primary
+    accentColor: Color = AsmrTheme.colorScheme.primary,
+    pageEntranceSettled: Boolean = true
 ) {
     Box(modifier = modifier.fillMaxWidth()) {
         ListenTogetherAudienceLine(
@@ -403,7 +375,8 @@ private fun ArtistWithListenTogetherInfo(
             modifier = Modifier
                 .align(badgeAlignment)
                 .offset(y = (-18).dp),
-            accentColor = accentColor
+            accentColor = accentColor,
+            pageEntranceSettled = pageEntranceSettled
         )
         Text(
             text = artist,
@@ -610,6 +583,11 @@ internal fun NowPlayingScreen(
     val latestOnBack = rememberUpdatedState(onBack)
     val latestOnRouteExitStarted = rememberUpdatedState(onRouteExitStarted)
     val routeTransition = updateTransition(targetState = routeVisible, label = "nowPlayingRouteVisibility")
+    val pageEntranceSettled by remember {
+        derivedStateOf {
+            routeTransition.currentState && routeTransition.targetState && !routeTransition.isRunning
+        }
+    }
     val requestClose = remember(pendingRouteExit, currentMotionLayout) {
         {
             if (!pendingRouteExit) {
@@ -899,7 +877,8 @@ internal fun NowPlayingScreen(
                             modifier = Modifier.then(infoMotion),
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.textSecondary,
-                            accentColor = accentColor
+                            accentColor = accentColor,
+                            pageEntranceSettled = pageEntranceSettled
                         )
 
                         if (!isVideo) {
@@ -1297,7 +1276,8 @@ internal fun NowPlayingScreen(
                         textAlign = TextAlign.Center,
                         badgeAlignment = Alignment.TopCenter,
                         textAlignment = Alignment.Center,
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        pageEntranceSettled = pageEntranceSettled
                     )
 
                     // 封面
