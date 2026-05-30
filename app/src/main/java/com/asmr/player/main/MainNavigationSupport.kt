@@ -252,9 +252,9 @@ internal fun resolveCurrentPrimaryDestinationRoute(
     return when {
         currentRoute == Routes.Library -> Routes.Library
         currentRoute == Routes.Search -> Routes.Search
+        currentRoute == Routes.HotListening -> Routes.HotListening
         currentRoute == "playlists" -> "playlists"
         currentRoute == "groups" -> "groups"
-        currentRoute == "downloads" -> "downloads"
         currentRoute == "settings" -> "settings"
         currentRoute == "dlsite_login" -> "dlsite_login"
         currentRoute == "playlist_system/{type}" && playlistSystemType == "favorites" -> "playlist_system/favorites"
