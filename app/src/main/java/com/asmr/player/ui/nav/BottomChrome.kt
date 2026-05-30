@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -256,10 +257,10 @@ private fun bottomChromeMetrics(largeLayout: Boolean): BottomChromeMetrics =
 fun bottomChromeNavItems(): List<BottomChromeNavItem> = listOf(
     BottomChromeNavItem(Icons.Default.Home, "本地库", Routes.Library),
     BottomChromeNavItem(Icons.Default.Search, "在线搜索", Routes.Search),
+    BottomChromeNavItem(Icons.Default.Whatshot, "热门收听", Routes.HotListening),
     BottomChromeNavItem(Icons.Default.Favorite, "我的收藏", "playlist_system/favorites"),
     BottomChromeNavItem(Icons.AutoMirrored.Filled.QueueMusic, "我的列表", "playlists"),
     BottomChromeNavItem(Icons.Default.Folder, "我的分组", "groups"),
-    BottomChromeNavItem(Icons.Default.Download, "下载管理", "downloads"),
     BottomChromeNavItem(Icons.Default.Settings, "设置", "settings"),
     BottomChromeNavItem(Icons.Default.Person, "DLsite 登录", "dlsite_login")
 )
@@ -269,10 +270,10 @@ fun isPrimaryRoute(route: String?): Boolean {
     return route in setOf(
         Routes.Library,
         Routes.Search,
+        Routes.HotListening,
         "playlist_system/favorites",
         "playlists",
         "groups",
-        "downloads",
         "settings",
         "dlsite_login"
     )
@@ -286,9 +287,9 @@ fun resolvePrimaryRoute(
     return when {
         currentRoute == Routes.Library -> Routes.Library
         currentRoute == Routes.Search -> Routes.Search
+        currentRoute == Routes.HotListening -> Routes.HotListening
         currentRoute == "playlists" -> "playlists"
         currentRoute == "groups" -> "groups"
-        currentRoute == "downloads" -> "downloads"
         currentRoute == "settings" -> "settings"
         currentRoute == "dlsite_login" -> "dlsite_login"
         currentRoute == "playlist_system/{type}" && playlistSystemType == "favorites" -> "playlist_system/favorites"

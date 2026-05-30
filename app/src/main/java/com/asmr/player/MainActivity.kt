@@ -216,6 +216,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    @Inject
+    lateinit var listeningTracker: com.asmr.player.hotlistening.ListeningTracker
+
     private lateinit var initialThemeBootstrapPreferences: ThemeBootstrapPreferences
 
     private val volumeKeyEventTick = MutableStateFlow(0L)
@@ -511,6 +514,7 @@ class MainActivity : ComponentActivity() {
                         libraryViewModel = libraryViewModel,
                         settingsDataStore = settingsDataStore,
                         messageManager = messageManager,
+                        listeningTracker = listeningTracker,
                         recentAlbumsPanelExpandedInitial = recentAlbumsPanelExpandedInitial,
                         startRouteFromIntent = startRouteFromIntent,
                         onShowQueue = { overlaySheet = OverlaySheet.Queue },

@@ -6,6 +6,7 @@ import java.net.URLEncoder
 object Routes {
     const val Library = "library"
     const val Search = "search"
+    const val HotListening = "hot_listening"
     const val NowPlaying = "now_playing"
 
     const val AlbumDetailByIdPattern = "album_detail/{albumId}?rjCode={rjCode}&initialTab={initialTab}"
