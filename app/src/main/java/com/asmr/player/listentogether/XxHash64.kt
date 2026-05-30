@@ -70,6 +70,42 @@ internal object XxHash64 {
         return java.lang.Long.toUnsignedString(hashStream(inputStream, seed), 16).padStart(16, '0')
     }
 
+    fun hashStreamHexWithSize(
+        inputStreamFactory: () -> InputStream?,
+        fileSizeBytes: Long,
+        prefixBytes: Int = 10240
+    ): String {
+        val sizeBytes = ByteArray(8)
+        sizeBytes[0] = (fileSizeBytes ushr 0).toByte()
+        sizeBytes[1] = (fileSizeBytes ushr 8).toByte()
+        sizeBytes[2] = (fileSizeBytes ushr 16).toByte()
+        sizeBytes[3] = (fileSizeBytes ushr 24).toByte()
+        sizeBytes[4] = (fileSizeBytes ushr 32).toByte()
+        sizeBytes[5] = (fileSizeBytes ushr 40).toByte()
+        sizeBytes[6] = (fileSizeBytes ushr 48).toByte()
+        sizeBytes[7] = (fileSizeBytes ushr 56).toByte()
+
+        val state = StreamingState(0L)
+        state.update(sizeBytes, 0, 8)
+
+        val contentBytes = fileSizeBytes.coerceAtMost(prefixBytes.toLong()).toInt()
+        val stream = inputStreamFactory()
+        if (stream != null) {
+            stream.use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                var remaining = contentBytes
+                while (remaining > 0) {
+                    val read = input.read(buffer, 0, remaining.coerceAtMost(buffer.size))
+                    if (read <= 0) break
+                    state.update(buffer, 0, read)
+                    remaining -= read
+                }
+            }
+        }
+
+        return java.lang.Long.toUnsignedString(state.digest(), 16).padStart(16, '0')
+    }
+
     private fun round(acc: Long, input: Long): Long {
         var value = acc + (input * PRIME64_2)
         value = rotateLeft(value, 31)

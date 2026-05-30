@@ -42,9 +42,10 @@ class ListenTogetherIdentityResolver @Inject constructor() {
 
             val fileProbe = probeFile(context, rawSourcePath) ?: return@withContext null
             val fileSize = fileProbe.fileSizeBytes.takeIf { it > 0L } ?: return@withContext null
-            val hashHex = fileProbe.inputStreamFactory?.invoke()?.use { input ->
-                XxHash64.hashStreamHex(input)
-            } ?: return@withContext null
+            val hashHex = XxHash64.hashStreamHexWithSize(
+                inputStreamFactory = fileProbe.inputStreamFactory ?: return@withContext null,
+                fileSizeBytes = fileSize
+            )
 
             val mediaKind = if (extras?.getBoolean("is_video") == true || mediaItem.localConfiguration?.mimeType?.startsWith("video/") == true) {
                 ListenTogetherMediaKind.VIDEO
