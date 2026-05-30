@@ -981,8 +981,26 @@ fun MainContainer(
                                         actions = {
                                             val entry = navBackStackEntry
                                             if (currentRoute != null && isPrimaryRoute(currentRoute)) {
-                                                IconButton(onClick = { navController.navigate("downloads") }) {
-                                                    Icon(Icons.Default.Download, contentDescription = "下载管理")
+                                                val downloadTasks by downloadsViewModel.tasks.collectAsState()
+                                                val activeDownloadCount = remember(downloadTasks) {
+                                                    downloadTasks.sumOf { task ->
+                                                        task.items.count {
+                                                            it.state == DownloadItemState.RUNNING || it.state == DownloadItemState.ENQUEUED
+                                                        }
+                                                    }
+                                                }
+                                                Box {
+                                                    IconButton(onClick = { navController.navigate("downloads") }) {
+                                                        Icon(Icons.Default.Download, contentDescription = "下载管理")
+                                                    }
+                                                    if (activeDownloadCount > 0) {
+                                                        Badge(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                        ) {
+                                                            Text(activeDownloadCount.toString())
+                                                        }
+                                                    }
                                                 }
                                             }
                                             if (currentRoute == "library") {
