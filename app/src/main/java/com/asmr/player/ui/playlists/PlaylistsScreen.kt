@@ -107,7 +107,6 @@ fun PlaylistsScreen(
                     EaraBrandedEmptyState(
                         sectionTitle = "我的列表",
                         headline = "还没有创建列表",
-                        description = "从右下角新建一个列表，把常听内容整理成自己的播放集合。",
                         sectionIcon = Icons.AutoMirrored.Rounded.QueueMusic,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)

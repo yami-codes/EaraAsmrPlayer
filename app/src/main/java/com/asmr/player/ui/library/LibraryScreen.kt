@@ -492,11 +492,6 @@ fun LibraryScreen(
                                     EaraBrandedEmptyState(
                                         sectionTitle = if (hasAnyQuery) "本地库结果" else "本地库",
                                         headline = if (hasAnyQuery) "没有匹配的本地内容" else "还没有扫描到本地专辑",
-                                        description = if (hasAnyQuery) {
-                                            "可以调整关键词或筛选条件，也可以直接重置后重新查看全部内容。"
-                                        } else {
-                                            "到设置里的本地库添加目录后，再执行同步或刷新，这里就会出现内容。"
-                                        },
                                         sectionIcon = if (hasAnyQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(

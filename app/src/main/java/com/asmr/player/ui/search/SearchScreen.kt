@@ -436,11 +436,6 @@ fun SearchScreen(
                                     EaraBrandedEmptyState(
                                         sectionTitle = "在线搜索",
                                         headline = if (state.keyword.isBlank()) "还没有搜索结果" else "没有找到匹配结果",
-                                        description = if (state.keyword.isBlank()) {
-                                            "输入作品号、社团或 CV 后，匹配结果会显示在这里。"
-                                        } else {
-                                            "没有找到和当前关键词相关的内容，试试更换关键词、语言或排序方式。"
-                                        },
                                         sectionIcon = Icons.Rounded.Search,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(
@@ -514,7 +509,6 @@ fun SearchScreen(
                             is SearchUiState.Error -> EaraBrandedEmptyState(
                                 sectionTitle = "在线搜索",
                                 headline = "网络连接出了点问题",
-                                description = state.message,
                                 sectionIcon = Icons.Rounded.WifiOff,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
