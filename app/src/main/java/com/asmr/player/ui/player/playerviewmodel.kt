@@ -21,7 +21,6 @@ import com.asmr.player.listentogether.ListenTogetherTrackIdentity
 import com.asmr.player.listentogether.ListenTogetherUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -145,6 +144,7 @@ class PlayerViewModel @Inject constructor(
 
     private var listenTogetherSyncJob: Job? = null
     private var activeListenTogetherIdentity: ListenTogetherTrackIdentity? = null
+    private var listenTogetherLastFailedMediaId: String? = null
 
     fun setSleepTimerMinutes(minutes: Int) {
         if (minutes <= 0) {
@@ -261,7 +261,7 @@ class PlayerViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            playback.collectLatest { snapshot ->
+            playback.collect { snapshot ->
                 handleListenTogetherState(snapshot)
             }
         }
@@ -814,6 +814,7 @@ class PlayerViewModel @Inject constructor(
         val item = snapshot.currentMediaItem
         if (item == null) {
             stopListenTogether(clearCount = true)
+            listenTogetherLastFailedMediaId = null
             _listenTogetherUiState.value = ListenTogetherUiState(
                 available = false,
                 listenerCount = null,
@@ -821,19 +822,6 @@ class PlayerViewModel @Inject constructor(
                 syncing = false,
                 backendConfigured = listenTogetherRepository.isBackendConfigured,
                 status = ListenTogetherStatus.Preparing
-            )
-            return
-        }
-
-        if (item.isOnlineMedia()) {
-            stopListenTogether(clearCount = true)
-            _listenTogetherUiState.value = ListenTogetherUiState(
-                available = false,
-                listenerCount = null,
-                currentIdentity = null,
-                syncing = false,
-                backendConfigured = listenTogetherRepository.isBackendConfigured,
-                status = ListenTogetherStatus.OnlineSkipped
             )
             return
         }
@@ -848,6 +836,18 @@ class PlayerViewModel @Inject constructor(
                     _listenTogetherUiState.value.status == ListenTogetherStatus.Error -> ListenTogetherStatus.Error
                     else -> ListenTogetherStatus.Ready
                 }
+            )
+            return
+        }
+
+        if (item.mediaId == listenTogetherLastFailedMediaId) {
+            _listenTogetherUiState.value = ListenTogetherUiState(
+                available = false,
+                listenerCount = null,
+                currentIdentity = null,
+                syncing = false,
+                backendConfigured = listenTogetherRepository.isBackendConfigured,
+                status = ListenTogetherStatus.Unsupported
             )
             return
         }
@@ -871,6 +871,7 @@ class PlayerViewModel @Inject constructor(
         }.getOrNull()
 
         if (identity == null) {
+            listenTogetherLastFailedMediaId = item.mediaId
             _listenTogetherUiState.value = ListenTogetherUiState(
                 available = false,
                 listenerCount = null,
@@ -882,6 +883,7 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
+        listenTogetherLastFailedMediaId = null
         activeListenTogetherIdentity = identity
         _listenTogetherUiState.value = ListenTogetherUiState(
             available = true,

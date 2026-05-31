@@ -90,19 +90,4 @@ class ListenTogetherAudiencePresentationTest {
             presentation
         )
     }
-
-    @Test
-    fun onlineAudioShowsSkippedMessage() {
-        val presentation = resolveListenTogetherAudiencePresentation(
-            ListenTogetherUiState(
-                available = false,
-                status = ListenTogetherStatus.OnlineSkipped
-            )
-        )
-
-        assertEquals(
-            ListenTogetherAudiencePresentation.Status("在线音频不参与统计"),
-            presentation
-        )
-    }
 }

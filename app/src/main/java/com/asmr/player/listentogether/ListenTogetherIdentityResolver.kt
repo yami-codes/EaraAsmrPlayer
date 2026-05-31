@@ -8,13 +8,17 @@ import androidx.media3.common.MediaItem
 import com.asmr.player.util.DlsiteWorkNo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ListenTogetherIdentityResolver @Inject constructor() {
+class ListenTogetherIdentityResolver @Inject constructor(
+    private val okHttpClient: OkHttpClient
+) {
 
     suspend fun resolve(
         context: Context,
@@ -41,11 +45,20 @@ class ListenTogetherIdentityResolver @Inject constructor() {
             if (rjCode.isBlank()) return@withContext null
 
             val fileProbe = probeFile(context, rawSourcePath) ?: return@withContext null
-            val fileSize = fileProbe.fileSizeBytes.takeIf { it > 0L } ?: return@withContext null
-            val hashHex = XxHash64.hashStreamHexWithSize(
-                inputStreamFactory = fileProbe.inputStreamFactory ?: return@withContext null,
-                fileSizeBytes = fileSize
-            )
+            val totalSize = fileProbe.fileSizeBytes
+            val streamFactory = fileProbe.inputStreamFactory
+
+            val (fingerprint, algorithm, effectiveSize) = if (totalSize > 0L) {
+                val hashHex = XxHash64.hashStreamHexWithSize(
+                    inputStreamFactory = streamFactory ?: return@withContext null,
+                    fileSizeBytes = totalSize
+                )
+                Triple("size:${totalSize}_xxh64:$hashHex", "size+xxh64", totalSize)
+            } else {
+                val stream = streamFactory?.invoke() ?: return@withContext null
+                val hashHex = stream.use { XxHash64.hashStreamHex(it) }
+                Triple("prefix_xxh64:$hashHex", "prefix+xxh64", 0L)
+            }
 
             val mediaKind = if (extras?.getBoolean("is_video") == true || mediaItem.localConfiguration?.mimeType?.startsWith("video/") == true) {
                 ListenTogetherMediaKind.VIDEO
@@ -55,9 +68,9 @@ class ListenTogetherIdentityResolver @Inject constructor() {
 
             ListenTogetherTrackIdentity(
                 albumKey = rjCode,
-                mediaFingerprint = "size:${fileSize}_xxh64:${hashHex}",
-                fileSizeBytes = fileSize,
-                fingerprintAlgorithm = "size+xxh64",
+                mediaFingerprint = fingerprint,
+                fileSizeBytes = effectiveSize,
+                fingerprintAlgorithm = algorithm,
                 mediaKind = mediaKind,
                 sourcePath = rawSourcePath,
                 mediaId = mediaId,
@@ -77,7 +90,38 @@ class ListenTogetherIdentityResolver @Inject constructor() {
         val normalized = sourcePath.trim()
         if (normalized.isBlank()) return null
         if (normalized.startsWith("http://", ignoreCase = true) || normalized.startsWith("https://", ignoreCase = true)) {
-            return null
+            val rangeRequest = Request.Builder().url(normalized).header("Range", "bytes=0-10239").build()
+            val rangeResponse = runCatching {
+                okHttpClient.newCall(rangeRequest).execute()
+            }.getOrNull() ?: return null
+
+            if (!rangeResponse.isSuccessful) {
+                rangeResponse.close()
+                return null
+            }
+
+            val totalSize = rangeResponse.header("Content-Range")
+                ?.substringAfterLast('/')?.trim()?.toLongOrNull()?.takeIf { it > 0L }
+                ?: 0L
+
+            val bodyStream = rangeResponse.body?.byteStream()
+            if (bodyStream == null) {
+                rangeResponse.close()
+                return null
+            }
+
+            val inputStreamFactory: () -> InputStream? = {
+                object : InputStream() {
+                    override fun read() = bodyStream.read()
+                    override fun read(b: ByteArray, off: Int, len: Int) = bodyStream.read(b, off, len)
+                    override fun close() {
+                        runCatching { bodyStream.close() }
+                        runCatching { rangeResponse.close() }
+                    }
+                    override fun available() = bodyStream.available()
+                }
+            }
+            return FileProbe(fileSizeBytes = totalSize, inputStreamFactory = inputStreamFactory)
         }
         return when {
             normalized.startsWith("content://", ignoreCase = true) -> {
