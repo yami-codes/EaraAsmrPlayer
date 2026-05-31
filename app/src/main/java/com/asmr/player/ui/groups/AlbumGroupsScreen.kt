@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.groups
+package com.asmr.player.ui.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -108,7 +108,6 @@ fun AlbumGroupsScreen(
                     EaraBrandedEmptyState(
                         sectionTitle = "我的分组",
                         headline = "还没有创建分组",
-                        description = "按主题或场景建立分组，让收藏的专辑更容易整理和回看。",
                         sectionIcon = Icons.Rounded.Folder,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)

@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.groups
+package com.asmr.player.ui.groups
 
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -229,7 +229,6 @@ internal fun AlbumGroupDetailContent(
                 EaraBrandedEmptyState(
                     sectionTitle = title.ifBlank { "我的分组" },
                     headline = "这个分组还没有内容",
-                    description = "把专辑加入分组后，它们会按专辑整理展示在这里。",
                     sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)

@@ -917,46 +917,62 @@ fun MainContainer(
                                         modifier = Modifier.height(if (compactTopBar) 48.dp else 64.dp),
                                         title = {
                                             val entry = navBackStackEntry
-                                            val groupName = if (currentRoute == "group/{groupId}/{groupName}") {
+                                            val resolvedTitleRoute = if (currentScreenIsPrimary) visualPrimaryRoute else currentRoute
+                                            val groupName = if (resolvedTitleRoute == "group/{groupId}/{groupName}") {
                                                 decodeRouteArg(entry?.arguments?.getString("groupName").orEmpty())
                                             } else ""
-                                            val playlistName = if (currentRoute == "playlist/{playlistId}/{playlistName}") {
+                                            val playlistName = if (resolvedTitleRoute == "playlist/{playlistId}/{playlistName}") {
                                                 decodeRouteArg(entry?.arguments?.getString("playlistName").orEmpty())
                                             } else ""
-                                            val systemPlaylistType = if (currentRoute == "playlist_system/{type}") {
+                                            val systemPlaylistType = if (resolvedTitleRoute == "playlist_system/{type}") {
                                                 entry?.arguments?.getString("type").orEmpty()
                                             } else ""
                                             val appName = stringResource(R.string.app_name)
+                                            val titleText = when {
+                                                resolvedTitleRoute == "library" -> "本地库"
+                                                resolvedTitleRoute == "library_filter" -> "筛选"
+                                                resolvedTitleRoute == "search" -> "在线搜索"
+                                                resolvedTitleRoute == Routes.HotListening -> "热门收听"
+                                                resolvedTitleRoute == "playlists" -> "我的列表"
+                                                resolvedTitleRoute == "playlist/{playlistId}/{playlistName}" ->
+                                                    playlistName.ifBlank { "我的列表" }
+                                                resolvedTitleRoute == "playlist_system/favorites" -> "我的收藏"
+                                                resolvedTitleRoute == "playlist_system/{type}" -> when (systemPlaylistType) {
+                                                    "favorites" -> "我的收藏"
+                                                    else -> "我的收藏"
+                                                }
+                                                resolvedTitleRoute == "groups" -> "我的分组"
+                                                resolvedTitleRoute == "group/{groupId}/{groupName}" ->
+                                                    groupName.ifBlank { "我的分组" }
+                                                resolvedTitleRoute == "settings" -> "设置"
+                                                resolvedTitleRoute == "downloads" -> "下载管理"
+                                                resolvedTitleRoute == "dlsite_login" -> "DLsite 登录"
+                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> "添加到我的列表"
+                                                resolvedTitleRoute?.startsWith("album_detail") == true -> "专辑详情"
+                                                else -> appName
+                                            }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    when {
-                                                        currentRoute == "library" -> "本地库"
-                                                        currentRoute == "library_filter" -> "筛选"
-                                                        currentRoute == "search" -> "在线搜索"
-                                                        currentRoute == Routes.HotListening -> "热门收听"
-                                                        currentRoute == "playlists" -> "我的列表"
-                                                        currentRoute == "playlist/{playlistId}/{playlistName}" ->
-                                                            playlistName.ifBlank { "我的列表" }
-                                                        currentRoute == "playlist_system/{type}" -> when (systemPlaylistType) {
-                                                            "favorites" -> "我的收藏"
-                                                            else -> "我的收藏"
-                                                        }
-                                                        currentRoute == "groups" -> "我的分组"
-                                                        currentRoute == "group/{groupId}/{groupName}" ->
-                                                            groupName.ifBlank { "我的分组" }
-                                                        currentRoute == "settings" -> "设置"
-                                                        currentRoute == "downloads" -> "下载管理"
-                                                        currentRoute == "dlsite_login" -> "DLsite 登录"
-                                                        currentRoute?.startsWith("playlist_picker") == true -> "添加到我的列表"
-                                                        currentRoute?.startsWith("album_detail") == true -> "专辑详情"
-                                                        else -> appName
+                                                AnimatedContent(
+                                                    targetState = titleText,
+                                                    transitionSpec = {
+                                                        (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                            + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
+                                                            .togetherWith(
+                                                                fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                                    + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
+                                                            )
                                                     },
-                                                    style = if (compactTopBar) {
-                                                        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                                                    } else {
-                                                        MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                                    }
-                                                )
+                                                    label = "headerTitle"
+                                                ) { targetText ->
+                                                    Text(
+                                                        targetText,
+                                                        style = if (compactTopBar) {
+                                                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                                                        } else {
+                                                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                                        }
+                                                    )
+                                                }
                                             }
                                         },
                                         windowInsets = WindowInsets(0, 0, 0, 0),
@@ -980,7 +996,7 @@ fun MainContainer(
                                         },
                                         actions = {
                                             val entry = navBackStackEntry
-                                            if (currentRoute != null && isPrimaryRoute(currentRoute)) {
+                                            if (currentRoute != null && (isPrimaryRoute(currentRoute) || currentRoute == "playlist_system/{type}")) {
                                                 val downloadTasks by downloadsViewModel.tasks.collectAsState()
                                                 val activeDownloadCount = remember(downloadTasks) {
                                                     downloadTasks.sumOf { task ->

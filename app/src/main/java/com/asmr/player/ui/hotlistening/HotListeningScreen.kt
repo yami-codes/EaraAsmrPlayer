@@ -124,7 +124,6 @@ fun HotListeningScreen(
             is HotListeningUiState.Error -> EaraBrandedEmptyState(
                 sectionTitle = "热门收听",
                 headline = "数据加载失败",
-                description = state.message,
                 sectionIcon = Icons.Rounded.Whatshot,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp),
@@ -140,7 +139,6 @@ fun HotListeningScreen(
                     EaraBrandedEmptyState(
                         sectionTitle = "热门收听",
                         headline = "暂无排行数据",
-                        description = "热门收听排行数据正在统计中，请稍后再来查看。",
                         sectionIcon = Icons.Rounded.Whatshot,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp)

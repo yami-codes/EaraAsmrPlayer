@@ -29,7 +29,6 @@ internal const val EARA_EMPTY_STATE_TAG = "earaEmptyState"
 fun EaraBrandedEmptyState(
     sectionTitle: String,
     headline: String,
-    description: String,
     sectionIcon: ImageVector,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
@@ -91,13 +90,6 @@ fun EaraBrandedEmptyState(
                 )
 
                 Spacer(modifier = Modifier.size(8.dp))
-
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.textSecondary,
-                    textAlign = TextAlign.Center
-                )
 
                 if (footer != null) {
                     Spacer(modifier = Modifier.size(24.dp))
