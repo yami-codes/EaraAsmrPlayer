@@ -61,7 +61,7 @@ class ListeningTracker @Inject constructor(
                     }
                     lastPositionMs = positionMs
 
-                    if (accumulatedMs >= REPORT_THRESHOLD_MS && !isOnline && reportedForCurrentMediaId != mediaId) {
+                    if (accumulatedMs >= REPORT_THRESHOLD_MS && reportedForCurrentMediaId != mediaId) {
                         reportedForCurrentMediaId = mediaId
                         val currentItem = playback.value.currentMediaItem
                         val rjCode = extractRjCode(item = currentItem)
@@ -101,6 +101,6 @@ class ListeningTracker @Inject constructor(
     }
 
     private companion object {
-        private const val REPORT_THRESHOLD_MS = 10_000L
+        private const val REPORT_THRESHOLD_MS = 30_000L
     }
 }

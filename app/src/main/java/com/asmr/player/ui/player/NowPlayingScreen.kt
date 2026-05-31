@@ -176,8 +176,6 @@ internal sealed interface ListenTogetherAudiencePresentation {
 internal fun resolveListenTogetherAudiencePresentation(
     state: ListenTogetherUiState
 ): ListenTogetherAudiencePresentation? = when {
-    state.status == ListenTogetherStatus.OnlineSkipped ->
-        ListenTogetherAudiencePresentation.Status("在线音频不参与统计")
     !state.available && state.status == ListenTogetherStatus.Unsupported ->
         ListenTogetherAudiencePresentation.Status("当前音频无法参与一起听")
     state.listenerCount != null ->
