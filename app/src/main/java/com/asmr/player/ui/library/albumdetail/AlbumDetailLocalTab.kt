@@ -136,6 +136,7 @@ import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
+import com.asmr.player.util.isOnlineTrackPath
 
 @Composable
 internal fun AlbumLocalBreadcrumbTabV2(
@@ -377,7 +378,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                             onDownload = null,
                             onAddToQueue = track?.let { { onAddToQueue(it); Unit } },
                             onAddToPlaylist = track?.let { { onAddToPlaylist(it) } },
-                            onManageTags = track?.let { { onManageTrackTags(it) } },
+                            onManageTags = track?.let { if (!isOnlineTrackPath(it.path)) { { onManageTrackTags(it) } } else null },
                             onRemoveFromAlbum = track?.let { { onRemoveTrack(it) } }
                         )
                     }

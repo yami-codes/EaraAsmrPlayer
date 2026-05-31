@@ -50,6 +50,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.foundation.layout.fillMaxHeight
 import com.asmr.player.util.Formatting
+import com.asmr.player.util.isOnlineTrackPath
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
@@ -653,7 +654,7 @@ fun LibraryScreen(
                                                             onAddToPlaylist = {
                                                                 onOpenPlaylistPicker(MediaItemFactory.fromTrack(album, track))
                                                             },
-                                                            onManageTags = {
+                                                            onManageTags = if (!isOnlineTrackPath(track.path)) {{
                                                                 scope.launch {
                                                                     val inherited = withContext(Dispatchers.IO) {
                                                                         viewModel.loadInheritedTagsForAlbum(album.id)
@@ -666,7 +667,7 @@ fun LibraryScreen(
                                                                         userTags = user
                                                                     )
                                                                 }
-                                                            },
+                                                            }} else null,
                                                             onRemove = {
                                                                 viewModel.removeTrackFromAlbum(track.id)
                                                             }
@@ -1238,7 +1239,7 @@ private fun TrackListRow(
     onClick: () -> Unit,
     onAddToQueue: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onManageTags: () -> Unit,
+    onManageTags: (() -> Unit)? = null,
     onRemove: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -1263,31 +1264,41 @@ private fun TrackListRow(
             .fillMaxWidth()
             .clip(rowShape)
             .background(colorScheme.surface),
-        actions = listOf(
-            AudioItemMenuAction(
-                label = "添加到播放队列",
-                onClick = onAddToQueue,
-                icon = Icons.AutoMirrored.Rounded.QueueMusic
-            ),
-            AudioItemMenuAction(
-                label = "添加到播放列表",
-                onClick = onAddToPlaylist,
-                icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                showDividerBefore = true
-            ),
-            AudioItemMenuAction(
-                label = "标签管理",
-                onClick = onManageTags,
-                icon = Icons.AutoMirrored.Rounded.Label,
-                showDividerBefore = true
-            ),
-            AudioItemMenuAction(
-                label = "从专辑移除",
-                onClick = onRemove,
-                icon = Icons.Rounded.Delete,
-                showDividerBefore = true
+        actions = buildList {
+            add(
+                AudioItemMenuAction(
+                    label = "添加到播放队列",
+                    onClick = onAddToQueue,
+                    icon = Icons.AutoMirrored.Rounded.QueueMusic
+                )
             )
-        )
+            add(
+                AudioItemMenuAction(
+                    label = "添加到播放列表",
+                    onClick = onAddToPlaylist,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    showDividerBefore = true
+                )
+            )
+            if (onManageTags != null) {
+                add(
+                    AudioItemMenuAction(
+                        label = "标签管理",
+                        onClick = onManageTags,
+                        icon = Icons.AutoMirrored.Rounded.Label,
+                        showDividerBefore = true
+                    )
+                )
+            }
+            add(
+                AudioItemMenuAction(
+                    label = "从专辑移除",
+                    onClick = onRemove,
+                    icon = Icons.Rounded.Delete,
+                    showDividerBefore = true
+                )
+            )
+        }
     )
 }
 
