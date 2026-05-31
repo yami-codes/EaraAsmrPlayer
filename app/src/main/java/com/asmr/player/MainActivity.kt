@@ -170,6 +170,13 @@ import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.ui.theme.dynamicHueCacheKeyForArtwork
 import com.asmr.player.ui.theme.dynamicHueCacheKeyForVideo
 import com.asmr.player.ui.theme.peekDynamicHueSeedColor
+import com.asmr.player.ui.theme.ThemeTransitionRequest
+import com.asmr.player.ui.theme.ThemeTransitionTriggerRequest
+import com.asmr.player.ui.theme.LocalThemeTransitionTrigger
+import com.asmr.player.ui.theme.ThemeCircularRevealOverlay
+import androidx.compose.ui.graphics.ImageBitmap
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
@@ -503,6 +510,38 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val transitionScope = rememberCoroutineScope()
+            var themeTransitionSeq by remember { mutableLongStateOf(0L) }
+            var themeTransition by remember { mutableStateOf<ThemeTransitionRequest?>(null) }
+            val currentMode by rememberUpdatedState(mode)
+            val themeTransitionTrigger: (ThemeTransitionTriggerRequest) -> Unit = remember {
+                { triggerReq ->
+                    if (themeTransition == null) {
+                        val bitmap = runCatching {
+                            val w = this@MainActivity.window.decorView.width
+                            val h = this@MainActivity.window.decorView.height
+                            if (w > 0 && h > 0) {
+                                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bmp)
+                                this@MainActivity.window.decorView.draw(canvas)
+                                bmp.asImageBitmap()
+                            } else null
+                        }.getOrNull()
+                        val bgColor = neutralPaletteForMode(currentMode).background
+                        themeTransition = ThemeTransitionRequest(
+                            origin = triggerReq.origin,
+                            oldContentBitmap = bitmap,
+                            oldBackgroundColor = bgColor,
+                            token = ++themeTransitionSeq
+                        )
+                        transitionScope.launch {
+                            settingsDataStore.setTheme(triggerReq.targetPref)
+                        }
+                    }
+                }
+            }
+
+            CompositionLocalProvider(LocalThemeTransitionTrigger provides themeTransitionTrigger) {
             AsmrPlayerTheme(mode = mode, hue = globalHue) {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var contentReady by remember { mutableStateOf(false) }
@@ -579,7 +618,20 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    themeTransition?.let { request ->
+                        val currentToken = request.token
+                        ThemeCircularRevealOverlay(
+                            request = request,
+                            onAnimationEnd = {
+                                if (themeTransition?.token == currentToken) {
+                                    themeTransition = null
+                                }
+                            }
+                        )
+                    }
                 }
+            }
             }
         }
     }
