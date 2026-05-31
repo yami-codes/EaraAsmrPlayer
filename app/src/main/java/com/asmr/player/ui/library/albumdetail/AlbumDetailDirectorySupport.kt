@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -36,9 +36,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -107,12 +107,12 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -1454,7 +1454,7 @@ internal fun DirectoryBreadcrumbBar(
                 label = { Text("根目录") },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Home,
+                        imageVector = Icons.Rounded.Home,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -1516,7 +1516,7 @@ internal fun CompactDirectoryBreadcrumbBar(
             CompactBreadcrumbNode(
                 text = "根目录",
                 selected = currentPath.isBlank(),
-                icon = Icons.Default.Home,
+                icon = Icons.Rounded.Home,
                 onClick = { onNavigate("") }
             )
             displayedCrumbs.forEach { crumb ->
@@ -1610,7 +1610,7 @@ internal fun CompactDirectoryBreadcrumbContent(
         CompactBreadcrumbNode(
             text = "根目录",
             selected = currentPath.isBlank(),
-            icon = Icons.Default.Home,
+            icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
         )
         displayedCrumbs.forEach { crumb ->
@@ -1817,7 +1817,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 modifier = Modifier.height(30.dp)
             ) {
-                Icon(Icons.Default.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(Icons.Rounded.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("收藏", style = MaterialTheme.typography.labelMedium)
             }
@@ -1827,7 +1827,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 modifier = Modifier.height(30.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("列表", style = MaterialTheme.typography.labelMedium)
             }
@@ -1837,7 +1837,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 modifier = Modifier.height(30.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("队列", style = MaterialTheme.typography.labelMedium)
             }
@@ -1872,7 +1872,7 @@ internal fun CompactDirectoryBreadcrumbContentV2(
         CompactBreadcrumbNode(
             text = "根目录",
             selected = currentPath.isBlank(),
-            icon = Icons.Default.Home,
+            icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
         )
         displayedCrumbs.forEach { crumb ->
@@ -1914,7 +1914,7 @@ internal fun DirectoryFolderRowV2(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Folder,
+            imageVector = Icons.Rounded.Folder,
             contentDescription = null,
             tint = colorScheme.primary,
             modifier = Modifier.size(18.dp)
@@ -1929,7 +1929,7 @@ internal fun DirectoryFolderRowV2(
             color = colorScheme.textPrimary
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
             tint = colorScheme.textSecondary,
             modifier = Modifier.size(18.dp)
@@ -2000,7 +2000,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
                     text = "收藏",
-                    icon = Icons.Default.FavoriteBorder,
+                    icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
@@ -2011,7 +2011,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                 )
                 DirectoryActionGroupButton(
                     text = "列表",
-                    icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
                 )
@@ -2022,7 +2022,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                 )
                 DirectoryActionGroupButton(
                     text = "队列",
-                    icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
                 )
@@ -2203,7 +2203,7 @@ internal fun DirectoryFolderRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Folder,
+                imageVector = Icons.Rounded.Folder,
                 contentDescription = null,
                 tint = colorScheme.primary,
                 modifier = Modifier.size(22.dp)
@@ -2218,7 +2218,7 @@ internal fun DirectoryFolderRow(
                 color = colorScheme.textPrimary
             )
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = colorScheme.textSecondary
             )
@@ -2253,7 +2253,7 @@ internal fun CompactDirectoryBreadcrumbContentV3(
         CompactBreadcrumbNode(
             text = "根目录",
             selected = currentPath.isBlank(),
-            icon = Icons.Default.Home,
+            icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
         )
         displayedCrumbs.forEach { crumb ->
@@ -2298,7 +2298,7 @@ internal fun DirectoryFolderRowV3(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Default.Folder,
+            imageVector = Icons.Rounded.Folder,
             contentDescription = null,
             tint = colorScheme.primary,
             modifier = Modifier.size(18.dp)
@@ -2313,7 +2313,7 @@ internal fun DirectoryFolderRowV3(
             color = colorScheme.textPrimary
         )
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
             tint = colorScheme.textSecondary,
             modifier = Modifier.size(18.dp)
@@ -2363,21 +2363,21 @@ internal fun DirectoryBatchBarEmbeddedV4(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
                     text = "收藏",
-                    icon = Icons.Default.FavoriteBorder,
+                    icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = "列表",
-                    icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = "队列",
-                    icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
                 )
@@ -2429,14 +2429,14 @@ internal fun DirectoryBatchBarEmbeddedV5(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
                     text = "收藏",
-                    icon = Icons.Default.FavoriteBorder,
+                    icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = "列表",
-                    icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = {
                         if (hasMediaItems) {
@@ -2447,7 +2447,7 @@ internal fun DirectoryBatchBarEmbeddedV5(
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = "队列",
-                    icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
                 )
@@ -2587,7 +2587,7 @@ internal fun DirectoryBrowserPanelV4(
                     onAddMediaItemsToQueue = onAddMediaItemsToQueue
                 )
                 if (onTogglePreferredPath != null && !selectionMode) {
-                    val preferredIcon = if (isPreferredPath) Icons.Default.Bookmark else Icons.Default.BookmarkBorder
+                    val preferredIcon = if (isPreferredPath) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder
                     val preferredTextColor = if (isPreferredPath) AsmrTheme.colorScheme.primary else AsmrTheme.colorScheme.textSecondary
                     val preferredContainerColor = AsmrTheme.colorScheme.primary.copy(alpha = if (AsmrTheme.colorScheme.isDark) 0.24f else 0.14f)
                     val preferredButton: @Composable (@Composable () -> Unit) -> Unit = { content ->
@@ -2737,13 +2737,13 @@ internal fun DirectoryFileRow(
     val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
     val context = LocalContext.current
     val icon = when (file.fileType) {
-        TreeFileType.Audio -> Icons.Default.Audiotrack
-        TreeFileType.Video -> Icons.Default.Movie
-        TreeFileType.Image -> Icons.Default.Image
-        TreeFileType.Subtitle -> Icons.Default.Subtitles
-        TreeFileType.Text -> Icons.Default.Description
-        TreeFileType.Pdf -> Icons.Default.PictureAsPdf
-        TreeFileType.Other -> Icons.AutoMirrored.Filled.InsertDriveFile
+        TreeFileType.Audio -> Icons.Rounded.Audiotrack
+        TreeFileType.Video -> Icons.Rounded.Movie
+        TreeFileType.Image -> Icons.Rounded.Image
+        TreeFileType.Subtitle -> Icons.Rounded.Subtitles
+        TreeFileType.Text -> Icons.Rounded.Description
+        TreeFileType.Pdf -> Icons.Rounded.PictureAsPdf
+        TreeFileType.Other -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
     val iconTint = when (file.fileType) {
         TreeFileType.Audio -> colorScheme.primary
@@ -2851,7 +2851,7 @@ internal fun DirectoryFileRow(
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Photo,
+                                    imageVector = Icons.Rounded.Photo,
                                     contentDescription = "设为封面",
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
@@ -2866,7 +2866,7 @@ internal fun DirectoryFileRow(
                                     modifier = Modifier.size(AudioItemMenuButtonSize)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.MoreVert,
+                                        imageVector = Icons.Rounded.MoreVert,
                                         contentDescription = "更多操作",
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
@@ -2891,7 +2891,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = colorScheme.primary)
+                                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
                                                 }
                                             )
                                         }
@@ -2903,7 +2903,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.Default.Download, contentDescription = null, tint = colorScheme.textSecondary)
+                                                    Icon(Icons.Rounded.Download, contentDescription = null, tint = colorScheme.textSecondary)
                                                 }
                                             )
                                         }
@@ -2915,7 +2915,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, tint = colorScheme.textSecondary)
+                                                    Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, tint = colorScheme.textSecondary)
                                                 }
                                             )
                                         }
@@ -2927,7 +2927,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, tint = colorScheme.textSecondary)
+                                                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.textSecondary)
                                                 }
                                             )
                                         }
@@ -2939,7 +2939,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null, tint = colorScheme.textSecondary)
+                                                    Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null, tint = colorScheme.textSecondary)
                                                 }
                                             )
                                         }
@@ -2951,7 +2951,7 @@ internal fun DirectoryFileRow(
                                                     showMenuExpanded = false
                                                 },
                                                 leadingIcon = {
-                                                    Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.textSecondary)
+                                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = colorScheme.textSecondary)
                                                 }
                                             )
                                         }
@@ -2995,7 +2995,7 @@ internal fun TreeFolderRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (depth > 0) Spacer(modifier = Modifier.width((depth * 12).dp))
                     Icon(
-                        imageVector = Icons.Default.Folder,
+                        imageVector = Icons.Rounded.Folder,
                         contentDescription = null,
                         tint = colorScheme.primary,
                         modifier = Modifier.size(24.dp)
@@ -3004,7 +3004,7 @@ internal fun TreeFolderRow(
             },
             trailingContent = {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
                     tint = colorScheme.textTertiary,
                     modifier = Modifier.size(20.dp)
@@ -3035,13 +3035,13 @@ internal fun TreeFileRow(
     val materialColorScheme = MaterialTheme.colorScheme
     val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
     val icon = when (fileType) {
-        TreeFileType.Audio -> Icons.Default.Audiotrack
-        TreeFileType.Video -> Icons.Default.Movie
-        TreeFileType.Image -> Icons.Default.Image
-        TreeFileType.Subtitle -> Icons.Default.Subtitles
-        TreeFileType.Text -> Icons.Default.Description
-        TreeFileType.Pdf -> Icons.Default.PictureAsPdf
-        TreeFileType.Other -> Icons.AutoMirrored.Filled.InsertDriveFile
+        TreeFileType.Audio -> Icons.Rounded.Audiotrack
+        TreeFileType.Video -> Icons.Rounded.Movie
+        TreeFileType.Image -> Icons.Rounded.Image
+        TreeFileType.Subtitle -> Icons.Rounded.Subtitles
+        TreeFileType.Text -> Icons.Rounded.Description
+        TreeFileType.Pdf -> Icons.Rounded.PictureAsPdf
+        TreeFileType.Other -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
     val iconTint = when (fileType) {
         TreeFileType.Audio -> colorScheme.primary
@@ -3107,7 +3107,7 @@ internal fun TreeFileRow(
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Photo,
+                                    imageVector = Icons.Rounded.Photo,
                                     contentDescription = "设为封面",
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
@@ -3122,7 +3122,7 @@ internal fun TreeFileRow(
                                     modifier = Modifier.size(AudioItemMenuButtonSize)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.MoreVert,
+                                        imageVector = Icons.Rounded.MoreVert,
                                         contentDescription = "更多操作",
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
@@ -3163,7 +3163,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.Default.PlayArrow,
+                                                        Icons.Rounded.PlayArrow,
                                                         contentDescription = null,
                                                         tint = colorScheme.primary
                                                     )
@@ -3180,7 +3180,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.Default.Download,
+                                                        Icons.Rounded.Download,
                                                         contentDescription = null,
                                                         tint = colorScheme.textSecondary
                                                     )
@@ -3197,7 +3197,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.AutoMirrored.Filled.PlaylistPlay,
+                                                        Icons.AutoMirrored.Rounded.PlaylistPlay,
                                                         contentDescription = null,
                                                         tint = colorScheme.textSecondary
                                                     )
@@ -3214,7 +3214,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.AutoMirrored.Filled.PlaylistAdd,
+                                                        Icons.AutoMirrored.Rounded.PlaylistAdd,
                                                         contentDescription = null,
                                                         tint = colorScheme.textSecondary
                                                     )
@@ -3231,7 +3231,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.AutoMirrored.Filled.Label,
+                                                        Icons.AutoMirrored.Rounded.Label,
                                                         contentDescription = null,
                                                         tint = colorScheme.textSecondary
                                                     )
@@ -3248,7 +3248,7 @@ internal fun TreeFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        Icons.Default.Delete,
+                                                        Icons.Rounded.Delete,
                                                         contentDescription = null,
                                                         tint = colorScheme.textSecondary
                                                     )

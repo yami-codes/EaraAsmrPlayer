@@ -1,4 +1,4 @@
-package com.asmr.player.ui.downloads
+﻿package com.asmr.player.ui.downloads
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -25,19 +25,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -327,7 +327,7 @@ private fun DownloadTaskCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null,
                             tint = colors.primary,
                             modifier = Modifier.size(22.dp)
@@ -358,7 +358,7 @@ private fun DownloadTaskCard(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.Refresh,
+                                        Icons.Rounded.Refresh,
                                         contentDescription = null,
                                         tint = colors.primary,
                                         modifier = Modifier.size(18.dp)
@@ -371,7 +371,7 @@ private fun DownloadTaskCard(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.Pause,
+                                        Icons.Rounded.Pause,
                                         contentDescription = null,
                                         tint = colors.primary,
                                         modifier = Modifier.size(18.dp)
@@ -383,7 +383,7 @@ private fun DownloadTaskCard(
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.PlayArrow,
+                                        Icons.Rounded.PlayArrow,
                                         contentDescription = null,
                                         tint = colors.primary,
                                         modifier = Modifier.size(18.dp)
@@ -425,7 +425,7 @@ private fun DownloadTaskCard(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                Icons.Default.Close,
+                                Icons.Rounded.Close,
                                 contentDescription = null,
                                 tint = colors.textSecondary,
                                 modifier = Modifier.size(18.dp)
@@ -574,7 +574,7 @@ private fun DownloadFolderRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            Icons.Default.Folder,
+            Icons.Rounded.Folder,
             contentDescription = null,
             tint = colors.primary.copy(alpha = 0.8f),
             modifier = Modifier.size(20.dp)
@@ -589,7 +589,7 @@ private fun DownloadFolderRow(
             modifier = Modifier.weight(1f)
         )
         Icon(
-            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
             tint = colors.textSecondary,
             modifier = Modifier.size(20.dp)
@@ -731,7 +731,7 @@ private fun DownloadFileRow(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.Pause,
+                                Icons.Rounded.Pause,
                                 contentDescription = null,
                                 tint = colors.primary,
                                 modifier = Modifier.size(16.dp)
@@ -745,7 +745,7 @@ private fun DownloadFileRow(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.PlayArrow,
+                                Icons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = colors.primary,
                                 modifier = Modifier.size(16.dp)
@@ -759,7 +759,7 @@ private fun DownloadFileRow(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                Icons.Default.Refresh,
+                                Icons.Rounded.Refresh,
                                 contentDescription = null,
                                 tint = colors.danger,
                                 modifier = Modifier.size(16.dp)
@@ -775,7 +775,7 @@ private fun DownloadFileRow(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Default.Delete,
+                        Icons.Rounded.Delete,
                         contentDescription = null,
                         tint = colors.textSecondary,
                         modifier = Modifier.size(16.dp)
@@ -932,11 +932,11 @@ private fun downloadItemStateLabel(state: DownloadItemState): String {
 private fun pickFileIcon(fileName: String): androidx.compose.ui.graphics.vector.ImageVector {
     val ext = fileName.substringAfterLast('.', "").lowercase()
     return when {
-        ext in setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus") -> Icons.Default.MusicNote
-        ext in setOf("lrc", "srt", "vtt") -> Icons.Default.Subtitles
-        ext in setOf("jpg", "jpeg", "png", "webp") -> Icons.Default.Image
-        ext in setOf("mp4", "m4v", "webm", "mkv", "mov") -> Icons.Default.Movie
-        else -> Icons.AutoMirrored.Filled.InsertDriveFile
+        ext in setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus") -> Icons.Rounded.MusicNote
+        ext in setOf("lrc", "srt", "vtt") -> Icons.Rounded.Subtitles
+        ext in setOf("jpg", "jpeg", "png", "webp") -> Icons.Rounded.Image
+        ext in setOf("mp4", "m4v", "webm", "mkv", "mov") -> Icons.Rounded.Movie
+        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
 }
 

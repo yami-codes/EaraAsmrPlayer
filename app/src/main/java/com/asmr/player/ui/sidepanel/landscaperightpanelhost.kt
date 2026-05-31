@@ -1,4 +1,4 @@
-package com.asmr.player.ui.sidepanel
+﻿package com.asmr.player.ui.sidepanel
 
 import android.content.res.Configuration
 import androidx.compose.animation.*
@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -91,7 +91,7 @@ fun LandscapeRightPanelHost(
         val keepPanelSpace = panelVisibilityState.currentState || panelVisibilityState.targetState
         val toggle: @Composable (Modifier) -> Unit = { modifier ->
             ActionButton(
-                icon = if (expanded) Icons.AutoMirrored.Filled.KeyboardArrowRight else Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                icon = if (expanded) Icons.AutoMirrored.Rounded.KeyboardArrowRight else Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                 onClick = { setExpanded(!expanded) },
                 modifier = modifier
             )

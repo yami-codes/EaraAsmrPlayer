@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import android.app.Activity
 import android.content.Context
@@ -21,8 +21,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -133,7 +133,7 @@ internal fun PlayerSurfaceHeader(
         ) {
         IconButton(onClick = onNavigateUp, enabled = navigationEnabled) {
             Icon(
-                Icons.Default.KeyboardArrowDown,
+                Icons.Rounded.KeyboardArrowDown,
                 contentDescription = null,
                 modifier = Modifier.size(if (isLandscape) 24.dp else 28.dp),
                 tint = colorScheme.onSurface
@@ -165,7 +165,7 @@ internal fun PlayerSurfaceHeader(
             }
             IconButton(onClick = onShowSleepTimer) {
                 Icon(
-                    Icons.Default.Timer,
+                    Icons.Rounded.Timer,
                     contentDescription = null,
                     modifier = Modifier.size(if (isLandscape) 20.dp else 22.dp),
                     tint = colorScheme.onSurface
@@ -173,7 +173,7 @@ internal fun PlayerSurfaceHeader(
             }
             IconButton(onClick = onShowQueue) {
                 Icon(
-                    Icons.AutoMirrored.Filled.PlaylistPlay,
+                    Icons.AutoMirrored.Rounded.PlaylistPlay,
                     contentDescription = null,
                     modifier = Modifier.size(if (isLandscape) 22.dp else 24.dp),
                     tint = colorScheme.onSurface
@@ -382,7 +382,7 @@ private fun NowPlayingVideoPlayer(
                 .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
         ) {
             Icon(
-                imageVector = if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                imageVector = if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
                 contentDescription = if (fullscreen) "退出全屏" else "全屏",
                 tint = Color.White
             )

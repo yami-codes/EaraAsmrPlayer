@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -13,12 +13,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -142,7 +142,7 @@ fun EqualizerPanel(
                     modifier = Modifier.size(22.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = Icons.Rounded.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)
@@ -383,7 +383,7 @@ fun EqualizerPanel(
                     TextButton(onClick = onReset, enabled = resetEnabled) { Text("重置") }
                     IconButton(onClick = { onExpandedChange(!expanded) }, modifier = Modifier.size(28.dp)) {
                         Icon(
-                            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null
                         )
                     }
@@ -1024,7 +1024,7 @@ fun EqualizerPanel(
                                         if (preset.isCustom) {
                                             Spacer(modifier = Modifier.weight(1f))
                                             IconButton(onClick = { onDeletePreset(preset) }) {
-                                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                                             }
                                         }
                                     }
@@ -1123,7 +1123,7 @@ fun EqualizerPanel(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null,
                             tint = materialColorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                         )
@@ -1146,7 +1146,7 @@ fun EqualizerPanel(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                             contentDescription = null,
                             tint = materialColorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                         )
@@ -1160,7 +1160,7 @@ fun EqualizerPanel(
                 shape = RoundedCornerShape(12.dp),
                 enabled = eqEnabled
             ) {
-                Icon(Icons.Default.Save, contentDescription = null)
+                Icon(Icons.Rounded.Save, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("保存为自定义预设")
             }

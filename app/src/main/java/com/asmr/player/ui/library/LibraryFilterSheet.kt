@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,13 +23,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ManageSearch
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.rounded.ManageSearch
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
@@ -84,14 +84,14 @@ fun LibraryFilterScreen(
         ) {
             IconButton(onClick = { showTagManager = true }) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ManageSearch,
+                    imageVector = Icons.AutoMirrored.Rounded.ManageSearch,
                     contentDescription = "管理标签",
                     tint = colorScheme.primary
                 )
             }
             IconButton(onClick = { viewModel.clearFilters() }) {
                 Icon(
-                    imageVector = Icons.Default.Restore,
+                    imageVector = Icons.Rounded.Restore,
                     contentDescription = "重置筛选",
                     tint = colorScheme.primary
                 )
@@ -176,18 +176,18 @@ fun LibraryFilterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.FilterList, contentDescription = null, tint = colorScheme.primary)
+                    Icon(imageVector = Icons.Rounded.FilterList, contentDescription = null, tint = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "筛选", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = onOpenTagManager) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.ManageSearch, contentDescription = null)
+                    Icon(imageVector = Icons.AutoMirrored.Rounded.ManageSearch, contentDescription = null)
                 }
                 IconButton(onClick = onClear) {
-                    Icon(imageVector = Icons.Default.Restore, contentDescription = null)
+                    Icon(imageVector = Icons.Rounded.Restore, contentDescription = null)
                 }
                 IconButton(onClick = onClose) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null)
                 }
             }
         }
@@ -218,7 +218,7 @@ fun LibraryFilterSheet(
                             .heightIn(min = 30.dp),
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
-                        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+                        leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
                         placeholder = { Text("搜索标签", style = MaterialTheme.typography.bodySmall) }
                     )
 
@@ -307,7 +307,7 @@ fun LibraryFilterSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Bookmark, contentDescription = null, tint = colorScheme.primary)
+                        Icon(imageVector = Icons.Rounded.Bookmark, contentDescription = null, tint = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = "预设")
                     }
@@ -331,7 +331,7 @@ fun LibraryFilterSheet(
                         },
                         trailingContent = {
                             IconButton(onClick = { onDeletePreset(preset.id) }) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                                Icon(imageVector = Icons.Rounded.Delete, contentDescription = null)
                             }
                         }
                     )

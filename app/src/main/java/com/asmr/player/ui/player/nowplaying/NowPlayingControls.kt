@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import android.app.Activity
 import android.content.Context
@@ -21,10 +21,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.automirrored.outlined.LabelOff
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -163,7 +163,7 @@ internal fun PlaybackControls(
             ) {
                 IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "喜欢",
                         tint = if (isFavorite) Color.Red else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
@@ -182,7 +182,7 @@ internal fun PlaybackControls(
                 val floatingEnabled by viewModel.floatingLyricsEnabled.collectAsState()
                 IconButton(onClick = { viewModel.toggleFloatingLyrics() }) {
                     Icon(
-                        imageVector = Icons.Default.Subtitles,
+                        imageVector = Icons.Rounded.Subtitles,
                         contentDescription = "悬浮歌词",
                         tint = if (floatingEnabled) primaryColor else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
@@ -196,7 +196,7 @@ internal fun PlaybackControls(
                     }
                 ) {
                     Icon(
-                        imageVector = if (isOnlineMedia) Icons.AutoMirrored.Outlined.LabelOff else Icons.AutoMirrored.Filled.Label,
+                        imageVector = if (isOnlineMedia) Icons.AutoMirrored.Outlined.LabelOff else Icons.AutoMirrored.Rounded.Label,
                         contentDescription = "标签管理",
                         tint = colorScheme.onSurface.copy(alpha = if (isOnlineMedia) 0.38f else 0.8f),
                         modifier = Modifier.size(24.dp)
@@ -205,7 +205,7 @@ internal fun PlaybackControls(
 
                 IconButton(onClick = onShowEqualizer) {
                     Icon(
-                        imageVector = Icons.Default.Tune,
+                        imageVector = Icons.Rounded.Tune,
                         contentDescription = "均衡器",
                         tint = colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
@@ -246,9 +246,9 @@ internal fun PlaybackControls(
         ) {
             IconButton(onClick = { viewModel.cyclePlayMode() }) {
                 val icon = when {
-                    playback.shuffleEnabled -> Icons.Default.Shuffle
-                    playback.repeatMode == Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
-                    else -> Icons.Default.Repeat
+                    playback.shuffleEnabled -> Icons.Rounded.Shuffle
+                    playback.repeatMode == Player.REPEAT_MODE_ONE -> Icons.Rounded.RepeatOne
+                    else -> Icons.Rounded.Repeat
                 }
                 Icon(
                     icon,
@@ -260,7 +260,7 @@ internal fun PlaybackControls(
 
             IconButton(onClick = { viewModel.previous() }) {
                 Icon(
-                    Icons.Default.SkipPrevious,
+                    Icons.Rounded.SkipPrevious,
                     contentDescription = "上一首",
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
@@ -300,7 +300,7 @@ internal fun PlaybackControls(
                         label = "play_pause_icon"
                     ) { playing ->
                         Icon(
-                            imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = "播放/暂停",
                             modifier = Modifier.size(36.dp)
                         )
@@ -310,7 +310,7 @@ internal fun PlaybackControls(
 
             IconButton(onClick = { viewModel.next() }) {
                 Icon(
-                    Icons.Default.SkipNext,
+                    Icons.Rounded.SkipNext,
                     contentDescription = "下一首",
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
@@ -319,7 +319,7 @@ internal fun PlaybackControls(
 
             IconButton(onClick = { viewModel.seekForward10s() }) {
                 Icon(
-                    Icons.Default.FastForward,
+                    Icons.Rounded.FastForward,
                     contentDescription = "快进10秒",
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)

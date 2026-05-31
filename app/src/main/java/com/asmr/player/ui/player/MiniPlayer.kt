@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -33,11 +33,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -240,7 +240,7 @@ fun MiniPlayer(
                                         modifier = Modifier.size(controlsButtonSize)
                                     ) {
                                         Icon(
-                                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                         contentDescription = null,
                                         tint = if (isFavorite) Color.Red else colorScheme.onSurface.copy(alpha = 0.6f),
                                         modifier = Modifier.size(favoriteIconSize)
@@ -254,7 +254,7 @@ fun MiniPlayer(
                                         modifier = Modifier.size(controlsButtonSize)
                                     ) {
                                         Icon(
-                                        imageVector = if (isPlayingEffective) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        imageVector = if (isPlayingEffective) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                         contentDescription = null,
                                         tint = colorScheme.primary,
                                         modifier = Modifier.size(playbackIconSize)
@@ -265,7 +265,7 @@ fun MiniPlayer(
                                         modifier = Modifier.size(controlsButtonSize)
                                     ) {
                                         Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
+                                        imageVector = Icons.AutoMirrored.Rounded.PlaylistPlay,
                                         contentDescription = null,
                                         tint = colorScheme.onSurface,
                                         modifier = Modifier.size(queueIconSize)

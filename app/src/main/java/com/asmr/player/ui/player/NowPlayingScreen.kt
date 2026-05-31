@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import android.app.Activity
 import android.content.Context
@@ -26,8 +26,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -763,7 +763,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(36.dp)
@@ -782,7 +782,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onShowSleepTimer) {
                             Icon(
-                                Icons.Default.Timer,
+                                Icons.Rounded.Timer,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(28.dp)
@@ -790,7 +790,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.AutoMirrored.Filled.PlaylistPlay,
+                                Icons.AutoMirrored.Rounded.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(32.dp)
@@ -988,7 +988,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(28.dp)
@@ -1006,7 +1006,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onShowSleepTimer) {
                             Icon(
-                                Icons.Default.Timer,
+                                Icons.Rounded.Timer,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp)
@@ -1014,7 +1014,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.AutoMirrored.Filled.PlaylistPlay,
+                                Icons.AutoMirrored.Rounded.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
@@ -1211,7 +1211,7 @@ internal fun NowPlayingScreen(
                     ) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(32.dp)
@@ -1239,7 +1239,7 @@ internal fun NowPlayingScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onShowSleepTimer) {
                                 Icon(
-                                    Icons.Default.Timer,
+                                    Icons.Rounded.Timer,
                                     contentDescription = null,
                                     tint = colorScheme.onSurface,
                                     modifier = Modifier.size(26.dp)
@@ -1247,7 +1247,7 @@ internal fun NowPlayingScreen(
                             }
                             IconButton(onClick = onShowQueue) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.PlaylistPlay,
+                                    Icons.AutoMirrored.Rounded.PlaylistPlay,
                                     contentDescription = null,
                                     tint = colorScheme.onSurface,
                                     modifier = Modifier.size(28.dp)
@@ -1541,7 +1541,7 @@ internal fun NowPlayingScreen(
 
                                         IconButton(onClick = { viewModel.playSlicePreview(slice) }) {
                                             Icon(
-                                                imageVector = Icons.Default.PlayArrow,
+                                                imageVector = Icons.Rounded.PlayArrow,
                                                 contentDescription = "播放切片",
                                                 tint = colorScheme.onSurface
                                             )
