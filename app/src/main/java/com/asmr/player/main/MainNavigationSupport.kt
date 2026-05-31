@@ -137,6 +137,12 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.asmr.player.ui.theme.LocalThemeTransitionTrigger
+import com.asmr.player.ui.theme.ThemeTransitionTriggerRequest
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -301,10 +307,39 @@ internal fun PrimaryTopBarBrand(
     tint: Color,
     modifier: Modifier = Modifier
 ) {
+    val trigger = LocalThemeTransitionTrigger.current
+    val isDark = AsmrTheme.colorScheme.isDark
+    var positionInRoot by remember { mutableStateOf(Offset.Zero) }
+
+    val clickModifier = if (trigger != null) {
+        Modifier
+            .onGloballyPositioned { coordinates ->
+                positionInRoot = coordinates.positionInWindow()
+            }
+            .pointerInput(isDark) {
+                detectTapGestures {
+                    val origin = Offset(
+                        positionInRoot.x + it.x,
+                        positionInRoot.y + it.y
+                    )
+                    val targetPref = if (isDark) "light" else "dark"
+                    trigger(
+                        ThemeTransitionTriggerRequest(
+                            origin = origin,
+                            targetPref = targetPref
+                        )
+                    )
+                }
+            }
+    } else {
+        Modifier
+    }
+
     Row(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = 10.dp),
+            .padding(start = 10.dp)
+            .then(clickModifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
