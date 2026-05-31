@@ -476,7 +476,7 @@ fun SearchScreen(
                                     }
                                 } else {
                                     LazyVerticalStaggeredGrid(
-                                        columns = StaggeredGridCells.Adaptive(150.dp),
+                                        columns = StaggeredGridCells.Adaptive(if (isCompact) 150.dp else 200.dp),
                                         state = gridState,
                                         modifier = Modifier
                                             .fillMaxSize()

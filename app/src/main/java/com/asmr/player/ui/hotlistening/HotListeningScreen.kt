@@ -23,6 +23,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,11 +66,12 @@ fun HotListeningScreen(
     val viewMode by viewModel.viewMode.collectAsState()
     val colorScheme = AsmrTheme.colorScheme
     val scope = rememberCoroutineScope()
+    val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
 
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState(0, 0) }
     val gridState = rememberSaveable(saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
 
-    val periods = listOf("day" to "日", "week" to "周", "month" to "月", "year" to "年")
+    val periods = listOf("day" to "过去一天", "week" to "过去一周", "month" to "过去一月")
     val currentPeriod = (uiState as? HotListeningUiState.Success)?.period ?: "day"
 
     fun scrollToTop() {
@@ -88,12 +90,10 @@ fun HotListeningScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 8.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -167,13 +167,16 @@ fun HotListeningScreen(
                         }
                     }
                 } else {
+                    val adaptiveCellSize = if (isCompactWidth) 150.dp else 200.dp
                     LazyVerticalStaggeredGrid(
-                        columns = StaggeredGridCells.Adaptive(150.dp),
+                        columns = StaggeredGridCells.Adaptive(adaptiveCellSize),
                         state = gridState,
                         modifier = Modifier
                             .fillMaxSize()
                             .thinScrollbar(gridState),
                         contentPadding = PaddingValues(
+                            start = 8.dp,
+                            end = 8.dp,
                             bottom = 16.dp
                         ).withAddedBottomPadding(LocalBottomOverlayPadding.current),
                         horizontalArrangement = Arrangement.spacedBy(AlbumGridItemSpacing),
