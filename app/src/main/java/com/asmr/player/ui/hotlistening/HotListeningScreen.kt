@@ -71,7 +71,7 @@ fun HotListeningScreen(
     val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState(0, 0) }
     val gridState = rememberSaveable(saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
 
-    val periods = listOf("day" to "日", "week" to "周", "month" to "月", "year" to "年")
+    val periods = listOf("day" to "过去一天", "week" to "过去一周", "month" to "过去一月")
     val currentPeriod = (uiState as? HotListeningUiState.Success)?.period ?: "day"
 
     fun scrollToTop() {
