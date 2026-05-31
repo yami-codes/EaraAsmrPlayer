@@ -1,4 +1,4 @@
-package com.asmr.player
+﻿package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CloudDownload
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -108,7 +108,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -140,7 +140,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
@@ -386,7 +386,7 @@ internal fun DrawerSiteStatusFooter(
                             maxLines = 1
                         )
                         Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
+                            imageVector = Icons.Rounded.ArrowDropDown,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                             tint = colorScheme.textSecondary
@@ -408,7 +408,7 @@ internal fun DrawerSiteStatusFooter(
                                 leadingIcon = {
                                     if (selected) {
                                         Icon(
-                                            imageVector = Icons.Default.Check,
+                                            imageVector = Icons.Rounded.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(18.dp),
                                             tint = colorScheme.primary
@@ -443,9 +443,9 @@ private fun DrawerSiteRow(
         SiteStatusType.Unknown -> colorScheme.onSurface.copy(alpha = 0.35f)
     }
     val statusIcon = when (status.type) {
-        SiteStatusType.Ok -> Icons.Default.Check
-        SiteStatusType.Fail -> Icons.Default.Close
-        SiteStatusType.Testing -> Icons.Default.Refresh
+        SiteStatusType.Ok -> Icons.Rounded.Check
+        SiteStatusType.Fail -> Icons.Rounded.Close
+        SiteStatusType.Testing -> Icons.Rounded.Refresh
         SiteStatusType.Unknown -> null
     }
     
@@ -584,17 +584,17 @@ internal fun DailyStatisticsFooter(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 StatItem(
-                    icon = Icons.Default.AccessTime,
+                    icon = Icons.Rounded.AccessTime,
                     label = "时长",
                     value = formatStatsDuration(stats?.listeningDurationMs ?: 0L)
                 )
                 StatItem(
-                    icon = Icons.Default.Audiotrack,
+                    icon = Icons.Rounded.Audiotrack,
                     label = "音轨",
                     value = "${stats?.trackCount ?: 0}"
                 )
                 StatItem(
-                    icon = Icons.Default.CloudDownload,
+                    icon = Icons.Rounded.CloudDownload,
                     label = "流量",
                     value = formatStatsTraffic(stats?.networkTrafficBytes ?: 0L)
                 )

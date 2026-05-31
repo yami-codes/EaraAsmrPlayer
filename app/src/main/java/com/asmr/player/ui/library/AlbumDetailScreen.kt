@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -37,9 +37,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -104,10 +104,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -1007,7 +1007,7 @@ private fun AlbumHeader(
                             .size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Photo,
+                            imageVector = Icons.Rounded.Photo,
                             contentDescription = "閫夋嫨灏侀潰",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -1217,7 +1217,7 @@ private fun AlbumHeader(
                                     contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
                                 ) {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                     Spacer(modifier = Modifier.width(primaryIconGap))
                                     Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                 }
@@ -1236,7 +1236,7 @@ private fun AlbumHeader(
                                             contentColor = colorScheme.primary
                                         )
                                     ) {
-                                        Icon(Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                         Spacer(modifier = Modifier.width(primaryIconGap))
                                         Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                     }
@@ -1254,7 +1254,7 @@ private fun AlbumHeader(
                                             contentColor = colorScheme.primary
                                         )
                                     ) {
-                                        Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                         Spacer(modifier = Modifier.width(primaryIconGap))
                                         Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                     }
@@ -1276,7 +1276,7 @@ private fun AlbumHeader(
                                     border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
                                 ) {
                                     Icon(
-                                        Icons.Default.CreateNewFolder,
+                                        Icons.Rounded.CreateNewFolder,
                                         contentDescription = null,
                                         tint = colorScheme.primary,
                                         modifier = Modifier.size(primaryIconSize)
@@ -1305,7 +1305,7 @@ private fun AlbumHeader(
                                         )
                                         Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
                                         Icon(
-                                            imageVector = Icons.Default.ArrowDropDown,
+                                            imageVector = Icons.Rounded.ArrowDropDown,
                                             contentDescription = null,
                                             tint = colorScheme.primary,
                                             modifier = Modifier.size(primaryIconSize)

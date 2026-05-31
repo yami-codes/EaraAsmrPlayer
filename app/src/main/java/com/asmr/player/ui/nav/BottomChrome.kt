@@ -1,4 +1,4 @@
-package com.asmr.player.ui.nav
+﻿package com.asmr.player.ui.nav
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -30,17 +30,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -255,14 +255,14 @@ private fun bottomChromeMetrics(largeLayout: Boolean): BottomChromeMetrics =
     }
 
 fun bottomChromeNavItems(): List<BottomChromeNavItem> = listOf(
-    BottomChromeNavItem(Icons.Default.Home, "本地库", Routes.Library),
-    BottomChromeNavItem(Icons.Default.Search, "在线搜索", Routes.Search),
-    BottomChromeNavItem(Icons.Default.Whatshot, "热门收听", Routes.HotListening),
-    BottomChromeNavItem(Icons.Default.Favorite, "我的收藏", "playlist_system/favorites"),
-    BottomChromeNavItem(Icons.AutoMirrored.Filled.QueueMusic, "我的列表", "playlists"),
-    BottomChromeNavItem(Icons.Default.Folder, "我的分组", "groups"),
-    BottomChromeNavItem(Icons.Default.Settings, "设置", "settings"),
-    BottomChromeNavItem(Icons.Default.Person, "DLsite 登录", "dlsite_login")
+    BottomChromeNavItem(Icons.Rounded.Home, "本地库", Routes.Library),
+    BottomChromeNavItem(Icons.Rounded.Search, "在线搜索", Routes.Search),
+    BottomChromeNavItem(Icons.Rounded.Whatshot, "热门收听", Routes.HotListening),
+    BottomChromeNavItem(Icons.Rounded.Favorite, "我的收藏", "playlist_system/favorites"),
+    BottomChromeNavItem(Icons.AutoMirrored.Rounded.QueueMusic, "我的列表", "playlists"),
+    BottomChromeNavItem(Icons.Rounded.Folder, "我的分组", "groups"),
+    BottomChromeNavItem(Icons.Rounded.Settings, "设置", "settings"),
+    BottomChromeNavItem(Icons.Rounded.Person, "DLsite 登录", "dlsite_login")
 )
 
 fun isPrimaryRoute(route: String?): Boolean {
@@ -465,7 +465,7 @@ private fun buildBottomNavRailEntries(
 
     if (layout.showsOverflow) {
         entries += BottomNavRailEntry(
-            item = BottomChromeNavItem(Icons.Default.SwapHoriz, "切换", BottomNavOverflowTag),
+            item = BottomChromeNavItem(Icons.Rounded.SwapHoriz, "切换", BottomNavOverflowTag),
             width = metrics.itemSlotWidth,
             isOverflow = true
         )

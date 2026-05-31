@@ -1,4 +1,4 @@
-package com.asmr.player
+﻿package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CloudDownload
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -113,7 +113,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -145,7 +145,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
@@ -754,14 +754,14 @@ fun MainContainer(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val navItems = listOf(
-                        Triple(Icons.Default.Home, "本地库", "library"),
-                        Triple(Icons.Default.Search, "在线搜索", "search"),
-                        Triple(Icons.Default.Favorite, "我的收藏", "playlist_system/favorites"),
-                        Triple(Icons.AutoMirrored.Filled.QueueMusic, "我的列表", "playlists"),
-                        Triple(Icons.Default.Folder, "我的分组", "groups"),
-                        Triple(Icons.Default.Download, "下载管理", "downloads"),
-                        Triple(Icons.Default.Settings, "设置", "settings"),
-                        Triple(Icons.Default.Person, "DLsite 登录", "dlsite_login")
+                        Triple(Icons.Rounded.Home, "本地库", "library"),
+                        Triple(Icons.Rounded.Search, "在线搜索", "search"),
+                        Triple(Icons.Rounded.Favorite, "我的收藏", "playlist_system/favorites"),
+                        Triple(Icons.AutoMirrored.Rounded.QueueMusic, "我的列表", "playlists"),
+                        Triple(Icons.Rounded.Folder, "我的分组", "groups"),
+                        Triple(Icons.Rounded.Download, "下载管理", "downloads"),
+                        Triple(Icons.Rounded.Settings, "设置", "settings"),
+                        Triple(Icons.Rounded.Person, "DLsite 登录", "dlsite_login")
                     )
 
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -969,7 +969,7 @@ fun MainContainer(
                                         navigationIcon = {
                                             if (showBackButton && hasPreviousBackStackEntry) {
                                                 IconButton(onClick = { navController.popBackStack() }) {
-                                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                                                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
                                             } else if (showPrimaryBrand) {
                                                 PrimaryTopBarBrand(
@@ -991,7 +991,7 @@ fun MainContainer(
                                                 }
                                                 Box {
                                                     IconButton(onClick = { navController.navigate("downloads") }) {
-                                                        Icon(Icons.Default.Download, contentDescription = "下载管理")
+                                                        Icon(Icons.Rounded.Download, contentDescription = "下载管理")
                                                     }
                                                     if (activeDownloadCount > 0) {
                                                         Badge(
@@ -1010,9 +1010,9 @@ fun MainContainer(
                                                     Box {
                                                         val normalized = (viewMode ?: 0).coerceIn(0, 2)
                                                         val icon = when (normalized) {
-                                                            1 -> Icons.Default.GridView
-                                                            2 -> Icons.Default.Audiotrack
-                                                            else -> Icons.AutoMirrored.Filled.ViewList
+                                                            1 -> Icons.Rounded.GridView
+                                                            2 -> Icons.Rounded.Audiotrack
+                                                            else -> Icons.AutoMirrored.Rounded.ViewList
                                                         }
                                                         IconButton(onClick = { viewMenuExpanded = true }) {
                                                             Icon(imageVector = icon, contentDescription = "切换视图")
@@ -1031,7 +1031,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑列表") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.AutoMirrored.Filled.ViewList, contentDescription = null)
+                                                                    Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1046,7 +1046,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑卡片") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.Default.GridView, contentDescription = null)
+                                                                    Icon(Icons.Rounded.GridView, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1061,7 +1061,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("音轨列表") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.Default.Audiotrack, contentDescription = null)
+                                                                    Icon(Icons.Rounded.Audiotrack, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1076,7 +1076,7 @@ fun MainContainer(
                                                 val viewMode by searchViewModel.viewMode.collectAsState()
                                                 IconButton(onClick = { searchViewModel.setViewMode(if (viewMode == 1) 0 else 1) }) {
                                                     Icon(
-                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.ViewModule,
+                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.ViewModule,
                                                         contentDescription = null
                                                     )
                                                 }
@@ -1084,7 +1084,7 @@ fun MainContainer(
                                                 val viewMode by hotListeningViewModel.viewMode.collectAsState()
                                                 IconButton(onClick = { hotListeningViewModel.setViewMode(if (viewMode == 1) 0 else 1) }) {
                                                     Icon(
-                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.ViewModule,
+                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.ViewModule,
                                                         contentDescription = null
                                                     )
                                                 }
@@ -1136,7 +1136,7 @@ fun MainContainer(
                                                             showManualRjDialog = true
                                                         }
                                                     ) {
-                                                        Icon(Icons.Default.Edit, contentDescription = "手动输入RJ号")
+                                                        Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }
                                                 }
                                             }

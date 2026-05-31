@@ -1,4 +1,4 @@
-package com.asmr.player.ui.hotlistening
+﻿package com.asmr.player.ui.hotlistening
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -125,7 +125,7 @@ fun HotListeningScreen(
                 sectionTitle = "热门收听",
                 headline = "数据加载失败",
                 description = state.message,
-                sectionIcon = Icons.Default.Whatshot,
+                sectionIcon = Icons.Rounded.Whatshot,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp),
                 footer = {
@@ -141,7 +141,7 @@ fun HotListeningScreen(
                         sectionTitle = "热门收听",
                         headline = "暂无排行数据",
                         description = "热门收听排行数据正在统计中，请稍后再来查看。",
-                        sectionIcon = Icons.Default.Whatshot,
+                        sectionIcon = Icons.Rounded.Whatshot,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp)
                     )

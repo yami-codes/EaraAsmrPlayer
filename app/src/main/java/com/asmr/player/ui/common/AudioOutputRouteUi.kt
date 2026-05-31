@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import android.content.Context
 import android.media.AudioDeviceCallback
@@ -7,8 +7,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Headset
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Headset
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -58,9 +58,9 @@ internal fun rememberCurrentAudioOutputRouteKind(): AudioOutputRouteKind {
 
 internal fun volumeRouteIcon(routeKind: AudioOutputRouteKind): ImageVector {
     return if (routeKind == AudioOutputRouteKind.Headphones) {
-        Icons.Default.Headset
+        Icons.Rounded.Headset
     } else {
-        Icons.AutoMirrored.Filled.VolumeUp
+        Icons.AutoMirrored.Rounded.VolumeUp
     }
 }
 

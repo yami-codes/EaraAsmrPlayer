@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -37,9 +37,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -107,10 +107,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -326,7 +326,7 @@ private fun DlsiteTrialAudioItem(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.PlayArrow,
+            imageVector = Icons.Rounded.PlayArrow,
             contentDescription = null,
             tint = colorScheme.primary
         )
@@ -355,7 +355,7 @@ private fun DlsiteTrialAudioItem(
                 modifier = Modifier.size(AudioItemMenuButtonSize)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                    imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     contentDescription = null,
                     tint = colorScheme.onSurfaceVariant
                 )
@@ -906,7 +906,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshAsmrOne, enabled = !isLoadingAsmrOne) {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
                 }
             }
         }
@@ -1062,10 +1062,10 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshTrial, enabled = !isLoading && !isLoadingTrial) {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
                 }
                 IconButton(onClick = onDownloadTrial, enabled = trialDownloadEnabled) {
-                    Icon(Icons.Default.Download, contentDescription = "下载")
+                    Icon(Icons.Rounded.Download, contentDescription = "下载")
                 }
             }
         }

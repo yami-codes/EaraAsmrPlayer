@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.text.style.TextOverflow
@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -117,7 +117,7 @@ internal fun LyricsPage(
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        Icons.Default.KeyboardArrowDown, 
+                        Icons.Rounded.KeyboardArrowDown, 
                         contentDescription = null,
                         modifier = Modifier.size(if (isLandscape) 24.dp else 28.dp)
                     )

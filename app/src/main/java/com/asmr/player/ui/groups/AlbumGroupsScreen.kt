@@ -1,4 +1,4 @@
-package com.asmr.player.ui.groups
+﻿package com.asmr.player.ui.groups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,10 +22,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -109,7 +109,7 @@ fun AlbumGroupsScreen(
                         sectionTitle = "我的分组",
                         headline = "还没有创建分组",
                         description = "按主题或场景建立分组，让收藏的专辑更容易整理和回看。",
-                        sectionIcon = Icons.Default.Folder,
+                        sectionIcon = Icons.Rounded.Folder,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
                     )
@@ -147,7 +147,7 @@ fun AlbumGroupsScreen(
                         .align(Alignment.BottomEnd)
                         .padding(end = AlbumGroupsPageHorizontalPadding, bottom = LocalBottomOverlayPadding.current + 16.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Rounded.Add, contentDescription = null)
                 }
             }
         }
@@ -211,7 +211,7 @@ private fun AlbumGroupRow(
             }
             IconButton(onClick = { showRename = true }, modifier = Modifier.size(AlbumGroupRowActionButtonSize)) {
                 Icon(
-                    Icons.Default.Edit,
+                    Icons.Rounded.Edit,
                     contentDescription = null,
                     tint = colorScheme.textSecondary,
                     modifier = Modifier.size(AlbumGroupRowActionIconSize)
@@ -219,7 +219,7 @@ private fun AlbumGroupRow(
             }
             IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(AlbumGroupRowActionButtonSize)) {
                 Icon(
-                    Icons.Default.Delete,
+                    Icons.Rounded.Delete,
                     contentDescription = null,
                     tint = colorScheme.danger.copy(alpha = 0.7f),
                     modifier = Modifier.size(AlbumGroupRowActionIconSize)

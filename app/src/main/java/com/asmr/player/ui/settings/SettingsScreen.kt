@@ -1,4 +1,4 @@
-package com.asmr.player.ui.settings
+﻿package com.asmr.player.ui.settings
 
 import android.Manifest
 import android.content.Intent
@@ -21,17 +21,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
-import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.FormatAlignCenter
-import androidx.compose.material.icons.filled.FormatAlignLeft
-import androidx.compose.material.icons.filled.FormatAlignRight
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
+import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
+import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.FormatAlignCenter
+import androidx.compose.material.icons.rounded.FormatAlignLeft
+import androidx.compose.material.icons.rounded.FormatAlignRight
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -195,7 +195,7 @@ fun SettingsScreen(
                         colors = buttonColors,
                         enabled = !isGlobalSyncRunning
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, tint = buttonColors.contentColor)
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("刷新本地")
                     }
@@ -205,7 +205,7 @@ fun SettingsScreen(
                         colors = buttonColors,
                         enabled = !isGlobalSyncRunning
                     ) {
-                        Icon(Icons.Default.CloudSync, contentDescription = null, tint = buttonColors.contentColor)
+                        Icon(Icons.Rounded.CloudSync, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("云同步")
                     }
@@ -216,7 +216,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     colors = buttonColors
                 ) {
-                    Icon(Icons.Default.FolderOpen, contentDescription = null, tint = buttonColors.contentColor)
+                    Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = buttonColors.contentColor)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("添加目录")
                 }
@@ -293,13 +293,13 @@ fun SettingsScreen(
                                     Text(root, style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary, maxLines = 1)
                                 }
                                 IconButton(onClick = { libraryViewModel.scanSingleRoot(root) }, enabled = !isGlobalSyncRunning) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = colorScheme.onSurface)
+                                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = colorScheme.onSurface)
                                 }
                                 IconButton(onClick = { libraryViewModel.syncMetadataForRoot(root) }, enabled = !isGlobalSyncRunning) {
-                                    Icon(Icons.Default.CloudSync, contentDescription = null, tint = colorScheme.onSurface)
+                                    Icon(Icons.Rounded.CloudSync, contentDescription = null, tint = colorScheme.onSurface)
                                 }
                                 IconButton(onClick = { pendingRemoveRoot = root }) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.onSurface)
+                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = colorScheme.onSurface)
                                 }
                             }
                             }
@@ -606,7 +606,7 @@ fun SettingsScreen(
                                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                                         colors = segmentedButtonColors,
                                         icon = {},
-                                        label = { Icon(Icons.AutoMirrored.Filled.FormatAlignLeft, null) }
+                                        label = { Icon(Icons.AutoMirrored.Rounded.FormatAlignLeft, null) }
                                     )
                                     SegmentedButton(
                                         selected = floatingSettings.align == 1,
@@ -614,7 +614,7 @@ fun SettingsScreen(
                                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                                         colors = segmentedButtonColors,
                                         icon = {},
-                                        label = { Icon(Icons.Default.FormatAlignCenter, null) }
+                                        label = { Icon(Icons.Rounded.FormatAlignCenter, null) }
                                     )
                                     SegmentedButton(
                                         selected = floatingSettings.align == 2,
@@ -622,7 +622,7 @@ fun SettingsScreen(
                                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                                         colors = segmentedButtonColors,
                                         icon = {},
-                                        label = { Icon(Icons.AutoMirrored.Filled.FormatAlignRight, null) }
+                                        label = { Icon(Icons.AutoMirrored.Rounded.FormatAlignRight, null) }
                                     )
                                 }
                             }
@@ -924,7 +924,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Icon(Icons.AutoMirrored.Filled.FormatAlignLeft, null) }
+                label = { Icon(Icons.AutoMirrored.Rounded.FormatAlignLeft, null) }
             )
             SegmentedButton(
                 selected = settings.align == 1,
@@ -932,7 +932,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Icon(Icons.Default.FormatAlignCenter, null) }
+                label = { Icon(Icons.Rounded.FormatAlignCenter, null) }
             )
             SegmentedButton(
                 selected = settings.align == 2,
@@ -940,7 +940,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Icon(Icons.AutoMirrored.Filled.FormatAlignRight, null) }
+                label = { Icon(Icons.AutoMirrored.Rounded.FormatAlignRight, null) }
             )
         }
     }
@@ -1240,7 +1240,7 @@ private fun SettingsInfoTip(active: Boolean, title: String, text: String, onTogg
                 modifier = Modifier.size(22.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Rounded.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(14.dp)
@@ -1351,7 +1351,7 @@ private fun PreviewModeInfoTip(active: Boolean, onToggle: () -> Unit) {
                 modifier = Modifier.size(22.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Rounded.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(14.dp)
