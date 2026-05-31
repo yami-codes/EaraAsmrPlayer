@@ -1,4 +1,4 @@
-package com.asmr.player
+﻿package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CloudDownload
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -109,7 +109,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -143,7 +143,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
@@ -170,6 +170,13 @@ import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.ui.theme.dynamicHueCacheKeyForArtwork
 import com.asmr.player.ui.theme.dynamicHueCacheKeyForVideo
 import com.asmr.player.ui.theme.peekDynamicHueSeedColor
+import com.asmr.player.ui.theme.ThemeTransitionRequest
+import com.asmr.player.ui.theme.ThemeTransitionTriggerRequest
+import com.asmr.player.ui.theme.LocalThemeTransitionTrigger
+import com.asmr.player.ui.theme.ThemeCircularRevealOverlay
+import androidx.compose.ui.graphics.ImageBitmap
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
@@ -215,6 +222,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    @Inject
+    lateinit var listeningTracker: com.asmr.player.hotlistening.ListeningTracker
 
     private lateinit var initialThemeBootstrapPreferences: ThemeBootstrapPreferences
 
@@ -500,6 +510,38 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val transitionScope = rememberCoroutineScope()
+            var themeTransitionSeq by remember { mutableLongStateOf(0L) }
+            var themeTransition by remember { mutableStateOf<ThemeTransitionRequest?>(null) }
+            val currentMode by rememberUpdatedState(mode)
+            val themeTransitionTrigger: (ThemeTransitionTriggerRequest) -> Unit = remember {
+                { triggerReq ->
+                    if (themeTransition == null) {
+                        val bitmap = runCatching {
+                            val w = this@MainActivity.window.decorView.width
+                            val h = this@MainActivity.window.decorView.height
+                            if (w > 0 && h > 0) {
+                                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                                val canvas = android.graphics.Canvas(bmp)
+                                this@MainActivity.window.decorView.draw(canvas)
+                                bmp.asImageBitmap()
+                            } else null
+                        }.getOrNull()
+                        val bgColor = neutralPaletteForMode(currentMode).background
+                        themeTransition = ThemeTransitionRequest(
+                            origin = triggerReq.origin,
+                            oldContentBitmap = bitmap,
+                            oldBackgroundColor = bgColor,
+                            token = ++themeTransitionSeq
+                        )
+                        transitionScope.launch {
+                            settingsDataStore.setTheme(triggerReq.targetPref)
+                        }
+                    }
+                }
+            }
+
+            CompositionLocalProvider(LocalThemeTransitionTrigger provides themeTransitionTrigger) {
             AsmrPlayerTheme(mode = mode, hue = globalHue) {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var contentReady by remember { mutableStateOf(false) }
@@ -511,6 +553,7 @@ class MainActivity : ComponentActivity() {
                         libraryViewModel = libraryViewModel,
                         settingsDataStore = settingsDataStore,
                         messageManager = messageManager,
+                        listeningTracker = listeningTracker,
                         recentAlbumsPanelExpandedInitial = recentAlbumsPanelExpandedInitial,
                         startRouteFromIntent = startRouteFromIntent,
                         onShowQueue = { overlaySheet = OverlaySheet.Queue },
@@ -575,7 +618,20 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    themeTransition?.let { request ->
+                        val currentToken = request.token
+                        ThemeCircularRevealOverlay(
+                            request = request,
+                            onAnimationEnd = {
+                                if (themeTransition?.token == currentToken) {
+                                    themeTransition = null
+                                }
+                            }
+                        )
+                    }
                 }
+            }
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -19,13 +19,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -116,17 +116,17 @@ fun DailyStatisticsSection(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 StatItem(
-                    icon = Icons.Default.AccessTime,
+                    icon = Icons.Rounded.AccessTime,
                     label = "时长",
                     value = formatStatsDuration(stats?.listeningDurationMs ?: 0L)
                 )
                 StatItem(
-                    icon = Icons.Default.Audiotrack,
+                    icon = Icons.Rounded.Audiotrack,
                     label = "音轨",
                     value = "${stats?.trackCount ?: 0}"
                 )
                 StatItem(
-                    icon = Icons.Default.CloudDownload,
+                    icon = Icons.Rounded.CloudDownload,
                     label = "流量",
                     value = formatStatsTraffic(stats?.networkTrafficBytes ?: 0L)
                 )
@@ -177,7 +177,7 @@ fun SiteStatusSection(
                             maxLines = 1
                         )
                         Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
+                            imageVector = Icons.Rounded.ArrowDropDown,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                             tint = colorScheme.textSecondary
@@ -199,7 +199,7 @@ fun SiteStatusSection(
                                 leadingIcon = {
                                     if (selected) {
                                         Icon(
-                                            imageVector = Icons.Default.Check,
+                                            imageVector = Icons.Rounded.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(18.dp),
                                             tint = colorScheme.primary
@@ -231,9 +231,9 @@ private fun SiteStatusRow(
         SiteStatusType.Unknown -> colorScheme.onSurface.copy(alpha = 0.35f)
     }
     val statusIcon = when (status.type) {
-        SiteStatusType.Ok -> Icons.Default.Check
-        SiteStatusType.Fail -> Icons.Default.Close
-        SiteStatusType.Testing -> Icons.Default.Refresh
+        SiteStatusType.Ok -> Icons.Rounded.Check
+        SiteStatusType.Fail -> Icons.Rounded.Close
+        SiteStatusType.Testing -> Icons.Rounded.Refresh
         SiteStatusType.Unknown -> null
     }
 

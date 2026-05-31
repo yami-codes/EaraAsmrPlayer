@@ -38,6 +38,10 @@ class SettingsRepository @Inject constructor(
         prefs[SettingsKeys.SEARCH_VIEW_MODE] ?: 1 // Default to Grid (1)
     }
 
+    val hotListeningViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
+        prefs[SettingsKeys.HOT_LISTENING_VIEW_MODE] ?: 1
+    }
+
     val playMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.PLAY_MODE] ?: 0
     }
@@ -342,6 +346,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setSearchViewMode(mode: Int) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.SEARCH_VIEW_MODE] = mode }
+        }
+    }
+
+    suspend fun setHotListeningViewMode(mode: Int) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.HOT_LISTENING_VIEW_MODE] = mode }
         }
     }
 

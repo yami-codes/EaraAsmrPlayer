@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -90,7 +90,7 @@ fun TagAssignDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
                         text = title,
@@ -155,11 +155,11 @@ fun TagAssignDialog(
                         onValueChange = { query = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+                        leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
                         trailingIcon = {
                             if (query.isNotBlank()) {
                                 IconButton(onClick = { query = "" }) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                                    Icon(imageVector = Icons.Rounded.Close, contentDescription = null)
                                 }
                             }
                         },
@@ -203,7 +203,7 @@ fun TagAssignDialog(
                                 customInput = ""
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = colorScheme.primary)
+                            Icon(imageVector = Icons.Rounded.Add, contentDescription = null, tint = colorScheme.primary)
                         }
                         if (onOpenTagManager != null) {
                             Spacer(modifier = Modifier.width(6.dp))

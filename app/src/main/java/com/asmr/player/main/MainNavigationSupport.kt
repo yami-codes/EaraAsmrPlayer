@@ -1,4 +1,4 @@
-package com.asmr.player
+﻿package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CloudDownload
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -108,7 +108,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -137,10 +137,16 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.asmr.player.ui.theme.LocalThemeTransitionTrigger
+import com.asmr.player.ui.theme.ThemeTransitionTriggerRequest
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
@@ -252,9 +258,9 @@ internal fun resolveCurrentPrimaryDestinationRoute(
     return when {
         currentRoute == Routes.Library -> Routes.Library
         currentRoute == Routes.Search -> Routes.Search
+        currentRoute == Routes.HotListening -> Routes.HotListening
         currentRoute == "playlists" -> "playlists"
         currentRoute == "groups" -> "groups"
-        currentRoute == "downloads" -> "downloads"
         currentRoute == "settings" -> "settings"
         currentRoute == "dlsite_login" -> "dlsite_login"
         currentRoute == "playlist_system/{type}" && playlistSystemType == "favorites" -> "playlist_system/favorites"
@@ -301,10 +307,39 @@ internal fun PrimaryTopBarBrand(
     tint: Color,
     modifier: Modifier = Modifier
 ) {
+    val trigger = LocalThemeTransitionTrigger.current
+    val isDark = AsmrTheme.colorScheme.isDark
+    var positionInRoot by remember { mutableStateOf(Offset.Zero) }
+
+    val clickModifier = if (trigger != null) {
+        Modifier
+            .onGloballyPositioned { coordinates ->
+                positionInRoot = coordinates.positionInWindow()
+            }
+            .pointerInput(isDark) {
+                detectTapGestures {
+                    val origin = Offset(
+                        positionInRoot.x + it.x,
+                        positionInRoot.y + it.y
+                    )
+                    val targetPref = if (isDark) "light" else "dark"
+                    trigger(
+                        ThemeTransitionTriggerRequest(
+                            origin = origin,
+                            targetPref = targetPref
+                        )
+                    )
+                }
+            }
+    } else {
+        Modifier
+    }
+
     Row(
         modifier = modifier
             .fillMaxHeight()
-            .padding(start = 10.dp),
+            .padding(start = 10.dp)
+            .then(clickModifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {

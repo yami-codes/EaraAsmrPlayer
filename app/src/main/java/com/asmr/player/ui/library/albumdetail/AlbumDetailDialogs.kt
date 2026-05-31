@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -35,11 +35,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -104,10 +104,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -164,7 +164,7 @@ internal fun AsmrOneDownloadDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
                         text = "选择要下载的文件",
@@ -425,7 +425,7 @@ internal fun OnlineSaveDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
                         text = "选择要保存的文件",
@@ -556,7 +556,7 @@ private fun AsmrTreeFolderCheckboxRow(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = onToggleExpand, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -836,10 +836,10 @@ internal fun FilePreviewDialog(
                     )
                     if (canNavigate) {
                         IconButton(onClick = { currentIndex = (currentIndex - 1 + initialCandidates.size) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "上一项")
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "上一项")
                         }
                         IconButton(onClick = { currentIndex = (currentIndex + 1) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下一项")
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "下一项")
                         }
                     }
                     if (canFullscreen) {
@@ -848,10 +848,10 @@ internal fun FilePreviewDialog(
                         }
                     }
                     IconButton(onClick = ::openWithOtherApp) {
-                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "打开")
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "打开")
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "关闭")
+                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
                     }
                 }
                 
@@ -902,7 +902,7 @@ internal fun FilePreviewDialog(
                         TreeFileType.Pdf -> {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
-                                    imageVector = Icons.Default.PictureAsPdf,
+                                    imageVector = Icons.Rounded.PictureAsPdf,
                                     contentDescription = null,
                                     modifier = Modifier.size(64.dp),
                                     tint = colorScheme.danger

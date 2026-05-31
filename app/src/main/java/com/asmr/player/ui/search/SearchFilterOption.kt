@@ -1,12 +1,12 @@
-package com.asmr.player.ui.search
+﻿package com.asmr.player.ui.search
 
 import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.asmr.player.R
 
@@ -24,22 +24,22 @@ enum class SearchFilterOption(
 ) {
     PurchasedOnly(
         label = "已购",
-        icon = SearchFilterIcon.Vector(Icons.Default.ShoppingBag),
+        icon = SearchFilterIcon.Vector(Icons.Rounded.ShoppingBag),
         mode = SearchFilterMode.PurchasedOnly
     ),
     ChineseTranslated(
         label = "中文作品",
-        icon = SearchFilterIcon.Vector(Icons.Default.AutoStories),
+        icon = SearchFilterIcon.Vector(Icons.Rounded.AutoStories),
         mode = SearchFilterMode.ChineseTranslated
     ),
     Presale(
         label = "预售",
-        icon = SearchFilterIcon.Vector(Icons.Default.CalendarMonth),
+        icon = SearchFilterIcon.Vector(Icons.Rounded.CalendarMonth),
         mode = SearchFilterMode.PresaleOnly
     ),
     Trend(
         label = SearchSortOption.Trend.label,
-        icon = SearchFilterIcon.Vector(Icons.Default.LocalFireDepartment),
+        icon = SearchFilterIcon.Vector(Icons.Rounded.LocalFireDepartment),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.Trend
     ),
@@ -51,7 +51,7 @@ enum class SearchFilterOption(
     ),
     DLCount(
         label = SearchSortOption.DLCount.label,
-        icon = SearchFilterIcon.Vector(Icons.Default.EmojiEvents),
+        icon = SearchFilterIcon.Vector(Icons.Rounded.EmojiEvents),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.DLCount
     ),

@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -35,9 +35,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -102,10 +102,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -341,7 +341,7 @@ private fun DlsiteRecommendedWorkCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Image,
+                                imageVector = Icons.Rounded.Image,
                                 contentDescription = null,
                                 tint = colorScheme.textTertiary,
                                 modifier = Modifier.size(28.dp)
@@ -509,7 +509,7 @@ internal fun TrackItem(
             )
         },
         leadingContent = {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = colorScheme.primary)
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
         },
         trailingContent = {
             if (showSubtitleStamp) {
@@ -517,7 +517,7 @@ internal fun TrackItem(
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(AudioItemMenuButtonSize)) {
-                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -556,7 +556,7 @@ private fun OnlineTrackRow(
             )
         },
         leadingContent = {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = colorScheme.primary)
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
         },
         trailingContent = {
             val showMenu = onAddToQueue != null || onAddToPlaylist != null || onManageTags != null
@@ -564,7 +564,7 @@ private fun OnlineTrackRow(
             var expanded by rememberSaveable { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                    Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = colorScheme.onSurfaceVariant)
                 }
                 MaterialTheme(
                     colorScheme = materialColorScheme.copy(
@@ -584,7 +584,7 @@ private fun OnlineTrackRow(
                                 expanded = false
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = colorScheme.primary)
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
                             }
                         )
                         if (onAddToQueue != null) {
@@ -600,7 +600,7 @@ private fun OnlineTrackRow(
                                     expanded = false
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = colorScheme.onSurfaceVariant)
                                 }
                             )
                         }
@@ -617,7 +617,7 @@ private fun OnlineTrackRow(
                                     expanded = false
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.onSurfaceVariant)
                                 }
                             )
                         }
@@ -634,7 +634,7 @@ private fun OnlineTrackRow(
                                     expanded = false
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null, tint = colorScheme.onSurfaceVariant)
+                                    Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null, tint = colorScheme.onSurfaceVariant)
                                 }
                             )
                         }

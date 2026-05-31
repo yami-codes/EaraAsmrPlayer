@@ -1,4 +1,4 @@
-package com.asmr.player
+﻿package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.CloudDownload
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -81,6 +81,9 @@ import com.asmr.player.ui.downloads.DownloadsViewModel
 import com.asmr.player.ui.downloads.DownloadItemState
 import com.asmr.player.ui.dlsite.DlsiteLoginScreen
 import com.asmr.player.ui.dlsite.DlsiteLoginViewModel
+import com.asmr.player.ui.hotlistening.HotListeningScreen
+import com.asmr.player.ui.hotlistening.HotListeningViewModel
+import com.asmr.player.hotlistening.ListeningTracker
 import com.asmr.player.ui.groups.AlbumGroupsViewModel
 import com.asmr.player.ui.playlists.PlaylistDetailScreen
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
@@ -110,7 +113,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
 import java.net.URLEncoder
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -142,7 +145,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
@@ -209,6 +212,7 @@ fun MainContainer(
     libraryViewModel: LibraryViewModel,
     settingsDataStore: SettingsDataStore,
     messageManager: MessageManager,
+    listeningTracker: ListeningTracker,
     recentAlbumsPanelExpandedInitial: Boolean,
     startRouteFromIntent: String?,
     onShowQueue: () -> Unit,
@@ -289,6 +293,9 @@ fun MainContainer(
         withFrameNanos { }
         onContentReady()
     }
+    LaunchedEffect(Unit) {
+        listeningTracker.start(this, playerViewModel.playback)
+    }
     LaunchedEffect(navController, startRoute, initialDestination) {
         if (startRoute.isBlank() || startRoute == initialDestination) return@LaunchedEffect
         withFrameNanos { }
@@ -313,6 +320,7 @@ fun MainContainer(
     val downloadsViewModel: DownloadsViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
     val dlsiteLoginViewModel: DlsiteLoginViewModel = hiltViewModel()
+    val hotListeningViewModel: HotListeningViewModel = hiltViewModel()
     val hasCurrentMediaItem by remember(playerViewModel) {
         playerViewModel.playback
             .map { it.currentMediaItem != null }
@@ -341,6 +349,7 @@ fun MainContainer(
     var groupsScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var downloadsScrollToTopSignal by remember { mutableLongStateOf(0L) }
     var settingsScrollToTopSignal by remember { mutableLongStateOf(0L) }
+    var hotListeningScrollToTopSignal by remember { mutableLongStateOf(0L) }
     val appVolumeWarningSessionState = rememberAppVolumeWarningSessionState()
     val audioOutputRouteKind = rememberCurrentAudioOutputRouteKind()
     
@@ -449,10 +458,10 @@ fun MainContainer(
         when (route) {
             Routes.Library -> libraryScrollToTopSignal += 1L
             Routes.Search -> searchScrollToTopSignal += 1L
+            Routes.HotListening -> hotListeningScrollToTopSignal += 1L
             "playlist_system/favorites" -> favoritesScrollToTopSignal += 1L
             "playlists" -> playlistsScrollToTopSignal += 1L
             "groups" -> groupsScrollToTopSignal += 1L
-            "downloads" -> downloadsScrollToTopSignal += 1L
             "settings" -> settingsScrollToTopSignal += 1L
         }
     }
@@ -745,14 +754,14 @@ fun MainContainer(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val navItems = listOf(
-                        Triple(Icons.Default.Home, "本地库", "library"),
-                        Triple(Icons.Default.Search, "在线搜索", "search"),
-                        Triple(Icons.Default.Favorite, "我的收藏", "playlist_system/favorites"),
-                        Triple(Icons.AutoMirrored.Filled.QueueMusic, "我的列表", "playlists"),
-                        Triple(Icons.Default.Folder, "我的分组", "groups"),
-                        Triple(Icons.Default.Download, "下载管理", "downloads"),
-                        Triple(Icons.Default.Settings, "设置", "settings"),
-                        Triple(Icons.Default.Person, "DLsite 登录", "dlsite_login")
+                        Triple(Icons.Rounded.Home, "本地库", "library"),
+                        Triple(Icons.Rounded.Search, "在线搜索", "search"),
+                        Triple(Icons.Rounded.Favorite, "我的收藏", "playlist_system/favorites"),
+                        Triple(Icons.AutoMirrored.Rounded.QueueMusic, "我的列表", "playlists"),
+                        Triple(Icons.Rounded.Folder, "我的分组", "groups"),
+                        Triple(Icons.Rounded.Download, "下载管理", "downloads"),
+                        Triple(Icons.Rounded.Settings, "设置", "settings"),
+                        Triple(Icons.Rounded.Person, "DLsite 登录", "dlsite_login")
                     )
 
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -893,6 +902,7 @@ fun MainContainer(
                                         currentRoute == "library" ||
                                             currentRoute == "library_filter" ||
                                             currentRoute == "search" ||
+                                            currentRoute == Routes.HotListening ||
                                             currentRoute == "playlists" ||
                                             currentRoute == "playlist/{playlistId}/{playlistName}" ||
                                             currentRoute == "playlist_system/{type}" ||
@@ -907,45 +917,62 @@ fun MainContainer(
                                         modifier = Modifier.height(if (compactTopBar) 48.dp else 64.dp),
                                         title = {
                                             val entry = navBackStackEntry
-                                            val groupName = if (currentRoute == "group/{groupId}/{groupName}") {
+                                            val resolvedTitleRoute = if (currentScreenIsPrimary) visualPrimaryRoute else currentRoute
+                                            val groupName = if (resolvedTitleRoute == "group/{groupId}/{groupName}") {
                                                 decodeRouteArg(entry?.arguments?.getString("groupName").orEmpty())
                                             } else ""
-                                            val playlistName = if (currentRoute == "playlist/{playlistId}/{playlistName}") {
+                                            val playlistName = if (resolvedTitleRoute == "playlist/{playlistId}/{playlistName}") {
                                                 decodeRouteArg(entry?.arguments?.getString("playlistName").orEmpty())
                                             } else ""
-                                            val systemPlaylistType = if (currentRoute == "playlist_system/{type}") {
+                                            val systemPlaylistType = if (resolvedTitleRoute == "playlist_system/{type}") {
                                                 entry?.arguments?.getString("type").orEmpty()
                                             } else ""
                                             val appName = stringResource(R.string.app_name)
+                                            val titleText = when {
+                                                resolvedTitleRoute == "library" -> "本地库"
+                                                resolvedTitleRoute == "library_filter" -> "筛选"
+                                                resolvedTitleRoute == "search" -> "在线搜索"
+                                                resolvedTitleRoute == Routes.HotListening -> "热门收听"
+                                                resolvedTitleRoute == "playlists" -> "我的列表"
+                                                resolvedTitleRoute == "playlist/{playlistId}/{playlistName}" ->
+                                                    playlistName.ifBlank { "我的列表" }
+                                                resolvedTitleRoute == "playlist_system/favorites" -> "我的收藏"
+                                                resolvedTitleRoute == "playlist_system/{type}" -> when (systemPlaylistType) {
+                                                    "favorites" -> "我的收藏"
+                                                    else -> "我的收藏"
+                                                }
+                                                resolvedTitleRoute == "groups" -> "我的分组"
+                                                resolvedTitleRoute == "group/{groupId}/{groupName}" ->
+                                                    groupName.ifBlank { "我的分组" }
+                                                resolvedTitleRoute == "settings" -> "设置"
+                                                resolvedTitleRoute == "downloads" -> "下载管理"
+                                                resolvedTitleRoute == "dlsite_login" -> "DLsite 登录"
+                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> "添加到我的列表"
+                                                resolvedTitleRoute?.startsWith("album_detail") == true -> "专辑详情"
+                                                else -> appName
+                                            }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    when {
-                                                        currentRoute == "library" -> "本地库"
-                                                        currentRoute == "library_filter" -> "筛选"
-                                                        currentRoute == "search" -> "在线搜索"
-                                                        currentRoute == "playlists" -> "我的列表"
-                                                        currentRoute == "playlist/{playlistId}/{playlistName}" ->
-                                                            playlistName.ifBlank { "我的列表" }
-                                                        currentRoute == "playlist_system/{type}" -> when (systemPlaylistType) {
-                                                            "favorites" -> "我的收藏"
-                                                            else -> "我的收藏"
-                                                        }
-                                                        currentRoute == "groups" -> "我的分组"
-                                                        currentRoute == "group/{groupId}/{groupName}" ->
-                                                            groupName.ifBlank { "我的分组" }
-                                                        currentRoute == "settings" -> "设置"
-                                                        currentRoute == "downloads" -> "下载管理"
-                                                        currentRoute == "dlsite_login" -> "DLsite 登录"
-                                                        currentRoute?.startsWith("playlist_picker") == true -> "添加到我的列表"
-                                                        currentRoute?.startsWith("album_detail") == true -> "专辑详情"
-                                                        else -> appName
+                                                AnimatedContent(
+                                                    targetState = titleText,
+                                                    transitionSpec = {
+                                                        (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                            + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
+                                                            .togetherWith(
+                                                                fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                                    + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
+                                                            )
                                                     },
-                                                    style = if (compactTopBar) {
-                                                        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                                                    } else {
-                                                        MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                                    }
-                                                )
+                                                    label = "headerTitle"
+                                                ) { targetText ->
+                                                    Text(
+                                                        targetText,
+                                                        style = if (compactTopBar) {
+                                                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                                                        } else {
+                                                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                                        }
+                                                    )
+                                                }
                                             }
                                         },
                                         windowInsets = WindowInsets(0, 0, 0, 0),
@@ -958,7 +985,7 @@ fun MainContainer(
                                         navigationIcon = {
                                             if (showBackButton && hasPreviousBackStackEntry) {
                                                 IconButton(onClick = { navController.popBackStack() }) {
-                                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                                                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
                                             } else if (showPrimaryBrand) {
                                                 PrimaryTopBarBrand(
@@ -969,6 +996,29 @@ fun MainContainer(
                                         },
                                         actions = {
                                             val entry = navBackStackEntry
+                                            if (currentRoute != null && (isPrimaryRoute(currentRoute) || currentRoute == "playlist_system/{type}")) {
+                                                val downloadTasks by downloadsViewModel.tasks.collectAsState()
+                                                val activeDownloadCount = remember(downloadTasks) {
+                                                    downloadTasks.sumOf { task ->
+                                                        task.items.count {
+                                                            it.state == DownloadItemState.RUNNING || it.state == DownloadItemState.ENQUEUED
+                                                        }
+                                                    }
+                                                }
+                                                Box {
+                                                    IconButton(onClick = { navController.navigate("downloads") }) {
+                                                        Icon(Icons.Rounded.Download, contentDescription = "下载管理")
+                                                    }
+                                                    if (activeDownloadCount > 0) {
+                                                        Badge(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                        ) {
+                                                            Text(activeDownloadCount.toString())
+                                                        }
+                                                    }
+                                                }
+                                            }
                                             if (currentRoute == "library") {
                                                 val viewMode by libraryViewModel.libraryViewMode.collectAsState()
                                                 if (viewMode != null) {
@@ -976,9 +1026,9 @@ fun MainContainer(
                                                     Box {
                                                         val normalized = (viewMode ?: 0).coerceIn(0, 2)
                                                         val icon = when (normalized) {
-                                                            1 -> Icons.Default.GridView
-                                                            2 -> Icons.Default.Audiotrack
-                                                            else -> Icons.AutoMirrored.Filled.ViewList
+                                                            1 -> Icons.Rounded.GridView
+                                                            2 -> Icons.Rounded.Audiotrack
+                                                            else -> Icons.AutoMirrored.Rounded.ViewList
                                                         }
                                                         IconButton(onClick = { viewMenuExpanded = true }) {
                                                             Icon(imageVector = icon, contentDescription = "切换视图")
@@ -997,7 +1047,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑列表") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.AutoMirrored.Filled.ViewList, contentDescription = null)
+                                                                    Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1012,7 +1062,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("专辑卡片") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.Default.GridView, contentDescription = null)
+                                                                    Icon(Icons.Rounded.GridView, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1027,7 +1077,7 @@ fun MainContainer(
                                                             DropdownMenuItem(
                                                                 text = { Text("音轨列表") },
                                                                 leadingIcon = {
-                                                                    Icon(Icons.Default.Audiotrack, contentDescription = null)
+                                                                    Icon(Icons.Rounded.Audiotrack, contentDescription = null)
                                                                 },
                                                                 onClick = {
                                                                     viewMenuExpanded = false
@@ -1042,7 +1092,15 @@ fun MainContainer(
                                                 val viewMode by searchViewModel.viewMode.collectAsState()
                                                 IconButton(onClick = { searchViewModel.setViewMode(if (viewMode == 1) 0 else 1) }) {
                                                     Icon(
-                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Filled.ViewList else Icons.Default.ViewModule,
+                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.ViewModule,
+                                                        contentDescription = null
+                                                    )
+                                                }
+                                            } else if (currentRoute == Routes.HotListening) {
+                                                val viewMode by hotListeningViewModel.viewMode.collectAsState()
+                                                IconButton(onClick = { hotListeningViewModel.setViewMode(if (viewMode == 1) 0 else 1) }) {
+                                                    Icon(
+                                                        imageVector = if (viewMode == 1) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.ViewModule,
                                                         contentDescription = null
                                                     )
                                                 }
@@ -1094,7 +1152,7 @@ fun MainContainer(
                                                             showManualRjDialog = true
                                                         }
                                                     ) {
-                                                        Icon(Icons.Default.Edit, contentDescription = "手动输入RJ号")
+                                                        Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }
                                                 }
                                             }
@@ -1179,6 +1237,17 @@ fun MainContainer(
                                             )
                                         }
 
+                                        Routes.HotListening -> {
+                                            HotListeningScreen(
+                                                windowSizeClass = windowSizeClass,
+                                                scrollToTopSignal = hotListeningScrollToTopSignal,
+                                                onAlbumClick = { album ->
+                                                    navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
+                                                },
+                                                viewModel = hotListeningViewModel
+                                            )
+                                        }
+
                                         "playlist_system/favorites" -> {
                                             SystemPlaylistScreen(
                                                 windowSizeClass = windowSizeClass,
@@ -1212,14 +1281,6 @@ fun MainContainer(
                                                     navController.navigateSingleTop("group/${group.id}/$encoded")
                                                 },
                                                 viewModel = albumGroupsViewModel
-                                            )
-                                        }
-
-                                        "downloads" -> {
-                                            DownloadsScreen(
-                                                windowSizeClass = windowSizeClass,
-                                                scrollToTopSignal = downloadsScrollToTopSignal,
-                                                viewModel = downloadsViewModel
                                             )
                                         }
 
@@ -1268,6 +1329,9 @@ fun MainContainer(
                     )
                 }
                                 composable("search") {
+                    Box(modifier = Modifier.fillMaxSize())
+                }
+                composable("hot_listening") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable(
@@ -1494,7 +1558,11 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable("downloads") {
-                    Box(modifier = Modifier.fillMaxSize())
+                    DownloadsScreen(
+                        windowSizeClass = windowSizeClass,
+                        scrollToTopSignal = downloadsScrollToTopSignal,
+                        viewModel = downloadsViewModel
+                    )
                 }
                 composable("dlsite_login") {
                     Box(modifier = Modifier.fillMaxSize())

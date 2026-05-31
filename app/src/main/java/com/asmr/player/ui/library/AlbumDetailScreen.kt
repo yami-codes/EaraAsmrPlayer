@@ -37,9 +37,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -61,6 +61,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -103,10 +104,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -360,6 +361,7 @@ fun AlbumDetailScreen(
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
                             AlbumHeader(
                                 album = if (isLocalTab) (model.localAlbum ?: album) else album,
+                                listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
                                 dlsiteUrl = model.dlsiteWorkno.takeIf { it.isNotBlank() }?.let { "https://www.dlsite.com/maniax/work/=/product_id/$it.html" }.orEmpty(),
                                 asmrOneUrl = model.asmrOneWorkId?.takeIf { it.isNotBlank() }?.let { "https://asmr.one/work/$it" }.orEmpty(),
                                 dlsiteEditions = if (isLocalTab) emptyList() else model.dlsiteEditions,
@@ -911,6 +913,7 @@ private fun AlbumDetailTabChrome(
 @OptIn(ExperimentalLayoutApi::class)
 private fun AlbumHeader(
     album: Album,
+    listenTogetherRjListenerCount: Int?,
     dlsiteUrl: String,
     asmrOneUrl: String,
     dlsiteEditions: List<DlsiteLanguageEdition>,
@@ -1004,7 +1007,7 @@ private fun AlbumHeader(
                             .size(36.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Photo,
+                            imageVector = Icons.Rounded.Photo,
                             contentDescription = "閫夋嫨灏侀潰",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -1042,20 +1045,65 @@ private fun AlbumHeader(
                     )
                     }
                     val circle = album.circle.trim()
-                    if (rj.isNotBlank() || circle.isNotBlank()) {
+                    val showMetaRow = rj.isNotBlank() || circle.isNotBlank() || listenTogetherRjListenerCount != null
+                    if (showMetaRow) {
                         AlbumHeaderInfoReveal(
                             revealKey = "$headerAnimationScopeKey:meta",
                             delayMillis = 40,
                             enabled = animateIntro
                         ) {
-                            AlbumPrimaryMetaRow(
-                                rjCode = rj,
-                                circle = circle,
-                                rjOnClick = { copyMeta("RJ", rj) },
-                                circleOnClick = { copyMeta("社团", circle) },
-                                appearance = AlbumMetaAppearance.OnImage,
-                                leadingVisual = AlbumMetaLeadingVisual.Icon,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AlbumPrimaryMetaRow(
+                                    rjCode = rj,
+                                    circle = circle,
+                                    modifier = Modifier.weight(1f),
+                                    rjOnClick = { copyMeta("RJ", rj) },
+                                    circleOnClick = { copyMeta("社团", circle) },
+                                    appearance = AlbumMetaAppearance.OnImage,
+                                    leadingVisual = AlbumMetaLeadingVisual.Icon,
+                                )
+                                if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    AlbumHeaderInfoReveal(
+                                        revealKey = "$headerAnimationScopeKey:listenTogetherRjCount",
+                                        delayMillis = 60,
+                                        enabled = animateIntro
+                                    ) {
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.16f),
+                                            contentColor = Color.White.copy(alpha = 0.96f),
+                                            shape = RoundedCornerShape(999.dp),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                width = 0.5.dp,
+                                                color = Color.White.copy(alpha = 0.2f)
+                                            )
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
+                                                    contentDescription = null,
+                                                    tint = Color.White.copy(alpha = 0.96f),
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.White.copy(alpha = 0.96f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1169,7 +1217,7 @@ private fun AlbumHeader(
                                     contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
                                 ) {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                     Spacer(modifier = Modifier.width(primaryIconGap))
                                     Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                 }
@@ -1188,7 +1236,7 @@ private fun AlbumHeader(
                                             contentColor = colorScheme.primary
                                         )
                                     ) {
-                                        Icon(Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                         Spacer(modifier = Modifier.width(primaryIconGap))
                                         Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                     }
@@ -1206,7 +1254,7 @@ private fun AlbumHeader(
                                             contentColor = colorScheme.primary
                                         )
                                     ) {
-                                        Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
+                                        Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
                                         Spacer(modifier = Modifier.width(primaryIconGap))
                                         Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                     }
@@ -1228,7 +1276,7 @@ private fun AlbumHeader(
                                     border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
                                 ) {
                                     Icon(
-                                        Icons.Default.CreateNewFolder,
+                                        Icons.Rounded.CreateNewFolder,
                                         contentDescription = null,
                                         tint = colorScheme.primary,
                                         modifier = Modifier.size(primaryIconSize)
@@ -1257,7 +1305,7 @@ private fun AlbumHeader(
                                         )
                                         Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
                                         Icon(
-                                            imageVector = Icons.Default.ArrowDropDown,
+                                            imageVector = Icons.Rounded.ArrowDropDown,
                                             contentDescription = null,
                                             tint = colorScheme.primary,
                                             modifier = Modifier.size(primaryIconSize)

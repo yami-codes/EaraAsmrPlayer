@@ -1,4 +1,4 @@
-package com.asmr.player.ui.playlists
+﻿package com.asmr.player.ui.playlists
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,10 +20,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -107,8 +107,7 @@ fun PlaylistsScreen(
                     EaraBrandedEmptyState(
                         sectionTitle = "我的列表",
                         headline = "还没有创建列表",
-                        description = "从右下角新建一个列表，把常听内容整理成自己的播放集合。",
-                        sectionIcon = Icons.AutoMirrored.Filled.QueueMusic,
+                        sectionIcon = Icons.AutoMirrored.Rounded.QueueMusic,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
                     )
@@ -147,7 +146,7 @@ fun PlaylistsScreen(
                         .align(Alignment.BottomEnd)
                         .padding(end = PlaylistsPageHorizontalPadding, bottom = LocalBottomOverlayPadding.current + 16.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Rounded.Add, contentDescription = null)
                 }
             }
         }
@@ -214,7 +213,7 @@ private fun PlaylistRow(
                 modifier = Modifier.size(PlaylistRowActionButtonSize)
             ) {
                 Icon(
-                    Icons.Default.Edit,
+                    Icons.Rounded.Edit,
                     contentDescription = null,
                     tint = if (playlist.category != "system") colorScheme.textSecondary else colorScheme.textTertiary,
                     modifier = Modifier.size(PlaylistRowActionIconSize)
@@ -226,7 +225,7 @@ private fun PlaylistRow(
                 modifier = Modifier.size(PlaylistRowActionButtonSize)
             ) {
                 Icon(
-                    Icons.Default.Delete, 
+                    Icons.Rounded.Delete, 
                     contentDescription = null, 
                     tint = if (playlist.category != "system") colorScheme.danger.copy(alpha = 0.7f) else colorScheme.textTertiary,
                     modifier = Modifier.size(PlaylistRowActionIconSize)

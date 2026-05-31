@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import android.content.Intent
 import android.net.Uri
@@ -25,11 +25,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ImageNotSupported
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ImageNotSupported
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -247,13 +247,13 @@ internal fun ImagePreviewDialog(
                             onClick = ::openCurrentWithOtherApp,
                             modifier = Modifier.testTag(IMAGE_PREVIEW_OPEN_EXTERNAL_TAG)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "打开")
+                            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "打开")
                         }
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier.testTag(IMAGE_PREVIEW_CLOSE_TAG)
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = "关闭")
+                            Icon(Icons.Rounded.Close, contentDescription = "关闭")
                         }
                     }
 
@@ -303,7 +303,7 @@ internal fun ImagePreviewDialog(
                                         }
                                     }
                                 },
-                                icon = Icons.Default.ChevronLeft,
+                                icon = Icons.Rounded.ChevronLeft,
                                 enabled = pagerState.currentPage > 0
                             )
                             PreviewNavButton(
@@ -319,7 +319,7 @@ internal fun ImagePreviewDialog(
                                         }
                                     }
                                 },
-                                icon = Icons.Default.ChevronRight,
+                                icon = Icons.Rounded.ChevronRight,
                                 enabled = pagerState.currentPage < items.lastIndex
                             )
                         }
@@ -505,7 +505,7 @@ private fun PreviewImageFallback(
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.ImageNotSupported,
+                imageVector = Icons.Rounded.ImageNotSupported,
                 contentDescription = null,
                 tint = colorScheme.textTertiary,
                 modifier = Modifier.size(40.dp)

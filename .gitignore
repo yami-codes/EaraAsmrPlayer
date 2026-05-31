@@ -4,6 +4,7 @@
 .trae/
 *.iml
 .worktrees/
+EaraServer/
 
 local.properties
 keystore.properties

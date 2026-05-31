@@ -1,4 +1,4 @@
-package com.asmr.player.ui.player
+﻿package com.asmr.player.ui.player
 
 import android.app.Activity
 import android.content.Context
@@ -26,8 +26,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -109,6 +109,8 @@ import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.SubtitleEntry
 import com.asmr.player.util.SubtitleIndexFinder
+import com.asmr.player.listentogether.ListenTogetherStatus
+import com.asmr.player.listentogether.ListenTogetherUiState
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -165,6 +167,227 @@ private fun AnimatedContentTransitionScope<NowPlayingSurfaceMode>.nowPlayingSurf
     return enter togetherWith exit using SizeTransform(clip = false)
 }
 
+internal sealed interface ListenTogetherAudiencePresentation {
+    data class Status(val text: String) : ListenTogetherAudiencePresentation
+
+    data class Audience(val companionCount: Int) : ListenTogetherAudiencePresentation
+}
+
+internal fun resolveListenTogetherAudiencePresentation(
+    state: ListenTogetherUiState
+): ListenTogetherAudiencePresentation? = when {
+    !state.available && state.status == ListenTogetherStatus.Unsupported ->
+        ListenTogetherAudiencePresentation.Status("当前音频无法参与一起听")
+    state.listenerCount != null ->
+        ListenTogetherAudiencePresentation.Audience(
+            companionCount = (state.listenerCount - 1).coerceAtLeast(0)
+        )
+    state.available ->
+        ListenTogetherAudiencePresentation.Audience(companionCount = 0)
+    else ->
+        null
+}
+
+private fun <S> AnimatedContentTransitionScope<S>.listenTogetherInlineTransform(): ContentTransform {
+    val enter = fadeIn(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> fullHeight / 3 },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+            easing = LinearOutSlowInEasing
+        )
+    )
+    val exit = fadeOut(
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    ) + slideOutVertically(
+        targetOffsetY = { fullHeight -> -(fullHeight / 3) },
+        animationSpec = tween(
+            durationMillis = NowPlayingMotionSpec.PlayerForegroundExitDurationMs,
+            easing = FastOutLinearInEasing
+        )
+    )
+    return enter togetherWith exit using SizeTransform(clip = false)
+}
+
+private fun AnimatedContentTransitionScope<Int>.listenTogetherCounterTransform(): ContentTransform {
+    val direction = if (targetState >= initialState) 1 else -1
+    val enter = fadeIn(
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing)
+    ) + slideInVertically(
+        initialOffsetY = { fullHeight -> direction * fullHeight },
+        animationSpec = tween(durationMillis = 220, easing = LinearOutSlowInEasing)
+    )
+    val exit = fadeOut(
+        animationSpec = tween(durationMillis = 140, easing = FastOutLinearInEasing)
+    ) + slideOutVertically(
+        targetOffsetY = { fullHeight -> -direction * fullHeight },
+        animationSpec = tween(durationMillis = 140, easing = FastOutLinearInEasing)
+    )
+    return enter togetherWith exit using SizeTransform(clip = false)
+}
+
+@Composable
+private fun ListenTogetherAudienceCountText(
+    companionCount: Int,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val textStyle = MaterialTheme.typography.labelSmall
+    var lastNonZeroCount by remember { mutableIntStateOf(0) }
+
+    val displayCount = when {
+        companionCount > 0 -> {
+            lastNonZeroCount = companionCount
+            companionCount
+        }
+        lastNonZeroCount > 0 -> lastNonZeroCount
+        else -> 0
+    }
+
+    AnimatedContent(
+        targetState = displayCount > 0,
+        transitionSpec = { listenTogetherInlineTransform() },
+        label = "listenTogetherAudienceMode"
+    ) { hasCompanions ->
+        if (hasCompanions) {
+            Row(
+                modifier = modifier,
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnimatedContent(
+                    targetState = displayCount,
+                    transitionSpec = { listenTogetherCounterTransform() },
+                    label = "listenTogetherAudienceCounter"
+                ) { value ->
+                    Text(
+                        text = value.toString(),
+                        style = textStyle.copy(fontWeight = FontWeight.SemiBold),
+                        color = color,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    text = " 人正在和你一起听",
+                    style = textStyle,
+                    color = color,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        } else {
+            Text(
+                text = "孤独赏鉴中",
+                modifier = modifier,
+                style = textStyle,
+                color = color,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ListenTogetherAudienceLine(
+    state: ListenTogetherUiState,
+    modifier: Modifier = Modifier,
+    accentColor: Color = AsmrTheme.colorScheme.primary,
+    pageEntranceSettled: Boolean = true
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val presentation = resolveListenTogetherAudiencePresentation(state)
+
+    val displayTarget = if (pageEntranceSettled) presentation else null
+
+    Box(
+        modifier = modifier.height(18.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.animateContentSize(
+                animationSpec = tween(
+                    durationMillis = NowPlayingMotionSpec.PlayerForegroundEnterDurationMs,
+                    easing = LinearOutSlowInEasing
+                )
+            ),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_users_round),
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = accentColor.copy(alpha = 0.82f)
+            )
+            AnimatedContent(
+                targetState = displayTarget,
+                transitionSpec = {
+                    fadeIn(tween(300, easing = LinearOutSlowInEasing)) togetherWith
+                        fadeOut(tween(200, easing = FastOutLinearInEasing))
+                },
+                label = "listenTogetherAudienceText"
+            ) { target ->
+                when (target) {
+                    is ListenTogetherAudiencePresentation.Status -> Text(
+                        text = target.text,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorScheme.textTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    is ListenTogetherAudiencePresentation.Audience -> ListenTogetherAudienceCountText(
+                        companionCount = target.companionCount,
+                        color = colorScheme.textTertiary
+                    )
+                    null -> {}
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistWithListenTogetherInfo(
+    artist: String,
+    listenTogetherState: ListenTogetherUiState,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start,
+    badgeAlignment: Alignment = Alignment.TopStart,
+    textAlignment: Alignment = Alignment.CenterStart,
+    accentColor: Color = AsmrTheme.colorScheme.primary,
+    pageEntranceSettled: Boolean = true
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        ListenTogetherAudienceLine(
+            state = listenTogetherState,
+            modifier = Modifier
+                .align(badgeAlignment)
+                .offset(y = (-18).dp),
+            accentColor = accentColor,
+            pageEntranceSettled = pageEntranceSettled
+        )
+        Text(
+            text = artist,
+            modifier = Modifier.align(textAlignment),
+            style = style,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = textAlign
+        )
+    }
+}
+
 @Composable
 @androidx.media3.common.util.UnstableApi
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -195,6 +418,7 @@ internal fun NowPlayingScreen(
     val resolvedDurationMs by viewModel.resolvedDurationMs.collectAsState()
     val sliceUiState by viewModel.sliceUiState.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
+    val listenTogetherUiState by viewModel.listenTogetherUiState.collectAsState()
     val lyricsState by lyricsViewModel.uiState.collectAsState()
     val item = playback.currentMediaItem
     val metadata = item?.mediaMetadata
@@ -357,6 +581,11 @@ internal fun NowPlayingScreen(
     val latestOnBack = rememberUpdatedState(onBack)
     val latestOnRouteExitStarted = rememberUpdatedState(onRouteExitStarted)
     val routeTransition = updateTransition(targetState = routeVisible, label = "nowPlayingRouteVisibility")
+    val pageEntranceSettled by remember {
+        derivedStateOf {
+            routeTransition.currentState && routeTransition.targetState && !routeTransition.isRunning
+        }
+    }
     val requestClose = remember(pendingRouteExit, currentMotionLayout) {
         {
             if (!pendingRouteExit) {
@@ -534,7 +763,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(36.dp)
@@ -553,7 +782,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onShowSleepTimer) {
                             Icon(
-                                Icons.Default.Timer,
+                                Icons.Rounded.Timer,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(28.dp)
@@ -561,7 +790,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.AutoMirrored.Filled.PlaylistPlay,
+                                Icons.AutoMirrored.Rounded.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(32.dp)
@@ -640,13 +869,14 @@ internal fun NowPlayingScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // 艺术家 (标题已移动到 header)
-                        Text(
-                            text = metadata?.artist?.toString().orEmpty(),
+                        ArtistWithListenTogetherInfo(
+                            artist = metadata?.artist?.toString().orEmpty(),
+                            listenTogetherState = listenTogetherUiState,
                             modifier = Modifier.then(infoMotion),
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.textSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            accentColor = accentColor,
+                            pageEntranceSettled = pageEntranceSettled
                         )
 
                         if (!isVideo) {
@@ -758,7 +988,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(28.dp)
@@ -776,7 +1006,7 @@ internal fun NowPlayingScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onShowSleepTimer) {
                             Icon(
-                                Icons.Default.Timer,
+                                Icons.Rounded.Timer,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp)
@@ -784,7 +1014,7 @@ internal fun NowPlayingScreen(
                         }
                         IconButton(onClick = onShowQueue) {
                             Icon(
-                                Icons.AutoMirrored.Filled.PlaylistPlay,
+                                Icons.AutoMirrored.Rounded.PlaylistPlay,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
@@ -981,7 +1211,7 @@ internal fun NowPlayingScreen(
                     ) {
                         IconButton(onClick = requestClose, enabled = !pendingRouteExit) {
                             Icon(
-                                Icons.Default.KeyboardArrowDown,
+                                Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = null,
                                 tint = colorScheme.onSurface,
                                 modifier = Modifier.size(32.dp)
@@ -1009,7 +1239,7 @@ internal fun NowPlayingScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onShowSleepTimer) {
                                 Icon(
-                                    Icons.Default.Timer,
+                                    Icons.Rounded.Timer,
                                     contentDescription = null,
                                     tint = colorScheme.onSurface,
                                     modifier = Modifier.size(26.dp)
@@ -1017,7 +1247,7 @@ internal fun NowPlayingScreen(
                             }
                             IconButton(onClick = onShowQueue) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.PlaylistPlay,
+                                    Icons.AutoMirrored.Rounded.PlaylistPlay,
                                     contentDescription = null,
                                     tint = colorScheme.onSurface,
                                     modifier = Modifier.size(28.dp)
@@ -1027,8 +1257,9 @@ internal fun NowPlayingScreen(
                     }
 
                     // 艺术家
-                    Text(
-                        text = metadata?.artist?.toString().orEmpty(),
+                    ArtistWithListenTogetherInfo(
+                        artist = metadata?.artist?.toString().orEmpty(),
+                        listenTogetherState = listenTogetherUiState,
                         style = MaterialTheme.typography.bodySmall.copy(
                             shadow = if (colorScheme.isDark) {
                                 Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 2f)
@@ -1037,12 +1268,14 @@ internal fun NowPlayingScreen(
                             }
                         ),
                         color = colorScheme.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(coverMotion),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        badgeAlignment = Alignment.TopCenter,
+                        textAlignment = Alignment.Center,
+                        accentColor = accentColor,
+                        pageEntranceSettled = pageEntranceSettled
                     )
 
                     // 封面
@@ -1308,7 +1541,7 @@ internal fun NowPlayingScreen(
 
                                         IconButton(onClick = { viewModel.playSlicePreview(slice) }) {
                                             Icon(
-                                                imageVector = Icons.Default.PlayArrow,
+                                                imageVector = Icons.Rounded.PlayArrow,
                                                 contentDescription = "播放切片",
                                                 tint = colorScheme.onSurface
                                             )

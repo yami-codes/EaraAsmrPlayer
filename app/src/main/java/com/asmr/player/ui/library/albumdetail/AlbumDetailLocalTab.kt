@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import android.net.Uri
@@ -35,9 +35,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -102,10 +102,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -136,6 +136,7 @@ import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
+import com.asmr.player.util.isOnlineTrackPath
 
 @Composable
 internal fun AlbumLocalBreadcrumbTabV2(
@@ -377,7 +378,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                             onDownload = null,
                             onAddToQueue = track?.let { { onAddToQueue(it); Unit } },
                             onAddToPlaylist = track?.let { { onAddToPlaylist(it) } },
-                            onManageTags = track?.let { { onManageTrackTags(it) } },
+                            onManageTags = track?.let { if (!isOnlineTrackPath(it.path)) { { onManageTrackTags(it) } } else null },
                             onRemoveFromAlbum = track?.let { { onRemoveTrack(it) } }
                         )
                     }

@@ -22,9 +22,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -167,11 +167,6 @@ internal fun PlaylistDetailContent(
     } else {
         "这个列表还没有内容"
     }
-    val emptyDescription = if (isFavorites) {
-        "看到喜欢的专辑或音轨时点一下收藏，它们就会回到这里。"
-    } else {
-        "把常听内容添加进来，后续就能从这里快速播放。"
-    }
     val emptySectionTitle = if (isFavorites) "我的收藏" else title.ifBlank { "我的列表" }
 
     Scaffold(
@@ -197,8 +192,7 @@ internal fun PlaylistDetailContent(
                 EaraBrandedEmptyState(
                     sectionTitle = emptySectionTitle,
                     headline = emptyHeadline,
-                    description = emptyDescription,
-                    sectionIcon = if (isFavorites) Icons.Default.Favorite else Icons.AutoMirrored.Filled.QueueMusic,
+                    sectionIcon = if (isFavorites) Icons.Rounded.Favorite else Icons.AutoMirrored.Rounded.QueueMusic,
                     modifier = contentModifier,
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
                 )

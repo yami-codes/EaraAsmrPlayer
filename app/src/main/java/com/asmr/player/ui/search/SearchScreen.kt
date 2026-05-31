@@ -1,4 +1,4 @@
-package com.asmr.player.ui.search
+﻿package com.asmr.player.ui.search
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -36,12 +36,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -436,12 +436,7 @@ fun SearchScreen(
                                     EaraBrandedEmptyState(
                                         sectionTitle = "在线搜索",
                                         headline = if (state.keyword.isBlank()) "还没有搜索结果" else "没有找到匹配结果",
-                                        description = if (state.keyword.isBlank()) {
-                                            "输入作品号、社团或 CV 后，匹配结果会显示在这里。"
-                                        } else {
-                                            "没有找到和当前关键词相关的内容，试试更换关键词、语言或排序方式。"
-                                        },
-                                        sectionIcon = Icons.Default.Search,
+                                        sectionIcon = Icons.Rounded.Search,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(
                                             top = topPadding,
@@ -476,7 +471,7 @@ fun SearchScreen(
                                     }
                                 } else {
                                     LazyVerticalStaggeredGrid(
-                                        columns = StaggeredGridCells.Adaptive(150.dp),
+                                        columns = StaggeredGridCells.Adaptive(if (isCompact) 150.dp else 200.dp),
                                         state = gridState,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -514,8 +509,7 @@ fun SearchScreen(
                             is SearchUiState.Error -> EaraBrandedEmptyState(
                                 sectionTitle = "在线搜索",
                                 headline = "网络连接出了点问题",
-                                description = state.message,
-                                sectionIcon = Icons.Filled.WifiOff,
+                                sectionIcon = Icons.Rounded.WifiOff,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     top = topPadding,
@@ -541,7 +535,7 @@ fun SearchScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.WifiOff,
+                                    imageVector = Icons.Rounded.WifiOff,
                                     contentDescription = null,
                                     tint = colorScheme.textSecondary.copy(alpha = 0.6f),
                                     modifier = Modifier.size(92.dp)
@@ -891,7 +885,7 @@ internal fun SearchToolbar(
                                 .testTag(SEARCH_CLEAR_BUTTON_TAG)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = Icons.Rounded.Close,
                                 contentDescription = null,
                                 tint = colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
@@ -961,7 +955,7 @@ internal fun SearchToolbar(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = Icons.Rounded.Search,
                                 contentDescription = null,
                                 tint = colorScheme.primary,
                                 modifier = Modifier.size(17.dp)
@@ -1057,14 +1051,14 @@ internal fun SearchPaginationHeader(
                         SearchPaginationIconButton(
                             onClick = onFirstPage,
                             enabled = canGoFirst && !controlsLocked,
-                            imageVector = Icons.Default.SkipPrevious,
+                            imageVector = Icons.Rounded.SkipPrevious,
                             contentDescription = "回到第一页",
                             modifier = Modifier.testTag(SEARCH_FIRST_PAGE_BUTTON_TAG)
                         )
                         SearchPaginationIconButton(
                             onClick = onPrev,
                             enabled = canGoPrev && !controlsLocked,
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "上一页",
                             modifier = Modifier.testTag(SEARCH_PREV_BUTTON_TAG)
                         )
@@ -1089,7 +1083,7 @@ internal fun SearchPaginationHeader(
                     SearchPaginationIconButton(
                         onClick = onNext,
                         enabled = canGoNext && !controlsLocked,
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = "下一页",
                         modifier = Modifier.testTag(SEARCH_NEXT_BUTTON_TAG)
                     )

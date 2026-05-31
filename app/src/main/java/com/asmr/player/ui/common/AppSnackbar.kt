@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -51,10 +51,10 @@ fun AppSnackbar(
 ) {
     val appColors = AsmrTheme.colorScheme
     val (icon, accentColor) = when (type) {
-        MessageType.Success -> Icons.Default.CheckCircle to Color(0xFF3E9B63)
-        MessageType.Error -> Icons.Default.Error to Color(0xFFD95C4F)
-        MessageType.Warning -> Icons.Default.Warning to Color(0xFFD6942A)
-        MessageType.Info -> Icons.Default.Info to Color(0xFF2F7FB6)
+        MessageType.Success -> Icons.Rounded.CheckCircle to Color(0xFF3E9B63)
+        MessageType.Error -> Icons.Rounded.Error to Color(0xFFD95C4F)
+        MessageType.Warning -> Icons.Rounded.Warning to Color(0xFFD6942A)
+        MessageType.Info -> Icons.Rounded.Info to Color(0xFF2F7FB6)
     }
     val shape = RoundedCornerShape(16.dp)
     val containerColor = MaterialTheme.colorScheme.surface

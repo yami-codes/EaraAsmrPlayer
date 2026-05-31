@@ -1,11 +1,11 @@
-package com.asmr.player.ui.dlsite
+﻿package com.asmr.player.ui.dlsite
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -177,7 +177,7 @@ private fun CredentialBlock(
                     trailingIcon = {
                         IconButton(onClick = onToggleRevealed, enabled = value.isNotBlank()) {
                             Icon(
-                                imageVector = if (revealed) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                imageVector = if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                 contentDescription = if (revealed) "隐藏" else "显示"
                             )
                         }

@@ -1,4 +1,4 @@
-package com.asmr.player.ui.common
+﻿package com.asmr.player.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -183,7 +183,7 @@ internal fun AudioItemRow(
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MoreVert,
+                                imageVector = Icons.Rounded.MoreVert,
                                 contentDescription = null,
                                 tint = colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(AudioItemMenuIconSize)

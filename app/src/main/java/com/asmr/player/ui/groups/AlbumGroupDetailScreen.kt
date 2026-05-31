@@ -27,9 +27,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -229,8 +229,7 @@ internal fun AlbumGroupDetailContent(
                 EaraBrandedEmptyState(
                     sectionTitle = title.ifBlank { "我的分组" },
                     headline = "这个分组还没有内容",
-                    description = "把专辑加入分组后，它们会按专辑整理展示在这里。",
-                    sectionIcon = Icons.Default.Folder,
+                    sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
                 )
@@ -413,7 +412,7 @@ private fun AlbumSectionHeader(
         }
         IconButton(onClick = onRemoveAlbum, modifier = Modifier.size(GroupActionButtonSize)) {
             Icon(
-                imageVector = Icons.Default.Delete,
+                imageVector = Icons.Rounded.Delete,
                 contentDescription = null,
                 tint = colorScheme.danger.copy(alpha = 0.7f),
                 modifier = Modifier.size(GroupActionIconSize)

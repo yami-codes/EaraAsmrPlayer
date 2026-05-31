@@ -1,4 +1,4 @@
-package com.asmr.player.ui.library
+﻿package com.asmr.player.ui.library
 
 import android.content.Intent
 import androidx.activity.compose.BackHandler
@@ -28,21 +28,21 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items as staggeredItems
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ViewList
-import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +50,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.foundation.layout.fillMaxHeight
 import com.asmr.player.util.Formatting
+import com.asmr.player.util.isOnlineTrackPath
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
@@ -136,11 +137,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Label
 import androidx.compose.material3.Card
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -492,12 +493,7 @@ fun LibraryScreen(
                                     EaraBrandedEmptyState(
                                         sectionTitle = if (hasAnyQuery) "本地库结果" else "本地库",
                                         headline = if (hasAnyQuery) "没有匹配的本地内容" else "还没有扫描到本地专辑",
-                                        description = if (hasAnyQuery) {
-                                            "可以调整关键词或筛选条件，也可以直接重置后重新查看全部内容。"
-                                        } else {
-                                            "到设置里的本地库添加目录后，再执行同步或刷新，这里就会出现内容。"
-                                        },
-                                        sectionIcon = if (hasAnyQuery) Icons.Default.Search else Icons.Default.FolderOpen,
+                                        sectionIcon = if (hasAnyQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(
                                             top = topPadding,
@@ -658,7 +654,7 @@ fun LibraryScreen(
                                                             onAddToPlaylist = {
                                                                 onOpenPlaylistPicker(MediaItemFactory.fromTrack(album, track))
                                                             },
-                                                            onManageTags = {
+                                                            onManageTags = if (!isOnlineTrackPath(track.path)) {{
                                                                 scope.launch {
                                                                     val inherited = withContext(Dispatchers.IO) {
                                                                         viewModel.loadInheritedTagsForAlbum(album.id)
@@ -671,7 +667,7 @@ fun LibraryScreen(
                                                                         userTags = user
                                                                     )
                                                                 }
-                                                            },
+                                                            }} else null,
                                                             onRemove = {
                                                                 viewModel.removeTrackFromAlbum(track.id)
                                                             }
@@ -690,7 +686,7 @@ fun LibraryScreen(
                                     }
                                 } else if (isGrid) {
                                     LazyVerticalStaggeredGrid(
-                                        columns = StaggeredGridCells.Adaptive(150.dp),
+                                        columns = StaggeredGridCells.Adaptive(if (isCompact) 150.dp else 200.dp),
                                         state = gridState,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -847,7 +843,7 @@ fun LibraryScreen(
                 val hasLocalPaths = remember(album) { album.getAllLocalPaths().isNotEmpty() }
                 ListItem(
                     headlineContent = { Text("删除") },
-                    leadingContent = { Icon(Icons.Default.Delete, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
@@ -858,7 +854,7 @@ fun LibraryScreen(
                 )
                 ListItem(
                     headlineContent = { Text("标签管理") },
-                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null) },
+                    leadingContent = { Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
@@ -876,7 +872,7 @@ fun LibraryScreen(
                 )
                 ListItem(
                     headlineContent = { Text("添加到分组") },
-                    leadingContent = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.CreateNewFolder, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
@@ -887,7 +883,7 @@ fun LibraryScreen(
                 )
                 ListItem(
                     headlineContent = { Text("本地同步") },
-                    leadingContent = { Icon(Icons.Default.Sync, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.Sync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
@@ -898,7 +894,7 @@ fun LibraryScreen(
                 )
                 ListItem(
                     headlineContent = { Text("云同步") },
-                    leadingContent = { Icon(Icons.Default.CloudSync, contentDescription = null) },
+                    leadingContent = { Icon(Icons.Rounded.CloudSync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
@@ -910,7 +906,7 @@ fun LibraryScreen(
                 if (isSyncing) {
                     ListItem(
                         headlineContent = { Text("取消同步") },
-                        leadingContent = { Icon(Icons.Default.Close, contentDescription = null) },
+                        leadingContent = { Icon(Icons.Rounded.Close, contentDescription = null) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp)
@@ -1038,7 +1034,7 @@ internal fun LibraryChrome(
                 .testTag(LIBRARY_SEARCH_INPUT_TAG),
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = colorScheme.onSurfaceVariant
                 )
@@ -1050,7 +1046,7 @@ internal fun LibraryChrome(
                         modifier = Modifier.size(20.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = null,
                             tint = colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp)
@@ -1064,7 +1060,7 @@ internal fun LibraryChrome(
         Spacer(modifier = Modifier.width(12.dp))
         Box {
             ActionButton(
-                icon = Icons.Default.SwapVert,
+                icon = Icons.Rounded.SwapVert,
                 onClick = { onSortMenuExpandedChange(true) },
                 modifier = Modifier.testTag(LIBRARY_SORT_BUTTON_TAG)
             )
@@ -1116,7 +1112,7 @@ internal fun LibraryChrome(
         }
         Spacer(modifier = Modifier.width(8.dp))
         ActionButton(
-            icon = Icons.Default.FilterList,
+            icon = Icons.Rounded.FilterList,
             onClick = onOpenFilterScreen,
             modifier = Modifier.testTag(LIBRARY_FILTER_BUTTON_TAG)
         )
@@ -1243,7 +1239,7 @@ private fun TrackListRow(
     onClick: () -> Unit,
     onAddToQueue: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onManageTags: () -> Unit,
+    onManageTags: (() -> Unit)? = null,
     onRemove: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -1268,31 +1264,41 @@ private fun TrackListRow(
             .fillMaxWidth()
             .clip(rowShape)
             .background(colorScheme.surface),
-        actions = listOf(
-            AudioItemMenuAction(
-                label = "添加到播放队列",
-                onClick = onAddToQueue,
-                icon = Icons.AutoMirrored.Filled.QueueMusic
-            ),
-            AudioItemMenuAction(
-                label = "添加到播放列表",
-                onClick = onAddToPlaylist,
-                icon = Icons.AutoMirrored.Filled.PlaylistAdd,
-                showDividerBefore = true
-            ),
-            AudioItemMenuAction(
-                label = "标签管理",
-                onClick = onManageTags,
-                icon = Icons.AutoMirrored.Filled.Label,
-                showDividerBefore = true
-            ),
-            AudioItemMenuAction(
-                label = "从专辑移除",
-                onClick = onRemove,
-                icon = Icons.Default.Delete,
-                showDividerBefore = true
+        actions = buildList {
+            add(
+                AudioItemMenuAction(
+                    label = "添加到播放队列",
+                    onClick = onAddToQueue,
+                    icon = Icons.AutoMirrored.Rounded.QueueMusic
+                )
             )
-        )
+            add(
+                AudioItemMenuAction(
+                    label = "添加到播放列表",
+                    onClick = onAddToPlaylist,
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    showDividerBefore = true
+                )
+            )
+            if (onManageTags != null) {
+                add(
+                    AudioItemMenuAction(
+                        label = "标签管理",
+                        onClick = onManageTags,
+                        icon = Icons.AutoMirrored.Rounded.Label,
+                        showDividerBefore = true
+                    )
+                )
+            }
+            add(
+                AudioItemMenuAction(
+                    label = "从专辑移除",
+                    onClick = onRemove,
+                    icon = Icons.Rounded.Delete,
+                    showDividerBefore = true
+                )
+            )
+        }
     )
 }
 
@@ -1363,7 +1369,7 @@ private fun AlbumGridItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ErrorOutline,
+                        imageVector = Icons.Rounded.ErrorOutline,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
@@ -1548,7 +1554,7 @@ private fun AlbumItem(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ErrorOutline,
+                                imageVector = Icons.Rounded.ErrorOutline,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(16.dp)
