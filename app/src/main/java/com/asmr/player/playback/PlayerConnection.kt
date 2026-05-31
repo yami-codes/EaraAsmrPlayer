@@ -544,7 +544,10 @@ class PlayerConnection @Inject constructor(
     private suspend fun savePlaybackState() {
         val c = controller ?: return
         val items = _queue.value.ifEmpty { (0 until c.mediaItemCount).map { idx -> c.getMediaItemAt(idx) } }
-        if (items.isEmpty()) return
+        if (items.isEmpty()) {
+            playbackStateStore.clear()
+            return
+        }
         val persistedQueue = items.mapNotNull { item ->
             val mediaId = item.mediaId.trim()
             if (mediaId.isBlank()) return@mapNotNull null
