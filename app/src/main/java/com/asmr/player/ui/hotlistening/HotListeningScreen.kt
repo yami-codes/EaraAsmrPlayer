@@ -14,12 +14,17 @@ import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -28,13 +33,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
+import com.asmr.player.hotlistening.HotListeningSortMode
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
@@ -42,6 +51,7 @@ import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
 import com.asmr.player.ui.library.AlbumGridItemSpacing
+import com.asmr.player.ui.library.AlbumCoverBadge
 import com.asmr.player.ui.library.AlbumItem
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
@@ -64,6 +74,8 @@ fun HotListeningScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
+    val selectedSortMode by viewModel.sortMode.collectAsState()
+    val selectedPeriod by viewModel.selectedPeriod.collectAsState()
     val colorScheme = AsmrTheme.colorScheme
     val scope = rememberCoroutineScope()
     val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -72,7 +84,6 @@ fun HotListeningScreen(
     val gridState = rememberSaveable(saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
 
     val periods = listOf("day" to "过去一天", "week" to "过去一周", "month" to "过去一月")
-    val currentPeriod = (uiState as? HotListeningUiState.Success)?.period ?: "day"
 
     fun scrollToTop() {
         scope.launch {
@@ -94,22 +105,57 @@ fun HotListeningScreen(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            periods.forEach { (period, label) ->
-                FilterChip(
-                    selected = currentPeriod == period,
-                    onClick = {
-                        viewModel.selectPeriod(period)
-                        scrollToTop()
-                    },
-                    label = { Text(label) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = colorScheme.primary.copy(alpha = 0.2f),
-                        selectedLabelColor = colorScheme.primary
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                periods.forEach { (period, label) ->
+                    FilterChip(
+                        selected = selectedPeriod == period,
+                        onClick = {
+                            viewModel.selectPeriod(period)
+                            scrollToTop()
+                        },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colorScheme.primary.copy(alpha = 0.2f),
+                            selectedLabelColor = colorScheme.primary
+                        )
                     )
-                )
+                }
+            }
+            Box(modifier = Modifier.padding(start = 18.dp)) {
+                Row(
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            viewModel.selectSortMode(selectedSortMode.nextMode)
+                            scrollToTop()
+                        }
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedSortMode.toggleLabel,
+                        style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.FilterList,
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier
+                            .padding(top = 1.dp)
+                            .size(14.dp)
+                    )
+                }
             }
         }
 
@@ -135,7 +181,7 @@ fun HotListeningScreen(
             )
 
             is HotListeningUiState.Success -> {
-                if (state.albums.isEmpty()) {
+                if (state.entries.isEmpty()) {
                     EaraBrandedEmptyState(
                         sectionTitle = "热门收听",
                         headline = "暂无排行数据",
@@ -153,14 +199,16 @@ fun HotListeningScreen(
                             .withAddedBottomPadding(LocalBottomOverlayPadding.current)
                     ) {
                         lazyItems(
-                            items = state.albums,
-                            key = { album -> stableAlbumKey(album) },
+                            items = state.entries,
+                            key = { entry -> stableAlbumKey(entry.album) },
                             contentType = { "album" }
-                        ) { album ->
+                        ) { entry ->
+                            val album = entry.album
                             AlbumItem(
                                 album = album,
                                 onClick = { onAlbumClick(album) },
-                                emptyCoverUseShimmer = true
+                                emptyCoverUseShimmer = true,
+                                coverBadge = entry.toCoverBadge()
                             )
                         }
                     }
@@ -181,15 +229,17 @@ fun HotListeningScreen(
                         verticalItemSpacing = AlbumGridItemSpacing
                     ) {
                         items(
-                            state.albums.size,
-                            key = { index -> stableAlbumKey(state.albums[index]) },
+                            state.entries.size,
+                            key = { index -> stableAlbumKey(state.entries[index].album) },
                             contentType = { "albumGrid" }
                         ) { index ->
-                            val album = state.albums[index]
+                            val entry = state.entries[index]
+                            val album = entry.album
                             AlbumGridItem(
                                 album = album,
                                 onClick = { onAlbumClick(album) },
-                                emptyCoverUseShimmer = true
+                                emptyCoverUseShimmer = true,
+                                coverBadge = entry.toCoverBadge()
                             )
                         }
                     }
@@ -198,3 +248,23 @@ fun HotListeningScreen(
         }
     }
 }
+
+private fun HotListeningEntry.toCoverBadge(): AlbumCoverBadge {
+    val icon = when (sortMode) {
+        HotListeningSortMode.PlayCount -> Icons.Rounded.PlayArrow
+        HotListeningSortMode.ListenDuration -> Icons.Rounded.AccessTime
+    }
+    return AlbumCoverBadge(icon = icon, text = metricLabel)
+}
+
+private val HotListeningSortMode.toggleLabel: String
+    get() = when (this) {
+        HotListeningSortMode.PlayCount -> "次数"
+        HotListeningSortMode.ListenDuration -> "时长"
+    }
+
+private val HotListeningSortMode.nextMode: HotListeningSortMode
+    get() = when (this) {
+        HotListeningSortMode.PlayCount -> HotListeningSortMode.ListenDuration
+        HotListeningSortMode.ListenDuration -> HotListeningSortMode.PlayCount
+    }

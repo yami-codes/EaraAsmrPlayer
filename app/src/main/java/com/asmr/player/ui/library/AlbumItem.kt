@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.Icon as MaterialIcon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -67,6 +69,7 @@ fun AlbumItem(
     onCircleClick: ((String) -> Unit)? = null,
     onCvClick: ((String) -> Unit)? = null,
     onTagClick: ((String) -> Unit)? = null,
+    coverBadge: AlbumCoverBadge? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumListItemCornerRadius) }
@@ -130,6 +133,14 @@ fun AlbumItem(
                             contentScale = ContentScale.Crop,
                             placeholderCornerRadius = 0,
                             modifier = Modifier.fillMaxSize().clip(coverShape),
+                        )
+                    }
+                    coverBadge?.let { badge ->
+                        AlbumCoverMetricBadge(
+                            badge = badge,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
                         )
                     }
                 }
@@ -266,6 +277,7 @@ fun AlbumGridItem(
     onCircleClick: ((String) -> Unit)? = null,
     onCvClick: ((String) -> Unit)? = null,
     onTagClick: ((String) -> Unit)? = null,
+    coverBadge: AlbumCoverBadge? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumGridItemCornerRadius) }
@@ -349,6 +361,15 @@ fun AlbumGridItem(
                 )
             }
 
+            coverBadge?.let { badge ->
+                AlbumCoverMetricBadge(
+                    badge = badge,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                )
+            }
+
             if (album.hasAsmrOne) {
                 CollectedStamp(
                     modifier = Modifier
@@ -416,6 +437,40 @@ fun AlbumGridItem(
                 )
             }
         }
+    }
+}
+
+data class AlbumCoverBadge(
+    val icon: ImageVector,
+    val text: String
+)
+
+@Composable
+private fun AlbumCoverMetricBadge(
+    badge: AlbumCoverBadge,
+    modifier: Modifier = Modifier
+) {
+    if (badge.text.isBlank()) return
+    Row(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.58f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 5.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MaterialIcon(
+            imageVector = badge.icon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(12.dp)
+        )
+        Text(
+            text = badge.text,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

@@ -6,11 +6,14 @@ import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.domain.model.Album
 import com.asmr.player.hotlistening.HotListeningApi
 import com.asmr.player.hotlistening.HotListeningItem
+import com.asmr.player.hotlistening.HotListeningSortMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,19 +28,31 @@ class HotListeningViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<HotListeningUiState>(HotListeningUiState.Loading)
     val uiState: StateFlow<HotListeningUiState> = _uiState.asStateFlow()
 
+    private val _selectedPeriod = MutableStateFlow("day")
+    val selectedPeriod: StateFlow<String> = _selectedPeriod.asStateFlow()
+
     val viewMode: StateFlow<Int> = settingsRepository.hotListeningViewMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
-    private var currentPeriod: String = "day"
+    val sortMode: StateFlow<HotListeningSortMode> = settingsRepository.hotListeningSortMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HotListeningSortMode.PlayCount)
 
     init {
-        loadTopListings(currentPeriod)
+        viewModelScope.launch {
+            combine(_selectedPeriod, sortMode) { period, mode -> period to mode }
+                .collectLatest { (period, mode) ->
+                    loadTopListings(period, mode)
+                }
+        }
     }
 
     fun selectPeriod(period: String) {
-        if (period != currentPeriod) {
-            currentPeriod = period
-            loadTopListings(period)
+        _selectedPeriod.value = period
+    }
+
+    fun selectSortMode(mode: HotListeningSortMode) {
+        viewModelScope.launch {
+            settingsRepository.setHotListeningSortMode(mode)
         }
     }
 
@@ -48,55 +63,110 @@ class HotListeningViewModel @Inject constructor(
     }
 
     fun refresh() {
-        loadTopListings(currentPeriod)
+        val period = _selectedPeriod.value
+        val mode = sortMode.value
+        viewModelScope.launch {
+            loadTopListings(period, mode)
+        }
     }
 
-    private fun loadTopListings(period: String) {
+    private suspend fun loadTopListings(period: String, sortMode: HotListeningSortMode) {
         if (!hotListeningApi.isBackendConfigured) {
             _uiState.update { HotListeningUiState.Error("后端未配置") }
             return
         }
         _uiState.update { HotListeningUiState.Loading }
-        viewModelScope.launch {
-            runCatching {
-                val items = hotListeningApi.getTopListings(period)
-                if (items == null) {
-                    _uiState.update { HotListeningUiState.Error("请求失败") }
-                    return@launch
-                }
-                val albums = items.map { it.toAlbum() }
-                _uiState.update {
-                    HotListeningUiState.Success(
-                        albums = albums,
-                        period = period
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    HotListeningUiState.Error(error.message ?: "加载失败")
-                }
+        runCatching {
+            val items = hotListeningApi.getTopListings(period, sortMode)
+            if (items == null) {
+                _uiState.update { HotListeningUiState.Error("请求失败") }
+                return
+            }
+            val entries = items.map { it.toEntry(sortMode) }
+            _uiState.update {
+                HotListeningUiState.Success(
+                    entries = entries,
+                    period = period,
+                    sortMode = sortMode
+                )
+            }
+        }.onFailure { error ->
+            _uiState.update {
+                HotListeningUiState.Error(error.message ?: "加载失败")
             }
         }
     }
 
-    private fun HotListeningItem.toAlbum(): Album {
-        return Album(
-            title = this.title,
-            path = "",
-            circle = this.circle,
-            cv = this.cv,
-            tags = this.tagList,
-            coverUrl = this.coverUrl,
-            rjCode = this.rj
+    private fun HotListeningItem.toEntry(sortMode: HotListeningSortMode): HotListeningEntry {
+        return HotListeningEntry(
+            album = Album(
+                title = title,
+                path = "",
+                circle = circle,
+                cv = cv,
+                tags = tagList,
+                coverUrl = coverUrl,
+                rjCode = rj
+            ),
+            playCount = playCount,
+            listenDurationMs = listenDurationMs,
+            sortMode = sortMode
         )
+    }
+}
+
+data class HotListeningEntry(
+    val album: Album,
+    val playCount: Int,
+    val listenDurationMs: Long,
+    val sortMode: HotListeningSortMode
+) {
+    val metricLabel: String
+        get() = when (sortMode) {
+            HotListeningSortMode.PlayCount -> formatCompactCount(playCount.toLong())
+            HotListeningSortMode.ListenDuration -> formatCompactDuration(listenDurationMs)
+        }
+
+    private fun formatCompactCount(value: Long): String {
+        return when {
+            value >= 100_000_000L -> formatDecimalUnit(value, 100_000_000L, "亿")
+            value >= 10_000L -> formatDecimalUnit(value, 10_000L, "万")
+            else -> value.toString()
+        }
+    }
+
+    private fun formatDecimalUnit(value: Long, unitValue: Long, unit: String): String {
+        val whole = value / unitValue
+        val decimal = (value % unitValue) / (unitValue / 10L)
+        return if (decimal > 0L && whole < 100L) {
+            "$whole.$decimal$unit"
+        } else {
+            "$whole$unit"
+        }
+    }
+
+    private fun formatCompactDuration(ms: Long): String {
+        if (ms < 60_000L) return "<1分钟"
+
+        val totalMinutes = ms / 60_000L
+        if (totalMinutes < 60L) return "${totalMinutes}分钟"
+
+        val totalHours = totalMinutes / 60L
+        val compactHours = when {
+            totalHours >= 100_000_000L -> "${totalHours / 100_000_000L}亿"
+            totalHours >= 10_000L -> "${totalHours / 10_000L}万"
+            else -> totalHours.toString()
+        }
+        return "${compactHours}小时"
     }
 }
 
 sealed class HotListeningUiState {
     data object Loading : HotListeningUiState()
     data class Success(
-        val albums: List<Album>,
-        val period: String
+        val entries: List<HotListeningEntry>,
+        val period: String,
+        val sortMode: HotListeningSortMode
     ) : HotListeningUiState()
     data class Error(val message: String) : HotListeningUiState()
 }

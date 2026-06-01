@@ -2,6 +2,7 @@ package com.asmr.player.data.settings
 
 import android.content.Context
 import com.asmr.player.playback.AppVolume
+import com.asmr.player.hotlistening.HotListeningSortMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -40,6 +41,10 @@ class SettingsRepository @Inject constructor(
 
     val hotListeningViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.HOT_LISTENING_VIEW_MODE] ?: 1
+    }
+
+    val hotListeningSortMode: Flow<HotListeningSortMode> = context.settingsDataStore.data.map { prefs ->
+        HotListeningSortMode.fromWireValue(prefs[SettingsKeys.HOT_LISTENING_SORT_MODE])
     }
 
     val playMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
@@ -352,6 +357,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setHotListeningViewMode(mode: Int) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.HOT_LISTENING_VIEW_MODE] = mode }
+        }
+    }
+
+    suspend fun setHotListeningSortMode(mode: HotListeningSortMode) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.HOT_LISTENING_SORT_MODE] = mode.wireValue }
         }
     }
 
