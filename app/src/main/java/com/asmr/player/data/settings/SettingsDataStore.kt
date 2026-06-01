@@ -19,6 +19,7 @@ object SettingsKeys {
     val LIBRARY_VIEW_MODE = intPreferencesKey("library_view_mode")
     val SEARCH_VIEW_MODE = intPreferencesKey("search_view_mode")
     val HOT_LISTENING_VIEW_MODE = intPreferencesKey("hot_listening_view_mode")
+    val HOT_LISTENING_SORT_MODE = stringPreferencesKey("hot_listening_sort_mode")
 
     val PLAY_MODE = intPreferencesKey("play_mode")
 
