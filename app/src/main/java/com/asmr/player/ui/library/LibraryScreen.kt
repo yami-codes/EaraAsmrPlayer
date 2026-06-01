@@ -104,6 +104,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
@@ -1257,6 +1258,11 @@ private fun TrackListRow(
         fixedTrailingSubtitle = fixedTrailingSubtitle,
         showSubtitleStamp = showSubtitleStamp,
         onClick = onClick,
+        compact = true,
+        compactContentPadding = PaddingValues(horizontal = 16.dp, vertical = 5.dp),
+        titleMaxLines = 1,
+        titleTextStyle = MaterialTheme.typography.bodyMedium,
+        subtitleTextStyle = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
