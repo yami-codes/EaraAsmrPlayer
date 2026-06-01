@@ -30,10 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.asmr.player.domain.model.Album
 import com.asmr.player.cache.CacheImageModel
@@ -50,7 +53,6 @@ internal val AlbumGridItemCornerRadius = 6.dp
 internal val AlbumGridItemSpacing = 6.dp
 private val AlbumItemHorizontalPadding = 8.dp
 private val AlbumItemVerticalPadding = 2.dp
-private val AlbumItemMetaLineVerticalPadding = 1.dp
 private val AlbumItemCoverContentSpacing = 8.dp
 private val AlbumGridInfoHorizontalPadding = 6.dp
 private val AlbumGridInfoVerticalPadding = 8.dp
@@ -109,6 +111,7 @@ fun AlbumItem(
             coverWidth = coverSize,
             minHeight = coverSize,
             spacing = AlbumItemCoverContentSpacing,
+            fillContentHeight = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = listItemHeight),
@@ -146,10 +149,40 @@ fun AlbumItem(
                 }
             },
             content = {
-                Column(
+                val statsText = remember(
+                    album.ratingValue,
+                    album.ratingCount,
+                    album.dlCount,
+                    album.priceJpy,
+                    album.releaseDate
+                ) {
+                    buildString {
+                        val rv = album.ratingValue
+                        if (rv != null && rv > 0.0) {
+                            append("★")
+                            append(String.format("%.1f", rv))
+                            if (album.ratingCount > 0) append("(${album.ratingCount})")
+                        }
+                        if (album.dlCount > 0) {
+                            if (isNotEmpty()) append(" · ")
+                            append("DL ${album.dlCount}")
+                        }
+                        if (album.priceJpy > 0) {
+                            if (isNotEmpty()) append(" · ")
+                            append("¥${album.priceJpy}")
+                        }
+                        if (album.releaseDate.isNotBlank()) {
+                            if (isNotEmpty()) append(" · ")
+                            append(album.releaseDate)
+                        }
+                    }
+                }
+
+                BalancedColumn(
                     modifier = Modifier
-                        .padding(top = 3.dp, bottom = 3.dp, end = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
+                        .padding(top = 4.dp, bottom = 4.dp, end = 12.dp),
+                    minGap = 4.dp,
+                    maxGap = 12.dp,
                 ) {
                     val rj = album.rjCode.ifBlank { album.workId }
                     Text(
@@ -160,81 +193,44 @@ fun AlbumItem(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    AlbumItemMetaLine {
-                        AlbumPrimaryMetaRow(
-                            rjCode = rj,
-                            circle = album.circle,
+                    AlbumPrimaryMetaRow(
+                        rjCode = rj,
+                        circle = album.circle,
+                        modifier = Modifier.fillMaxWidth(),
+                        rjOnClick = onRjClick?.let { click -> { click(rj) } },
+                        circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                        leadingVisual = Icon,
+                        order = AlbumPrimaryMetaOrder.CircleThenRj,
+                    )
+
+                    if (album.cv.isNotBlank()) {
+                        AlbumCvChipsSingleLine(
+                            cvText = album.cv,
                             modifier = Modifier.fillMaxWidth(),
-                            rjOnClick = onRjClick?.let { click -> { click(rj) } },
-                            circleOnClick = onCircleClick?.let { click -> { click(album.circle) } },
+                            onCvClick = onCvClick,
                             leadingVisual = Icon,
-                            order = AlbumPrimaryMetaOrder.CircleThenRj,
+                        )
+                    }
+                    if (album.tags.isNotEmpty()) {
+                        AlbumTagsSingleLine(
+                            tags = album.tags,
+                            modifier = Modifier.fillMaxWidth(),
+                            onTagClick = onTagClick,
+                            leadingVisual = Icon,
                         )
                     }
 
-                    if (album.cv.isNotBlank()) {
-                        AlbumItemMetaLine {
-                            AlbumCvChipsSingleLine(
-                                cvText = album.cv,
-                                modifier = Modifier.fillMaxWidth(),
-                                onCvClick = onCvClick,
-                                leadingVisual = Icon,
-                            )
-                        }
-                    }
-
-                    val statsText = remember(
-                        album.ratingValue,
-                        album.ratingCount,
-                        album.dlCount,
-                        album.priceJpy,
-                        album.releaseDate
-                    ) {
-                        buildString {
-                            val rv = album.ratingValue
-                            if (rv != null && rv > 0.0) {
-                                append("★")
-                                append(String.format("%.1f", rv))
-                                if (album.ratingCount > 0) append("(${album.ratingCount})")
-                            }
-                            if (album.dlCount > 0) {
-                                if (isNotEmpty()) append(" · ")
-                                append("DL ${album.dlCount}")
-                            }
-                            if (album.priceJpy > 0) {
-                                if (isNotEmpty()) append(" · ")
-                                append("¥${album.priceJpy}")
-                            }
-                            if (album.releaseDate.isNotBlank()) {
-                                if (isNotEmpty()) append(" · ")
-                                append(album.releaseDate)
-                            }
-                        }
-                    }
-                    if (album.tags.isNotEmpty()) {
-                        AlbumItemMetaLine {
-                            AlbumTagsSingleLine(
-                                tags = album.tags,
-                                modifier = Modifier.fillMaxWidth(),
-                                onTagClick = onTagClick,
-                                leadingVisual = Icon,
-                            )
-                        }
-                    }
-
                     if (statsText.isNotBlank()) {
-                        AlbumItemMetaLine {
-                            Text(
-                                text = statsText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.textTertiary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag(ALBUM_ITEM_STATS_TAG)
-                            )
-                        }
+                        Text(
+                            text = statsText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.textTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag(ALBUM_ITEM_STATS_TAG)
+                        )
                     }
                 }
             },
@@ -251,17 +247,44 @@ fun AlbumItem(
 }
 
 @Composable
-private fun AlbumItemMetaLine(
+internal fun BalancedColumn(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    minGap: Dp = 4.dp,
+    maxGap: Dp = 12.dp,
+    content: @Composable () -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = AlbumItemMetaLineVerticalPadding),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        content()
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val placeables = measurables.map { measurable ->
+            measurable.measure(constraints.copy(minHeight = 0))
+        }
+
+        val layoutWidth = if (constraints.maxWidth != Constraints.Infinity) {
+            constraints.maxWidth
+        } else {
+            maxOf(constraints.minWidth, placeables.maxOfOrNull { it.width } ?: 0)
+        }
+
+        val childrenHeight = placeables.sumOf { it.height }
+        val layoutHeight = if (constraints.maxHeight != Constraints.Infinity) {
+            maxOf(constraints.minHeight, constraints.maxHeight, childrenHeight)
+        } else {
+            maxOf(constraints.minHeight, childrenHeight)
+        }
+
+        val remaining = (layoutHeight - childrenHeight).coerceAtLeast(0)
+        val gapCount = placeables.size + 1
+        val idealGap = if (gapCount > 0) remaining / gapCount else 0
+        val gap = idealGap.coerceIn(minGap.roundToPx(), maxGap.roundToPx())
+        val used = gap * gapCount
+        val extra = remaining - used
+
+        layout(layoutWidth, layoutHeight) {
+            var y = (extra / 2) + gap
+            placeables.forEach { placeable ->
+                placeable.placeRelative(0, y)
+                y += placeable.height + gap
+            }
+        }
     }
 }
 

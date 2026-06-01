@@ -99,14 +99,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
@@ -1260,6 +1258,11 @@ private fun TrackListRow(
         fixedTrailingSubtitle = fixedTrailingSubtitle,
         showSubtitleStamp = showSubtitleStamp,
         onClick = onClick,
+        compact = true,
+        compactContentPadding = PaddingValues(horizontal = 16.dp, vertical = 5.dp),
+        titleMaxLines = 1,
+        titleTextStyle = MaterialTheme.typography.bodyMedium,
+        subtitleTextStyle = MaterialTheme.typography.labelSmall.copy(lineHeight = 14.sp),
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
@@ -1511,6 +1514,7 @@ private fun AlbumItem(
             coverWidth = coverSize,
             minHeight = coverSize,
             spacing = 8.dp,
+            fillContentHeight = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = listItemHeight),
@@ -1640,47 +1644,5 @@ private fun AlbumItem(
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun BalancedColumn(
-    modifier: Modifier = Modifier,
-    minGap: Dp = 4.dp,
-    maxGap: Dp = 12.dp,
-    content: @Composable () -> Unit,
-) {
-    Layout(content = content, modifier = modifier) { measurables, constraints ->
-        val placeables = measurables.map { measurable ->
-            measurable.measure(constraints.copy(minHeight = 0))
-        }
-
-        val layoutWidth = if (constraints.maxWidth != Constraints.Infinity) {
-            constraints.maxWidth
-        } else {
-            maxOf(constraints.minWidth, placeables.maxOfOrNull { it.width } ?: 0)
-        }
-
-        val childrenHeight = placeables.sumOf { it.height }
-        val layoutHeight = if (constraints.maxHeight != Constraints.Infinity) {
-            maxOf(constraints.minHeight, constraints.maxHeight, childrenHeight)
-        } else {
-            maxOf(constraints.minHeight, childrenHeight)
-        }
-
-        val remaining = (layoutHeight - childrenHeight).coerceAtLeast(0)
-        val gapCount = placeables.size + 1
-        val idealGap = if (gapCount > 0) remaining / gapCount else 0
-        val gap = idealGap.coerceIn(minGap.roundToPx(), maxGap.roundToPx())
-        val used = gap * gapCount
-        val extra = remaining - used
-
-        layout(layoutWidth, layoutHeight) {
-            var y = (extra / 2) + gap
-            placeables.forEach { placeable ->
-                placeable.placeRelative(0, y)
-                y += placeable.height + gap
-            }
-        }
     }
 }
