@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,7 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import com.asmr.player.ui.common.AsmrAsyncImage
-import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.FlatActionDialog
 import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
@@ -85,6 +86,9 @@ internal const val SEARCH_ASSIST_FULL_RANKING_TAG = "search_assist_full_ranking"
 internal const val SEARCH_ASSIST_CHROME_TAG = "search_assist_chrome"
 private const val SearchAssistCollapsedRows = 2
 private val SearchAssistChromeContentGap = 8.dp
+private val SearchAssistSkeletonChipHeight = 30.dp
+private val SearchAssistSkeletonWorkHeightCompact = 76.dp
+private val SearchAssistSkeletonWorkHeightExpanded = 84.dp
 
 @Composable
 fun SearchAssistScreen(
@@ -121,7 +125,6 @@ internal fun SearchAssistContent(
     onClearHistory: () -> Unit,
     onOpenFullRanking: () -> Unit
 ) {
-    val colorScheme = AsmrTheme.colorScheme
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember { FocusRequester() }
     var keyword by rememberSaveable(initialRequest.keyword) { mutableStateOf(initialRequest.keyword) }
@@ -315,10 +318,23 @@ internal fun SearchAssistContent(
                 }
             }
 
-            if (uiState.suggestions.hotCvs.isNotEmpty()) {
+            if (uiState.isLoadingSuggestions) {
+                item(contentType = "hotCvsLoading") {
+                    SearchAssistTermSectionSkeleton(title = "热门声优")
+                }
+                item(contentType = "hotTagsLoading") {
+                    SearchAssistTermSectionSkeleton(title = "热门标签")
+                }
+                item(contentType = "hotWorksLoading") {
+                    SearchAssistWorkSectionSkeleton(
+                        title = "热门作品",
+                        compact = isCompact
+                    )
+                }
+            } else if (uiState.suggestions.hotCvs.isNotEmpty()) {
                 item(contentType = "hotCvs") {
                     SearchAssistTermSection(
-                        title = "热门 CV",
+                        title = "热门声优",
                         terms = uiState.suggestions.hotCvs,
                         expanded = hotCvsExpanded,
                         onExpandedChange = { hotCvsExpanded = it },
@@ -330,7 +346,7 @@ internal fun SearchAssistContent(
             if (uiState.suggestions.hotTags.isNotEmpty()) {
                 item(contentType = "hotTags") {
                     SearchAssistTermSection(
-                        title = "热门 tags",
+                        title = "热门标签",
                         terms = uiState.suggestions.hotTags,
                         expanded = hotTagsExpanded,
                         onExpandedChange = { hotTagsExpanded = it },
@@ -381,17 +397,6 @@ internal fun SearchAssistContent(
                                 }
                             }
                         }
-                    }
-                }
-            } else if (uiState.isLoadingSuggestions) {
-                item(contentType = "loadingSuggestions") {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        EaraLogoLoadingIndicator(size = 28.dp, tint = colorScheme.primary)
                     }
                 }
             }
@@ -447,6 +452,43 @@ internal fun SearchAssistContent(
                     )
                 )
             )
+        }
+    }
+}
+
+@Composable
+private fun SearchAssistTermSectionSkeleton(title: String) {
+    SearchAssistSection(title = title) {
+        SearchAssistChipFlow(expanded = false) {
+            listOf(0.26f, 0.22f, 0.30f, 0.18f, 0.24f, 0.28f).forEach { widthFraction ->
+                SearchAssistTextChipSkeleton(widthFraction = widthFraction)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAssistWorkSectionSkeleton(
+    title: String,
+    compact: Boolean
+) {
+    SearchAssistSection(title = title) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(2) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SearchAssistWorkChipSkeleton(
+                        compact = compact,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SearchAssistWorkChipSkeleton(
+                        compact = compact,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }
@@ -513,6 +555,20 @@ private fun SearchAssistTermSection(
 }
 
 @Composable
+private fun SearchAssistTextChipSkeleton(
+    widthFraction: Float
+) {
+    val shape = RoundedCornerShape(7.dp)
+    AsmrShimmerPlaceholder(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(SearchAssistSkeletonChipHeight)
+            .clip(shape),
+        cornerRadius = 7
+    )
+}
+
+@Composable
 private fun SearchAssistTextChip(
     text: String,
     onClick: () -> Unit
@@ -546,6 +602,57 @@ private fun SearchAssistTextChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun SearchAssistWorkChipSkeleton(
+    compact: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(8.dp)
+    val cardHeight = if (compact) {
+        SearchAssistSkeletonWorkHeightCompact
+    } else {
+        SearchAssistSkeletonWorkHeightExpanded
+    }
+    Row(
+        modifier = modifier
+            .height(cardHeight)
+            .clip(shape)
+    ) {
+        AsmrShimmerPlaceholder(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .fillMaxHeight(),
+            cornerRadius = 0
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AsmrShimmerPlaceholder(
+                modifier = Modifier
+                    .fillMaxWidth(0.88f)
+                    .height(16.dp),
+                cornerRadius = 6
+            )
+            AsmrShimmerPlaceholder(
+                modifier = Modifier
+                    .fillMaxWidth(0.68f)
+                    .height(16.dp),
+                cornerRadius = 6
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            AsmrShimmerPlaceholder(
+                modifier = Modifier
+                    .fillMaxWidth(0.52f)
+                    .height(12.dp),
+                cornerRadius = 6
+            )
+        }
     }
 }
 
