@@ -54,6 +54,7 @@ import com.asmr.player.ui.library.AlbumGridItem
 import com.asmr.player.ui.library.AlbumGridItemSpacing
 import com.asmr.player.ui.library.AlbumCoverBadge
 import com.asmr.player.ui.library.AlbumItem
+import com.asmr.player.ui.library.rememberAlbumMetaCopyAction
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -78,6 +79,7 @@ fun HotListeningScreen(
     val selectedSortMode by viewModel.sortMode.collectAsState()
     val selectedPeriod by viewModel.selectedPeriod.collectAsState()
     val colorScheme = AsmrTheme.colorScheme
+    val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
     val scope = rememberCoroutineScope()
     val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
 
@@ -236,7 +238,11 @@ fun HotListeningScreen(
                                 album = album,
                                 onClick = { onAlbumClick(album) },
                                 emptyCoverUseShimmer = true,
-                                coverBadge = entry.toCoverBadge()
+                                coverBadge = entry.toCoverBadge(),
+                                onRjClick = { copyMeta("RJ", it) },
+                                onCircleClick = { copyMeta("社团", it) },
+                                onCvClick = { copyMeta("CV", it) },
+                                onTagClick = { copyMeta("标签", it) },
                             )
                         }
                     }
@@ -267,7 +273,11 @@ fun HotListeningScreen(
                                 album = album,
                                 onClick = { onAlbumClick(album) },
                                 emptyCoverUseShimmer = true,
-                                coverBadge = entry.toCoverBadge()
+                                coverBadge = entry.toCoverBadge(),
+                                onRjClick = { copyMeta("RJ", it) },
+                                onCircleClick = { copyMeta("社团", it) },
+                                onCvClick = { copyMeta("CV", it) },
+                                onTagClick = { copyMeta("标签", it) },
                             )
                         }
                     }
