@@ -1168,36 +1168,21 @@ fun EqualizerPanel(
     }
 
     if (showSaveDialog) {
-        AlertDialog(
+        FlatTextFieldDialog(
             onDismissRequest = { showSaveDialog = false },
-            title = { Text("保存预设") },
-            text = {
-                OutlinedTextField(
-                    value = newPresetName,
-                    onValueChange = { newPresetName = it },
-                    label = { Text("预设名称") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newPresetName.isNotBlank()) {
-                            onSavePreset(newPresetName)
-                            showSaveDialog = false
-                            newPresetName = ""
-                        }
-                    }
-                ) {
-                    Text("保存")
+            message = "请输入自定义预设名称。",
+            value = newPresetName,
+            onValueChange = { newPresetName = it },
+            placeholder = "预设名称",
+            confirmText = "保存",
+            confirmEnabled = newPresetName.trim().isNotBlank(),
+            onConfirm = {
+                if (newPresetName.isNotBlank()) {
+                    onSavePreset(newPresetName.trim())
+                    showSaveDialog = false
+                    newPresetName = ""
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) {
-                    Text("取消")
-                }
-            }
         )
     }
 }

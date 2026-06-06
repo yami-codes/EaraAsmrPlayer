@@ -38,7 +38,6 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,7 +45,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -70,6 +68,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrTheme
@@ -202,7 +203,6 @@ fun DownloadsScreen(
                     is PendingDeleteAction.Task -> {
                         val task = tasks.firstOrNull { it.taskId == action.taskId } ?: return@remember null
                         ResolvedDeleteText(
-                            title = "确认删除",
                             message = "将物理删除“${task.title}”目录下的文件，且不可恢复。"
                         )
                     }
@@ -212,7 +212,6 @@ fun DownloadsScreen(
                             .flatMap { it.items.asSequence() }
                             .firstOrNull { it.workId == action.workId } ?: return@remember null
                         ResolvedDeleteText(
-                            title = "确认删除",
                             message = "将物理删除文件“${item.fileName}”，且不可恢复。"
                         )
                     }
@@ -220,12 +219,14 @@ fun DownloadsScreen(
             }
 
             if (resolved != null) {
-                AlertDialog(
+                FlatActionDialog(
                     onDismissRequest = { pendingDelete = null },
-                    title = { Text(resolved.title) },
-                    text = { Text(resolved.message) },
-                    confirmButton = {
-                        TextButton(
+                    message = resolved.message,
+                    actions = listOf(
+                        FlatDialogAction("取消", onClick = { pendingDelete = null }),
+                        FlatDialogAction(
+                            text = "删除",
+                            tone = FlatDialogActionTone.Danger,
                             onClick = {
                                 pendingDelete = null
                                 when (action) {
@@ -233,15 +234,8 @@ fun DownloadsScreen(
                                     is PendingDeleteAction.Item -> viewModel.deleteItem(action.workId)
                                 }
                             }
-                        ) {
-                            Text("删除")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { pendingDelete = null }) {
-                            Text("取消")
-                        }
-                    }
+                        )
+                    )
                 )
             } else {
                 pendingDelete = null
@@ -256,7 +250,6 @@ private sealed class PendingDeleteAction {
 }
 
 private data class ResolvedDeleteText(
-    val title: String,
     val message: String
 )
 

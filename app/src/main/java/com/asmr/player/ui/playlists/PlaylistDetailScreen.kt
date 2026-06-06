@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -34,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -63,6 +61,9 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AudioItemMenuAction
 import com.asmr.player.ui.common.AudioItemRow
 import com.asmr.player.ui.common.EaraBrandedEmptyState
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.rememberAudioMeta
@@ -239,30 +240,20 @@ internal fun PlaylistDetailContent(
     }
 
     pendingRemoveItem?.let { item ->
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { pendingRemoveItem = null },
-            title = { Text("确认移除") },
-            text = {
-                Text(
-                    text = "确定从「$title」移除“${item.title.ifBlank { "未命名" }}”吗？",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                TextButton(
+            message = "确定从「$title」移除“${item.title.ifBlank { "未命名" }}”吗？",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { pendingRemoveItem = null }),
+                FlatDialogAction(
+                    text = "移除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveItem = null
                         onRemoveItem(item.mediaId)
                     }
-                ) {
-                    Text("移除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemoveItem = null }) {
-                    Text("取消")
-                }
-            }
+                )
+            )
         )
     }
 }

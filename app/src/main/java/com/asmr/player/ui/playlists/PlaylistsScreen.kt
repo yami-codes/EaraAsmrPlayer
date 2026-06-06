@@ -45,14 +45,15 @@ import com.asmr.player.data.local.db.dao.PlaylistStatsRow
 import com.asmr.player.data.local.db.entities.PlaylistEntity
 import com.asmr.player.ui.common.AsmrAsyncImage
 
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.text.font.FontWeight
 import com.asmr.player.ui.theme.AsmrTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.graphics.Color
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.EaraBrandedEmptyState
@@ -235,32 +236,20 @@ private fun PlaylistRow(
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            containerColor = colorScheme.surface,
-            titleContentColor = colorScheme.textPrimary,
-            textContentColor = colorScheme.textSecondary,
-            title = { Text("确认删除", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
-            text = { Text("确定要删除列表“${playlist.name}”吗？此操作不可撤销。") },
-            confirmButton = {
-                TextButton(
+            message = "确定要删除列表“${playlist.name}”吗？此操作不可撤销。",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(
+                    text = "删除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         showDeleteConfirm = false
                         onDelete()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.danger)
-                ) {
-                    Text("删除")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.textSecondary)
-                ) {
-                    Text("取消")
-                }
-            }
+                    }
+                )
+            )
         )
     }
 
@@ -282,50 +271,16 @@ private fun CreatePlaylistDialog(
     onCreate: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val colorScheme = AsmrTheme.colorScheme
-    
-    AlertDialog(
+
+    FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        containerColor = colorScheme.surface,
-        titleContentColor = colorScheme.textPrimary,
-        textContentColor = colorScheme.textSecondary,
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(name) },
-                enabled = name.isNotBlank(),
-                colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
-            ) {
-                Text("创建")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.textSecondary)
-            ) {
-                Text("取消")
-            }
-        },
-        title = { Text("新建列表", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                placeholder = { Text("请输入列表名称", color = colorScheme.textTertiary) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = colorScheme.background,
-                    unfocusedContainerColor = colorScheme.background,
-                    focusedIndicatorColor = colorScheme.primary,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = colorScheme.textPrimary,
-                    unfocusedTextColor = colorScheme.textSecondary
-                )
-            )
-        }
+        message = "请输入新列表名称。",
+        value = name,
+        onValueChange = { name = it },
+        placeholder = "请输入列表名称",
+        confirmText = "创建",
+        confirmEnabled = name.trim().isNotBlank(),
+        onConfirm = { onCreate(name.trim()) },
     )
 }
 
@@ -336,48 +291,15 @@ private fun RenamePlaylistDialog(
     onRename: (String) -> Unit
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
-    val colorScheme = AsmrTheme.colorScheme
 
-    AlertDialog(
+    FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        containerColor = colorScheme.surface,
-        titleContentColor = colorScheme.textPrimary,
-        textContentColor = colorScheme.textSecondary,
-        confirmButton = {
-            TextButton(
-                onClick = { onRename(name) },
-                enabled = name.isNotBlank() && name.trim() != initialName.trim(),
-                colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
-            ) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.textSecondary)
-            ) {
-                Text("取消")
-            }
-        },
-        title = { Text("重命名列表", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp)),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = colorScheme.background,
-                    unfocusedContainerColor = colorScheme.background,
-                    focusedIndicatorColor = colorScheme.primary,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = colorScheme.textPrimary,
-                    unfocusedTextColor = colorScheme.textSecondary
-                )
-            )
-        }
+        message = "请输入新的列表名称。",
+        value = name,
+        onValueChange = { name = it },
+        placeholder = "请输入列表名称",
+        confirmText = "确定",
+        confirmEnabled = name.trim().isNotBlank() && name.trim() != initialName.trim(),
+        onConfirm = { onRename(name.trim()) },
     )
 }

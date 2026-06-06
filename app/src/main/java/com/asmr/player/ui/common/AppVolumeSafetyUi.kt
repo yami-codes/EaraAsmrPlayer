@@ -1,8 +1,5 @@
 package com.asmr.player.ui.common
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -93,24 +90,12 @@ fun AppVolumeHearingWarningDialog(
     state: ProtectedAppVolumeChangeState
 ) {
     val pendingChange = state.pendingChange ?: return
-    AlertDialog(
+    FlatActionDialog(
         onDismissRequest = state::dismissPendingChange,
-        title = { Text("听力损伤提醒") },
-        text = {
-            Text(
-                "当前要调整到 ${pendingChange.targetPercent}% 音量，已经超过 40%，" +
-                    "可能造成听力损伤。确认后，本次启动内不再重复提示。"
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = state::confirmPendingChange) {
-                Text("确认")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = state::dismissPendingChange) {
-                Text("取消")
-            }
-        }
+        message = "当前要调整到 ${pendingChange.targetPercent}% 音量，已经超过 40%，可能造成听力损伤。确认后，本次启动内不再重复提示。",
+        actions = listOf(
+            FlatDialogAction("取消", state::dismissPendingChange),
+            FlatDialogAction("确认", state::confirmPendingChange, FlatDialogActionTone.Primary)
+        )
     )
 }

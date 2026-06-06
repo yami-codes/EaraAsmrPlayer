@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -74,6 +75,62 @@ class SearchScreenChromeTest {
     }
 
     @Test
+    fun searchToolbar_readOnlyFieldOpensAssistAndSearchIconSubmits() {
+        var assistOpenCount by mutableIntStateOf(0)
+        var submitCount by mutableIntStateOf(0)
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "RJ123456",
+                    onKeywordChange = {},
+                    searchFieldReadOnly = true,
+                    onSearchFieldClick = { assistOpenCount += 1 },
+                    selectedFilter = SearchFilterOption.Trend,
+                    selectedLocale = "ja_JP",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = { submitCount += 1 },
+                    onFilterSelected = {},
+                    onLocaleSelected = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_INPUT_TAG).performClick()
+        composeRule.onNodeWithTag(SEARCH_SUBMIT_BUTTON_TAG).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, assistOpenCount)
+            assertEquals(1, submitCount)
+        }
+    }
+
+    @Test
+    fun searchToolbar_usesHotKeywordPlaceholderWhenKeywordIsEmpty() {
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "",
+                    onKeywordChange = {},
+                    placeholder = "CV A",
+                    selectedFilter = SearchFilterOption.Trend,
+                    selectedLocale = "ja_JP",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onFilterSelected = {},
+                    onLocaleSelected = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("CV A").assertExists()
+    }
+
+    @Test
     fun searchPending_disablesChromeAndShowsSearchSpinner() {
         composeRule.setContent {
             AsmrPlayerTheme {
@@ -95,6 +152,7 @@ class SearchScreenChromeTest {
                         canGoPrev = false,
                         canGoNext = false,
                         controlsLocked = true,
+                        onFirstPage = {},
                         onPrev = {},
                         onNext = {}
                     )
@@ -113,6 +171,11 @@ class SearchScreenChromeTest {
 
     @Test
     fun scopeMenu_displaysIconsAndUpdatedFilterOptions() {
+        val filterOptions = SearchFilterOption.values()
+        assertEquals(SearchFilterOption.Collected, filterOptions.first())
+        assertEquals(SearchFilterOption.Presale, filterOptions[filterOptions.lastIndex - 1])
+        assertEquals(SearchFilterOption.PurchasedOnly, filterOptions.last())
+
         composeRule.setContent {
             AsmrPlayerTheme {
                 SearchToolbar(
@@ -134,10 +197,45 @@ class SearchScreenChromeTest {
         composeRule.onNodeWithText("中文作品").assertExists()
         composeRule.onNodeWithText("已购").assertExists()
         composeRule.onNodeWithText("预售").assertExists()
+        composeRule.onNodeWithText("已收录").assertExists()
         composeRule.onNodeWithText("人气顺序").assertExists()
         composeRule.onNodeWithText("最新发售").assertExists()
         composeRule.onNodeWithText("销量最高").assertExists()
         composeRule.onNodeWithText("价格最高").assertExists()
+    }
+
+    @Test
+    fun collectedFilter_usesSortMenuInsteadOfLanguageMenu() {
+        var selectedSort = SearchCollectedSortOption.ReleaseNew
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "",
+                    onKeywordChange = {},
+                    selectedFilter = SearchFilterOption.Collected,
+                    selectedCollectedSort = selectedSort,
+                    selectedLocale = "zh_CN",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onFilterSelected = {},
+                    onLocaleSelected = {},
+                    onCollectedSortSelected = { selectedSort = it }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_COLLECTED_SORT_BUTTON_TAG).performClick()
+        composeRule.onNodeWithText("最新发售").assertExists()
+        composeRule.onNodeWithText("评分最高").assertExists()
+        composeRule.onAllNodesWithText("时长最长").assertCountEquals(0)
+        composeRule.onNodeWithText("评分最高").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(SearchCollectedSortOption.RatingHigh, selectedSort)
+        }
     }
 
     @Test
@@ -162,6 +260,7 @@ class SearchScreenChromeTest {
                         canGoPrev = true,
                         canGoNext = true,
                         controlsLocked = true,
+                        onFirstPage = {},
                         onPrev = {},
                         onNext = {}
                     )
@@ -193,6 +292,7 @@ class SearchScreenChromeTest {
                         canGoPrev = true,
                         canGoNext = true,
                         controlsLocked = false,
+                        onFirstPage = {},
                         onPrev = {},
                         onNext = {}
                     )
@@ -223,6 +323,7 @@ class SearchScreenChromeTest {
                     canGoPrev = true,
                     canGoNext = true,
                     controlsLocked = false,
+                    onFirstPage = {},
                     onPrev = { prevCount += 1 },
                     onNext = { nextCount += 1 }
                 )
@@ -301,6 +402,7 @@ class SearchScreenChromeTest {
                     onSearchSubmit = {},
                     onFilterSelected = {},
                     onLocaleSelected = {},
+                    onFirstPage = {},
                     onPrev = {},
                     onNext = {}
                 )

@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -373,13 +374,14 @@ private fun AlbumMetaBadge(
     val palette = albumMetaPalette(tone, colorScheme, appearance)
     val styledModifier = modifier
         .then(if (maxWidth != null) Modifier.widthIn(max = maxWidth) else Modifier)
+        .clip(shape)
+        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
         .background(palette.container, shape)
         .border(0.5.dp, palette.border, shape)
         .padding(
             horizontal = 7.dp,
             vertical = 2.dp,
         )
-        .let { if (onClick != null) it.clickable(onClick = onClick) else it }
 
     Row(
         modifier = styledModifier,

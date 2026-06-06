@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Arrangement
@@ -73,11 +75,12 @@ internal fun AudioItemRow(
     titleColor: Color = Unspecified,
     subtitleColor: Color = Unspecified,
     fixedTrailingSubtitle: String = "",
-    showClickIndication: Boolean = true
+    showClickIndication: Boolean = true,
+    compact: Boolean = false,
+    compactContentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+    titleMaxLines: Int = 2
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val materialColorScheme = MaterialTheme.colorScheme
-    val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
     val interactionSource = remember { MutableInteractionSource() }
     val resolvedTitleStyle = titleTextStyle ?: MaterialTheme.typography.bodyLarge
     val resolvedSubtitleStyle = subtitleTextStyle ?: MaterialTheme.typography.bodySmall
@@ -94,154 +97,240 @@ internal fun AudioItemRow(
         )
     }
 
+    if (compact) {
+        Row(
+            modifier = modifier
+                .then(clickableModifier)
+                .fillMaxWidth()
+                .padding(compactContentPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leadingContent?.let { content ->
+                Box(
+                    modifier = Modifier.padding(end = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    content()
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = title,
+                    maxLines = titleMaxLines,
+                    overflow = TextOverflow.Ellipsis,
+                    style = resolvedTitleStyle,
+                    color = resolvedTitleColor
+                )
+                AudioItemSupportingText(
+                    subtitle = subtitle,
+                    fixedTrailingSubtitle = fixedTrailingSubtitle,
+                    textStyle = resolvedSubtitleStyle,
+                    textColor = resolvedSubtitleColor
+                )
+            }
+
+            AudioItemTrailingContent(
+                showSubtitleStamp = showSubtitleStamp,
+                subtitleStampModifier = subtitleStampModifier,
+                subtitleStampTestTag = subtitleStampTestTag,
+                menuButtonTestTag = menuButtonTestTag,
+                actions = actions,
+                trailingContent = trailingContent
+            )
+        }
+        return
+    }
+
     ListItem(
         headlineContent = {
             Text(
                 text = title,
-                maxLines = 2,
+                maxLines = titleMaxLines,
                 overflow = TextOverflow.Ellipsis,
                 style = resolvedTitleStyle,
                 color = resolvedTitleColor
             )
         },
         supportingContent = {
-            when {
-                subtitle.isNotBlank() && fixedTrailingSubtitle.isNotBlank() -> {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = subtitle,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = resolvedSubtitleStyle,
-                            color = resolvedSubtitleColor,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        Text(
-                            text = fixedTrailingSubtitle,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            textAlign = TextAlign.End,
-                            style = resolvedSubtitleStyle,
-                            color = resolvedSubtitleColor,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                }
-                subtitle.isNotBlank() -> {
-                    Text(
-                        text = subtitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = resolvedSubtitleStyle,
-                        color = resolvedSubtitleColor
-                    )
-                }
-                fixedTrailingSubtitle.isNotBlank() -> {
-                    Text(
-                        text = fixedTrailingSubtitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                        style = resolvedSubtitleStyle,
-                        color = resolvedSubtitleColor
-                    )
-                }
-            }
+            AudioItemSupportingText(
+                subtitle = subtitle,
+                fixedTrailingSubtitle = fixedTrailingSubtitle,
+                textStyle = resolvedSubtitleStyle,
+                textColor = resolvedSubtitleColor
+            )
         },
         leadingContent = leadingContent,
         trailingContent = {
-            val showMenu = actions.isNotEmpty()
-            val showTrailing = showSubtitleStamp || trailingContent != null || showMenu
-            if (!showTrailing) return@ListItem
-
-            var expanded by remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier.offset(x = AudioItemTrailingRightOffset),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(AudioItemTrailingSpacing)
-            ) {
-                if (showSubtitleStamp) {
-                    val stampModifier = if (subtitleStampTestTag != null) {
-                        subtitleStampModifier.testTag(subtitleStampTestTag)
-                    } else {
-                        subtitleStampModifier
-                    }
-                    SubtitleStamp(modifier = stampModifier)
-                }
-
-                trailingContent?.invoke(this)
-
-                if (showMenu) {
-                    Box {
-                        IconButton(
-                            onClick = { expanded = true },
-                            modifier = if (menuButtonTestTag != null) {
-                                Modifier
-                                    .size(AudioItemMenuButtonSize)
-                                    .testTag(menuButtonTestTag)
-                            } else {
-                                Modifier.size(AudioItemMenuButtonSize)
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = null,
-                                tint = colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(AudioItemMenuIconSize)
-                            )
-                        }
-                        MaterialTheme(
-                            colorScheme = materialColorScheme.copy(
-                                surface = dynamicContainerColor,
-                                surfaceContainer = dynamicContainerColor
-                            )
-                        ) {
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.background(dynamicContainerColor)
-                            ) {
-                                actions.forEach { action ->
-                                    if (action.showDividerBefore) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                            thickness = 0.5.dp,
-                                            color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
-                                        )
-                                    }
-
-                                    DropdownMenuItem(
-                                        text = { Text(action.label) },
-                                        modifier = if (action.testTag != null) {
-                                            Modifier.testTag(action.testTag)
-                                        } else {
-                                            Modifier
-                                        },
-                                        onClick = {
-                                            expanded = false
-                                            action.onClick()
-                                        },
-                                        leadingIcon = action.icon?.let { icon ->
-                                            {
-                                                Icon(
-                                                    imageVector = icon,
-                                                    contentDescription = null,
-                                                    tint = if (action.iconTint != Unspecified) {
-                                                        action.iconTint
-                                                    } else {
-                                                        colorScheme.onSurfaceVariant
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            AudioItemTrailingContent(
+                showSubtitleStamp = showSubtitleStamp,
+                subtitleStampModifier = subtitleStampModifier,
+                subtitleStampTestTag = subtitleStampTestTag,
+                menuButtonTestTag = menuButtonTestTag,
+                actions = actions,
+                trailingContent = trailingContent
+            )
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = modifier.then(clickableModifier)
     )
+}
+
+@Composable
+private fun AudioItemSupportingText(
+    subtitle: String,
+    fixedTrailingSubtitle: String,
+    textStyle: TextStyle,
+    textColor: Color
+) {
+    when {
+        subtitle.isNotBlank() && fixedTrailingSubtitle.isNotBlank() -> {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = subtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = textStyle,
+                    color = textColor,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Text(
+                    text = fixedTrailingSubtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    textAlign = TextAlign.End,
+                    style = textStyle,
+                    color = textColor,
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+        subtitle.isNotBlank() -> {
+            Text(
+                text = subtitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = textStyle,
+                color = textColor
+            )
+        }
+        fixedTrailingSubtitle.isNotBlank() -> {
+            Text(
+                text = fixedTrailingSubtitle,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                style = textStyle,
+                color = textColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun AudioItemTrailingContent(
+    showSubtitleStamp: Boolean,
+    subtitleStampModifier: Modifier,
+    subtitleStampTestTag: String?,
+    menuButtonTestTag: String?,
+    actions: List<AudioItemMenuAction>,
+    trailingContent: (@Composable (RowScope.() -> Unit))?
+) {
+    val showMenu = actions.isNotEmpty()
+    val showTrailing = showSubtitleStamp || trailingContent != null || showMenu
+    if (!showTrailing) return
+
+    val colorScheme = AsmrTheme.colorScheme
+    val materialColorScheme = MaterialTheme.colorScheme
+    val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
+    var expanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier.offset(x = AudioItemTrailingRightOffset),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AudioItemTrailingSpacing)
+    ) {
+        if (showSubtitleStamp) {
+            val stampModifier = if (subtitleStampTestTag != null) {
+                subtitleStampModifier.testTag(subtitleStampTestTag)
+            } else {
+                subtitleStampModifier
+            }
+            SubtitleStamp(modifier = stampModifier)
+        }
+
+        trailingContent?.invoke(this)
+
+        if (showMenu) {
+            Box {
+                IconButton(
+                    onClick = { expanded = true },
+                    modifier = if (menuButtonTestTag != null) {
+                        Modifier
+                            .size(AudioItemMenuButtonSize)
+                            .testTag(menuButtonTestTag)
+                    } else {
+                        Modifier.size(AudioItemMenuButtonSize)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(AudioItemMenuIconSize)
+                    )
+                }
+                MaterialTheme(
+                    colorScheme = materialColorScheme.copy(
+                        surface = dynamicContainerColor,
+                        surfaceContainer = dynamicContainerColor
+                    )
+                ) {
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(dynamicContainerColor)
+                    ) {
+                        actions.forEach { action ->
+                            if (action.showDividerBefore) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    thickness = 0.5.dp,
+                                    color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
+                                )
+                            }
+
+                            DropdownMenuItem(
+                                text = { Text(action.label) },
+                                modifier = if (action.testTag != null) {
+                                    Modifier.testTag(action.testTag)
+                                } else {
+                                    Modifier
+                                },
+                                onClick = {
+                                    expanded = false
+                                    action.onClick()
+                                },
+                                leadingIcon = action.icon?.let { icon ->
+                                    {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = if (action.iconTint != Unspecified) {
+                                                action.iconTint
+                                            } else {
+                                                colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

@@ -14,6 +14,7 @@ fun CoverContentRow(
     minHeight: Dp,
     modifier: Modifier = Modifier,
     spacing: Dp = 16.dp,
+    fillContentHeight: Boolean = false,
     cover: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
@@ -27,6 +28,11 @@ fun CoverContentRow(
         val coverWidthPx = coverWidth.roundToPx()
         val spacingPx = spacing.roundToPx()
         val minHeightPx = minHeight.roundToPx()
+        val contentMinHeight = if (fillContentHeight) {
+            max(minHeightPx, coverWidthPx).coerceAtMost(constraints.maxHeight)
+        } else {
+            0
+        }
 
         val maxWidth = constraints.maxWidth
         val contentMaxWidth = (maxWidth - coverWidthPx - spacingPx).coerceAtLeast(0)
@@ -34,7 +40,7 @@ fun CoverContentRow(
         val contentConstraints = Constraints(
             minWidth = 0,
             maxWidth = contentMaxWidth,
-            minHeight = 0,
+            minHeight = contentMinHeight,
             maxHeight = constraints.maxHeight,
         )
         var contentPlaceable = measurables[1].measure(contentConstraints)
@@ -42,8 +48,13 @@ fun CoverContentRow(
         val desiredHeight = max(minHeightPx, max(coverWidthPx, contentPlaceable.height))
         val finalHeight = desiredHeight.coerceIn(constraints.minHeight, constraints.maxHeight)
 
-        if (finalHeight != desiredHeight) {
-            contentPlaceable = measurables[1].measure(contentConstraints.copy(maxHeight = finalHeight))
+        if (finalHeight != desiredHeight || (fillContentHeight && contentPlaceable.height != finalHeight)) {
+            contentPlaceable = measurables[1].measure(
+                contentConstraints.copy(
+                    minHeight = if (fillContentHeight) finalHeight else contentConstraints.minHeight,
+                    maxHeight = finalHeight
+                )
+            )
         }
 
         val coverPlaceable = measurables[0].measure(Constraints.fixed(coverWidthPx, coverWidthPx))

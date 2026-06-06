@@ -2,6 +2,7 @@ package com.asmr.player.data.settings
 
 import android.content.Context
 import com.asmr.player.playback.AppVolume
+import com.asmr.player.hotlistening.HotListeningSortMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,9 @@ data class PlaybackRuntimeSettings(
 class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private val systemVolumeSyncLock = Any()
+    private var pendingSystemVolumeSyncPercent: Int? = null
+
     val appVolumePercent: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         AppVolume.clampPercent(prefs[SettingsKeys.APP_VOLUME_PERCENT] ?: AppVolume.DefaultPercent)
     }
@@ -40,6 +44,10 @@ class SettingsRepository @Inject constructor(
 
     val hotListeningViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.HOT_LISTENING_VIEW_MODE] ?: 1
+    }
+
+    val hotListeningSortMode: Flow<HotListeningSortMode> = context.settingsDataStore.data.map { prefs ->
+        HotListeningSortMode.fromWireValue(prefs[SettingsKeys.HOT_LISTENING_SORT_MODE])
     }
 
     val playMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
@@ -355,6 +363,12 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setHotListeningSortMode(mode: HotListeningSortMode) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.HOT_LISTENING_SORT_MODE] = mode.wireValue }
+        }
+    }
+
     suspend fun setPlayMode(mode: Int) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.PLAY_MODE] = mode }
@@ -362,6 +376,7 @@ class SettingsRepository @Inject constructor(
     }
 
     suspend fun setAppVolumePercent(percent: Int) {
+        clearPendingSystemVolumeSync()
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit {
                 it[SettingsKeys.APP_VOLUME_PERCENT] = AppVolume.clampPercent(percent)
@@ -369,24 +384,35 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    suspend fun ensureAppVolumePercentInitialized(defaultPercent: Int): Int {
-        return withContext(Dispatchers.IO) {
-            var resolved = AppVolume.clampPercent(defaultPercent)
+    suspend fun syncAppVolumePercentFromSystem(percent: Int) {
+        val clampedPercent = AppVolume.clampPercent(percent)
+        withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { prefs ->
-                val stored = prefs[SettingsKeys.APP_VOLUME_PERCENT]
-                resolved = if (stored == null) {
-                    AppVolume.clampPercent(defaultPercent).also {
-                        prefs[SettingsKeys.APP_VOLUME_PERCENT] = it
-                    }
-                } else {
-                    AppVolume.clampPercent(stored)
+                val currentPercent = AppVolume.clampPercent(
+                    prefs[SettingsKeys.APP_VOLUME_PERCENT] ?: AppVolume.DefaultPercent
+                )
+                if (currentPercent != clampedPercent) {
+                    markPendingSystemVolumeSync(clampedPercent)
                 }
+                prefs[SettingsKeys.APP_VOLUME_PERCENT] = clampedPercent
             }
-            resolved
+        }
+    }
+
+    fun consumePendingSystemVolumeSync(percent: Int): Boolean {
+        val clampedPercent = AppVolume.clampPercent(percent)
+        return synchronized(systemVolumeSyncLock) {
+            if (pendingSystemVolumeSyncPercent != clampedPercent) {
+                false
+            } else {
+                pendingSystemVolumeSyncPercent = null
+                true
+            }
         }
     }
 
     suspend fun adjustAppVolumePercent(deltaPercent: Int): Int {
+        clearPendingSystemVolumeSync()
         return withContext(Dispatchers.IO) {
             var updated = AppVolume.DefaultPercent
             context.settingsDataStore.edit {
@@ -401,6 +427,18 @@ class SettingsRepository @Inject constructor(
     suspend fun setAsmrOneSite(site: Int) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.ASMR_ONE_SITE] = site }
+        }
+    }
+
+    private fun markPendingSystemVolumeSync(percent: Int) {
+        synchronized(systemVolumeSyncLock) {
+            pendingSystemVolumeSyncPercent = AppVolume.clampPercent(percent)
+        }
+    }
+
+    private fun clearPendingSystemVolumeSync() {
+        synchronized(systemVolumeSyncLock) {
+            pendingSystemVolumeSyncPercent = null
         }
     }
 

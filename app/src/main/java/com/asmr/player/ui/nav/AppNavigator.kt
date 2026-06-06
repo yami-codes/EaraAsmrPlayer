@@ -1,11 +1,14 @@
 package com.asmr.player.ui.nav
 
+import android.net.Uri
 import androidx.navigation.NavHostController
 import java.net.URLEncoder
 
 object Routes {
     const val Library = "library"
     const val Search = "search"
+    const val SearchAssist = "search_assist"
+    const val SearchAssistPattern = "search_assist?keyword={keyword}"
     const val HotListening = "hot_listening"
     const val NowPlaying = "now_playing"
 
@@ -13,6 +16,13 @@ object Routes {
     const val AlbumDetailOnlineByRjPattern = "album_detail_online/{rj}"
 
     const val AlbumDetailByRjPattern = "album_detail_rj/{rj}?initialTab={initialTab}"
+    fun searchAssist(keyword: String = ""): String {
+        val normalized = keyword.trim()
+        if (normalized.isBlank()) return SearchAssist
+        val encoded = Uri.encode(normalized)
+        return "search_assist?keyword=$encoded"
+    }
+
     fun albumDetailByRj(rj: String, initialTab: String? = null): String {
         val encoded = URLEncoder.encode(rj, "UTF-8")
         return buildString {
@@ -23,6 +33,17 @@ object Routes {
                 append(URLEncoder.encode(initialTab, "UTF-8"))
             }
         }
+    }
+}
+
+internal fun resolveAlbumDetailPopUpToRoute(currentRoute: String?): String {
+    return when (currentRoute) {
+        Routes.SearchAssistPattern -> Routes.Search
+        Routes.SearchAssist -> Routes.Search
+        Routes.Search -> Routes.Search
+        Routes.Library -> Routes.Library
+        Routes.HotListening -> Routes.HotListening
+        else -> currentRoute ?: Routes.Library
     }
 }
 
@@ -44,11 +65,7 @@ class AppNavigator(
         }
         val refreshToken = System.currentTimeMillis()
         val currentRoute = navController.currentBackStackEntry?.destination?.route
-        val popToRoute = when {
-            currentRoute == Routes.Search -> Routes.Search
-            currentRoute == Routes.Library -> Routes.Library
-            else -> currentRoute ?: Routes.Library
-        }
+        val popToRoute = resolveAlbumDetailPopUpToRoute(currentRoute)
         navController.navigate(route) {
             launchSingleTop = true
             restoreState = false
@@ -70,11 +87,7 @@ class AppNavigator(
         )
         val refreshToken = System.currentTimeMillis()
         val currentRoute = navController.currentBackStackEntry?.destination?.route
-        val popToRoute = when {
-            currentRoute == Routes.Search -> Routes.Search
-            currentRoute == Routes.Library -> Routes.Library
-            else -> currentRoute ?: Routes.Library
-        }
+        val popToRoute = resolveAlbumDetailPopUpToRoute(currentRoute)
         navController.navigate(route) {
             launchSingleTop = true
             restoreState = false

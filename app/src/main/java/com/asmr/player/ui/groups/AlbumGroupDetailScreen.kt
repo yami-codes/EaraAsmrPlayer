@@ -30,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -71,6 +69,9 @@ import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AudioItemMenuAction
 import com.asmr.player.ui.common.AudioItemRow
 import com.asmr.player.ui.common.EaraBrandedEmptyState
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.queryTrackFileSize
@@ -309,40 +310,38 @@ internal fun AlbumGroupDetailContent(
     }
 
     pendingRemoveTrack?.let { track ->
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { pendingRemoveTrack = null },
-            title = { Text("确认移除") },
-            text = { Text("确定从「$title」移除“${track.trackTitle.ifBlank { "未命名" }}”吗？") },
-            confirmButton = {
-                TextButton(
+            message = "确定从「$title」移除“${track.trackTitle.ifBlank { "未命名" }}”吗？",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { pendingRemoveTrack = null }),
+                FlatDialogAction(
+                    text = "移除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveTrack = null
                         onRemoveTrack(track.mediaId)
                     }
-                ) { Text("移除") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemoveTrack = null }) { Text("取消") }
-            }
+                )
+            )
         )
     }
 
     pendingRemoveAlbum?.let { album ->
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            title = { Text("确认移除") },
-            text = { Text("确定从「$title」移除专辑“${album.second}”吗？") },
-            confirmButton = {
-                TextButton(
+            message = "确定从「$title」移除专辑“${album.second}”吗？",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { pendingRemoveAlbum = null }),
+                FlatDialogAction(
+                    text = "移除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveAlbum = null
                         onRemoveAlbum(album.first)
                     }
-                ) { Text("移除") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemoveAlbum = null }) { Text("取消") }
-            }
+                )
+            )
         )
     }
 }
