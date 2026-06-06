@@ -105,6 +105,7 @@ import com.asmr.player.ui.search.SearchViewModel
 import com.asmr.player.domain.model.SearchSource
 import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
 import com.asmr.player.ui.drawer.StatisticsViewModel
@@ -1757,32 +1758,18 @@ fun MainContainer(
                 (currentRoute?.startsWith("album_detail/{albumId}") == true || currentRoute?.startsWith("album_detail/") == true)
             ) {
                 val albumDetailViewModel: AlbumDetailViewModel = hiltViewModel(navBackStackEntry!!)
-                AlertDialog(
+                FlatTextFieldDialog(
                     onDismissRequest = { showManualRjDialog = false },
-                    title = { Text("手动绑定 RJ") },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("请输入 RJ 号，保存后将自动执行云同步。", style = MaterialTheme.typography.bodySmall)
-                            OutlinedTextField(
-                                value = manualRjInput,
-                                onValueChange = { manualRjInput = it },
-                                singleLine = true,
-                                label = { Text("RJ号（如 RJ123456）") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                    message = "请输入 RJ 号，保存后将自动执行云同步。",
+                    value = manualRjInput,
+                    onValueChange = { manualRjInput = it },
+                    placeholder = "RJ号（如 RJ123456）",
+                    confirmText = "同步",
+                    confirmEnabled = manualRjInput.trim().isNotBlank(),
+                    onConfirm = {
+                        showManualRjDialog = false
+                        albumDetailViewModel.manualSetRjAndSync(manualRjInput.trim())
                     },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showManualRjDialog = false
-                                albumDetailViewModel.manualSetRjAndSync(manualRjInput)
-                            }
-                        ) { Text("同步") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showManualRjDialog = false }) { Text("取消") }
-                    }
                 )
             }
 

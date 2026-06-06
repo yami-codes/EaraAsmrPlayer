@@ -43,7 +43,6 @@ import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material.icons.rounded.Audiotrack
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CardDefaults
@@ -59,6 +58,9 @@ import com.asmr.player.ui.common.AudioItemMenuAction
 import com.asmr.player.ui.common.AudioItemRow
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.rememberAudioMeta
 import com.asmr.player.ui.common.rememberAudioMetaText
@@ -847,7 +849,7 @@ fun LibraryScreen(
         }
     }
     
-    // ... rest of the file (ModalBottomSheet, AlertDialog)
+    // ... rest of the file (ModalBottomSheet, dialogs)
 
 
     if (showAlbumActions) {
@@ -945,25 +947,20 @@ fun LibraryScreen(
     if (showDeleteConfirm) {
         val album = actionAlbum
         if (album != null) {
-            AlertDialog(
+            FlatActionDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                confirmButton = {
-                    TextButton(
+                message = "将从本地库中移除该专辑，并尝试删除本地文件。",
+                actions = listOf(
+                    FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                    FlatDialogAction(
+                        text = "删除",
+                        tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showDeleteConfirm = false
                             viewModel.deleteAlbum(album)
                         }
-                    ) {
-                        Text("删除")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text("取消")
-                    }
-                },
-                title = { Text("删除专辑") },
-                text = { Text("将从本地库中移除该专辑，并尝试删除本地文件。") }
+                    )
+                )
             )
         }
     }

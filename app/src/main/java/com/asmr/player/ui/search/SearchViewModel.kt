@@ -144,6 +144,7 @@ class SearchViewModel @Inject constructor(
             val cur = state as? SearchUiState.Success ?: return@update state
             cur.copy(
                 isEnriching = false,
+                enrichingRjCodes = emptySet(),
                 isAsmrOneChecking = false,
                 asmrOneChecked = 0,
                 asmrOneTotal = 0
@@ -292,6 +293,7 @@ class SearchViewModel @Inject constructor(
             _uiState.value = previousSuccess?.copy(
                 pendingRequest = SearchPendingRequest(kind = requestKind, targetPage = page),
                 isEnriching = false,
+                enrichingRjCodes = emptySet(),
                 isAsmrOneChecking = false,
                 asmrOneChecked = 0,
                 asmrOneTotal = 0
@@ -322,6 +324,7 @@ class SearchViewModel @Inject constructor(
                     pendingRequest = null,
                     visitedPages = buildVisitedPages(previousSuccess, requestKind, page),
                     isEnriching = false,
+                    enrichingRjCodes = emptySet(),
                     isAsmrOneChecking = false,
                     asmrOneChecked = 0,
                     asmrOneTotal = 0
@@ -367,6 +370,7 @@ class SearchViewModel @Inject constructor(
                     _uiState.value = previousSuccess.copy(
                         pendingRequest = null,
                         isEnriching = false,
+                        enrichingRjCodes = emptySet(),
                         isAsmrOneChecking = false,
                         asmrOneChecked = 0,
                         asmrOneTotal = 0
@@ -463,40 +467,62 @@ class SearchViewModel @Inject constructor(
         enrichJob = viewModelScope.launch {
             val current0 = _uiState.value as? SearchUiState.Success ?: return@launch
             if (current0.keyword != keyword || current0.page != page || current0.purchasedOnly || current0.collectedOnly) return@launch
-            _uiState.value = current0.copy(isEnriching = true)
+            val enrichTargets = baseItems
+                .mapNotNull { it.rjCode.ifBlank { it.workId }.trim().uppercase().takeIf(String::isNotBlank) }
+                .distinct()
+                .toSet()
+            if (enrichTargets.isEmpty()) return@launch
+            _uiState.value = current0.copy(
+                isEnriching = true,
+                enrichingRjCodes = enrichTargets
+            )
 
             coroutineScope {
                 val sem = Semaphore(6)
                 val deferreds = baseItems.mapIndexedNotNull { index, base ->
                     val rj = base.rjCode.ifBlank { base.workId }.trim().uppercase()
-                    if (rj.isBlank()) return@mapIndexedNotNull null
+                    if (rj.isBlank() || rj !in enrichTargets) return@mapIndexedNotNull null
                     async(enrichDispatcher) {
                         sem.withPermit {
                             val cached = dlsiteDetailCache[rj]
                             val detail = cached ?: runCatching { dlsiteScraper.getWorkInfo(rj)?.album }.getOrNull()
                             if (detail != null) dlsiteDetailCache[rj] = detail
-                            index to detail
+                            Triple(index, rj, detail)
                         }
                     }
                 }
                 deferreds.forEach { deferred ->
-                    val result = runCatching { deferred.await() }.getOrNull() ?: return@forEach
+                    val result = runCatching { deferred.await() }.getOrNull()
+                    if (result == null) {
+                        val current = _uiState.value as? SearchUiState.Success ?: return@forEach
+                        if (current.keyword == keyword && current.page == page && !current.purchasedOnly && !current.collectedOnly) {
+                            _uiState.value = current.copy(enrichingRjCodes = emptySet())
+                        }
+                        return@forEach
+                    }
                     val idx = result.first
-                    val detail = result.second
-                    if (detail == null) return@forEach
+                    val rj = result.second
+                    val detail = result.third
                     val cur = _uiState.value as? SearchUiState.Success ?: return@forEach
                     if (cur.keyword != keyword || cur.page != page || cur.purchasedOnly || cur.collectedOnly) return@forEach
                     val list = cur.results.toMutableList()
-                    if (idx !in list.indices) return@forEach
-                    list[idx] = mergeAlbum(list[idx], detail)
-                    _uiState.value = cur.copy(results = list)
-                    scheduleCacheWrite()
+                    if (detail != null && idx in list.indices) {
+                        list[idx] = mergeAlbum(list[idx], detail)
+                    }
+                    _uiState.value = cur.copy(
+                        results = list,
+                        enrichingRjCodes = cur.enrichingRjCodes - rj
+                    )
+                    if (detail != null) scheduleCacheWrite()
                 }
             }
 
             val current1 = _uiState.value as? SearchUiState.Success ?: return@launch
             if (current1.keyword == keyword && current1.page == page && !current1.purchasedOnly && !current1.collectedOnly) {
-                _uiState.value = current1.copy(isEnriching = false)
+                _uiState.value = current1.copy(
+                    isEnriching = false,
+                    enrichingRjCodes = emptySet()
+                )
                 scheduleCacheWrite()
             }
         }
@@ -547,6 +573,7 @@ class SearchViewModel @Inject constructor(
             pendingRequest = null,
             visitedPages = listOf(page),
             isEnriching = false,
+            enrichingRjCodes = emptySet(),
             isAsmrOneChecking = false,
             asmrOneChecked = 0,
             asmrOneTotal = 0
@@ -815,6 +842,7 @@ sealed class SearchUiState {
         val pendingRequest: SearchPendingRequest? = null,
         val visitedPages: List<Int> = listOf(page),
         val isEnriching: Boolean = false,
+        val enrichingRjCodes: Set<String> = emptySet(),
         val isAsmrOneChecking: Boolean = false,
         val asmrOneChecked: Int = 0,
         val asmrOneTotal: Int = 0

@@ -11,13 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -180,38 +179,23 @@ fun SleepTimerSheetContent(
     }
 
     if (showCustomDialog) {
-        AlertDialog(
+        FlatTextFieldDialog(
             onDismissRequest = { showCustomDialog = false },
-            title = { Text("自定义时长") },
-            text = {
-                OutlinedTextField(
-                    value = customMinutesText,
-                    onValueChange = { customMinutesText = it.filter { ch -> ch.isDigit() }.take(4) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("输入分钟数") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val minutes = customMinutesText.toIntOrNull() ?: 0
-                        if (minutes > 0) {
-                            viewModel.setSleepTimerMinutes(minutes)
-                            onDismiss()
-                        }
-                        showCustomDialog = false
-                    }
-                ) {
-                    Text("确定")
+            message = "输入定时关闭的分钟数。",
+            value = customMinutesText,
+            onValueChange = { customMinutesText = it.filter { ch -> ch.isDigit() }.take(4) },
+            placeholder = "输入分钟数",
+            confirmText = "确定",
+            confirmEnabled = (customMinutesText.toIntOrNull() ?: 0) > 0,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            onConfirm = {
+                val minutes = customMinutesText.toIntOrNull() ?: 0
+                if (minutes > 0) {
+                    viewModel.setSleepTimerMinutes(minutes)
+                    onDismiss()
                 }
+                showCustomDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showCustomDialog = false }) {
-                    Text("取消")
-                }
-            }
         )
     }
 }

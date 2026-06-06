@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Leaderboard
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,6 +65,9 @@ import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.clearFocusOnTapOutside
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
@@ -389,25 +391,20 @@ internal fun SearchAssistContent(
         )
 
         if (showClearHistoryDialog) {
-            AlertDialog(
+            FlatActionDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                title = { Text("清空历史搜索") },
-                text = { Text("是否清空历史搜索记录？") },
-                confirmButton = {
-                    TextButton(
+                message = "是否清空历史搜索记录？",
+                actions = listOf(
+                    FlatDialogAction("取消", onClick = { showClearHistoryDialog = false }),
+                    FlatDialogAction(
+                        text = "清空",
+                        tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showClearHistoryDialog = false
                             onClearHistory()
                         }
-                    ) {
-                        Text("清空")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showClearHistoryDialog = false }) {
-                        Text("取消")
-                    }
-                }
+                    )
+                )
             )
         }
     }

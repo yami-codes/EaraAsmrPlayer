@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -34,6 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.asmr.player.data.local.db.dao.TagWithCount
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrTheme
 
@@ -137,58 +139,57 @@ fun TagManagerSheet(
     if (showRenameDialog) {
         val tag = selected
         if (tag != null) {
-            AlertDialog(
+            FlatActionDialog(
                 onDismissRequest = { showRenameDialog = false },
-                title = { Text("重命名标签") },
-                text = {
-                    OutlinedTextField(
-                        value = renameText,
-                        onValueChange = { renameText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                },
-                confirmButton = {
-                    TextButton(
+                message = "修改标签名称，或删除这个用户标签。",
+                actions = listOf(
+                    FlatDialogAction(
+                        text = "删除",
+                        tone = FlatDialogActionTone.Danger,
                         onClick = {
-                            onRename(tag.id, renameText)
+                            showRenameDialog = false
+                            showDeleteDialog = true
+                        }
+                    ),
+                    FlatDialogAction("取消", onClick = { showRenameDialog = false }),
+                    FlatDialogAction(
+                        text = "保存",
+                        tone = FlatDialogActionTone.Primary,
+                        enabled = renameText.trim().isNotBlank(),
+                        onClick = {
+                            onRename(tag.id, renameText.trim())
                             showRenameDialog = false
                         }
-                    ) { Text("保存") }
-                },
-                dismissButton = {
-                    Row {
-                        TextButton(
-                            onClick = {
-                                showRenameDialog = false
-                                showDeleteDialog = true
-                            }
-                        ) { Text("删除") }
-                        TextButton(onClick = { showRenameDialog = false }) { Text("取消") }
-                    }
-                }
-            )
+                    )
+                )
+            ) {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
         }
     }
 
     if (showDeleteDialog) {
         val tag = selected
         if (tag != null) {
-            AlertDialog(
+            FlatActionDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("删除标签") },
-                text = { Text("将从所有用户标注中移除该标签。") },
-                confirmButton = {
-                    TextButton(
+                message = "将从所有用户标注中移除该标签。",
+                actions = listOf(
+                    FlatDialogAction("取消", onClick = { showDeleteDialog = false }),
+                    FlatDialogAction(
+                        text = "删除",
+                        tone = FlatDialogActionTone.Danger,
                         onClick = {
                             onDelete(tag.id)
                             showDeleteDialog = false
                         }
-                    ) { Text("删除") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) { Text("取消") }
-                }
+                    )
+                )
             )
         }
     }

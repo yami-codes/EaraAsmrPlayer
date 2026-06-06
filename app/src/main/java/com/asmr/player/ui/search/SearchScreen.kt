@@ -135,6 +135,12 @@ private fun stableAlbumKey(album: Album): String {
     return "h${seed.hashCode().absoluteValue}"
 }
 
+private fun onlineDetailLoadingFor(album: Album, state: SearchUiState.Success): Boolean {
+    if (!state.isEnriching || state.purchasedOnly || state.collectedOnly) return false
+    val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+    return rj.isNotBlank() && rj in state.enrichingRjCodes
+}
+
 private fun Modifier.consumeTapThrough(): Modifier =
     pointerInput(Unit) {
         awaitEachGesture {
@@ -549,10 +555,12 @@ fun SearchScreen(
                                             key = { album -> stableAlbumKey(album) },
                                             contentType = { "album" }
                                         ) { album ->
+                                            val onlineDetailLoading = onlineDetailLoadingFor(album, state)
                                             AlbumItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
                                                 emptyCoverUseShimmer = true,
+                                                onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -583,10 +591,12 @@ fun SearchScreen(
                                             contentType = { "albumGrid" }
                                         ) { index ->
                                             val album = state.results[index]
+                                            val onlineDetailLoading = onlineDetailLoadingFor(album, state)
                                             AlbumGridItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
                                                 emptyCoverUseShimmer = true,
+                                                onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
