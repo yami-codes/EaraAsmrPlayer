@@ -67,11 +67,12 @@ class SearchAssistViewModel @Inject constructor(
 
     fun submitSearch(request: SearchAssistSearchRequest, onSubmitted: (SearchAssistSearchRequest) -> Unit) {
         val normalized = request.keyword.trim()
-        if (normalized.isBlank()) return
         val normalizedRequest = request.copy(keyword = normalized)
         viewModelScope.launch {
-            searchCacheStore.addHistory(normalized)
-            loadHistory()
+            if (normalized.isNotBlank()) {
+                searchCacheStore.addHistory(normalized)
+                loadHistory()
+            }
             onSubmitted(normalizedRequest)
         }
     }

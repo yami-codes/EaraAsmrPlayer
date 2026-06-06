@@ -1441,7 +1441,7 @@ fun MainContainer(
                         submittedCollectedOnly,
                         submittedLocale
                     ) {
-                        if (submittedSignal <= 0L || submittedKeyword.isBlank()) return@LaunchedEffect
+                        if (submittedSignal <= 0L) return@LaunchedEffect
                         submittedSearchKeyword = submittedKeyword
                         submittedSearchOrderName = submittedOrderName
                         submittedSearchPurchasedOnly = submittedPurchasedOnly

@@ -114,6 +114,7 @@ import kotlin.math.absoluteValue
 
 internal const val SEARCH_INPUT_TAG = "search_input"
 internal const val SEARCH_SCOPE_BUTTON_TAG = "search_scope_button"
+internal const val SEARCH_SCOPE_OPTION_TAG_PREFIX = "search_scope_option"
 internal const val SEARCH_LANGUAGE_BUTTON_TAG = "search_language_button"
 internal const val SEARCH_CLEAR_BUTTON_TAG = "search_clear_button"
 internal const val SEARCH_SUBMIT_BUTTON_TAG = "search_submit_button"
@@ -342,7 +343,7 @@ fun SearchScreen(
             return@LaunchedEffect
         }
         val normalizedKeyword = submittedSearchKeyword.trim()
-        if (normalizedKeyword.isBlank() || searchSubmitLocked) return@LaunchedEffect
+        if (searchSubmitLocked) return@LaunchedEffect
         val submittedOrder = SearchSortOption.values()
             .firstOrNull { it.name == submittedSearchOrderName }
             ?: SearchSortOption.Trend
@@ -703,7 +704,9 @@ fun SearchScreen(
                         onSearchSubmit = { submitSearch() },
                         onFilterSelected = { option ->
                             val nextOrder = option.sortOption ?: selectedOrder
-                            val accepted = viewModel.updateSearchOptions(
+                            val nextKeyword = keyword.trim()
+                            val accepted = viewModel.search(
+                                keyword = nextKeyword,
                                 order = nextOrder,
                                 purchasedOnly = option.isPurchasedOnly,
                                 presaleOnly = option.isPresaleOnly,
@@ -717,6 +720,9 @@ fun SearchScreen(
                                 presaleOnly = option.isPresaleOnly
                                 chineseTranslatedOnly = option.isChineseTranslated
                                 collectedOnly = option.isCollectedOnly
+                                keyword = nextKeyword
+                                scrollResultsToTop()
+                                chromeState.expand()
                             }
                         },
                         onLocaleSelected = { locale ->
@@ -978,6 +984,7 @@ internal fun SearchToolbar(
                                 )
                             }
                             DropdownMenuItem(
+                                modifier = Modifier.testTag("${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${option.name}"),
                                 text = {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),

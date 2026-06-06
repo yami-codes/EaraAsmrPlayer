@@ -189,21 +189,56 @@ internal fun SearchAssistContent(
     }
     val topPadding = with(density) { chromeReservedHeightPx.toDp() } + SearchAssistChromeContentGap
 
+    fun buildRequest(
+        requestKeyword: String,
+        order: SearchSortOption = selectedOrder,
+        purchasedOnlyValue: Boolean = purchasedOnly,
+        presaleOnlyValue: Boolean = presaleOnly,
+        chineseTranslatedOnlyValue: Boolean = chineseTranslatedOnly,
+        collectedOnlyValue: Boolean = collectedOnly,
+        locale: String = selectedLocale
+    ) = SearchAssistSearchRequest(
+        keyword = requestKeyword,
+        orderName = order.name,
+        purchasedOnly = purchasedOnlyValue,
+        presaleOnly = presaleOnlyValue,
+        chineseTranslatedOnly = chineseTranslatedOnlyValue,
+        collectedOnly = collectedOnlyValue,
+        locale = locale
+    )
+
     fun submit(value: String = keyword) {
         val normalized = value.trim()
             .ifBlank { hotKeywordCarouselItem.keyword.orEmpty() }
         if (normalized.isBlank()) return
         keyword = normalized
         keyboardController?.hide()
+        onSubmitSearch(buildRequest(requestKeyword = normalized))
+    }
+
+    fun submitFilter(option: SearchFilterOption) {
+        val nextOrder = option.sortOption ?: selectedOrder
+        val nextKeyword = keyword.trim()
+        val nextPurchasedOnly = option.isPurchasedOnly
+        val nextPresaleOnly = option.isPresaleOnly
+        val nextChineseTranslatedOnly = option.isChineseTranslated
+        val nextCollectedOnly = option.isCollectedOnly
+
+        keyword = nextKeyword
+        selectedOrderName = nextOrder.name
+        purchasedOnly = nextPurchasedOnly
+        presaleOnly = nextPresaleOnly
+        chineseTranslatedOnly = nextChineseTranslatedOnly
+        collectedOnly = nextCollectedOnly
+        keyboardController?.hide()
         onSubmitSearch(
-            SearchAssistSearchRequest(
-                keyword = normalized,
-                orderName = selectedOrder.name,
-                purchasedOnly = purchasedOnly,
-                presaleOnly = presaleOnly,
-                chineseTranslatedOnly = chineseTranslatedOnly,
-                collectedOnly = collectedOnly,
-                locale = selectedLocale
+            buildRequest(
+                requestKeyword = nextKeyword,
+                order = nextOrder,
+                purchasedOnlyValue = nextPurchasedOnly,
+                presaleOnlyValue = nextPresaleOnly,
+                chineseTranslatedOnlyValue = nextChineseTranslatedOnly,
+                collectedOnlyValue = nextCollectedOnly
             )
         )
     }
@@ -376,14 +411,7 @@ internal fun SearchAssistContent(
             inputFocusRequester = inputFocusRequester,
             onMeasured = { size -> chromeState.updateHeight(size.height.toFloat()) },
             onSearchSubmit = { submit() },
-            onFilterSelected = { option ->
-                val nextOrder = option.sortOption ?: selectedOrder
-                selectedOrderName = nextOrder.name
-                purchasedOnly = option.isPurchasedOnly
-                presaleOnly = option.isPresaleOnly
-                chineseTranslatedOnly = option.isChineseTranslated
-                collectedOnly = option.isCollectedOnly
-            },
+            onFilterSelected = ::submitFilter,
             onLocaleSelected = { locale -> selectedLocale = locale },
             onFirstPage = {},
             onPrev = {},
