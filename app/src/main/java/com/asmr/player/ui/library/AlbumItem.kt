@@ -377,7 +377,7 @@ fun AlbumGridItem(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(8.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(4.dp))
                         .let { base ->
                             if (onRjClick != null) {
                                 base.clickable { onRjClick(rj) }
@@ -385,6 +385,7 @@ fun AlbumGridItem(
                                 base
                             }
                         }
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }

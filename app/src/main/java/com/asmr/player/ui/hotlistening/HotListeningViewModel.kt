@@ -7,6 +7,7 @@ import com.asmr.player.domain.model.Album
 import com.asmr.player.hotlistening.HotListeningApi
 import com.asmr.player.hotlistening.HotListeningItem
 import com.asmr.player.hotlistening.HotListeningSortMode
+import com.asmr.player.util.MessageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HotListeningViewModel @Inject constructor(
     private val hotListeningApi: HotListeningApi,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    val messageManager: MessageManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HotListeningUiState>(HotListeningUiState.Loading)
