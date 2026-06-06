@@ -26,15 +26,12 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
@@ -57,6 +54,10 @@ import com.asmr.player.data.local.db.dao.AlbumGroupStatsRow
 import com.asmr.player.data.local.db.entities.AlbumGroupEntity
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.EaraBrandedEmptyState
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.thinScrollbar
@@ -228,32 +229,20 @@ private fun AlbumGroupRow(
     }
 
     if (showDeleteConfirm) {
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            containerColor = colorScheme.surface,
-            titleContentColor = colorScheme.textPrimary,
-            textContentColor = colorScheme.textSecondary,
-            title = { Text("确认删除", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
-            text = { Text("确定要删除分组“${group.name}”吗？此操作不可撤销。") },
-            confirmButton = {
-                TextButton(
+            message = "确定要删除分组“${group.name}”吗？此操作不可撤销。",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(
+                    text = "删除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         showDeleteConfirm = false
                         onDelete()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.danger)
-                ) {
-                    Text("删除")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDeleteConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.textSecondary)
-                ) {
-                    Text("取消")
-                }
-            }
+                    }
+                )
+            )
         )
     }
 
@@ -275,37 +264,16 @@ private fun CreateAlbumGroupDialog(
     onCreate: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val colorScheme = AsmrTheme.colorScheme
 
-    AlertDialog(
+    FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        containerColor = colorScheme.surface,
-        title = { Text("新建分组") },
-        text = {
-            androidx.compose.material3.TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                placeholder = { Text("分组名称") },
-                colors = androidx.compose.material3.TextFieldDefaults.colors(
-                    focusedContainerColor = colorScheme.surface,
-                    unfocusedContainerColor = colorScheme.surface
-                )
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(name) },
-                enabled = name.trim().isNotBlank()
-            ) {
-                Text("创建")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+        message = "请输入新分组名称。",
+        value = name,
+        onValueChange = { name = it },
+        placeholder = "分组名称",
+        confirmText = "创建",
+        confirmEnabled = name.trim().isNotBlank(),
+        onConfirm = { onCreate(name.trim()) },
     )
 }
 
@@ -316,36 +284,15 @@ private fun RenameAlbumGroupDialog(
     onRename: (String) -> Unit
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
-    val colorScheme = AsmrTheme.colorScheme
 
-    AlertDialog(
+    FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        containerColor = colorScheme.surface,
-        title = { Text("重命名分组") },
-        text = {
-            androidx.compose.material3.TextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                placeholder = { Text("分组名称") },
-                colors = androidx.compose.material3.TextFieldDefaults.colors(
-                    focusedContainerColor = colorScheme.surface,
-                    unfocusedContainerColor = colorScheme.surface
-                )
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onRename(name) },
-                enabled = name.trim().isNotBlank()
-            ) {
-                Text("确定")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+        message = "请输入新的分组名称。",
+        value = name,
+        onValueChange = { name = it },
+        placeholder = "分组名称",
+        confirmText = "确定",
+        confirmEnabled = name.trim().isNotBlank(),
+        onConfirm = { onRename(name.trim()) },
     )
 }

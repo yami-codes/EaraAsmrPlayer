@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -201,6 +202,40 @@ class SearchScreenChromeTest {
         composeRule.onNodeWithText("最新发售").assertExists()
         composeRule.onNodeWithText("销量最高").assertExists()
         composeRule.onNodeWithText("价格最高").assertExists()
+    }
+
+    @Test
+    fun collectedFilter_usesSortMenuInsteadOfLanguageMenu() {
+        var selectedSort = SearchCollectedSortOption.ReleaseNew
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = "",
+                    onKeywordChange = {},
+                    selectedFilter = SearchFilterOption.Collected,
+                    selectedCollectedSort = selectedSort,
+                    selectedLocale = "zh_CN",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onFilterSelected = {},
+                    onLocaleSelected = {},
+                    onCollectedSortSelected = { selectedSort = it }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_COLLECTED_SORT_BUTTON_TAG).performClick()
+        composeRule.onNodeWithText("最新发售").assertExists()
+        composeRule.onNodeWithText("评分最高").assertExists()
+        composeRule.onAllNodesWithText("时长最长").assertCountEquals(0)
+        composeRule.onNodeWithText("评分最高").performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(SearchCollectedSortOption.RatingHigh, selectedSort)
+        }
     }
 
     @Test

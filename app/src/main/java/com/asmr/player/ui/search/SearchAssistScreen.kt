@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Leaderboard
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,6 +65,9 @@ import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.clearFocusOnTapOutside
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
@@ -139,8 +141,14 @@ internal fun SearchAssistContent(
     var selectedOrderName by rememberSaveable(initialRequest.orderName) {
         mutableStateOf(initialRequest.orderName)
     }
+    var selectedCollectedSortName by rememberSaveable(initialRequest.collectedSortName) {
+        mutableStateOf(initialRequest.collectedSortName)
+    }
     val selectedOrder = remember(selectedOrderName) {
         SearchSortOption.values().firstOrNull { it.name == selectedOrderName } ?: SearchSortOption.Trend
+    }
+    val selectedCollectedSort = remember(selectedCollectedSortName) {
+        SearchCollectedSortOption.fromName(selectedCollectedSortName)
     }
     val selectedFilter = remember(
         selectedOrderName,
@@ -187,21 +195,61 @@ internal fun SearchAssistContent(
     }
     val topPadding = with(density) { chromeReservedHeightPx.toDp() } + SearchAssistChromeContentGap
 
+    fun buildRequest(
+        requestKeyword: String,
+        order: SearchSortOption = selectedOrder,
+        purchasedOnlyValue: Boolean = purchasedOnly,
+        presaleOnlyValue: Boolean = presaleOnly,
+        chineseTranslatedOnlyValue: Boolean = chineseTranslatedOnly,
+        collectedOnlyValue: Boolean = collectedOnly,
+        collectedSort: SearchCollectedSortOption = selectedCollectedSort,
+        locale: String = selectedLocale
+    ) = SearchAssistSearchRequest(
+        keyword = requestKeyword,
+        orderName = order.name,
+        purchasedOnly = purchasedOnlyValue,
+        presaleOnly = presaleOnlyValue,
+        chineseTranslatedOnly = chineseTranslatedOnlyValue,
+        collectedOnly = collectedOnlyValue,
+        collectedSortName = collectedSort.name,
+        locale = locale
+    )
+
     fun submit(value: String = keyword) {
         val normalized = value.trim()
             .ifBlank { hotKeywordCarouselItem.keyword.orEmpty() }
         if (normalized.isBlank()) return
         keyword = normalized
         keyboardController?.hide()
+        onSubmitSearch(buildRequest(requestKeyword = normalized))
+    }
+
+    fun submitFilter(option: SearchFilterOption) {
+        val nextOrder = option.sortOption ?: selectedOrder
+        val nextKeyword = keyword.trim()
+        val nextPurchasedOnly = option.isPurchasedOnly
+        val nextPresaleOnly = option.isPresaleOnly
+        val nextChineseTranslatedOnly = option.isChineseTranslated
+        val nextCollectedOnly = option.isCollectedOnly
+
+        keyword = nextKeyword
+        selectedOrderName = nextOrder.name
+        purchasedOnly = nextPurchasedOnly
+        presaleOnly = nextPresaleOnly
+        chineseTranslatedOnly = nextChineseTranslatedOnly
+        collectedOnly = nextCollectedOnly
+        if (nextCollectedOnly) {
+            selectedCollectedSortName = selectedCollectedSort.name
+        }
+        keyboardController?.hide()
         onSubmitSearch(
-            SearchAssistSearchRequest(
-                keyword = normalized,
-                orderName = selectedOrder.name,
-                purchasedOnly = purchasedOnly,
-                presaleOnly = presaleOnly,
-                chineseTranslatedOnly = chineseTranslatedOnly,
-                collectedOnly = collectedOnly,
-                locale = selectedLocale
+            buildRequest(
+                requestKeyword = nextKeyword,
+                order = nextOrder,
+                purchasedOnlyValue = nextPurchasedOnly,
+                presaleOnlyValue = nextPresaleOnly,
+                chineseTranslatedOnlyValue = nextChineseTranslatedOnly,
+                collectedOnlyValue = nextCollectedOnly
             )
         )
     }
@@ -355,6 +403,7 @@ internal fun SearchAssistContent(
             onKeywordChange = { keyword = it },
             placeholder = hotKeywordCarouselItem.placeholder,
             selectedFilter = selectedFilter,
+            selectedCollectedSort = selectedCollectedSort,
             selectedLocale = selectedLocale,
             filterControlsLocked = false,
             searchSubmitLocked = false,
@@ -374,40 +423,29 @@ internal fun SearchAssistContent(
             inputFocusRequester = inputFocusRequester,
             onMeasured = { size -> chromeState.updateHeight(size.height.toFloat()) },
             onSearchSubmit = { submit() },
-            onFilterSelected = { option ->
-                val nextOrder = option.sortOption ?: selectedOrder
-                selectedOrderName = nextOrder.name
-                purchasedOnly = option.isPurchasedOnly
-                presaleOnly = option.isPresaleOnly
-                chineseTranslatedOnly = option.isChineseTranslated
-                collectedOnly = option.isCollectedOnly
-            },
+            onFilterSelected = ::submitFilter,
             onLocaleSelected = { locale -> selectedLocale = locale },
+            onCollectedSortSelected = { sort -> selectedCollectedSortName = sort.name },
             onFirstPage = {},
             onPrev = {},
             onNext = {}
         )
 
         if (showClearHistoryDialog) {
-            AlertDialog(
+            FlatActionDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                title = { Text("清空历史搜索") },
-                text = { Text("是否清空历史搜索记录？") },
-                confirmButton = {
-                    TextButton(
+                message = "是否清空历史搜索记录？",
+                actions = listOf(
+                    FlatDialogAction("取消", onClick = { showClearHistoryDialog = false }),
+                    FlatDialogAction(
+                        text = "清空",
+                        tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showClearHistoryDialog = false
                             onClearHistory()
                         }
-                    ) {
-                        Text("清空")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showClearHistoryDialog = false }) {
-                        Text("取消")
-                    }
-                }
+                    )
+                )
             )
         }
     }

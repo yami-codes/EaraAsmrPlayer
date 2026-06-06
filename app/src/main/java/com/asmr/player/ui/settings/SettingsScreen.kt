@@ -65,6 +65,9 @@ import com.asmr.player.ui.library.BulkPhase
 import com.asmr.player.ui.library.LibraryViewModel
 import com.asmr.player.ui.common.AppSupportStatusSection
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
@@ -809,12 +812,14 @@ fun SettingsScreen(
 
     val removeRoot = pendingRemoveRoot
     if (removeRoot != null) {
-        AlertDialog(
+        FlatActionDialog(
             onDismissRequest = { pendingRemoveRoot = null },
-            title = { Text("移除目录") },
-            text = { Text("将从列表中移除该目录，后续不会再扫描它。") },
-            confirmButton = {
-                TextButton(
+            message = "将从列表中移除该目录，后续不会再扫描它。",
+            actions = listOf(
+                FlatDialogAction("取消", onClick = { pendingRemoveRoot = null }),
+                FlatDialogAction(
+                    text = "移除",
+                    tone = FlatDialogActionTone.Danger,
                     onClick = {
                         val uri = runCatching { Uri.parse(removeRoot) }.getOrNull()
                         if (uri != null) {
@@ -824,15 +829,8 @@ fun SettingsScreen(
                         libraryViewModel.removeScanRootAndDeleteAlbums(removeRoot)
                         pendingRemoveRoot = null
                     }
-                ) {
-                    Text("移除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemoveRoot = null }) {
-                    Text("取消")
-                }
-            }
+                )
+            )
         )
     }
 }

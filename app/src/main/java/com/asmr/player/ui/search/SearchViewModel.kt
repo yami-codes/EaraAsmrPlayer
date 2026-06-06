@@ -63,6 +63,7 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
     private val pageSize = 30
     private var currentOrder: SearchSortOption = SearchSortOption.Trend
+    private var currentCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew
     private var purchasedOnly: Boolean = false
     private var presaleOnly: Boolean = false
     private var chineseTranslatedOnly: Boolean = false
@@ -118,7 +119,8 @@ class SearchViewModel @Inject constructor(
         initialKeyword: String,
         initialPurchasedOnly: Boolean,
         initialLocale: String?,
-        initialCollectedOnly: Boolean = true
+        initialCollectedOnly: Boolean = true,
+        initialCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew
     ) {
         if (!bootstrapped.compareAndSet(false, true)) return
         viewModelScope.launch {
@@ -131,6 +133,7 @@ class SearchViewModel @Inject constructor(
                 presaleOnly = false
                 chineseTranslatedOnly = false
                 collectedOnly = initialCollectedOnly
+                currentCollectedSort = initialCollectedSort
                 currentLocale = initialLocale
                 lastRequestedKeyword = initialKeyword.trim()
                 requestPage(lastRequestedKeyword, 1, SearchPendingRequestKind.Search)
@@ -144,6 +147,7 @@ class SearchViewModel @Inject constructor(
             val cur = state as? SearchUiState.Success ?: return@update state
             cur.copy(
                 isEnriching = false,
+                enrichingRjCodes = emptySet(),
                 isAsmrOneChecking = false,
                 asmrOneChecked = 0,
                 asmrOneTotal = 0
@@ -155,6 +159,7 @@ class SearchViewModel @Inject constructor(
         return search(
             keyword = keyword,
             order = currentOrder,
+            collectedSort = currentCollectedSort,
             purchasedOnly = purchasedOnly,
             presaleOnly = presaleOnly,
             chineseTranslatedOnly = chineseTranslatedOnly,
@@ -166,6 +171,7 @@ class SearchViewModel @Inject constructor(
     fun search(
         keyword: String,
         order: SearchSortOption,
+        collectedSort: SearchCollectedSortOption,
         purchasedOnly: Boolean,
         presaleOnly: Boolean,
         chineseTranslatedOnly: Boolean,
@@ -188,6 +194,7 @@ class SearchViewModel @Inject constructor(
         val normalizedKeyword = keyword.trim()
         Log.d("SearchViewModel", "Search requested: keyword=$normalizedKeyword")
         currentOrder = order
+        currentCollectedSort = collectedSort
         this.purchasedOnly = nextFilters.purchasedOnly
         this.presaleOnly = nextFilters.presaleOnly
         this.chineseTranslatedOnly = nextFilters.chineseTranslatedOnly
@@ -216,6 +223,7 @@ class SearchViewModel @Inject constructor(
 
     fun updateSearchOptions(
         order: SearchSortOption = currentOrder,
+        collectedSort: SearchCollectedSortOption = currentCollectedSort,
         purchasedOnly: Boolean = this.purchasedOnly,
         presaleOnly: Boolean = this.presaleOnly,
         chineseTranslatedOnly: Boolean = this.chineseTranslatedOnly,
@@ -236,6 +244,7 @@ class SearchViewModel @Inject constructor(
         }
         if (
             currentOrder == order &&
+            currentCollectedSort == collectedSort &&
             this.purchasedOnly == nextFilters.purchasedOnly &&
             this.presaleOnly == nextFilters.presaleOnly &&
             this.chineseTranslatedOnly == nextFilters.chineseTranslatedOnly &&
@@ -243,6 +252,7 @@ class SearchViewModel @Inject constructor(
             currentLocale == locale
         ) return true
         currentOrder = order
+        currentCollectedSort = collectedSort
         this.purchasedOnly = nextFilters.purchasedOnly
         this.presaleOnly = nextFilters.presaleOnly
         this.chineseTranslatedOnly = nextFilters.chineseTranslatedOnly
@@ -292,6 +302,7 @@ class SearchViewModel @Inject constructor(
             _uiState.value = previousSuccess?.copy(
                 pendingRequest = SearchPendingRequest(kind = requestKind, targetPage = page),
                 isEnriching = false,
+                enrichingRjCodes = emptySet(),
                 isAsmrOneChecking = false,
                 asmrOneChecked = 0,
                 asmrOneTotal = 0
@@ -302,6 +313,7 @@ class SearchViewModel @Inject constructor(
                     keyword = normalizedKeyword,
                     page = page,
                     order = currentOrder,
+                    collectedSort = currentCollectedSort,
                     purchasedOnly = purchasedOnly,
                     presaleOnly = presaleOnly,
                     chineseTranslatedOnly = chineseTranslatedOnly,
@@ -312,6 +324,7 @@ class SearchViewModel @Inject constructor(
                     keyword = normalizedKeyword,
                     page = page,
                     order = currentOrder,
+                    collectedSort = currentCollectedSort,
                     purchasedOnly = purchasedOnly,
                     presaleOnly = presaleOnly,
                     chineseTranslatedOnly = chineseTranslatedOnly,
@@ -322,6 +335,7 @@ class SearchViewModel @Inject constructor(
                     pendingRequest = null,
                     visitedPages = buildVisitedPages(previousSuccess, requestKind, page),
                     isEnriching = false,
+                    enrichingRjCodes = emptySet(),
                     isAsmrOneChecking = false,
                     asmrOneChecked = 0,
                     asmrOneTotal = 0
@@ -359,6 +373,7 @@ class SearchViewModel @Inject constructor(
                 messageManager.showError(msg)
                 if (previousSuccess != null) {
                     currentOrder = previousSuccess.order
+                    currentCollectedSort = previousSuccess.collectedSort
                     purchasedOnly = previousSuccess.purchasedOnly
                     presaleOnly = previousSuccess.presaleOnly
                     chineseTranslatedOnly = previousSuccess.chineseTranslatedOnly
@@ -367,6 +382,7 @@ class SearchViewModel @Inject constructor(
                     _uiState.value = previousSuccess.copy(
                         pendingRequest = null,
                         isEnriching = false,
+                        enrichingRjCodes = emptySet(),
                         isAsmrOneChecking = false,
                         asmrOneChecked = 0,
                         asmrOneTotal = 0
@@ -404,6 +420,7 @@ class SearchViewModel @Inject constructor(
         keyword: String,
         page: Int,
         order: SearchSortOption,
+        collectedSort: SearchCollectedSortOption,
         purchasedOnly: Boolean,
         presaleOnly: Boolean,
         chineseTranslatedOnly: Boolean,
@@ -415,7 +432,7 @@ class SearchViewModel @Inject constructor(
         }
         if (collectedOnly) {
             val offset = (page.coerceAtLeast(1) - 1) * pageSize
-            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset)
+            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset, collectedSort.backendSort)
             val items = resp.items.orEmpty().map { it.toCollectedAlbum() }
             val total = resp.total.coerceAtLeast(0)
             val responseOffset = resp.offset.coerceAtLeast(offset)
@@ -463,40 +480,62 @@ class SearchViewModel @Inject constructor(
         enrichJob = viewModelScope.launch {
             val current0 = _uiState.value as? SearchUiState.Success ?: return@launch
             if (current0.keyword != keyword || current0.page != page || current0.purchasedOnly || current0.collectedOnly) return@launch
-            _uiState.value = current0.copy(isEnriching = true)
+            val enrichTargets = baseItems
+                .mapNotNull { it.rjCode.ifBlank { it.workId }.trim().uppercase().takeIf(String::isNotBlank) }
+                .distinct()
+                .toSet()
+            if (enrichTargets.isEmpty()) return@launch
+            _uiState.value = current0.copy(
+                isEnriching = true,
+                enrichingRjCodes = enrichTargets
+            )
 
             coroutineScope {
                 val sem = Semaphore(6)
                 val deferreds = baseItems.mapIndexedNotNull { index, base ->
                     val rj = base.rjCode.ifBlank { base.workId }.trim().uppercase()
-                    if (rj.isBlank()) return@mapIndexedNotNull null
+                    if (rj.isBlank() || rj !in enrichTargets) return@mapIndexedNotNull null
                     async(enrichDispatcher) {
                         sem.withPermit {
                             val cached = dlsiteDetailCache[rj]
                             val detail = cached ?: runCatching { dlsiteScraper.getWorkInfo(rj)?.album }.getOrNull()
                             if (detail != null) dlsiteDetailCache[rj] = detail
-                            index to detail
+                            Triple(index, rj, detail)
                         }
                     }
                 }
                 deferreds.forEach { deferred ->
-                    val result = runCatching { deferred.await() }.getOrNull() ?: return@forEach
+                    val result = runCatching { deferred.await() }.getOrNull()
+                    if (result == null) {
+                        val current = _uiState.value as? SearchUiState.Success ?: return@forEach
+                        if (current.keyword == keyword && current.page == page && !current.purchasedOnly && !current.collectedOnly) {
+                            _uiState.value = current.copy(enrichingRjCodes = emptySet())
+                        }
+                        return@forEach
+                    }
                     val idx = result.first
-                    val detail = result.second
-                    if (detail == null) return@forEach
+                    val rj = result.second
+                    val detail = result.third
                     val cur = _uiState.value as? SearchUiState.Success ?: return@forEach
                     if (cur.keyword != keyword || cur.page != page || cur.purchasedOnly || cur.collectedOnly) return@forEach
                     val list = cur.results.toMutableList()
-                    if (idx !in list.indices) return@forEach
-                    list[idx] = mergeAlbum(list[idx], detail)
-                    _uiState.value = cur.copy(results = list)
-                    scheduleCacheWrite()
+                    if (detail != null && idx in list.indices) {
+                        list[idx] = mergeAlbum(list[idx], detail)
+                    }
+                    _uiState.value = cur.copy(
+                        results = list,
+                        enrichingRjCodes = cur.enrichingRjCodes - rj
+                    )
+                    if (detail != null) scheduleCacheWrite()
                 }
             }
 
             val current1 = _uiState.value as? SearchUiState.Success ?: return@launch
             if (current1.keyword == keyword && current1.page == page && !current1.purchasedOnly && !current1.collectedOnly) {
-                _uiState.value = current1.copy(isEnriching = false)
+                _uiState.value = current1.copy(
+                    isEnriching = false,
+                    enrichingRjCodes = emptySet()
+                )
                 scheduleCacheWrite()
             }
         }
@@ -519,6 +558,7 @@ class SearchViewModel @Inject constructor(
         val order = SearchSortOption.values()
             .firstOrNull { it.name == cached.orderName }
             ?: SearchSortOption.Trend
+        val collectedSort = SearchCollectedSortOption.fromName(cached.collectedSortName)
         val page = cached.page.coerceAtLeast(1)
         val filters = normalizeSearchFilters(
             purchasedOnly = cached.purchasedOnly,
@@ -527,6 +567,7 @@ class SearchViewModel @Inject constructor(
             collectedOnly = cached.collectedOnly
         )
         currentOrder = order
+        currentCollectedSort = collectedSort
         purchasedOnly = filters.purchasedOnly
         presaleOnly = filters.presaleOnly
         chineseTranslatedOnly = filters.chineseTranslatedOnly
@@ -537,6 +578,7 @@ class SearchViewModel @Inject constructor(
             keyword = cached.keyword,
             page = page,
             order = order,
+            collectedSort = collectedSort,
             purchasedOnly = filters.purchasedOnly,
             presaleOnly = filters.presaleOnly,
             chineseTranslatedOnly = filters.chineseTranslatedOnly,
@@ -547,6 +589,7 @@ class SearchViewModel @Inject constructor(
             pendingRequest = null,
             visitedPages = listOf(page),
             isEnriching = false,
+            enrichingRjCodes = emptySet(),
             isAsmrOneChecking = false,
             asmrOneChecked = 0,
             asmrOneTotal = 0
@@ -567,6 +610,7 @@ class SearchViewModel @Inject constructor(
                         savedAtMs = System.currentTimeMillis(),
                         keyword = latest.keyword,
                         orderName = latest.order.name,
+                        collectedSortName = latest.collectedSort.name,
                         purchasedOnly = latest.purchasedOnly,
                         presaleOnly = latest.presaleOnly,
                         chineseTranslatedOnly = latest.chineseTranslatedOnly,
@@ -805,6 +849,7 @@ sealed class SearchUiState {
         val keyword: String,
         val page: Int,
         val order: SearchSortOption,
+        val collectedSort: SearchCollectedSortOption,
         val purchasedOnly: Boolean,
         val presaleOnly: Boolean,
         val chineseTranslatedOnly: Boolean,
@@ -815,6 +860,7 @@ sealed class SearchUiState {
         val pendingRequest: SearchPendingRequest? = null,
         val visitedPages: List<Int> = listOf(page),
         val isEnriching: Boolean = false,
+        val enrichingRjCodes: Set<String> = emptySet(),
         val isAsmrOneChecking: Boolean = false,
         val asmrOneChecked: Int = 0,
         val asmrOneTotal: Int = 0

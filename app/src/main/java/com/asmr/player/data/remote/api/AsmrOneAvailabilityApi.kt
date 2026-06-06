@@ -41,6 +41,7 @@ data class AsmrOneCollectedSearchResponse(
     val total: Int = 0,
     val limit: Int = 0,
     val offset: Int = 0,
+    val sort: String = "",
     val serverTimeEpochMs: Long = 0L
 )
 
@@ -105,7 +106,7 @@ class AsmrOneAvailabilityApi @Inject constructor(
         }.getOrDefault(emptyMap())
     }
 
-    suspend fun search(keyword: String, limit: Int, offset: Int): AsmrOneCollectedSearchResponse {
+    suspend fun search(keyword: String, limit: Int, offset: Int, sort: String): AsmrOneCollectedSearchResponse {
         if (baseUrl.isBlank()) throw IOException("asmr.one backend is not configured")
         return withContext(Dispatchers.IO) {
             val url = resolveUrl("api/asmr-one/search")
@@ -114,6 +115,7 @@ class AsmrOneAvailabilityApi @Inject constructor(
                 ?.addQueryParameter("q", keyword.trim())
                 ?.addQueryParameter("limit", limit.coerceIn(1, 100).toString())
                 ?.addQueryParameter("offset", offset.coerceAtLeast(0).toString())
+                ?.addQueryParameter("sort", sort.trim().ifBlank { "release" })
                 ?.build()
                 ?: throw IOException("invalid asmr.one backend url")
             val request = Request.Builder()

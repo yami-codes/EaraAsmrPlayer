@@ -92,6 +92,7 @@ import com.asmr.player.ui.playlists.PlaylistsViewModel
 import com.asmr.player.ui.playlists.SystemPlaylistScreen
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_CHINESE_TRANSLATED_ONLY_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY
+import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_LOCALE_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_ORDER_KEY
@@ -105,6 +106,7 @@ import com.asmr.player.ui.search.SearchViewModel
 import com.asmr.player.domain.model.SearchSource
 import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
 import com.asmr.player.ui.drawer.StatisticsViewModel
@@ -377,6 +379,9 @@ fun MainContainer(
         mutableStateOf(SearchAssistSearchRequest().chineseTranslatedOnly)
     }
     var submittedSearchCollectedOnly by rememberSaveable { mutableStateOf(SearchAssistSearchRequest().collectedOnly) }
+    var submittedSearchCollectedSortName by rememberSaveable {
+        mutableStateOf(SearchAssistSearchRequest().collectedSortName)
+    }
     var submittedSearchLocale by rememberSaveable { mutableStateOf(SearchAssistSearchRequest().locale) }
     var submittedSearchSignal by rememberSaveable { mutableLongStateOf(0L) }
     var searchAssistInitialRequest by remember { mutableStateOf(SearchAssistSearchRequest()) }
@@ -528,6 +533,7 @@ fun MainContainer(
             request.chineseTranslatedOnly
         )
         targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY, request.collectedOnly)
+        targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY, request.collectedSortName)
         targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_LOCALE_KEY, request.locale)
         targetEntry?.savedStateHandle?.set(
             SEARCH_ASSIST_RESULT_SIGNAL_KEY,
@@ -1293,6 +1299,7 @@ fun MainContainer(
                                                 submittedSearchPresaleOnly = submittedSearchPresaleOnly,
                                                 submittedSearchChineseTranslatedOnly = submittedSearchChineseTranslatedOnly,
                                                 submittedSearchCollectedOnly = submittedSearchCollectedOnly,
+                                                submittedSearchCollectedSortName = submittedSearchCollectedSortName,
                                                 submittedSearchLocale = submittedSearchLocale,
                                                 submittedSearchSignal = submittedSearchSignal,
                                                 onOpenSearchAssist = { request ->
@@ -1423,6 +1430,12 @@ fun MainContainer(
                     val submittedCollectedOnly by backStackEntry.savedStateHandle
                         .getStateFlow(SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY, SearchAssistSearchRequest().collectedOnly)
                         .collectAsState()
+                    val submittedCollectedSortName by backStackEntry.savedStateHandle
+                        .getStateFlow(
+                            SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY,
+                            SearchAssistSearchRequest().collectedSortName
+                        )
+                        .collectAsState()
                     val submittedLocale by backStackEntry.savedStateHandle
                         .getStateFlow(SEARCH_ASSIST_RESULT_LOCALE_KEY, SearchAssistSearchRequest().locale)
                         .collectAsState()
@@ -1438,15 +1451,17 @@ fun MainContainer(
                         submittedPresaleOnly,
                         submittedChineseTranslatedOnly,
                         submittedCollectedOnly,
+                        submittedCollectedSortName,
                         submittedLocale
                     ) {
-                        if (submittedSignal <= 0L || submittedKeyword.isBlank()) return@LaunchedEffect
+                        if (submittedSignal <= 0L) return@LaunchedEffect
                         submittedSearchKeyword = submittedKeyword
                         submittedSearchOrderName = submittedOrderName
                         submittedSearchPurchasedOnly = submittedPurchasedOnly
                         submittedSearchPresaleOnly = submittedPresaleOnly
                         submittedSearchChineseTranslatedOnly = submittedChineseTranslatedOnly
                         submittedSearchCollectedOnly = submittedCollectedOnly
+                        submittedSearchCollectedSortName = submittedCollectedSortName
                         submittedSearchLocale = submittedLocale
                         submittedSearchSignal = submittedSignal
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_KEY] = ""
@@ -1460,6 +1475,8 @@ fun MainContainer(
                             SearchAssistSearchRequest().chineseTranslatedOnly
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY] =
                             SearchAssistSearchRequest().collectedOnly
+                        backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY] =
+                            SearchAssistSearchRequest().collectedSortName
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_LOCALE_KEY] =
                             SearchAssistSearchRequest().locale
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_SIGNAL_KEY] = 0L
@@ -1757,32 +1774,18 @@ fun MainContainer(
                 (currentRoute?.startsWith("album_detail/{albumId}") == true || currentRoute?.startsWith("album_detail/") == true)
             ) {
                 val albumDetailViewModel: AlbumDetailViewModel = hiltViewModel(navBackStackEntry!!)
-                AlertDialog(
+                FlatTextFieldDialog(
                     onDismissRequest = { showManualRjDialog = false },
-                    title = { Text("手动绑定 RJ") },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("请输入 RJ 号，保存后将自动执行云同步。", style = MaterialTheme.typography.bodySmall)
-                            OutlinedTextField(
-                                value = manualRjInput,
-                                onValueChange = { manualRjInput = it },
-                                singleLine = true,
-                                label = { Text("RJ号（如 RJ123456）") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                    message = "请输入 RJ 号，保存后将自动执行云同步。",
+                    value = manualRjInput,
+                    onValueChange = { manualRjInput = it },
+                    placeholder = "RJ号（如 RJ123456）",
+                    confirmText = "同步",
+                    confirmEnabled = manualRjInput.trim().isNotBlank(),
+                    onConfirm = {
+                        showManualRjDialog = false
+                        albumDetailViewModel.manualSetRjAndSync(manualRjInput.trim())
                     },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showManualRjDialog = false
-                                albumDetailViewModel.manualSetRjAndSync(manualRjInput)
-                            }
-                        ) { Text("同步") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showManualRjDialog = false }) { Text("取消") }
-                    }
                 )
             }
 

@@ -30,7 +30,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -55,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.asmr.player.data.local.db.dao.TagWithCount
+import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
@@ -341,36 +341,20 @@ fun LibraryFilterSheet(
     }
 
     if (showSavePreset) {
-        AlertDialog(
+        FlatTextFieldDialog(
             onDismissRequest = { showSavePreset = false },
-            title = { Text("保存筛选预设") },
-            text = {
-                OutlinedTextField(
-                    value = presetName,
-                    onValueChange = { presetName = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("请输入预设名称") }
-                )
+            message = "请输入筛选预设名称。",
+            value = presetName,
+            onValueChange = { presetName = it },
+            placeholder = "请输入预设名称",
+            confirmText = "保存",
+            confirmEnabled = presetName.trim().isNotBlank(),
+            onConfirm = {
+                val name = presetName.trim()
+                if (name.isNotBlank()) onSavePreset(name)
+                presetName = ""
+                showSavePreset = false
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val name = presetName.trim()
-                        if (name.isNotBlank()) onSavePreset(name)
-                        presetName = ""
-                        showSavePreset = false
-                    }
-                ) { Text("保存") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        presetName = ""
-                        showSavePreset = false
-                    }
-                ) { Text("取消") }
-            }
         )
     }
 }

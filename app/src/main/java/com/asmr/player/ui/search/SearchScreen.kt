@@ -114,7 +114,9 @@ import kotlin.math.absoluteValue
 
 internal const val SEARCH_INPUT_TAG = "search_input"
 internal const val SEARCH_SCOPE_BUTTON_TAG = "search_scope_button"
+internal const val SEARCH_SCOPE_OPTION_TAG_PREFIX = "search_scope_option"
 internal const val SEARCH_LANGUAGE_BUTTON_TAG = "search_language_button"
+internal const val SEARCH_COLLECTED_SORT_BUTTON_TAG = "search_collected_sort_button"
 internal const val SEARCH_CLEAR_BUTTON_TAG = "search_clear_button"
 internal const val SEARCH_SUBMIT_BUTTON_TAG = "search_submit_button"
 internal const val SEARCH_SUBMIT_SPINNER_TAG = "search_submit_spinner"
@@ -133,6 +135,12 @@ private fun stableAlbumKey(album: Album): String {
     if (id.isNotEmpty()) return id
     val seed = "${album.coverUrl}|${album.title}|${album.circle}|${album.cv}"
     return "h${seed.hashCode().absoluteValue}"
+}
+
+private fun onlineDetailLoadingFor(album: Album, state: SearchUiState.Success): Boolean {
+    if (!state.isEnriching || state.purchasedOnly || state.collectedOnly) return false
+    val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+    return rj.isNotBlank() && rj in state.enrichingRjCodes
 }
 
 private fun Modifier.consumeTapThrough(): Modifier =
@@ -180,6 +188,7 @@ fun SearchScreen(
     submittedSearchPresaleOnly: Boolean = false,
     submittedSearchChineseTranslatedOnly: Boolean = false,
     submittedSearchCollectedOnly: Boolean = true,
+    submittedSearchCollectedSortName: String = SearchCollectedSortOption.ReleaseNew.name,
     submittedSearchLocale: String = "ja_JP",
     submittedSearchSignal: Long = 0L,
     scrollToTopSignal: Long = 0L,
@@ -190,10 +199,14 @@ fun SearchScreen(
     var presaleOnly by rememberSaveable { mutableStateOf(false) }
     var chineseTranslatedOnly by rememberSaveable { mutableStateOf(false) }
     var collectedOnly by rememberSaveable { mutableStateOf(true) }
+    var selectedCollectedSortName by rememberSaveable { mutableStateOf(SearchCollectedSortOption.ReleaseNew.name) }
     var selectedLocale by rememberSaveable { mutableStateOf("ja_JP") }
     var selectedOrderName by rememberSaveable { mutableStateOf(SearchSortOption.Trend.name) }
     val selectedOrder = remember(selectedOrderName) {
         SearchSortOption.values().firstOrNull { it.name == selectedOrderName } ?: SearchSortOption.Trend
+    }
+    val selectedCollectedSort = remember(selectedCollectedSortName) {
+        SearchCollectedSortOption.fromName(selectedCollectedSortName)
     }
     val selectedFilter = remember(selectedOrderName, purchasedOnly, presaleOnly, chineseTranslatedOnly, collectedOnly) {
         SearchFilterOption.fromState(
@@ -234,7 +247,8 @@ fun SearchScreen(
             initialKeyword = keyword,
             initialPurchasedOnly = purchasedOnly,
             initialLocale = selectedLocale,
-            initialCollectedOnly = collectedOnly
+            initialCollectedOnly = collectedOnly,
+            initialCollectedSort = selectedCollectedSort
         )
     }
 
@@ -249,6 +263,7 @@ fun SearchScreen(
     LaunchedEffect(
         success?.pendingRequest,
         success?.order,
+        success?.collectedSort,
         success?.purchasedOnly,
         success?.presaleOnly,
         success?.chineseTranslatedOnly,
@@ -261,6 +276,7 @@ fun SearchScreen(
             presaleOnly = state.presaleOnly
             chineseTranslatedOnly = state.chineseTranslatedOnly
             collectedOnly = state.collectedOnly
+            selectedCollectedSortName = state.collectedSort.name
             selectedLocale = state.locale ?: "ja_JP"
             selectedOrderName = state.order.name
             optionsSyncedFromState = true
@@ -313,6 +329,7 @@ fun SearchScreen(
             presaleOnly = presaleOnly,
             chineseTranslatedOnly = chineseTranslatedOnly,
             collectedOnly = collectedOnly,
+            collectedSortName = selectedCollectedSort.name,
             locale = selectedLocale
         )
     }
@@ -325,6 +342,7 @@ fun SearchScreen(
         submittedSearchPresaleOnly,
         submittedSearchChineseTranslatedOnly,
         submittedSearchCollectedOnly,
+        submittedSearchCollectedSortName,
         submittedSearchLocale,
         searchSubmitLocked
     ) {
@@ -336,14 +354,16 @@ fun SearchScreen(
             return@LaunchedEffect
         }
         val normalizedKeyword = submittedSearchKeyword.trim()
-        if (normalizedKeyword.isBlank() || searchSubmitLocked) return@LaunchedEffect
+        if (searchSubmitLocked) return@LaunchedEffect
         val submittedOrder = SearchSortOption.values()
             .firstOrNull { it.name == submittedSearchOrderName }
             ?: SearchSortOption.Trend
+        val submittedCollectedSort = SearchCollectedSortOption.fromName(submittedSearchCollectedSortName)
         keyboardController?.hide()
         val accepted = viewModel.search(
             keyword = normalizedKeyword,
             order = submittedOrder,
+            collectedSort = submittedCollectedSort,
             purchasedOnly = submittedSearchPurchasedOnly,
             presaleOnly = submittedSearchPresaleOnly,
             chineseTranslatedOnly = submittedSearchChineseTranslatedOnly,
@@ -354,6 +374,7 @@ fun SearchScreen(
         lastHandledSubmittedSearchSignal = submittedSearchSignal
         keyword = normalizedKeyword
         selectedOrderName = submittedOrder.name
+        selectedCollectedSortName = submittedCollectedSort.name
         purchasedOnly = submittedSearchPurchasedOnly
         presaleOnly = submittedSearchPresaleOnly
         chineseTranslatedOnly = submittedSearchChineseTranslatedOnly
@@ -549,10 +570,12 @@ fun SearchScreen(
                                             key = { album -> stableAlbumKey(album) },
                                             contentType = { "album" }
                                         ) { album ->
+                                            val onlineDetailLoading = onlineDetailLoadingFor(album, state)
                                             AlbumItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
                                                 emptyCoverUseShimmer = true,
+                                                onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -583,10 +606,12 @@ fun SearchScreen(
                                             contentType = { "albumGrid" }
                                         ) { index ->
                                             val album = state.results[index]
+                                            val onlineDetailLoading = onlineDetailLoadingFor(album, state)
                                             AlbumGridItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
                                                 emptyCoverUseShimmer = true,
+                                                onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -677,6 +702,7 @@ fun SearchScreen(
                         searchFieldReadOnly = true,
                         onSearchFieldClick = { onOpenSearchAssist(currentSearchAssistRequest()) },
                         selectedFilter = selectedFilter,
+                        selectedCollectedSort = selectedCollectedSort,
                         selectedLocale = selectedLocale,
                         filterControlsLocked = filterControlsLocked,
                         searchSubmitLocked = searchSubmitLocked,
@@ -693,8 +719,11 @@ fun SearchScreen(
                         onSearchSubmit = { submitSearch() },
                         onFilterSelected = { option ->
                             val nextOrder = option.sortOption ?: selectedOrder
-                            val accepted = viewModel.updateSearchOptions(
+                            val nextKeyword = keyword.trim()
+                            val accepted = viewModel.search(
+                                keyword = nextKeyword,
                                 order = nextOrder,
+                                collectedSort = selectedCollectedSort,
                                 purchasedOnly = option.isPurchasedOnly,
                                 presaleOnly = option.isPresaleOnly,
                                 chineseTranslatedOnly = option.isChineseTranslated,
@@ -707,18 +736,38 @@ fun SearchScreen(
                                 presaleOnly = option.isPresaleOnly
                                 chineseTranslatedOnly = option.isChineseTranslated
                                 collectedOnly = option.isCollectedOnly
+                                keyword = nextKeyword
+                                scrollResultsToTop()
+                                chromeState.expand()
                             }
                         },
                         onLocaleSelected = { locale ->
                             selectedLocale = locale
                             viewModel.updateSearchOptions(
                                 order = selectedOrder,
+                                collectedSort = selectedCollectedSort,
                                 purchasedOnly = purchasedOnly,
                                 presaleOnly = presaleOnly,
                                 chineseTranslatedOnly = chineseTranslatedOnly,
                                 collectedOnly = collectedOnly,
                                 locale = locale
                             )
+                        },
+                        onCollectedSortSelected = { sort ->
+                            selectedCollectedSortName = sort.name
+                            val accepted = viewModel.updateSearchOptions(
+                                order = selectedOrder,
+                                collectedSort = sort,
+                                purchasedOnly = purchasedOnly,
+                                presaleOnly = presaleOnly,
+                                chineseTranslatedOnly = chineseTranslatedOnly,
+                                collectedOnly = collectedOnly,
+                                locale = selectedLocale
+                            )
+                            if (accepted) {
+                                scrollResultsToTop()
+                                chromeState.expand()
+                            }
                         },
                         onFirstPage = {
                             scrollResultsToTop()
@@ -802,6 +851,7 @@ internal fun SearchChrome(
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
+    selectedCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
@@ -823,6 +873,7 @@ internal fun SearchChrome(
     onSearchSubmit: () -> Unit,
     onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
+    onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
     onFirstPage: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit
@@ -844,6 +895,7 @@ internal fun SearchChrome(
             searchFieldReadOnly = searchFieldReadOnly,
             onSearchFieldClick = onSearchFieldClick,
             selectedFilter = selectedFilter,
+            selectedCollectedSort = selectedCollectedSort,
             selectedLocale = selectedLocale,
             filterControlsLocked = filterControlsLocked,
             searchSubmitLocked = searchSubmitLocked,
@@ -855,6 +907,7 @@ internal fun SearchChrome(
             onSearchSubmit = onSearchSubmit,
             onFilterSelected = onFilterSelected,
             onLocaleSelected = onLocaleSelected,
+            onCollectedSortSelected = onCollectedSortSelected,
             rightPanelToggle = rightPanelToggle
         )
         if (showPagination) {
@@ -879,6 +932,7 @@ internal fun SearchToolbar(
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
+    selectedCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
@@ -890,11 +944,12 @@ internal fun SearchToolbar(
     onSearchSubmit: () -> Unit,
     onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
+    onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
     rightPanelToggle: (@Composable (Modifier) -> Unit)? = null
 ) {
     val colorScheme = AsmrTheme.colorScheme
     var scopeMenuExpanded by remember { mutableStateOf(false) }
-    var languageMenuExpanded by remember { mutableStateOf(false) }
+    var secondaryMenuExpanded by remember { mutableStateOf(false) }
     val dropdownContainerColor = lerp(
         colorScheme.surface,
         colorScheme.primarySoft,
@@ -905,7 +960,7 @@ internal fun SearchToolbar(
     LaunchedEffect(filterControlsLocked, searchSubmitLocked) {
         if (filterControlsLocked || searchSubmitLocked) {
             scopeMenuExpanded = false
-            languageMenuExpanded = false
+            secondaryMenuExpanded = false
         }
     }
 
@@ -968,6 +1023,7 @@ internal fun SearchToolbar(
                                 )
                             }
                             DropdownMenuItem(
+                                modifier = Modifier.testTag("${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${option.name}"),
                                 text = {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1014,50 +1070,78 @@ internal fun SearchToolbar(
                             )
                         }
                     }
-                    val languageLabel = when (selectedLocale.trim()) {
-                        "zh_CN" -> "简中"
-                        "zh_TW" -> "繁中"
-                        else -> "日语"
-                    }
                     Box {
+                        val secondaryButtonTag = if (selectedFilter.isCollectedOnly) {
+                            SEARCH_COLLECTED_SORT_BUTTON_TAG
+                        } else {
+                            SEARCH_LANGUAGE_BUTTON_TAG
+                        }
                         TextButton(
-                            onClick = { languageMenuExpanded = true },
+                            onClick = { secondaryMenuExpanded = true },
                             enabled = !filterControlsLocked,
                             modifier = Modifier
                                 .defaultMinSize(minWidth = 1.dp, minHeight = 30.dp)
                                 .height(30.dp)
-                                .testTag(SEARCH_LANGUAGE_BUTTON_TAG),
+                                .testTag(secondaryButtonTag),
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                             colors = ButtonDefaults.textButtonColors(
                                 contentColor = colorScheme.primary
                             )
                         ) {
-                            Text(languageLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            val label = if (selectedFilter.isCollectedOnly) {
+                                selectedCollectedSort.label
+                            } else {
+                                when (selectedLocale.trim()) {
+                                    "zh_CN" -> "简中"
+                                    "zh_TW" -> "繁中"
+                                    else -> "日语"
+                                }
+                            }
+                            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                         DropdownMenu(
-                            expanded = languageMenuExpanded,
-                            onDismissRequest = { languageMenuExpanded = false },
+                            expanded = secondaryMenuExpanded,
+                            onDismissRequest = { secondaryMenuExpanded = false },
                             modifier = Modifier.background(dropdownContainerColor)
                         ) {
-                            listOf(
-                                "ja_JP" to "日语",
-                                "zh_CN" to "简中",
-                                "zh_TW" to "繁中"
-                            ).forEachIndexed { index, (locale, label) ->
-                                if (index > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 8.dp),
-                                        thickness = 0.5.dp,
-                                        color = colorScheme.textSecondary.copy(alpha = 0.2f)
+                            if (selectedFilter.isCollectedOnly) {
+                                SearchCollectedSortOption.values().forEachIndexed { index, option ->
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                            thickness = 0.5.dp,
+                                            color = colorScheme.textSecondary.copy(alpha = 0.2f)
+                                        )
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text(option.label, color = colorScheme.textPrimary) },
+                                        onClick = {
+                                            secondaryMenuExpanded = false
+                                            onCollectedSortSelected(option)
+                                        }
                                     )
                                 }
-                                DropdownMenuItem(
-                                    text = { Text(label, color = colorScheme.textPrimary) },
-                                    onClick = {
-                                        languageMenuExpanded = false
-                                        onLocaleSelected(locale)
+                            } else {
+                                listOf(
+                                    "ja_JP" to "日语",
+                                    "zh_CN" to "简中",
+                                    "zh_TW" to "繁中"
+                                ).forEachIndexed { index, (locale, label) ->
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                            thickness = 0.5.dp,
+                                            color = colorScheme.textSecondary.copy(alpha = 0.2f)
+                                        )
                                     }
-                                )
+                                    DropdownMenuItem(
+                                        text = { Text(label, color = colorScheme.textPrimary) },
+                                        onClick = {
+                                            secondaryMenuExpanded = false
+                                            onLocaleSelected(locale)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

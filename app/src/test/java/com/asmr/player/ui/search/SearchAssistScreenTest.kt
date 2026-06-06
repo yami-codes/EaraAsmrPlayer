@@ -144,6 +144,67 @@ class SearchAssistScreenTest {
     }
 
     @Test
+    fun currentFilterSelectionSubmitsInputWithoutHotKeywordFallback() {
+        val submitted = mutableListOf<SearchAssistSearchRequest>()
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchAssistContent(
+                    windowSizeClass = testWindowSizeClass(),
+                    initialRequest = SearchAssistSearchRequest(),
+                    uiState = SearchAssistUiState(
+                        suggestions = SearchSuggestionsUiData(
+                            hotCvs = listOf(SearchSuggestionTerm(value = "CV A", count = 12, rank = 1))
+                        )
+                    ),
+                    onSubmitSearch = { submitted += it },
+                    onClearHistory = {},
+                    onOpenFullRanking = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_SCOPE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag("${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${SearchFilterOption.Collected.name}")
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, submitted.size)
+            assertEquals("", submitted.single().keyword)
+            assertEquals(SearchFilterOption.Collected, submitted.single().selectedFilter)
+        }
+    }
+
+    @Test
+    fun filterSelectionSubmitsTypedInputAndSelectedFilter() {
+        val submitted = mutableListOf<SearchAssistSearchRequest>()
+
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchAssistContent(
+                    windowSizeClass = testWindowSizeClass(),
+                    initialRequest = SearchAssistSearchRequest(),
+                    uiState = SearchAssistUiState(),
+                    onSubmitSearch = { submitted += it },
+                    onClearHistory = {},
+                    onOpenFullRanking = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_ASSIST_INPUT_TAG).performTextInput("  rain  ")
+        composeRule.onNodeWithTag(SEARCH_SCOPE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag("${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${SearchFilterOption.ChineseTranslated.name}")
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(1, submitted.size)
+            assertEquals("rain", submitted.single().keyword)
+            assertEquals(SearchFilterOption.ChineseTranslated, submitted.single().selectedFilter)
+        }
+    }
+
+    @Test
     fun clearHistoryHotWorkAndFullRankingUseSeparateCallbacks() {
         var clearHistoryCount = 0
         var fullRankingCount = 0

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
@@ -56,8 +57,13 @@ private val AlbumItemVerticalPadding = 2.dp
 private val AlbumItemCoverContentSpacing = 8.dp
 private val AlbumGridInfoHorizontalPadding = 6.dp
 private val AlbumGridInfoVerticalPadding = 8.dp
+private val AlbumDetailSkeletonHeight = 18.dp
 internal const val ALBUM_ITEM_CARD_TAG = "album_item_card"
 internal const val ALBUM_ITEM_STATS_TAG = "album_item_stats"
+
+private fun Album.hasRatingInfo(): Boolean {
+    return (ratingValue?.let { it > 0.0 } == true) || ratingCount > 0
+}
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
@@ -72,6 +78,7 @@ fun AlbumItem(
     onCvClick: ((String) -> Unit)? = null,
     onTagClick: ((String) -> Unit)? = null,
     coverBadge: AlbumCoverBadge? = null,
+    onlineDetailLoading: Boolean = false,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumListItemCornerRadius) }
@@ -210,6 +217,8 @@ fun AlbumItem(
                             onCvClick = onCvClick,
                             leadingVisual = Icon,
                         )
+                    } else if (onlineDetailLoading) {
+                        AlbumDetailSkeletonLine(widthFraction = 0.62f)
                     }
                     if (album.tags.isNotEmpty()) {
                         AlbumTagsSingleLine(
@@ -218,6 +227,8 @@ fun AlbumItem(
                             onTagClick = onTagClick,
                             leadingVisual = Icon,
                         )
+                    } else if (onlineDetailLoading) {
+                        AlbumDetailSkeletonLine(widthFraction = 0.86f)
                     }
 
                     if (statsText.isNotBlank()) {
@@ -230,6 +241,12 @@ fun AlbumItem(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag(ALBUM_ITEM_STATS_TAG)
+                        )
+                    }
+                    if (onlineDetailLoading && !album.hasRatingInfo()) {
+                        AlbumDetailSkeletonLine(
+                            widthFraction = 0.46f,
+                            modifier = if (statsText.isBlank()) Modifier.testTag(ALBUM_ITEM_STATS_TAG) else Modifier
                         )
                     }
                 }
@@ -301,6 +318,7 @@ fun AlbumGridItem(
     onCvClick: ((String) -> Unit)? = null,
     onTagClick: ((String) -> Unit)? = null,
     coverBadge: AlbumCoverBadge? = null,
+    onlineDetailLoading: Boolean = false,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumGridItemCornerRadius) }
@@ -421,11 +439,15 @@ fun AlbumGridItem(
                 leadingVisual = Icon,
             )
 
-            AlbumCvChipsFlow(
-                cvText = album.cv,
-                onCvClick = onCvClick,
-                leadingVisual = Icon,
-            )
+            if (album.cv.isNotBlank()) {
+                AlbumCvChipsFlow(
+                    cvText = album.cv,
+                    onCvClick = onCvClick,
+                    leadingVisual = Icon,
+                )
+            } else if (onlineDetailLoading) {
+                AlbumDetailSkeletonLine(widthFraction = 0.72f)
+            }
 
             val statsText = remember(album.ratingValue, album.ratingCount, album.priceJpy) {
                 buildString {
@@ -448,6 +470,8 @@ fun AlbumGridItem(
                     onTagClick = onTagClick,
                     leadingVisual = Icon,
                 )
+            } else if (onlineDetailLoading) {
+                AlbumDetailSkeletonLine(widthFraction = 0.92f)
             }
 
             if (statsText.isNotBlank()) {
@@ -459,8 +483,25 @@ fun AlbumGridItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            if (onlineDetailLoading && !album.hasRatingInfo()) {
+                AlbumDetailSkeletonLine(widthFraction = 0.54f)
+            }
         }
     }
+}
+
+@Composable
+private fun AlbumDetailSkeletonLine(
+    widthFraction: Float,
+    modifier: Modifier = Modifier,
+) {
+    val fraction = widthFraction.coerceIn(0.2f, 1f)
+    AsmrShimmerPlaceholder(
+        modifier = modifier
+            .fillMaxWidth(fraction)
+            .height(AlbumDetailSkeletonHeight),
+        cornerRadius = 7,
+    )
 }
 
 data class AlbumCoverBadge(
