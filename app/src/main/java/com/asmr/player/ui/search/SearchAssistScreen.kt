@@ -141,8 +141,14 @@ internal fun SearchAssistContent(
     var selectedOrderName by rememberSaveable(initialRequest.orderName) {
         mutableStateOf(initialRequest.orderName)
     }
+    var selectedCollectedSortName by rememberSaveable(initialRequest.collectedSortName) {
+        mutableStateOf(initialRequest.collectedSortName)
+    }
     val selectedOrder = remember(selectedOrderName) {
         SearchSortOption.values().firstOrNull { it.name == selectedOrderName } ?: SearchSortOption.Trend
+    }
+    val selectedCollectedSort = remember(selectedCollectedSortName) {
+        SearchCollectedSortOption.fromName(selectedCollectedSortName)
     }
     val selectedFilter = remember(
         selectedOrderName,
@@ -196,6 +202,7 @@ internal fun SearchAssistContent(
         presaleOnlyValue: Boolean = presaleOnly,
         chineseTranslatedOnlyValue: Boolean = chineseTranslatedOnly,
         collectedOnlyValue: Boolean = collectedOnly,
+        collectedSort: SearchCollectedSortOption = selectedCollectedSort,
         locale: String = selectedLocale
     ) = SearchAssistSearchRequest(
         keyword = requestKeyword,
@@ -204,6 +211,7 @@ internal fun SearchAssistContent(
         presaleOnly = presaleOnlyValue,
         chineseTranslatedOnly = chineseTranslatedOnlyValue,
         collectedOnly = collectedOnlyValue,
+        collectedSortName = collectedSort.name,
         locale = locale
     )
 
@@ -230,6 +238,9 @@ internal fun SearchAssistContent(
         presaleOnly = nextPresaleOnly
         chineseTranslatedOnly = nextChineseTranslatedOnly
         collectedOnly = nextCollectedOnly
+        if (nextCollectedOnly) {
+            selectedCollectedSortName = selectedCollectedSort.name
+        }
         keyboardController?.hide()
         onSubmitSearch(
             buildRequest(
@@ -392,6 +403,7 @@ internal fun SearchAssistContent(
             onKeywordChange = { keyword = it },
             placeholder = hotKeywordCarouselItem.placeholder,
             selectedFilter = selectedFilter,
+            selectedCollectedSort = selectedCollectedSort,
             selectedLocale = selectedLocale,
             filterControlsLocked = false,
             searchSubmitLocked = false,
@@ -413,6 +425,7 @@ internal fun SearchAssistContent(
             onSearchSubmit = { submit() },
             onFilterSelected = ::submitFilter,
             onLocaleSelected = { locale -> selectedLocale = locale },
+            onCollectedSortSelected = { sort -> selectedCollectedSortName = sort.name },
             onFirstPage = {},
             onPrev = {},
             onNext = {}

@@ -63,6 +63,7 @@ class SearchViewModel @Inject constructor(
 ) : ViewModel() {
     private val pageSize = 30
     private var currentOrder: SearchSortOption = SearchSortOption.Trend
+    private var currentCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew
     private var purchasedOnly: Boolean = false
     private var presaleOnly: Boolean = false
     private var chineseTranslatedOnly: Boolean = false
@@ -118,7 +119,8 @@ class SearchViewModel @Inject constructor(
         initialKeyword: String,
         initialPurchasedOnly: Boolean,
         initialLocale: String?,
-        initialCollectedOnly: Boolean = true
+        initialCollectedOnly: Boolean = true,
+        initialCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew
     ) {
         if (!bootstrapped.compareAndSet(false, true)) return
         viewModelScope.launch {
@@ -131,6 +133,7 @@ class SearchViewModel @Inject constructor(
                 presaleOnly = false
                 chineseTranslatedOnly = false
                 collectedOnly = initialCollectedOnly
+                currentCollectedSort = initialCollectedSort
                 currentLocale = initialLocale
                 lastRequestedKeyword = initialKeyword.trim()
                 requestPage(lastRequestedKeyword, 1, SearchPendingRequestKind.Search)
@@ -156,6 +159,7 @@ class SearchViewModel @Inject constructor(
         return search(
             keyword = keyword,
             order = currentOrder,
+            collectedSort = currentCollectedSort,
             purchasedOnly = purchasedOnly,
             presaleOnly = presaleOnly,
             chineseTranslatedOnly = chineseTranslatedOnly,
@@ -167,6 +171,7 @@ class SearchViewModel @Inject constructor(
     fun search(
         keyword: String,
         order: SearchSortOption,
+        collectedSort: SearchCollectedSortOption,
         purchasedOnly: Boolean,
         presaleOnly: Boolean,
         chineseTranslatedOnly: Boolean,
@@ -189,6 +194,7 @@ class SearchViewModel @Inject constructor(
         val normalizedKeyword = keyword.trim()
         Log.d("SearchViewModel", "Search requested: keyword=$normalizedKeyword")
         currentOrder = order
+        currentCollectedSort = collectedSort
         this.purchasedOnly = nextFilters.purchasedOnly
         this.presaleOnly = nextFilters.presaleOnly
         this.chineseTranslatedOnly = nextFilters.chineseTranslatedOnly
@@ -217,6 +223,7 @@ class SearchViewModel @Inject constructor(
 
     fun updateSearchOptions(
         order: SearchSortOption = currentOrder,
+        collectedSort: SearchCollectedSortOption = currentCollectedSort,
         purchasedOnly: Boolean = this.purchasedOnly,
         presaleOnly: Boolean = this.presaleOnly,
         chineseTranslatedOnly: Boolean = this.chineseTranslatedOnly,
@@ -237,6 +244,7 @@ class SearchViewModel @Inject constructor(
         }
         if (
             currentOrder == order &&
+            currentCollectedSort == collectedSort &&
             this.purchasedOnly == nextFilters.purchasedOnly &&
             this.presaleOnly == nextFilters.presaleOnly &&
             this.chineseTranslatedOnly == nextFilters.chineseTranslatedOnly &&
@@ -244,6 +252,7 @@ class SearchViewModel @Inject constructor(
             currentLocale == locale
         ) return true
         currentOrder = order
+        currentCollectedSort = collectedSort
         this.purchasedOnly = nextFilters.purchasedOnly
         this.presaleOnly = nextFilters.presaleOnly
         this.chineseTranslatedOnly = nextFilters.chineseTranslatedOnly
@@ -304,6 +313,7 @@ class SearchViewModel @Inject constructor(
                     keyword = normalizedKeyword,
                     page = page,
                     order = currentOrder,
+                    collectedSort = currentCollectedSort,
                     purchasedOnly = purchasedOnly,
                     presaleOnly = presaleOnly,
                     chineseTranslatedOnly = chineseTranslatedOnly,
@@ -314,6 +324,7 @@ class SearchViewModel @Inject constructor(
                     keyword = normalizedKeyword,
                     page = page,
                     order = currentOrder,
+                    collectedSort = currentCollectedSort,
                     purchasedOnly = purchasedOnly,
                     presaleOnly = presaleOnly,
                     chineseTranslatedOnly = chineseTranslatedOnly,
@@ -362,6 +373,7 @@ class SearchViewModel @Inject constructor(
                 messageManager.showError(msg)
                 if (previousSuccess != null) {
                     currentOrder = previousSuccess.order
+                    currentCollectedSort = previousSuccess.collectedSort
                     purchasedOnly = previousSuccess.purchasedOnly
                     presaleOnly = previousSuccess.presaleOnly
                     chineseTranslatedOnly = previousSuccess.chineseTranslatedOnly
@@ -408,6 +420,7 @@ class SearchViewModel @Inject constructor(
         keyword: String,
         page: Int,
         order: SearchSortOption,
+        collectedSort: SearchCollectedSortOption,
         purchasedOnly: Boolean,
         presaleOnly: Boolean,
         chineseTranslatedOnly: Boolean,
@@ -419,7 +432,7 @@ class SearchViewModel @Inject constructor(
         }
         if (collectedOnly) {
             val offset = (page.coerceAtLeast(1) - 1) * pageSize
-            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset)
+            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset, collectedSort.backendSort)
             val items = resp.items.orEmpty().map { it.toCollectedAlbum() }
             val total = resp.total.coerceAtLeast(0)
             val responseOffset = resp.offset.coerceAtLeast(offset)
@@ -545,6 +558,7 @@ class SearchViewModel @Inject constructor(
         val order = SearchSortOption.values()
             .firstOrNull { it.name == cached.orderName }
             ?: SearchSortOption.Trend
+        val collectedSort = SearchCollectedSortOption.fromName(cached.collectedSortName)
         val page = cached.page.coerceAtLeast(1)
         val filters = normalizeSearchFilters(
             purchasedOnly = cached.purchasedOnly,
@@ -553,6 +567,7 @@ class SearchViewModel @Inject constructor(
             collectedOnly = cached.collectedOnly
         )
         currentOrder = order
+        currentCollectedSort = collectedSort
         purchasedOnly = filters.purchasedOnly
         presaleOnly = filters.presaleOnly
         chineseTranslatedOnly = filters.chineseTranslatedOnly
@@ -563,6 +578,7 @@ class SearchViewModel @Inject constructor(
             keyword = cached.keyword,
             page = page,
             order = order,
+            collectedSort = collectedSort,
             purchasedOnly = filters.purchasedOnly,
             presaleOnly = filters.presaleOnly,
             chineseTranslatedOnly = filters.chineseTranslatedOnly,
@@ -594,6 +610,7 @@ class SearchViewModel @Inject constructor(
                         savedAtMs = System.currentTimeMillis(),
                         keyword = latest.keyword,
                         orderName = latest.order.name,
+                        collectedSortName = latest.collectedSort.name,
                         purchasedOnly = latest.purchasedOnly,
                         presaleOnly = latest.presaleOnly,
                         chineseTranslatedOnly = latest.chineseTranslatedOnly,
@@ -832,6 +849,7 @@ sealed class SearchUiState {
         val keyword: String,
         val page: Int,
         val order: SearchSortOption,
+        val collectedSort: SearchCollectedSortOption,
         val purchasedOnly: Boolean,
         val presaleOnly: Boolean,
         val chineseTranslatedOnly: Boolean,

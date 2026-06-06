@@ -22,6 +22,7 @@ internal const val SEARCH_ASSIST_RESULT_PURCHASED_ONLY_KEY = "searchPurchasedOnl
 internal const val SEARCH_ASSIST_RESULT_PRESALE_ONLY_KEY = "searchPresaleOnly"
 internal const val SEARCH_ASSIST_RESULT_CHINESE_TRANSLATED_ONLY_KEY = "searchChineseTranslatedOnly"
 internal const val SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY = "searchCollectedOnly"
+internal const val SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY = "searchCollectedSortName"
 internal const val SEARCH_ASSIST_RESULT_LOCALE_KEY = "searchLocale"
 
 data class SearchAssistSearchRequest(
@@ -31,6 +32,7 @@ data class SearchAssistSearchRequest(
     val presaleOnly: Boolean = false,
     val chineseTranslatedOnly: Boolean = false,
     val collectedOnly: Boolean = true,
+    val collectedSortName: String = SearchCollectedSortOption.ReleaseNew.name,
     val locale: String = "ja_JP"
 ) {
     val selectedOrder: SearchSortOption
@@ -44,6 +46,9 @@ data class SearchAssistSearchRequest(
             chineseTranslatedOnly = chineseTranslatedOnly,
             collectedOnly = collectedOnly
         )
+
+    val selectedCollectedSort: SearchCollectedSortOption
+        get() = SearchCollectedSortOption.fromName(collectedSortName)
 }
 
 @HiltViewModel

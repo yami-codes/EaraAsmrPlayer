@@ -10,3 +10,16 @@ enum class SearchSortOption(
     PriceHigh("价格最高", "price_d")
 }
 
+enum class SearchCollectedSortOption(
+    val label: String,
+    val backendSort: String
+) {
+    ReleaseNew("最新发售", "release"),
+    RatingHigh("评分最高", "rating");
+
+    companion object {
+        fun fromName(name: String?): SearchCollectedSortOption {
+            return values().firstOrNull { it.name == name } ?: ReleaseNew
+        }
+    }
+}

@@ -92,6 +92,7 @@ import com.asmr.player.ui.playlists.PlaylistsViewModel
 import com.asmr.player.ui.playlists.SystemPlaylistScreen
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_CHINESE_TRANSLATED_ONLY_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY
+import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_LOCALE_KEY
 import com.asmr.player.ui.search.SEARCH_ASSIST_RESULT_ORDER_KEY
@@ -378,6 +379,9 @@ fun MainContainer(
         mutableStateOf(SearchAssistSearchRequest().chineseTranslatedOnly)
     }
     var submittedSearchCollectedOnly by rememberSaveable { mutableStateOf(SearchAssistSearchRequest().collectedOnly) }
+    var submittedSearchCollectedSortName by rememberSaveable {
+        mutableStateOf(SearchAssistSearchRequest().collectedSortName)
+    }
     var submittedSearchLocale by rememberSaveable { mutableStateOf(SearchAssistSearchRequest().locale) }
     var submittedSearchSignal by rememberSaveable { mutableLongStateOf(0L) }
     var searchAssistInitialRequest by remember { mutableStateOf(SearchAssistSearchRequest()) }
@@ -529,6 +533,7 @@ fun MainContainer(
             request.chineseTranslatedOnly
         )
         targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY, request.collectedOnly)
+        targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY, request.collectedSortName)
         targetEntry?.savedStateHandle?.set(SEARCH_ASSIST_RESULT_LOCALE_KEY, request.locale)
         targetEntry?.savedStateHandle?.set(
             SEARCH_ASSIST_RESULT_SIGNAL_KEY,
@@ -1294,6 +1299,7 @@ fun MainContainer(
                                                 submittedSearchPresaleOnly = submittedSearchPresaleOnly,
                                                 submittedSearchChineseTranslatedOnly = submittedSearchChineseTranslatedOnly,
                                                 submittedSearchCollectedOnly = submittedSearchCollectedOnly,
+                                                submittedSearchCollectedSortName = submittedSearchCollectedSortName,
                                                 submittedSearchLocale = submittedSearchLocale,
                                                 submittedSearchSignal = submittedSearchSignal,
                                                 onOpenSearchAssist = { request ->
@@ -1424,6 +1430,12 @@ fun MainContainer(
                     val submittedCollectedOnly by backStackEntry.savedStateHandle
                         .getStateFlow(SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY, SearchAssistSearchRequest().collectedOnly)
                         .collectAsState()
+                    val submittedCollectedSortName by backStackEntry.savedStateHandle
+                        .getStateFlow(
+                            SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY,
+                            SearchAssistSearchRequest().collectedSortName
+                        )
+                        .collectAsState()
                     val submittedLocale by backStackEntry.savedStateHandle
                         .getStateFlow(SEARCH_ASSIST_RESULT_LOCALE_KEY, SearchAssistSearchRequest().locale)
                         .collectAsState()
@@ -1439,6 +1451,7 @@ fun MainContainer(
                         submittedPresaleOnly,
                         submittedChineseTranslatedOnly,
                         submittedCollectedOnly,
+                        submittedCollectedSortName,
                         submittedLocale
                     ) {
                         if (submittedSignal <= 0L) return@LaunchedEffect
@@ -1448,6 +1461,7 @@ fun MainContainer(
                         submittedSearchPresaleOnly = submittedPresaleOnly
                         submittedSearchChineseTranslatedOnly = submittedChineseTranslatedOnly
                         submittedSearchCollectedOnly = submittedCollectedOnly
+                        submittedSearchCollectedSortName = submittedCollectedSortName
                         submittedSearchLocale = submittedLocale
                         submittedSearchSignal = submittedSignal
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_KEY] = ""
@@ -1461,6 +1475,8 @@ fun MainContainer(
                             SearchAssistSearchRequest().chineseTranslatedOnly
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_COLLECTED_ONLY_KEY] =
                             SearchAssistSearchRequest().collectedOnly
+                        backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_COLLECTED_SORT_KEY] =
+                            SearchAssistSearchRequest().collectedSortName
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_LOCALE_KEY] =
                             SearchAssistSearchRequest().locale
                         backStackEntry.savedStateHandle[SEARCH_ASSIST_RESULT_SIGNAL_KEY] = 0L
