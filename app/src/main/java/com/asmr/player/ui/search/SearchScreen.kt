@@ -153,6 +153,25 @@ private fun onlineDetailLoadingFor(album: Album, state: SearchUiState.Success): 
     return rj.isNotBlank() && rj in state.enrichingRjCodes
 }
 
+internal data class SearchChromeLockState(
+    val interactionLocked: Boolean,
+    val filterControlsLocked: Boolean,
+    val searchSubmitLocked: Boolean,
+    val showSearchSpinner: Boolean
+)
+
+internal fun resolveSearchChromeLockState(uiState: SearchUiState): SearchChromeLockState {
+    val success = uiState as? SearchUiState.Success
+    val interactionLocked = success?.isBusy == true
+    val requestLocked = uiState is SearchUiState.Loading || interactionLocked
+    return SearchChromeLockState(
+        interactionLocked = interactionLocked,
+        filterControlsLocked = requestLocked,
+        searchSubmitLocked = requestLocked,
+        showSearchSpinner = interactionLocked
+    )
+}
+
 private fun Modifier.consumeTapThrough(): Modifier =
     pointerInput(Unit) {
         awaitEachGesture {
@@ -293,10 +312,11 @@ fun SearchScreen(
         }
     }
 
-    val interactionLocked = success?.isBusy == true
-    val filterControlsLocked = success == null || interactionLocked
-    val searchSubmitLocked = uiState is SearchUiState.Loading || interactionLocked
-    val showSearchSpinner = success?.isBusy == true
+    val chromeLockState = remember(uiState) { resolveSearchChromeLockState(uiState) }
+    val interactionLocked = chromeLockState.interactionLocked
+    val filterControlsLocked = chromeLockState.filterControlsLocked
+    val searchSubmitLocked = chromeLockState.searchSubmitLocked
+    val showSearchSpinner = chromeLockState.showSearchSpinner
     val highlightedPage = success?.page ?: 1
     val canGoPrev = success?.canGoPrev == true && !success.isSearching
     val canGoNext = success?.canGoNext == true && !success.isSearching
