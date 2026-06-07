@@ -249,7 +249,7 @@ fun AlbumDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent), // Background handled by MainActivity
+            .background(AsmrTheme.colorScheme.background),
         contentAlignment = Alignment.TopCenter // 浠呯敤浜庡钩鏉块€傞厤锛氬眳涓樉绀哄唴瀹?
     ) {
         val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact

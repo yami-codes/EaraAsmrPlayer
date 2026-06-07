@@ -144,6 +144,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.*
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -217,6 +218,41 @@ internal data class PlaylistPickerRequest(
 internal data class BatchPlaylistPickerRequest(
     val items: List<MediaItem>
 )
+
+private const val SecondaryPageEnterDurationMs = 440
+private const val SecondaryPageExitDurationMs = 420
+private val SecondaryPageSlideEasing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)
+
+private fun String?.usesSecondaryPageSlideTransition(): Boolean {
+    return when (this) {
+        Routes.SearchAssist,
+        Routes.SearchAssistPattern,
+        Routes.AlbumDetailByIdPattern,
+        Routes.AlbumDetailByRjPattern,
+        Routes.AlbumDetailOnlineByRjPattern -> true
+        else -> false
+    }
+}
+
+private fun secondaryPageEnterTransition(): EnterTransition {
+    return slideInHorizontally(
+        animationSpec = tween(
+            durationMillis = SecondaryPageEnterDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        initialOffsetX = { fullWidth -> fullWidth }
+    )
+}
+
+private fun secondaryPagePopExitTransition(): ExitTransition {
+    return slideOutHorizontally(
+        animationSpec = tween(
+            durationMillis = SecondaryPageExitDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        targetOffsetX = { fullWidth -> fullWidth }
+    )
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
@@ -1250,17 +1286,17 @@ fun MainContainer(
                                 .fillMaxSize()
                                 .padding(top = padding.calculateTopPadding())
                         ) {
+                            val hasOverlayRoute = currentPrimaryRoute == null
                             primaryContentStateHolder.SaveableStateProvider("primary_pager") {
-                                if (currentPrimaryRoute != null) {
-                                    HorizontalPager(
-                                        state = primaryPagerState,
-                                        modifier = Modifier.fillMaxSize(),
-                                        userScrollEnabled = !primaryPagerScrollLocked,
-                                        key = { primaryPagerRoutes[it] }
-                                    ) { page ->
-                                        val route = primaryPagerRoutes[page]
-                                        primaryContentStateHolder.SaveableStateProvider("primary_route:$route") {
-                                            when (route) {
+                                HorizontalPager(
+                                    state = primaryPagerState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
+                                    key = { primaryPagerRoutes[it] }
+                                ) { page ->
+                                    val route = primaryPagerRoutes[page]
+                                    primaryContentStateHolder.SaveableStateProvider("primary_route:$route") {
+                                        when (route) {
                                         Routes.Library -> {
                                             LibraryScreen(
                                                 windowSizeClass = windowSizeClass,
@@ -1384,7 +1420,6 @@ fun MainContainer(
                                             )
                                         }
                                     }
-                                    }
                                 }
                             }
                             }
@@ -1392,10 +1427,22 @@ fun MainContainer(
                             NavHost(
                                 navController = navController,
                                 startDestination = initialDestination,
-                                enterTransition = { EnterTransition.None },
+                                enterTransition = {
+                                    if (targetState.destination.route.usesSecondaryPageSlideTransition()) {
+                                        secondaryPageEnterTransition()
+                                    } else {
+                                        EnterTransition.None
+                                    }
+                                },
                                 exitTransition = { ExitTransition.None },
                                 popEnterTransition = { EnterTransition.None },
-                                popExitTransition = { ExitTransition.None },
+                                popExitTransition = {
+                                    if (initialState.destination.route.usesSecondaryPageSlideTransition()) {
+                                        secondaryPagePopExitTransition()
+                                    } else {
+                                        ExitTransition.None
+                                    }
+                                },
                                 modifier = Modifier.fillMaxSize()
                             ) {
 
