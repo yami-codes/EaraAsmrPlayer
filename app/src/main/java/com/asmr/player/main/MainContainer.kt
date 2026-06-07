@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
@@ -334,6 +336,8 @@ fun MainContainer(
         initialPage = initialPrimaryPage,
         pageCount = { primaryPagerRoutes.size }
     )
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val primaryContentStateHolder = rememberSaveableStateHolder()
     var primaryPagerScrollLocked by remember { mutableStateOf(false) }
     var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
@@ -614,10 +618,13 @@ fun MainContainer(
 
     LaunchedEffect(primaryPagerState, primaryPagerRoutes) {
         snapshotFlow { primaryPagerState.isScrollInProgress }
-            .filter { !it }
-            .map { primaryPagerState.currentPage }
-            .distinctUntilChanged()
-            .collect { page ->
+            .collect { inProgress ->
+                if (inProgress) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                    return@collect
+                }
+                val page = primaryPagerState.currentPage
                 val currentPrimary = currentPrimaryRouteState.value ?: return@collect
                 val targetRoute = primaryPagerRoutes.getOrNull(page) ?: return@collect
                 if (targetRoute != currentPrimary) {
