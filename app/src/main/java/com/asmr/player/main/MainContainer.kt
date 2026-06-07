@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -223,15 +225,11 @@ private const val SecondaryPageEnterDurationMs = 440
 private const val SecondaryPageExitDurationMs = 420
 private val SecondaryPageSlideEasing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)
 
-private fun String?.usesSecondaryPageSlideTransition(): Boolean {
-    return when (this) {
-        Routes.SearchAssist,
-        Routes.SearchAssistPattern,
-        Routes.AlbumDetailByIdPattern,
-        Routes.AlbumDetailByRjPattern,
-        Routes.AlbumDetailOnlineByRjPattern -> true
-        else -> false
-    }
+private fun NavBackStackEntry.usesSecondaryPageSlideTransition(): Boolean {
+    return resolveCurrentPrimaryDestinationRoute(
+        currentRoute = destination.route,
+        playlistSystemType = arguments?.getString("type")
+    ) == null
 }
 
 private fun secondaryPageEnterTransition(): EnterTransition {
@@ -252,6 +250,29 @@ private fun secondaryPagePopExitTransition(): ExitTransition {
         ),
         targetOffsetX = { fullWidth -> fullWidth }
     )
+}
+
+@Composable
+private fun SecondaryPageBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val pageBackgroundColor = remember(colorScheme.background, colorScheme.primarySoft, colorScheme.isDark) {
+        if (colorScheme.isDark) {
+            colorScheme.background
+        } else {
+            colorScheme.primarySoft.copy(alpha = 0.16f).compositeOver(colorScheme.background)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(pageBackgroundColor)
+    ) {
+        content()
+    }
 }
 
 @Composable
@@ -1428,7 +1449,7 @@ fun MainContainer(
                                 navController = navController,
                                 startDestination = initialDestination,
                                 enterTransition = {
-                                    if (targetState.destination.route.usesSecondaryPageSlideTransition()) {
+                                    if (targetState.usesSecondaryPageSlideTransition()) {
                                         secondaryPageEnterTransition()
                                     } else {
                                         EnterTransition.None
@@ -1437,7 +1458,7 @@ fun MainContainer(
                                 exitTransition = { ExitTransition.None },
                                 popEnterTransition = { EnterTransition.None },
                                 popExitTransition = {
-                                    if (initialState.destination.route.usesSecondaryPageSlideTransition()) {
+                                    if (initialState.usesSecondaryPageSlideTransition()) {
                                         secondaryPagePopExitTransition()
                                     } else {
                                         ExitTransition.None
@@ -1450,10 +1471,12 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                                 composable("library_filter") {
-                    LibraryFilterScreen(
-                        onClose = { navController.popBackStack() },
-                        viewModel = libraryViewModel
-                    )
+                    SecondaryPageBackground {
+                        LibraryFilterScreen(
+                            onClose = { navController.popBackStack() },
+                            viewModel = libraryViewModel
+                        )
+                    }
                 }
                 composable("search") { backStackEntry ->
                     val submittedKeyword by backStackEntry.savedStateHandle
@@ -1532,15 +1555,17 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable(route = Routes.SearchAssist) {
-                    SearchAssistScreen(
-                        windowSizeClass = windowSizeClass,
-                        initialRequest = searchAssistInitialRequest,
-                        onSubmitSearch = ::submitSearchAssistRequest,
-                        onOpenFullRanking = {
-                            navController.popBackStack(Routes.Search, false)
-                            openPrimaryRoute(Routes.HotListening)
-                        }
-                    )
+                    SecondaryPageBackground {
+                        SearchAssistScreen(
+                            windowSizeClass = windowSizeClass,
+                            initialRequest = searchAssistInitialRequest,
+                            onSubmitSearch = ::submitSearchAssistRequest,
+                            onOpenFullRanking = {
+                                navController.popBackStack(Routes.Search, false)
+                                openPrimaryRoute(Routes.HotListening)
+                            }
+                        )
+                    }
                 }
                 composable(
                     route = Routes.SearchAssistPattern,
@@ -1560,15 +1585,17 @@ fun MainContainer(
                         searchAssistInitialRequest.copy(keyword = initialKeyword)
                     }
 
-                    SearchAssistScreen(
-                        windowSizeClass = windowSizeClass,
-                        initialRequest = initialRequest,
-                        onSubmitSearch = ::submitSearchAssistRequest,
-                        onOpenFullRanking = {
-                            navController.popBackStack(Routes.Search, false)
-                            openPrimaryRoute(Routes.HotListening)
-                        }
-                    )
+                    SecondaryPageBackground {
+                        SearchAssistScreen(
+                            windowSizeClass = windowSizeClass,
+                            initialRequest = initialRequest,
+                            onSubmitSearch = ::submitSearchAssistRequest,
+                            onOpenFullRanking = {
+                                navController.popBackStack(Routes.Search, false)
+                                openPrimaryRoute(Routes.HotListening)
+                            }
+                        )
+                    }
                 }
                 composable("hot_listening") {
                     Box(modifier = Modifier.fillMaxSize())
@@ -1582,41 +1609,43 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val rj = backStackEntry.arguments?.getString("rj").orEmpty()
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    AlbumDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        rjCode = rj,
-                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
-                        refreshToken = refreshToken,
-                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                        onPlayTracks = { album, tracks, startTrack ->
-                            scope.launch {
-                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                    openNowPlaying()
+                    SecondaryPageBackground {
+                        AlbumDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            rjCode = rj,
+                            initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
+                            refreshToken = refreshToken,
+                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                            onPlayTracks = { album, tracks, startTrack ->
+                                scope.launch {
+                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                        openNowPlaying()
+                                    }
                                 }
-                            }
-                        },
-                        onPlayMediaItems = { items, startIndex ->
-                            playerViewModel.playMediaItems(items, startIndex)
-                            openNowPlaying()
-                        },
-                        onAddToQueue = { album, track ->
-                            playerViewModel.addTrackToQueue(album, track)
-                        },
-                        onAddMediaItemsToQueue = { items ->
-                            playerViewModel.addMediaItemsToQueue(items)
-                        },
-                        onAddMediaItemsToFavorites = { items ->
-                            playlistsViewModel.addItemsToFavoritesInBackground(items)
-                        },
-                        onOpenPlaylistPicker = { item ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                        },
-                        onOpenGroupPicker = { targetAlbumId ->
-                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
-                        },
-                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                    )
+                            },
+                            onPlayMediaItems = { items, startIndex ->
+                                playerViewModel.playMediaItems(items, startIndex)
+                                openNowPlaying()
+                            },
+                            onAddToQueue = { album, track ->
+                                playerViewModel.addTrackToQueue(album, track)
+                            },
+                            onAddMediaItemsToQueue = { items ->
+                                playerViewModel.addMediaItemsToQueue(items)
+                            },
+                            onAddMediaItemsToFavorites = { items ->
+                                playlistsViewModel.addItemsToFavoritesInBackground(items)
+                            },
+                            onOpenPlaylistPicker = { item ->
+                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                            },
+                            onOpenGroupPicker = { targetAlbumId ->
+                                navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
+                            },
+                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                        )
+                    }
                 }
                 composable(
                     route = Routes.AlbumDetailByIdPattern,
@@ -1629,42 +1658,44 @@ fun MainContainer(
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
                     val rjCode = backStackEntry.arguments?.getString("rjCode")
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    AlbumDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        albumId = albumId,
-                        rjCode = rjCode,
-                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
-                        refreshToken = refreshToken,
-                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                        onPlayTracks = { album, tracks, startTrack ->
-                            scope.launch {
-                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                    openNowPlaying()
+                    SecondaryPageBackground {
+                        AlbumDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            albumId = albumId,
+                            rjCode = rjCode,
+                            initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
+                            refreshToken = refreshToken,
+                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                            onPlayTracks = { album, tracks, startTrack ->
+                                scope.launch {
+                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                        openNowPlaying()
+                                    }
                                 }
-                            }
-                        },
-                        onPlayMediaItems = { items, startIndex ->
-                            playerViewModel.playMediaItems(items, startIndex)
-                            openNowPlaying()
-                        },
-                        onAddToQueue = { album, track ->
-                            playerViewModel.addTrackToQueue(album, track)
-                        },
-                        onAddMediaItemsToQueue = { items ->
-                            playerViewModel.addMediaItemsToQueue(items)
-                        },
-                        onAddMediaItemsToFavorites = { items ->
-                            playlistsViewModel.addItemsToFavoritesInBackground(items)
-                        },
-                        onOpenPlaylistPicker = { item ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                        },
-                        onOpenGroupPicker = { targetAlbumId ->
-                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
-                        },
-                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                    )
+                            },
+                            onPlayMediaItems = { items, startIndex ->
+                                playerViewModel.playMediaItems(items, startIndex)
+                                openNowPlaying()
+                            },
+                            onAddToQueue = { album, track ->
+                                playerViewModel.addTrackToQueue(album, track)
+                            },
+                            onAddMediaItemsToQueue = { items ->
+                                playerViewModel.addMediaItemsToQueue(items)
+                            },
+                            onAddMediaItemsToFavorites = { items ->
+                                playlistsViewModel.addItemsToFavoritesInBackground(items)
+                            },
+                            onOpenPlaylistPicker = { item ->
+                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                            },
+                            onOpenGroupPicker = { targetAlbumId ->
+                                navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
+                            },
+                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                        )
+                    }
                 }
                 composable(
                     route = "album_detail_online/{rj}",
@@ -1672,34 +1703,36 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val rj = backStackEntry.arguments?.getString("rj").orEmpty()
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    AlbumDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        rjCode = rj,
-                        refreshToken = refreshToken,
-                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                        onPlayTracks = { album, tracks, startTrack ->
-                            scope.launch {
-                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                    openNowPlaying()
+                    SecondaryPageBackground {
+                        AlbumDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            rjCode = rj,
+                            refreshToken = refreshToken,
+                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                            onPlayTracks = { album, tracks, startTrack ->
+                                scope.launch {
+                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                        openNowPlaying()
+                                    }
                                 }
-                            }
-                        },
-                        onPlayMediaItems = { items, startIndex ->
-                            playerViewModel.playMediaItems(items, startIndex)
-                            openNowPlaying()
-                        },
-                        onAddToQueue = { album, track ->
-                            playerViewModel.addTrackToQueue(album, track)
-                        },
-                        onOpenPlaylistPicker = { item ->
-                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                        },
-                        onOpenGroupPicker = { albumId ->
-                            navController.navigateSingleTop("group_picker?albumId=$albumId")
-                        },
-                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                    )
+                            },
+                            onPlayMediaItems = { items, startIndex ->
+                                playerViewModel.playMediaItems(items, startIndex)
+                                openNowPlaying()
+                            },
+                            onAddToQueue = { album, track ->
+                                playerViewModel.addTrackToQueue(album, track)
+                            },
+                            onOpenPlaylistPicker = { item ->
+                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                            },
+                            onOpenGroupPicker = { albumId ->
+                                navController.navigateSingleTop("group_picker?albumId=$albumId")
+                            },
+                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                        )
+                    }
                 }
                 composable(
                     route = "album_detail_online/{source}/{workId}",
@@ -1735,15 +1768,17 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val groupId = backStackEntry.arguments?.getLong("groupId") ?: 0L
                     val groupName = decodeRouteArg(backStackEntry.arguments?.getString("groupName").orEmpty())
-                    com.asmr.player.ui.groups.AlbumGroupDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        groupId = groupId,
-                        title = groupName,
-                        onPlayMediaItems = { items, startIndex ->
-                            playerViewModel.playMediaItems(items, startIndex)
-                            openNowPlaying()
-                        }
-                    )
+                    SecondaryPageBackground {
+                        com.asmr.player.ui.groups.AlbumGroupDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            groupId = groupId,
+                            title = groupName,
+                            onPlayMediaItems = { items, startIndex ->
+                                playerViewModel.playMediaItems(items, startIndex)
+                                openNowPlaying()
+                            }
+                        )
+                    }
                 }
                 composable(
                     route = "group_picker?albumId={albumId}",
@@ -1752,12 +1787,14 @@ fun MainContainer(
                     )
                 ) { backStackEntry ->
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
-                    com.asmr.player.ui.groups.AlbumGroupPickerScreen(
-                        windowSizeClass = windowSizeClass,
-                        albumId = albumId,
-                        onBack = { navController.popBackStack() },
-                        viewModel = albumGroupsViewModel
-                    )
+                    SecondaryPageBackground {
+                        com.asmr.player.ui.groups.AlbumGroupPickerScreen(
+                            windowSizeClass = windowSizeClass,
+                            albumId = albumId,
+                            onBack = { navController.popBackStack() },
+                            viewModel = albumGroupsViewModel
+                        )
+                    }
                 }
                 composable(
                     route = "playlist/{playlistId}/{playlistName}",
@@ -1768,40 +1805,46 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: 0L
                     val playlistName = decodeRouteArg(backStackEntry.arguments?.getString("playlistName").orEmpty())
-                    PlaylistDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        playlistId = playlistId,
-                        title = playlistName,
-                        onPlayAll = { items, startItem ->
-                            playerViewModel.playPlaylistItems(items, startItem)
-                            openNowPlaying()
-                        }
-                    )
+                    SecondaryPageBackground {
+                        PlaylistDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            playlistId = playlistId,
+                            title = playlistName,
+                            onPlayAll = { items, startItem ->
+                                playerViewModel.playPlaylistItems(items, startItem)
+                                openNowPlaying()
+                            }
+                        )
+                    }
                 }
                 composable("playlist_system/{type}") { backStackEntry ->
                     val type = backStackEntry.arguments?.getString("type").orEmpty()
                     if (type == "favorites") {
                         Box(modifier = Modifier.fillMaxSize())
                     } else {
-                        SystemPlaylistScreen(
-                            windowSizeClass = windowSizeClass,
-                            onPlayAll = { items, startItem ->
-                                playerViewModel.playPlaylistItems(items, startItem)
-                                openNowPlaying()
-                            },
-                            viewModel = playlistsViewModel
-                        )
+                        SecondaryPageBackground {
+                            SystemPlaylistScreen(
+                                windowSizeClass = windowSizeClass,
+                                onPlayAll = { items, startItem ->
+                                    playerViewModel.playPlaylistItems(items, startItem)
+                                    openNowPlaying()
+                                },
+                                viewModel = playlistsViewModel
+                            )
+                        }
                     }
                 }
                 composable("settings") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable("downloads") {
-                    DownloadsScreen(
-                        windowSizeClass = windowSizeClass,
-                        scrollToTopSignal = downloadsScrollToTopSignal,
-                        viewModel = downloadsViewModel
-                    )
+                    SecondaryPageBackground {
+                        DownloadsScreen(
+                            windowSizeClass = windowSizeClass,
+                            scrollToTopSignal = downloadsScrollToTopSignal,
+                            viewModel = downloadsViewModel
+                        )
+                    }
                 }
                 composable("dlsite_login") {
                     Box(modifier = Modifier.fillMaxSize())
