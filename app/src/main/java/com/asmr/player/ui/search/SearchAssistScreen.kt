@@ -102,7 +102,7 @@ fun SearchAssistScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Transparent,
+        color = AsmrTheme.colorScheme.background,
         contentColor = AsmrTheme.colorScheme.onBackground
     ) {
         SearchAssistContent(
