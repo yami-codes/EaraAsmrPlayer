@@ -2,6 +2,7 @@ package com.asmr.player.data.remote.dlsite
 
 import android.content.Context
 import com.asmr.player.data.remote.NetworkHeaders
+import com.asmr.player.data.remote.withSearchTimeouts
 import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.domain.model.Album
 import com.google.gson.Gson
@@ -25,6 +26,7 @@ class DlsitePlayLibraryClient @Inject constructor(
     private val authStore = DlsiteAuthStore(context)
     private val gson = Gson()
     private val cacheTtlMs = TimeUnit.MINUTES.toMillis(5)
+    private val requestClient by lazy { okHttpClient.withSearchTimeouts() }
 
     private var cachedAlbums: List<Album> = emptyList()
     private var cachedTs: Long = 0L
@@ -138,7 +140,7 @@ class DlsitePlayLibraryClient @Inject constructor(
             .get()
             .build()
 
-        okHttpClient.newCall(request).execute().use { resp ->
+        requestClient.newCall(request).execute().use { resp ->
             if (!resp.isSuccessful) {
                 if (resp.code == 401) {
                     throw IllegalStateException("已购库鉴权失败（401），请重新登录 DLsite")
@@ -183,7 +185,7 @@ class DlsitePlayLibraryClient @Inject constructor(
             val body = gson.toJson(chunk).toRequestBody(jsonType)
             val reqBuilder = Request.Builder().url("https://play.dlsite.com/api/v3/content/works").post(body)
             headers.forEach { (k, v) -> reqBuilder.header(k, v) }
-            okHttpClient.newCall(reqBuilder.build()).execute().use { resp ->
+            requestClient.newCall(reqBuilder.build()).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         if (resp.code == 401) {
                             throw IllegalStateException("已购库鉴权失败（401），请重新登录 DLsite")
@@ -277,7 +279,7 @@ class DlsitePlayLibraryClient @Inject constructor(
             .header("Pragma", "no-cache")
             .get()
             .build()
-        okHttpClient.newCall(request).execute().use { resp ->
+        requestClient.newCall(request).execute().use { resp ->
             val mergedCookie = mergeCookieHeader(cookie, resp.headers("Set-Cookie"))
             val body = if (resp.isSuccessful) resp.body?.string().orEmpty() else ""
             val ok = resp.isSuccessful && body.isNotBlank() && body != "null" && body != "{}"
@@ -295,7 +297,7 @@ class DlsitePlayLibraryClient @Inject constructor(
             .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
             .get()
             .build()
-        okHttpClient.newCall(request).execute().use { resp ->
+        requestClient.newCall(request).execute().use { resp ->
             return resp.headers("Set-Cookie")
         }
     }
