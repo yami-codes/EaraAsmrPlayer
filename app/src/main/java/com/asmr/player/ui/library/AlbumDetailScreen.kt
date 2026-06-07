@@ -359,8 +359,24 @@ fun AlbumDetailScreen(
                         val headerContent: @Composable (Int) -> Unit = { tab ->
                             val isLocalTab = tab == 0
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
+                            val headerAlbum = if (isLocalTab) (model.localAlbum ?: album) else album
+                            val headerHasCover = headerAlbum.coverPath.trim().isNotBlank() ||
+                                headerAlbum.coverUrl.trim().isNotBlank()
+                            val showCoverLoadingState = !headerHasCover && when {
+                                isLocalTab -> false
+                                tab == 1 -> {
+                                    model.isLoadingDlsite ||
+                                        model.isLoadingAsmrOne ||
+                                        !model.hasResolvedInitialDlsiteTarget
+                                }
+                                else -> {
+                                    model.isLoadingDlsite ||
+                                        model.isLoadingDlsitePlay ||
+                                        !model.hasResolvedInitialDlsiteTarget
+                                }
+                            }
                             AlbumHeader(
-                                album = if (isLocalTab) (model.localAlbum ?: album) else album,
+                                album = headerAlbum,
                                 listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
                                 dlsiteUrl = model.dlsiteWorkno.takeIf { it.isNotBlank() }?.let { "https://www.dlsite.com/maniax/work/=/product_id/$it.html" }.orEmpty(),
                                 asmrOneUrl = model.asmrOneWorkId?.takeIf { it.isNotBlank() }?.let { "https://asmr.one/work/$it" }.orEmpty(),
@@ -395,6 +411,7 @@ fun AlbumDetailScreen(
                                 onPickLocalCover = if (isLocalTab && model.localAlbum != null) {
                                     { coverPicker.launch(arrayOf("image/*")) }
                                 } else null,
+                                showCoverLoadingState = showCoverLoadingState,
                                 introSessionKey = introSessionKey,
                                 animateIntro = shouldAnimateHeaderIntro,
                                 messageManager = viewModel.messageManager
@@ -776,8 +793,8 @@ private fun AlbumDetailTabChrome(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val isDark = colorScheme.isDark
-    val tabContainerShape = RoundedCornerShape(26.dp)
-    val tabItemShape = RoundedCornerShape(18.dp)
+    val tabContainerShape = RoundedCornerShape(16.dp)
+    val tabItemShape = RoundedCornerShape(12.dp)
     val collapseOvershootPx = with(LocalDensity.current) { AlbumDetailTabCollapseOvershoot.toPx() }
     val tabContainerColor = lerp(
         colorScheme.surface,
@@ -794,7 +811,7 @@ private fun AlbumDetailTabChrome(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp)
+            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 6.dp)
             .onSizeChanged(onMeasured)
             .graphicsLayer {
                 translationY = animatedOffsetPx -
@@ -805,9 +822,9 @@ private fun AlbumDetailTabChrome(
             .zIndex(1f)
     ) {
         val count = titles.size.coerceAtLeast(1)
-        val segmentGap = 6.dp
-        val segmentPadding = 6.dp
-        val segmentHeight = 42.dp
+        val segmentGap = 4.dp
+        val segmentPadding = 4.dp
+        val segmentHeight = 36.dp
         val slotWidth = (maxWidth - (segmentPadding * 2) - (segmentGap * (count - 1))) / count
         val highlightX = (slotWidth + segmentGap) *
             indicatorPageOffset.coerceIn(0f, (count - 1).coerceAtLeast(0).toFloat())
@@ -816,7 +833,7 @@ private fun AlbumDetailTabChrome(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = if (isDark) 12.dp else 8.dp,
+                    elevation = if (isDark) 10.dp else 6.dp,
                     shape = tabContainerShape,
                     spotColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f),
                     ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
@@ -894,8 +911,8 @@ private fun AlbumDetailTabChrome(
                                 } else {
                                     colorScheme.textSecondary
                                 },
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                 ),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 maxLines = 1,
@@ -930,6 +947,7 @@ private fun AlbumHeader(
     showGroupButton: Boolean,
     onOpenGroupPicker: (albumId: Long) -> Unit,
     onPickLocalCover: (() -> Unit)? = null,
+    showCoverLoadingState: Boolean = false,
     introSessionKey: String,
     animateIntro: Boolean,
     messageManager: MessageManager
@@ -937,7 +955,7 @@ private fun AlbumHeader(
     val context = LocalContext.current
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
-    val data = album.coverPath.ifEmpty { album.coverUrl }
+    val data = album.coverPath.trim().ifEmpty { album.coverUrl.trim() }
     val imageModel = remember(data) {
         val headers = if (data.startsWith("http", ignoreCase = true)) DlsiteAntiHotlink.headersForImageUrl(data) else emptyMap()
         if (headers.isEmpty()) data else CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
@@ -995,7 +1013,15 @@ private fun AlbumHeader(
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 0,
                     modifier = Modifier.fillMaxSize(),
-                    empty = { m -> DiscPlaceholder(modifier = m, cornerRadius = 0) },
+                    placeholder = { m -> DiscPlaceholder(modifier = m, cornerRadius = 0) },
+                    loading = { m -> AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0) },
+                    empty = { m ->
+                        if (showCoverLoadingState) {
+                            AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0)
+                        } else {
+                            DiscPlaceholder(modifier = m, cornerRadius = 0)
+                        }
+                    },
                 )
                 if (onPickLocalCover != null) {
                     IconButton(
