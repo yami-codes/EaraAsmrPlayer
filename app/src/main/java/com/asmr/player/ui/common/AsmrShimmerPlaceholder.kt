@@ -20,6 +20,14 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.asmr.player.ui.theme.AsmrTheme
+import kotlin.math.sqrt
+
+private const val ShimmerSweepDurationMillis = 1500
+private const val ShimmerPauseDurationMillis = 520
+private const val ShimmerCycleDurationMillis =
+    ShimmerSweepDurationMillis + ShimmerPauseDurationMillis
+private const val ShimmerSweepFraction =
+    ShimmerSweepDurationMillis.toFloat() / ShimmerCycleDurationMillis.toFloat()
 
 @Composable
 fun AsmrShimmerPlaceholder(
@@ -44,7 +52,7 @@ fun AsmrShimmerPlaceholder(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing)
+            animation = tween(durationMillis = ShimmerCycleDurationMillis, easing = LinearEasing)
         ),
         label = "asmrShimmerT"
     )
@@ -55,24 +63,32 @@ fun AsmrShimmerPlaceholder(
             .drawWithCache {
                 val w = size.width.coerceAtLeast(1f)
                 val h = size.height.coerceAtLeast(1f)
-                val band = w * 0.75f
-                val t = shimmerT.value
-                val edge = 0.12f
-                val fade = when {
-                    t < edge -> (t / edge)
-                    t > (1f - edge) -> ((1f - t) / edge)
-                    else -> 1f
-                }.coerceIn(0f, 1f)
-                val startX = (t * (w + band)) - band
-                val endX = startX + band
-                val brush = Brush.linearGradient(
-                    colors = listOf(baseColor, highlightColor.copy(alpha = highlightColor.alpha * fade), baseColor),
-                    start = Offset(startX, 0f),
-                    end = Offset(endX, h),
-                )
+                val cycleT = shimmerT.value
+                val sweepProgress = if (cycleT <= ShimmerSweepFraction) {
+                    (cycleT / ShimmerSweepFraction).coerceIn(0f, 1f)
+                } else {
+                    null
+                }
+                val diagonal = sqrt((w * w) + (h * h))
+                val band = diagonal * 0.78f
                 onDrawBehind {
                     drawRect(color = baseColor)
-                    drawRect(brush = brush)
+                    sweepProgress?.let { progress ->
+                        val startX = -band + ((w + band) * progress)
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                colorStops = arrayOf(
+                                    0.00f to Color.Transparent,
+                                    0.42f to Color.Transparent,
+                                    0.50f to highlightColor.copy(alpha = highlightColor.alpha * 0.96f),
+                                    0.58f to Color.Transparent,
+                                    1.00f to Color.Transparent
+                                ),
+                                start = Offset(startX, 0f),
+                                end = Offset(startX + band, h)
+                            )
+                        )
+                    }
                 }
             }
     ) {
