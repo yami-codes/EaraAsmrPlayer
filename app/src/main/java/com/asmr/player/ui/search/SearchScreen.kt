@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -94,6 +95,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -117,6 +119,7 @@ import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 internal const val SEARCH_INPUT_TAG = "search_input"
 internal const val SEARCH_SCOPE_BUTTON_TAG = "search_scope_button"
@@ -1115,10 +1118,9 @@ internal fun SearchChrome(
     Column(
         modifier = modifier
             .onSizeChanged(onMeasured)
-            .graphicsLayer {
-                translationY = animatedOffsetPx
-                alpha = 1f - (collapseFraction.coerceIn(0f, 1f) * 0.1f)
-            }
+            // Use layout offset instead of a graphics layer so Android text selection
+            // toolbars anchor to the real on-screen position of the editable field.
+            .offset { IntOffset(x = 0, y = animatedOffsetPx.roundToInt()) }
             .semantics { stateDescription = collapsibleHeaderUiState(collapseFraction) }
             .testTag(chromeTestTag)
     ) {

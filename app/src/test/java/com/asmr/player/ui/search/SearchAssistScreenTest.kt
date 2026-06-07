@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextRange
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.asmr.player.domain.model.Album
@@ -53,6 +54,31 @@ class SearchAssistScreenTest {
                 TextRange(initialKeyword.length)
             )
         )
+    }
+
+    @Test
+    fun longPressInput_doesNotClearFocusViaOutsideTapHandler() {
+        composeRule.setContent {
+            AsmrPlayerTheme {
+                SearchAssistContent(
+                    windowSizeClass = testWindowSizeClass(),
+                    initialRequest = SearchAssistSearchRequest(keyword = "RJ123456"),
+                    uiState = SearchAssistUiState(),
+                    onSubmitSearch = {},
+                    onClearHistory = {},
+                    onOpenFullRanking = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_ASSIST_INPUT_TAG)
+            .performTouchInput {
+                down(center)
+                advanceEventTime(800)
+                up()
+            }
+
+        composeRule.onNodeWithTag(SEARCH_ASSIST_INPUT_TAG).assertIsFocused()
     }
 
     @Test
