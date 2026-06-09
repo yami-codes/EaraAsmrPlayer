@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -16,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -38,6 +41,7 @@ data class FlatDialogAction(
     val onClick: () -> Unit,
     val tone: FlatDialogActionTone = FlatDialogActionTone.Neutral,
     val enabled: Boolean = true,
+    val leadingIcon: (@Composable () -> Unit)? = null,
 )
 
 @Composable
@@ -99,11 +103,21 @@ fun FlatActionDialog(
                             disabledContentColor = colorScheme.textTertiary.copy(alpha = 0.55f),
                         ),
                     ) {
-                        Text(
-                            text = action.text,
-                            maxLines = 1,
-                            textAlign = TextAlign.Center,
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            action.leadingIcon?.let { icon ->
+                                icon()
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = action.text,
+                                maxLines = 1,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             }

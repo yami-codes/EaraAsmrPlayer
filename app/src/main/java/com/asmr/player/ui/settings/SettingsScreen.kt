@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.DocumentsContract
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,7 +54,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.BuildConfig
 import com.asmr.player.data.settings.CoverPreviewMode
@@ -73,7 +71,7 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
-import java.io.File
+import com.asmr.player.ui.update.launchDownloadedApkInstall
 import kotlin.math.abs
 
 private val SettingsPageHorizontalPadding = 8.dp
@@ -106,6 +104,7 @@ fun SettingsScreen(
     val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsState()
     val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+    val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsState()
     val scanRoots by libraryViewModel.scanRoots.collectAsState()
     val bulkProgress by libraryViewModel.bulkProgress.collectAsState()
     val isGlobalSyncRunning by libraryViewModel.isGlobalSyncRunning.collectAsState()
@@ -682,6 +681,12 @@ fun SettingsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
 
+                        SettingsToggleRow(
+                            text = "启动时自动检查更新",
+                            checked = autoUpdateCheckEnabled,
+                            onCheckedChange = viewModel::setAutoUpdateCheckEnabled
+                        )
+
                         val busy = updateState is AppUpdateState.Checking || updateState is AppUpdateState.Downloading
                         FilledTonalButton(
                             onClick = { viewModel.checkUpdate() },
@@ -748,30 +753,7 @@ fun SettingsScreen(
                                 )
                                 FilledTonalButton(
                                     onClick = {
-                                        val apkFile = File(s.apkPath)
-                                        if (!apkFile.exists() || apkFile.length() <= 0L) return@FilledTonalButton
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                            val canInstall = context.packageManager.canRequestPackageInstalls()
-                                            if (!canInstall) {
-                                                val intent = Intent(
-                                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                                    Uri.parse("package:${context.packageName}")
-                                                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                context.startActivity(intent)
-                                                return@FilledTonalButton
-                                            }
-                                        }
-                                        val uri = FileProvider.getUriForFile(
-                                            context,
-                                            "${context.packageName}.fileprovider",
-                                            apkFile
-                                        )
-                                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(uri, "application/vnd.android.package-archive")
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                        runCatching { context.startActivity(intent) }
+                                        launchDownloadedApkInstall(context, s.apkPath)
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = buttonColors

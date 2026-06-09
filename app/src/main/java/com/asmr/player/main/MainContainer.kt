@@ -108,8 +108,13 @@ import com.asmr.player.ui.search.SearchAssistScreen
 import com.asmr.player.ui.search.SearchScreen
 import com.asmr.player.ui.search.SearchViewModel
 import com.asmr.player.domain.model.SearchSource
+import com.asmr.player.ui.settings.AppUpdateState
 import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
+import com.asmr.player.ui.settings.UpdateCheckSource
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
@@ -185,6 +190,9 @@ import com.asmr.player.ui.theme.neutralPaletteForMode
 import com.asmr.player.ui.theme.rememberDynamicHuePalette
 import com.asmr.player.ui.theme.rememberDynamicHuePaletteFromVideoFrame
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.ui.update.AppUpdateInstallResult
+import com.asmr.player.ui.update.launchDownloadedApkInstall
+import com.asmr.player.ui.update.openUpdateReleasePage
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
@@ -461,6 +469,10 @@ fun MainContainer(
     val isPhone = configuration.smallestScreenWidthDp < 600
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+    val updateState by settingsViewModel.updateState.collectAsState()
+    var automaticUpdateDialogDismissed by rememberSaveable { mutableStateOf(false) }
+    var automaticUpdateInstallRequested by rememberSaveable { mutableStateOf(false) }
+    var pendingAutomaticInstallPath by rememberSaveable { mutableStateOf<String?>(null) }
     var nowPlayingVisible by rememberSaveable { mutableStateOf(false) }
     var nowPlayingUsesInlineVolumeControl by remember { mutableStateOf(false) }
     var nowPlayingEqualizerVisible by remember { mutableStateOf(false) }
@@ -601,6 +613,69 @@ fun MainContainer(
             System.currentTimeMillis()
         )
         navController.popBackStack(Routes.Search, false)
+    }
+
+    fun handleAutomaticInstallResult(result: AppUpdateInstallResult, apkPath: String) {
+        when (result) {
+            AppUpdateInstallResult.Started -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showInfo("正在打开系统安装器")
+            }
+            AppUpdateInstallResult.PermissionRequired -> {
+                pendingAutomaticInstallPath = apkPath
+                messageManager.showInfo("请允许 Eara 安装未知来源应用后继续安装")
+            }
+            AppUpdateInstallResult.FileInvalid -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showError("下载文件无效，请重新下载")
+            }
+            is AppUpdateInstallResult.Failed -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showError(result.message)
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, pendingAutomaticInstallPath, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            val apkPath = pendingAutomaticInstallPath ?: return@LifecycleEventObserver
+            val canInstall = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                context.packageManager.canRequestPackageInstalls()
+            if (!canInstall) return@LifecycleEventObserver
+            handleAutomaticInstallResult(
+                result = launchDownloadedApkInstall(context, apkPath),
+                apkPath = apkPath
+            )
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(settingsViewModel) {
+        settingsViewModel.checkUpdateAutomatically()
+    }
+
+    LaunchedEffect(updateState, automaticUpdateInstallRequested) {
+        if (!automaticUpdateInstallRequested) return@LaunchedEffect
+        when (val state = updateState) {
+            is AppUpdateState.ReadyToInstall -> {
+                if (state.source != UpdateCheckSource.Automatic) return@LaunchedEffect
+                automaticUpdateInstallRequested = false
+                handleAutomaticInstallResult(
+                    result = launchDownloadedApkInstall(context, state.apkPath),
+                    apkPath = state.apkPath
+                )
+            }
+            is AppUpdateState.Failed -> {
+                if (state.source != UpdateCheckSource.Automatic) return@LaunchedEffect
+                automaticUpdateInstallRequested = false
+                messageManager.showError(state.message)
+            }
+            else -> Unit
+        }
     }
 
     LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute) {
@@ -2176,6 +2251,79 @@ fun MainContainer(
                         },
                         warningSessionState = appVolumeWarningSessionState
                     )
+                }
+            }
+        }
+
+        val automaticUpdateAvailable = (updateState as? AppUpdateState.UpdateAvailable)
+            ?.takeIf { it.source == UpdateCheckSource.Automatic && !automaticUpdateDialogDismissed }
+        automaticUpdateAvailable?.let { available ->
+            val release = available.release
+            FlatActionDialog(
+                message = "发现新版本：${release.tagName}",
+                onDismissRequest = { automaticUpdateDialogDismissed = true },
+                actions = listOf(
+                    FlatDialogAction(
+                        text = "立即更新",
+                        tone = FlatDialogActionTone.Primary,
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            automaticUpdateInstallRequested = true
+                            settingsViewModel.downloadLatestApk()
+                            messageManager.showInfo("开始下载更新…")
+                        }
+                    ),
+                    FlatDialogAction(
+                        text = "不再提醒",
+                        tone = FlatDialogActionTone.Danger,
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            settingsViewModel.disableAutoUpdateCheck()
+                            messageManager.showInfo("已关闭启动时自动检查更新")
+                        }
+                    ),
+                    FlatDialogAction(
+                        text = "详情",
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_github),
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        },
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            if (!openUpdateReleasePage(context, release)) {
+                                messageManager.showError("无法打开 GitHub 发布页")
+                            }
+                        }
+                    )
+                )
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "当前版本：${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.textSecondary
+                    )
+                    if (release.title.isNotBlank() && release.title != release.tagName) {
+                        Text(
+                            text = release.title,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (release.apkName.isNotBlank()) {
+                        Text(
+                            text = "安装包：${release.apkName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

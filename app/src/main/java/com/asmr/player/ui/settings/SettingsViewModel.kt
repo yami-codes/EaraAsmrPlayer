@@ -1,43 +1,71 @@
 package com.asmr.player.ui.settings
 
+import android.content.Context
+import android.os.Environment
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asmr.player.BuildConfig
 import com.asmr.player.data.local.datastore.SettingsDataStore
+import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.data.remote.update.GitHubUpdateClient
-import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.remote.update.UpdateRelease
+import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.FloatingLyricsSettings
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.io.FileOutputStream
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
-import java.io.FileOutputStream
-import android.content.Context
-import android.os.Environment
-import android.os.SystemClock
-import javax.inject.Inject
+
+enum class UpdateCheckSource {
+    Manual,
+    Automatic
+}
+
+private const val UPDATE_APK_PREFIX = "eara-"
+private const val UPDATE_APK_SUFFIX = ".apk"
 
 sealed interface AppUpdateState {
     data object Idle : AppUpdateState
-    data object Checking : AppUpdateState
-    data class UpToDate(val latestVersionName: String) : AppUpdateState
-    data class UpdateAvailable(val release: UpdateRelease) : AppUpdateState
-    data class Downloading(val release: UpdateRelease, val downloadedBytes: Long, val totalBytes: Long) : AppUpdateState
-    data class ReadyToInstall(val release: UpdateRelease, val apkPath: String) : AppUpdateState
-    data class Failed(val message: String) : AppUpdateState
+    data class Checking(val source: UpdateCheckSource = UpdateCheckSource.Manual) : AppUpdateState
+    data class UpToDate(
+        val latestVersionName: String,
+        val source: UpdateCheckSource = UpdateCheckSource.Manual
+    ) : AppUpdateState
+    data class UpdateAvailable(
+        val release: UpdateRelease,
+        val source: UpdateCheckSource = UpdateCheckSource.Manual
+    ) : AppUpdateState
+    data class Downloading(
+        val release: UpdateRelease,
+        val downloadedBytes: Long,
+        val totalBytes: Long,
+        val source: UpdateCheckSource = UpdateCheckSource.Manual
+    ) : AppUpdateState
+    data class ReadyToInstall(
+        val release: UpdateRelease,
+        val apkPath: String,
+        val source: UpdateCheckSource = UpdateCheckSource.Manual
+    ) : AppUpdateState
+    data class Failed(
+        val message: String,
+        val source: UpdateCheckSource = UpdateCheckSource.Manual
+    ) : AppUpdateState
 }
 
 @HiltViewModel
@@ -80,6 +108,9 @@ class SettingsViewModel @Inject constructor(
     val coverPreviewMode: StateFlow<CoverPreviewMode> = settingsDataStore.coverPreviewMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CoverPreviewMode.Disabled)
 
+    val autoUpdateCheckEnabled: StateFlow<Boolean> = settingsDataStore.autoUpdateCheckEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     val pauseOnOutputDisconnect: StateFlow<Boolean> = settingsRepository.pauseOnOutputDisconnect
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
@@ -105,6 +136,7 @@ class SettingsViewModel @Inject constructor(
     private val _updateState = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
     val updateState = _updateState.asStateFlow()
     private var updateJob: Job? = null
+    private var automaticCheckStarted = false
 
     fun setFloatingLyricsEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setFloatingLyricsEnabled(enabled) }
@@ -170,45 +202,83 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setShowMiniPlayerBar(enabled) }
     }
 
+    fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsDataStore.setAutoUpdateCheckEnabled(enabled) }
+    }
+
+    fun disableAutoUpdateCheck() {
+        setAutoUpdateCheckEnabled(false)
+        val cur = _updateState.value
+        if (cur is AppUpdateState.UpdateAvailable && cur.source == UpdateCheckSource.Automatic) {
+            _updateState.value = AppUpdateState.Idle
+        }
+    }
+
     fun checkUpdate() {
+        startUpdateCheck(UpdateCheckSource.Manual)
+    }
+
+    fun checkUpdateAutomatically() {
+        if (automaticCheckStarted) return
+        automaticCheckStarted = true
+        val cur = _updateState.value
+        if (cur is AppUpdateState.Checking || cur is AppUpdateState.Downloading) return
+        updateJob = viewModelScope.launch(Dispatchers.IO) {
+            if (!settingsDataStore.autoUpdateCheckEnabled.first()) return@launch
+            performUpdateCheck(UpdateCheckSource.Automatic)
+        }
+    }
+
+    private fun startUpdateCheck(source: UpdateCheckSource) {
         val cur = _updateState.value
         if (cur is AppUpdateState.Checking || cur is AppUpdateState.Downloading) return
         updateJob?.cancel()
         updateJob = viewModelScope.launch(Dispatchers.IO) {
-            _updateState.value = AppUpdateState.Checking
-            try {
-                val release =
-                    updateClient.fetchLatestRelease(
-                        owner = BuildConfig.UPDATE_REPO_OWNER,
-                        repo = BuildConfig.UPDATE_REPO_NAME
-                    )
-                val currentVersion = BuildConfig.VERSION_NAME
-                val newer = updateClient.isNewerThanCurrent(release.versionName, currentVersion)
-                _updateState.value = if (newer) {
-                    AppUpdateState.UpdateAvailable(release)
-                } else {
-                    AppUpdateState.UpToDate(latestVersionName = release.versionName)
-                }
-            } catch (e: Exception) {
-                val msg = e.message?.trim().orEmpty().ifBlank { "检查更新失败" }
-                _updateState.value = AppUpdateState.Failed(msg)
+            performUpdateCheck(source)
+        }
+    }
+
+    private suspend fun performUpdateCheck(source: UpdateCheckSource) {
+        _updateState.value = AppUpdateState.Checking(source)
+        try {
+            val release =
+                updateClient.fetchLatestRelease(
+                    owner = BuildConfig.UPDATE_REPO_OWNER,
+                    repo = BuildConfig.UPDATE_REPO_NAME
+            )
+            val currentVersion = BuildConfig.VERSION_NAME
+            val newer = updateClient.isNewerThanCurrent(release.versionName, currentVersion)
+            _updateState.value = if (newer) {
+                AppUpdateState.UpdateAvailable(release, source)
+            } else {
+                AppUpdateState.UpToDate(latestVersionName = release.versionName, source = source)
             }
+        } catch (e: Exception) {
+            val msg = e.message?.trim().orEmpty().ifBlank { "检查更新失败" }
+            _updateState.value = AppUpdateState.Failed(msg, source)
         }
     }
 
     fun downloadLatestApk() {
         val state = _updateState.value
-        val release = (state as? AppUpdateState.UpdateAvailable)?.release ?: return
+        val available = state as? AppUpdateState.UpdateAvailable ?: return
+        val release = available.release
+        val source = available.source
         updateJob?.cancel()
         updateJob = viewModelScope.launch(Dispatchers.IO) {
-            _updateState.value = AppUpdateState.Downloading(release, 0L, 0L)
+            _updateState.value = AppUpdateState.Downloading(release, 0L, 0L, source)
+            var targetFile: File? = null
+            var touchedTargetFile = false
             try {
                 val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
                 val safeTag = release.tagName.replace(Regex("""[\\/:*?"<>|]"""), "_").ifBlank { "latest" }
-                val file = File(dir, "eara-$safeTag.apk")
+                val file = File(dir, "$UPDATE_APK_PREFIX$safeTag$UPDATE_APK_SUFFIX")
+                targetFile = file
+                cleanupStaleUpdateApks(dir, file)
                 val req = Request.Builder()
                     .url(release.apkUrl)
                     .header("User-Agent", "Eara-Android")
+                    .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
                     .get()
                     .build()
 
@@ -219,6 +289,7 @@ class SettingsViewModel @Inject constructor(
                     val body = resp.body ?: throw IllegalStateException("下载失败：空响应体")
                     val total = body.contentLength().coerceAtLeast(0L)
                     val input = body.byteStream()
+                    touchedTargetFile = true
                     FileOutputStream(file).use { out ->
                         val buf = ByteArray(256 * 1024)
                         var read: Int
@@ -231,22 +302,46 @@ class SettingsViewModel @Inject constructor(
                             downloaded += read.toLong()
                             val now = SystemClock.elapsedRealtime()
                             if (now - lastEmit >= 200L) {
-                                _updateState.value = AppUpdateState.Downloading(release, downloadedBytes = downloaded, totalBytes = total)
+                                _updateState.value = AppUpdateState.Downloading(
+                                    release = release,
+                                    downloadedBytes = downloaded,
+                                    totalBytes = total,
+                                    source = source
+                                )
                                 lastEmit = now
                             }
                         }
                         out.flush()
-                        _updateState.value = AppUpdateState.Downloading(release, downloadedBytes = downloaded, totalBytes = total)
+                        _updateState.value = AppUpdateState.Downloading(
+                            release = release,
+                            downloadedBytes = downloaded,
+                            totalBytes = total,
+                            source = source
+                        )
                     }
                 }
 
                 val ok = withContext(Dispatchers.IO) { file.exists() && file.length() > 0L }
                 if (!ok) throw IllegalStateException("下载文件无效")
-                _updateState.value = AppUpdateState.ReadyToInstall(release, apkPath = file.absolutePath)
+                _updateState.value = AppUpdateState.ReadyToInstall(release, apkPath = file.absolutePath, source = source)
             } catch (e: Exception) {
+                if (touchedTargetFile) {
+                    runCatching { targetFile?.takeIf { it.exists() }?.delete() }
+                }
                 val msg = e.message?.trim().orEmpty().ifBlank { "下载失败" }
-                _updateState.value = AppUpdateState.Failed(msg)
+                _updateState.value = AppUpdateState.Failed(msg, source)
             }
+        }
+    }
+
+    private fun cleanupStaleUpdateApks(dir: File, keepFile: File) {
+        dir.listFiles { file ->
+            file.isFile &&
+                file.name.startsWith(UPDATE_APK_PREFIX) &&
+                file.name.endsWith(UPDATE_APK_SUFFIX) &&
+                file.absolutePath != keepFile.absolutePath
+        }?.forEach { staleFile ->
+            runCatching { staleFile.delete() }
         }
     }
 
