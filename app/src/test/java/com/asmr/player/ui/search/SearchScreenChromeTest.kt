@@ -373,6 +373,47 @@ class SearchScreenChromeTest {
     }
 
     @Test
+    fun clearButton_runsCustomClearActionWhenProvided() {
+        var clearSearchCount by mutableIntStateOf(0)
+        var valueChangeCount by mutableIntStateOf(0)
+        var latestKeyword = "RJ123456"
+
+        composeRule.setContent {
+            var keyword by remember { mutableStateOf("RJ123456") }
+            latestKeyword = keyword
+
+            AsmrPlayerTheme {
+                SearchToolbar(
+                    keyword = keyword,
+                    onKeywordChange = {
+                        valueChangeCount += 1
+                        keyword = it
+                    },
+                    selectedFilter = SearchFilterOption.Trend,
+                    selectedLocale = "ja_JP",
+                    filterControlsLocked = false,
+                    searchSubmitLocked = false,
+                    showSearchSpinner = false,
+                    onSearchSubmit = {},
+                    onClearKeyword = {
+                        keyword = ""
+                        clearSearchCount += 1
+                    },
+                    onFilterSelected = {},
+                    onLocaleSelected = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(SEARCH_CLEAR_BUTTON_TAG).performClick()
+        composeRule.runOnIdle {
+            assertEquals("", latestKeyword)
+            assertEquals(1, clearSearchCount)
+            assertEquals(0, valueChangeCount)
+        }
+    }
+
+    @Test
     fun searchChrome_collapsesAndExpandsWhileKeepingControlsMounted() {
         composeRule.mainClock.autoAdvance = false
         lateinit var chromeState: CollapsibleHeaderState
