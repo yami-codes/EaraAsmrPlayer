@@ -264,6 +264,7 @@ fun CustomSearchBar(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
+    val fieldClickInteractionSource = remember { MutableInteractionSource() }
     val popupTextToolbar = remember { SearchBarPopupTextToolbar() }
     val isDark = colorScheme.isDark
     val containerBaseColor = if (isDark) {
@@ -424,7 +425,11 @@ fun CustomSearchBar(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .clickable(onClick = onFieldClick)
+                            .clickable(
+                                interactionSource = fieldClickInteractionSource,
+                                indication = null,
+                                onClick = onFieldClick
+                            )
                     )
                 }
             }

@@ -359,6 +359,16 @@ fun SearchScreen(
         scrollResultsToTop()
     }
 
+    fun clearKeywordAndSearch() {
+        if (searchSubmitLocked) return
+        keyword = ""
+        keyboardController?.hide()
+        val accepted = viewModel.search("")
+        if (!accepted) return
+        scrollResultsToTop()
+        chromeState.expand()
+    }
+
     fun currentSearchAssistRequest(): SearchAssistSearchRequest {
         return SearchAssistSearchRequest(
             keyword = keyword,
@@ -875,6 +885,7 @@ fun SearchScreen(
                         collapseFraction = chromeState.collapseFraction,
                         onMeasured = { size: IntSize -> chromeState.updateHeight(size.height.toFloat()) },
                         onSearchSubmit = { submitSearch() },
+                        onClearKeyword = { clearKeywordAndSearch() },
                         onFilterSelected = { option ->
                             val nextOrder = option.sortOption ?: selectedOrder
                             val nextKeyword = keyword.trim()
@@ -1108,6 +1119,7 @@ internal fun SearchChrome(
     inputFocusRequester: FocusRequester? = null,
     onMeasured: (IntSize) -> Unit,
     onSearchSubmit: () -> Unit,
+    onClearKeyword: (() -> Unit)? = null,
     onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
     onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
@@ -1141,6 +1153,7 @@ internal fun SearchChrome(
             submitButtonTestTag = submitButtonTestTag,
             inputFocusRequester = inputFocusRequester,
             onSearchSubmit = onSearchSubmit,
+            onClearKeyword = onClearKeyword,
             onFilterSelected = onFilterSelected,
             onLocaleSelected = onLocaleSelected,
             onCollectedSortSelected = onCollectedSortSelected,
@@ -1178,6 +1191,7 @@ internal fun SearchToolbar(
     submitButtonTestTag: String = SEARCH_SUBMIT_BUTTON_TAG,
     inputFocusRequester: FocusRequester? = null,
     onSearchSubmit: () -> Unit,
+    onClearKeyword: (() -> Unit)? = null,
     onFilterSelected: (SearchFilterOption) -> Unit,
     onLocaleSelected: (String) -> Unit,
     onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
@@ -1292,7 +1306,7 @@ internal fun SearchToolbar(
                 ) {
                     if (keyword.isNotBlank()) {
                         IconButton(
-                            onClick = { onKeywordChange("") },
+                            onClick = { onClearKeyword?.invoke() ?: onKeywordChange("") },
                             enabled = !searchSubmitLocked,
                             modifier = Modifier
                                 .size(28.dp)
