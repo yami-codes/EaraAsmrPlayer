@@ -46,6 +46,7 @@ class SettingsDataStore @Inject constructor(
     private val recentAlbumsPanelExpandedKey = booleanPreferencesKey("recent_albums_panel_expanded")
     private val miniPlayerDisplayModeKey = stringPreferencesKey("mini_player_display_mode")
     private val bottomChromePinnedRouteKey = stringPreferencesKey("bottom_chrome_pinned_route")
+    private val autoUpdateCheckEnabledKey = booleanPreferencesKey("auto_update_check_enabled")
 
     val theme: Flow<String> = context.settingsDataStore.data.map { it[themeKey] ?: "system" }
     val sfwMode: Flow<Boolean> = context.settingsDataStore.data.map { it[sfwModeKey] ?: false }
@@ -99,6 +100,9 @@ class SettingsDataStore @Inject constructor(
     }
     val bottomChromePinnedRoute: Flow<String?> = context.settingsDataStore.data.map { prefs ->
         prefs[bottomChromePinnedRouteKey]
+    }
+    val autoUpdateCheckEnabled: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
+        prefs[autoUpdateCheckEnabledKey] ?: true
     }
 
     suspend fun setTheme(theme: String) {
@@ -185,6 +189,12 @@ class SettingsDataStore @Inject constructor(
             } else {
                 prefs[bottomChromePinnedRouteKey] = route
             }
+        }
+    }
+
+    suspend fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[autoUpdateCheckEnabledKey] = enabled
         }
     }
 
