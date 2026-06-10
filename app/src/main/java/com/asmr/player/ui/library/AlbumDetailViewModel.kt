@@ -70,6 +70,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 import com.asmr.player.util.MessageManager
@@ -186,6 +187,7 @@ class AlbumDetailViewModel @Inject constructor(
     private val treeCurrentPathByKey = linkedMapOf<String, String>()
     private val remoteFileSizeCache = linkedMapOf<String, Long?>()
     private var listenTogetherRjSummaryJob: Job? = null
+    private val listenTogetherRjSummaryInFlight = AtomicBoolean(false)
     private val preferredTreePathPrefs by lazy {
         context.getSharedPreferences("album_detail_tree_prefs", Context.MODE_PRIVATE)
     }
@@ -214,16 +216,21 @@ class AlbumDetailViewModel @Inject constructor(
     private suspend fun refreshListenTogetherRjSummary(rjCode: String) {
         val normalizedRj = rjCode.trim().uppercase()
         if (normalizedRj.isBlank()) return
-        val summary = runCatching {
-            listenTogetherRepository.getRjSummary(normalizedRj)
-        }.getOrNull() ?: return
-        val listenerCount = summary.listenerCount.coerceAtLeast(0)
-        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
-        if (!current.model.rjCode.trim().uppercase().equals(normalizedRj, ignoreCase = true)) return
-        if (current.model.listenTogetherRjListenerCount == listenerCount) return
-        _uiState.value = AlbumDetailUiState.Success(
-            model = current.model.copy(listenTogetherRjListenerCount = listenerCount)
-        )
+        if (!listenTogetherRjSummaryInFlight.compareAndSet(false, true)) return
+        try {
+            val summary = runCatching {
+                listenTogetherRepository.getRjSummary(normalizedRj)
+            }.getOrNull() ?: return
+            val listenerCount = summary.listenerCount.coerceAtLeast(0)
+            val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+            if (!current.model.rjCode.trim().uppercase().equals(normalizedRj, ignoreCase = true)) return
+            if (current.model.listenTogetherRjListenerCount == listenerCount) return
+            _uiState.value = AlbumDetailUiState.Success(
+                model = current.model.copy(listenTogetherRjListenerCount = listenerCount)
+            )
+        } finally {
+            listenTogetherRjSummaryInFlight.set(false)
+        }
     }
 
     private suspend fun isAsmrOneCollected(rj: String, timeoutMs: Long = 1_200L): Boolean? {
