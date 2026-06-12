@@ -455,7 +455,9 @@ class AlbumDetailViewModel @Inject constructor(
         candidates: List<DlsiteCloudSyncCandidate>
     ): String? {
         cancelCloudSyncSelection()
-        val normalizedCandidates = candidates.distinctBy { it.workno }.filter { it.workno.isNotBlank() }
+        val normalizedCandidates = candidates
+            .filter { it.workno.isNotBlank() }
+            .distinctBy { it.workno.trim().uppercase() }
         if (normalizedCandidates.isEmpty()) return null
         val deferred = CompletableDeferred<String?>()
         pendingCloudSyncSelection = deferred

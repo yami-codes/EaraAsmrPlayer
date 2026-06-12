@@ -50,7 +50,9 @@ internal class CloudSyncSelectionRequestQueue {
         albumTitle: String,
         candidates: List<DlsiteCloudSyncCandidate>
     ): CompletableDeferred<String?> {
-        val normalizedCandidates = candidates.distinctBy { it.workno }.filter { it.workno.isNotBlank() }
+        val normalizedCandidates = candidates
+            .filter { it.workno.isNotBlank() }
+            .distinctBy { it.workno.trim().uppercase() }
         val deferred = CompletableDeferred<String?>()
         if (normalizedCandidates.isEmpty()) {
             deferred.complete(null)
