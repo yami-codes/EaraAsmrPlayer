@@ -417,14 +417,14 @@ private fun albumMetaPalette(
     if (appearance == AlbumMetaAppearance.OnImage) {
         return when (tone) {
             AlbumMetaTone.Rj -> AlbumMetaPalette(
-                container = Color.White.copy(alpha = 0.22f),
+                container = Color.Black.copy(alpha = 0.5f),
                 content = Color.White,
-                border = Color.White.copy(alpha = 0.28f),
+                border = Color.White.copy(alpha = 0.24f),
             )
             AlbumMetaTone.Circle -> AlbumMetaPalette(
-                container = Color.White.copy(alpha = 0.12f),
-                content = Color.White.copy(alpha = 0.96f),
-                border = Color.White.copy(alpha = 0.18f),
+                container = Color.Black.copy(alpha = 0.46f),
+                content = Color.White,
+                border = Color.White.copy(alpha = 0.22f),
             )
             AlbumMetaTone.CvLabel -> AlbumMetaPalette(
                 container = Color.White.copy(alpha = 0.18f),

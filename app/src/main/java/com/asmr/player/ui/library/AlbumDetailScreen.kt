@@ -906,9 +906,9 @@ private fun AlbumHeroIdentityOverlay(
         modifier = modifier
             .fillMaxWidth()
             .padding(
-                start = AlbumDetailHorizontalPadding + 12.dp,
-                end = 72.dp,
-                bottom = 18.dp
+                start = AlbumDetailHorizontalPadding,
+                end = AlbumDetailHorizontalPadding,
+                bottom = 4.dp
             ),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
@@ -945,7 +945,7 @@ private fun AlbumHeroIdentityOverlay(
                 if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
-                        color = Color.White.copy(alpha = 0.14f),
+                        color = Color.Black.copy(alpha = 0.46f),
                         contentColor = Color.White,
                         shape = RoundedCornerShape(999.dp),
                         border = androidx.compose.foundation.BorderStroke(
@@ -1095,7 +1095,7 @@ private fun AlbumHeader(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed
         )
-            .padding(start = 12.dp, end = 12.dp, top = 18.dp, bottom = 12.dp),
+            .padding(top = 18.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
                 if (album.cv.isNotBlank()) {
