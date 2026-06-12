@@ -168,10 +168,10 @@ internal data class PreparedMediaPlayback(
     val startIndex: Int
 )
 
-private val AlbumDetailTabContentGap = 12.dp
-private val AlbumDetailScrolledContentFadeSpan = 112.dp
-private const val AlbumDetailHeroThemeGradientStartFraction = 0.38f
-private const val AlbumDetailHeroThemeGradientSolidFraction = 0.82f
+private val AlbumDetailTabContentGap = 0.dp
+private val AlbumDetailScrolledContentFadeSpan = 56.dp
+private const val AlbumDetailHeroThemeGradientStartFraction = 0.42f
+private const val AlbumDetailHeroThemeGradientSolidFraction = 0.86f
 private const val AlbumDetailInitialIntroDurationMs = 1200L
 internal val AlbumDetailHorizontalPadding = 8.dp
 
@@ -327,10 +327,10 @@ fun AlbumDetailScreen(
                         val heroHeight = heroPreferredHeight
                             .coerceAtLeast(heroMinHeight)
                             .coerceAtMost(heroHeightLimit.coerceAtLeast(heroMinHeight))
-                        val heroContentOverlap = (heroHeight * if (isCompact) 0.24f else 0.20f)
+                        val heroContentOverlap = (heroHeight * if (isCompact) 0.30f else 0.26f)
                             .coerceIn(
-                                minimumValue = if (isCompact) 84.dp else 104.dp,
-                                maximumValue = if (isCompact) 120.dp else 152.dp
+                                minimumValue = if (isCompact) 104.dp else 124.dp,
+                                maximumValue = if (isCompact) 148.dp else 184.dp
                             )
                         val tabChromeTop = (heroHeight - heroContentOverlap).coerceAtLeast(0.dp)
                         val tabContentTopPadding = tabChromeTop + AlbumDetailTabContentGap
@@ -367,7 +367,12 @@ fun AlbumDetailScreen(
                             val isLocalTab = tab == 0
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
                             val headerAlbum = headerAlbumForTab(tab)
-                            AlbumHeader(
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = pageContainerColor,
+                                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                            ) {
+                                AlbumHeader(
                                 album = headerAlbum,
                                 listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
                                 dlsiteUrl = model.dlsiteWorkno.takeIf { it.isNotBlank() }?.let { "https://www.dlsite.com/maniax/work/=/product_id/$it.html" }.orEmpty(),
@@ -404,6 +409,7 @@ fun AlbumDetailScreen(
                                 animateIntro = shouldAnimateHeaderIntro,
                                 messageManager = viewModel.messageManager
                             )
+                            }
                         }
 
                         Box(
@@ -772,13 +778,13 @@ private fun AlbumDetailHeroBackground(
     val blurModifier = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Modifier.graphicsLayer {
-                val blurPx = 36.dp.toPx()
+                val blurPx = 52.dp.toPx()
                 renderEffect = RenderEffect
                     .createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP)
                     .asComposeRenderEffect()
             }
         } else {
-            Modifier.blur(28.dp)
+            Modifier.blur(40.dp)
         }
     }
 
@@ -817,17 +823,20 @@ private fun AlbumDetailHeroBackground(
                 .fillMaxSize()
                 .then(blurModifier)
                 .drawWithCache {
+                    val rampStart = 0.18f
+                    val rampEnd = 0.86f
                     val stops = (0..6).map { i ->
                         val t = i / 6f
-                        val pos = 0.34f + (1f - 0.34f) * t
+                        val pos = rampStart + (rampEnd - rampStart) * t
                         val eased = t * t * (3f - 2f * t)
                         pos to Color.White.copy(alpha = eased)
                     }.toTypedArray()
                     val mask = Brush.verticalGradient(
                         colorStops = arrayOf(
                             0f to Color.Transparent,
-                            0.34f to Color.Transparent,
-                            *stops
+                            rampStart to Color.Transparent,
+                            *stops,
+                            1f to Color.White
                         )
                     )
                     onDrawWithContent {
@@ -853,7 +862,9 @@ private fun AlbumDetailHeroBackground(
                     )
                 )
         )
-        // 底部色彩渐变，让 hero 平滑融入页面底色
+        // 底部色彩渐变，让 hero 平滑融入页面底色。
+        // 在 SolidFraction 处即达到完全不透明的容器色，并保持到底部，
+        // 从而彻底遮住封面被裁切的底部边缘，消除割裂感。
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -863,8 +874,8 @@ private fun AlbumDetailHeroBackground(
                             0f to Color.Transparent,
                             AlbumDetailHeroThemeGradientStartFraction to Color.Transparent,
                             ((AlbumDetailHeroThemeGradientStartFraction + AlbumDetailHeroThemeGradientSolidFraction) / 2f) to
-                                pageContainerColor.copy(alpha = 0.62f),
-                            AlbumDetailHeroThemeGradientSolidFraction to pageContainerColor.copy(alpha = 0.94f),
+                                pageContainerColor.copy(alpha = 0.70f),
+                            AlbumDetailHeroThemeGradientSolidFraction to pageContainerColor,
                             1f to pageContainerColor
                         )
                     )
@@ -992,7 +1003,7 @@ private fun AlbumHeader(
 
     val headerContainerModifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 12.dp)
+        .padding(horizontal = AlbumDetailHorizontalPadding)
     val langCandidates = remember(dlsiteEditions) {
         dlsiteEditions
             .filter { it.lang in setOf("JPN", "CHI_HANS", "CHI_HANT") }
@@ -1011,7 +1022,7 @@ private fun AlbumHeader(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed
         )
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 18.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         AlbumHeaderInfoReveal(
