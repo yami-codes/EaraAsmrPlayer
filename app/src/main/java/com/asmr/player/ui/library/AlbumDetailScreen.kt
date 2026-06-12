@@ -1,7 +1,10 @@
 ﻿package com.asmr.player.ui.library
 
 import android.content.Intent
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,8 +26,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -118,6 +120,8 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
@@ -165,8 +169,7 @@ internal data class PreparedMediaPlayback(
 )
 
 private val AlbumDetailTabContentGap = 12.dp
-private val AlbumDetailTabCollapseOvershoot = 10.dp
-private val AlbumDetailScrolledContentFadeSpan = 56.dp
+private val AlbumDetailScrolledContentFadeSpan = 112.dp
 private const val AlbumDetailHeroThemeGradientStartFraction = 0.38f
 private const val AlbumDetailHeroThemeGradientSolidFraction = 0.82f
 private const val AlbumDetailInitialIntroDurationMs = 1200L
@@ -217,23 +220,17 @@ fun AlbumDetailScreen(
         if (rjPart.isNotBlank()) "album:$rjPart" else "albumId:$idPart"
     }
     val introSessionKey = remember(screenKey) { "intro:${UUID.randomUUID()}" }
-    val initialSelectedTab = remember(albumId, initialTab) {
+    // 入口决定固定展示的二级页面：本地库->本地，在线/搜索->DL，preferDlsitePlay->DL Play。
+    // 不再提供页内 tab 切换与左右滑动。
+    val selectedTab = remember(albumId, initialTab) {
         initialTab?.coerceIn(0, 2) ?: if (albumId != null && albumId > 0) 0 else 1
     }
-    var selectedTab by rememberSaveable(screenKey, initialSelectedTab) {
-        mutableIntStateOf(initialSelectedTab)
-    }
-    var lastChromeResetTab by rememberSaveable(screenKey) {
-        mutableIntStateOf(selectedTab)
-    }
-    var userSelectedTab by remember(screenKey) { mutableStateOf(false) }
     var initialIntroSettled by remember(screenKey) { mutableStateOf(false) }
     var showAsmrDownloadDialog by remember { mutableStateOf(false) }
     var showOnlineSaveDialog by remember { mutableStateOf(false) }
     var pendingOnlineSaveSelection by remember { mutableStateOf<Set<String>?>(null) }
     var batchPlaylistItems by remember { mutableStateOf<List<MediaItem>?>(null) }
     var downloadSource by remember { mutableStateOf(OnlineDownloadSource.AsmrOne) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(albumId, rjCode) {
         viewModel.loadAlbum(albumId, rjCode, force = false)
@@ -286,8 +283,8 @@ fun AlbumDetailScreen(
                     val trialDownloadTree = remember(model.dlsiteTrialTracks) {
                         buildDlsiteTrialDownloadTree(model.dlsiteTrialTracks)
                     }
-                    val shouldPlayInitialAnimations = !initialIntroSettled && !userSelectedTab
-                    val shouldAnimateHeaderIntro = !userSelectedTab
+                    val shouldPlayInitialAnimations = !initialIntroSettled
+                    val shouldAnimateHeaderIntro = true
                     val availableTags by viewModel.availableTags.collectAsState()
                     val userTagsByTrackId by viewModel.userTagsByTrackId.collectAsState()
                     val libraryViewModel: LibraryViewModel = hiltViewModel()
@@ -310,53 +307,10 @@ fun AlbumDetailScreen(
                     var localPreviewFile by remember { mutableStateOf<LocalTreeUiEntry.File?>(null) }
                     var onlinePreviewFile by remember { mutableStateOf<AsmrTreeUiEntry.File?>(null) }
                     var imagePreviewRequest by remember { mutableStateOf<ImagePreviewRequest?>(null) }
+                    // tab 标签栏已移除，但各二级页面组件仍需要一个折叠头状态用于嵌套滚动协调。
+                    // 由于不再渲染 chrome，其 heightPx 始终为 0，相关调用均为安全空操作。
                     val tabChromeState = rememberCollapsibleHeaderState()
-                    val animatedTabChromeOffsetPx by animateFloatAsState(
-                        targetValue = tabChromeState.offsetPx,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        label = "albumDetailTabChromeOffset"
-                    )
-                    val tabChromeVisibleHeight = if (tabChromeState.heightPx > 0f) {
-                        with(LocalDensity.current) {
-                            (tabChromeState.heightPx + tabChromeState.offsetPx)
-                                .coerceIn(0f, tabChromeState.heightPx)
-                                .toDp()
-                        }
-                    } else {
-                        56.dp
-                    }
-                    val tabTitles = remember { listOf("本地", "DL", "DL Play") }
-                    val tabPagerState = rememberPagerState(
-                        initialPage = selectedTab,
-                        pageCount = { tabTitles.size }
-                    )
-                    val tabIndicatorPageOffset =
-                        (tabPagerState.currentPage + tabPagerState.currentPageOffsetFraction)
-                            .coerceIn(0f, tabTitles.lastIndex.coerceAtLeast(0).toFloat())
-    
-                    LaunchedEffect(selectedTab) {
-                        if (lastChromeResetTab != selectedTab) {
-                            tabChromeState.expand()
-                            lastChromeResetTab = selectedTab
-                        }
-                    }
 
-                    LaunchedEffect(tabPagerState) {
-                        snapshotFlow { tabPagerState.isScrollInProgress }
-                            .collect { scrolling ->
-                                if (!scrolling) {
-                                    val page = tabPagerState.currentPage
-                                    if (selectedTab != page) {
-                                        selectedTab = page
-                                        userSelectedTab = true
-                                    }
-                                }
-                            }
-                    }
-    
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val pageContainerColor = dynamicPageContainerColor(colorScheme)
                         val heroHeightLimit = if (isCompact) {
@@ -379,7 +333,7 @@ fun AlbumDetailScreen(
                                 maximumValue = if (isCompact) 120.dp else 152.dp
                             )
                         val tabChromeTop = (heroHeight - heroContentOverlap).coerceAtLeast(0.dp)
-                        val tabContentTopPadding = tabChromeTop + tabChromeVisibleHeight + AlbumDetailTabContentGap
+                        val tabContentTopPadding = tabChromeTop + AlbumDetailTabContentGap
                         val contentFadeEndY = tabChromeTop
                         val contentFadeStartY = (contentFadeEndY - AlbumDetailScrolledContentFadeSpan).coerceAtLeast(0.dp)
 
@@ -485,16 +439,15 @@ fun AlbumDetailScreen(
                                 }
                             }
 
-                            HorizontalPager(
-                                state = tabPagerState,
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .albumDetailScrolledContentFade(
                                         fadeStartY = contentFadeStartY,
                                         fadeEndY = contentFadeEndY
                                     )
-                            ) { tab ->
-                                when (tab) {
+                            ) {
+                                when (selectedTab) {
                                     0 -> {
                                         val local = model.localAlbum
                                         if (local != null) {
@@ -520,7 +473,7 @@ fun AlbumDetailScreen(
                                                 topContentPadding = tabContentTopPadding,
                                                 chromeState = tabChromeState,
                                                 album = local,
-                                                header = { headerContent(tab) },
+                                                header = { headerContent(0) },
                                                 onPlayMediaItems = onPlayMediaItems,
                                                 onAddToQueue = { track ->
                                                     onAddToQueue(local, track)
@@ -567,7 +520,7 @@ fun AlbumDetailScreen(
                                     }
                                     1 -> AlbumDlsiteInfoBreadcrumbTabV2(
                                         album = album,
-                                        header = { headerContent(tab) },
+                                        header = { headerContent(1) },
                                         dlsiteInfo = model.dlsiteInfo,
                                         galleryUrls = model.dlsiteGalleryUrls,
                                         trialTracks = model.dlsiteTrialTracks,
@@ -621,7 +574,7 @@ fun AlbumDetailScreen(
                                         loadRemoteFileSize = { viewModel.loadRemoteFileSize(it) }
                                     )
                                     else -> AlbumDlsitePlayBreadcrumbTabV2(
-                                        header = { headerContent(tab) },
+                                        header = { headerContent(2) },
                                         album = album,
                                         rjCode = model.rjCode,
                                         tree = model.dlsitePlayTree,
@@ -659,28 +612,6 @@ fun AlbumDetailScreen(
                                     )
                                 }
                             }
-                        AlbumDetailTabChrome(
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .offset(y = tabChromeTop),
-                            titles = tabTitles,
-                            selectedTab = selectedTab,
-                            indicatorPageOffset = tabIndicatorPageOffset,
-                            animatedOffsetPx = animatedTabChromeOffsetPx,
-                            collapseFraction = tabChromeState.collapseFraction,
-                            onMeasured = { tabChromeState.updateHeight(it.height.toFloat()) },
-                            onTabSelected = { index ->
-                                userSelectedTab = true
-                                if (selectedTab != index) {
-                                    selectedTab = index
-                                }
-                                if (tabPagerState.currentPage != index) {
-                                    scope.launch {
-                                        tabPagerState.animateScrollToPage(index)
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
 
@@ -829,152 +760,6 @@ fun AlbumDetailScreen(
 }
 
 @Composable
-private fun AlbumDetailTabChrome(
-    modifier: Modifier = Modifier,
-    titles: List<String>,
-    selectedTab: Int,
-    indicatorPageOffset: Float,
-    animatedOffsetPx: Float,
-    collapseFraction: Float,
-    onMeasured: (IntSize) -> Unit,
-    onTabSelected: (Int) -> Unit
-) {
-    val colorScheme = AsmrTheme.colorScheme
-    val isDark = colorScheme.isDark
-    val tabContainerShape = RoundedCornerShape(16.dp)
-    val tabItemShape = RoundedCornerShape(12.dp)
-    val collapseOvershootPx = with(LocalDensity.current) { AlbumDetailTabCollapseOvershoot.toPx() }
-    val tabContainerColor = lerp(
-        colorScheme.surface,
-        colorScheme.primarySoft,
-        if (isDark) 0.18f else 0.28f
-    ).copy(alpha = if (isDark) 0.95f else 0.97f)
-        .compositeOver(colorScheme.background)
-    val tabBorderColor = if (isDark) {
-        colorScheme.primary.copy(alpha = 0.11f)
-    } else {
-        colorScheme.primary.copy(alpha = 0.09f)
-    }
-
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 6.dp)
-            .onSizeChanged(onMeasured)
-            .graphicsLayer {
-                translationY = animatedOffsetPx -
-                    (collapseFraction.coerceIn(0f, 1f) * collapseOvershootPx)
-                alpha = 1f - collapseFraction.coerceIn(0f, 1f)
-            }
-            .semantics { stateDescription = collapsibleHeaderUiState(collapseFraction) }
-            .zIndex(1f)
-    ) {
-        val count = titles.size.coerceAtLeast(1)
-        val segmentGap = 4.dp
-        val segmentPadding = 4.dp
-        val segmentHeight = 36.dp
-        val slotWidth = (maxWidth - (segmentPadding * 2) - (segmentGap * (count - 1))) / count
-        val highlightX = (slotWidth + segmentGap) *
-            indicatorPageOffset.coerceIn(0f, (count - 1).coerceAtLeast(0).toFloat())
-
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = if (isDark) 10.dp else 6.dp,
-                    shape = tabContainerShape,
-                    spotColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f),
-                    ambientColor = if (isDark) Color.Black.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.25f)
-                )
-                .then(
-                    Modifier.border(
-                        width = 1.dp,
-                        color = tabBorderColor,
-                        shape = tabContainerShape
-                    )
-                ),
-            color = tabContainerColor,
-            contentColor = colorScheme.textPrimary,
-            shape = tabContainerShape,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(segmentPadding)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .offset(x = highlightX)
-                        .width(slotWidth)
-                        .height(segmentHeight)
-                        .clip(tabItemShape)
-                        .background(
-                            color = if (isDark) {
-                                colorScheme.primary.copy(alpha = 0.22f)
-                            } else {
-                                colorScheme.primary.copy(alpha = 0.12f)
-                            },
-                            shape = tabItemShape
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (isDark) {
-                                colorScheme.primary.copy(alpha = 0.28f)
-                            } else {
-                                colorScheme.primary.copy(alpha = 0.18f)
-                            },
-                            shape = tabItemShape
-                        )
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(segmentGap),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    titles.forEachIndexed { index, title ->
-                        val selected = selectedTab == index
-                        Box(
-                            modifier = Modifier
-                                .width(slotWidth)
-                                .height(segmentHeight)
-                                .clip(tabItemShape)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) { onTabSelected(index) }
-                                .padding(horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = title,
-                                modifier = Modifier.fillMaxWidth(),
-                                color = if (selected) {
-                                    if (isDark) {
-                                        colorScheme.primary
-                                    } else {
-                                        colorScheme.primary
-                                    }
-                                } else {
-                                    colorScheme.textSecondary
-                                },
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                ),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun AlbumDetailHeroBackground(
     album: Album,
     height: Dp,
@@ -984,6 +769,18 @@ private fun AlbumDetailHeroBackground(
     modifier: Modifier = Modifier
 ) {
     val imageModel = rememberAlbumCoverImageModel(album)
+    val blurModifier = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Modifier.graphicsLayer {
+                val blurPx = 36.dp.toPx()
+                renderEffect = RenderEffect
+                    .createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP)
+                    .asComposeRenderEffect()
+            }
+        } else {
+            Modifier.blur(28.dp)
+        }
+    }
 
     Box(
         modifier = modifier
@@ -1008,6 +805,41 @@ private fun AlbumDetailHeroBackground(
                 }
             },
         )
+        // 渐进式毛玻璃：在锐利封面之上叠加一层模糊副本，并用 smoothstep 缓动的垂直遮罩
+        // 让模糊从中部开始、向下逐渐加强，形成自上而下平滑过渡的高级质感。
+        AsmrAsyncImage(
+            model = imageModel,
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            alignment = Alignment.TopCenter,
+            placeholderCornerRadius = 0,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(blurModifier)
+                .drawWithCache {
+                    val stops = (0..6).map { i ->
+                        val t = i / 6f
+                        val pos = 0.34f + (1f - 0.34f) * t
+                        val eased = t * t * (3f - 2f * t)
+                        pos to Color.White.copy(alpha = eased)
+                    }.toTypedArray()
+                    val mask = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.34f to Color.Transparent,
+                            *stops
+                        )
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = mask, blendMode = BlendMode.DstIn)
+                    }
+                },
+            placeholder = {},
+            loading = {},
+            empty = {},
+        )
+        // 顶部深色蒙版，保证返回按钮等控件的可读性
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1021,6 +853,7 @@ private fun AlbumDetailHeroBackground(
                     )
                 )
         )
+        // 底部色彩渐变，让 hero 平滑融入页面底色
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1030,8 +863,8 @@ private fun AlbumDetailHeroBackground(
                             0f to Color.Transparent,
                             AlbumDetailHeroThemeGradientStartFraction to Color.Transparent,
                             ((AlbumDetailHeroThemeGradientStartFraction + AlbumDetailHeroThemeGradientSolidFraction) / 2f) to
-                                pageContainerColor.copy(alpha = 0.68f),
-                            AlbumDetailHeroThemeGradientSolidFraction to pageContainerColor.copy(alpha = 0.96f),
+                                pageContainerColor.copy(alpha = 0.62f),
+                            AlbumDetailHeroThemeGradientSolidFraction to pageContainerColor.copy(alpha = 0.94f),
                             1f to pageContainerColor
                         )
                     )
@@ -1086,11 +919,23 @@ private fun Modifier.albumDetailScrolledContentFade(
             drawContent()
             val fadeStartPx = fadeStartY.toPx().coerceAtLeast(0f)
             val fadeEndPx = fadeEndY.toPx().coerceAtLeast(fadeStartPx + 1f)
+            val rampStart = (fadeStartPx / fadeEndPx).coerceIn(0f, 1f)
+            val rampSpan = (1f - rampStart).coerceAtLeast(0.0001f)
+            // 用 smoothstep 缓动的多段渐变替代线性裁切，使内容向上滚入 hero 区域时
+            // 平滑自然地溶解消失，而不是生硬地一刀切。
+            fun stopAt(t: Float): Pair<Float, Color> {
+                val eased = t * t * (3f - 2f * t)
+                return (rampStart + rampSpan * t) to Color.White.copy(alpha = eased)
+            }
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0f to Color.Transparent,
-                        (fadeStartPx / fadeEndPx).coerceIn(0f, 1f) to Color.Transparent,
+                        rampStart to Color.Transparent,
+                        stopAt(0.2f),
+                        stopAt(0.4f),
+                        stopAt(0.6f),
+                        stopAt(0.8f),
                         1f to Color.White
                     ),
                     startY = 0f,

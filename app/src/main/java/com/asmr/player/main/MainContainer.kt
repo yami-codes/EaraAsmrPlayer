@@ -50,6 +50,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalFocusManager
@@ -281,6 +282,7 @@ private fun Modifier.albumDetailTopBarButtonSurface(
 @Composable
 private fun SecondaryPageBackground(
     modifier: Modifier = Modifier,
+    topPadding: Dp = 0.dp,
     content: @Composable () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -296,6 +298,7 @@ private fun SecondaryPageBackground(
         modifier = modifier
             .fillMaxSize()
             .background(pageBackgroundColor)
+            .padding(top = topPadding)
     ) {
         content()
     }
@@ -1584,14 +1587,13 @@ fun MainContainer(
                                 },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = if (isAlbumDetailRoute) 0.dp else topContentPadding)
                             ) {
 
                 composable("library") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
                                 composable("library_filter") {
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         LibraryFilterScreen(
                             onClose = { navController.popBackStack() },
                             viewModel = libraryViewModel
@@ -1675,7 +1677,7 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable(route = Routes.SearchAssist) {
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         SearchAssistScreen(
                             windowSizeClass = windowSizeClass,
                             initialRequest = searchAssistInitialRequest,
@@ -1705,7 +1707,7 @@ fun MainContainer(
                         searchAssistInitialRequest.copy(keyword = initialKeyword)
                     }
 
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         SearchAssistScreen(
                             windowSizeClass = windowSizeClass,
                             initialRequest = initialRequest,
@@ -1882,7 +1884,7 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val groupId = backStackEntry.arguments?.getLong("groupId") ?: 0L
                     val groupName = decodeRouteArg(backStackEntry.arguments?.getString("groupName").orEmpty())
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         com.asmr.player.ui.groups.AlbumGroupDetailScreen(
                             windowSizeClass = windowSizeClass,
                             groupId = groupId,
@@ -1901,7 +1903,7 @@ fun MainContainer(
                     )
                 ) { backStackEntry ->
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         com.asmr.player.ui.groups.AlbumGroupPickerScreen(
                             windowSizeClass = windowSizeClass,
                             albumId = albumId,
@@ -1919,7 +1921,7 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: 0L
                     val playlistName = decodeRouteArg(backStackEntry.arguments?.getString("playlistName").orEmpty())
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         PlaylistDetailScreen(
                             windowSizeClass = windowSizeClass,
                             playlistId = playlistId,
@@ -1936,7 +1938,7 @@ fun MainContainer(
                     if (type == "favorites") {
                         Box(modifier = Modifier.fillMaxSize())
                     } else {
-                        SecondaryPageBackground {
+                        SecondaryPageBackground(topPadding = topContentPadding) {
                             SystemPlaylistScreen(
                                 windowSizeClass = windowSizeClass,
                                 onPlayAll = { items, startItem ->
@@ -1952,7 +1954,7 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable("downloads") {
-                    SecondaryPageBackground {
+                    SecondaryPageBackground(topPadding = topContentPadding) {
                         DownloadsScreen(
                             windowSizeClass = windowSizeClass,
                             scrollToTopSignal = downloadsScrollToTopSignal,
