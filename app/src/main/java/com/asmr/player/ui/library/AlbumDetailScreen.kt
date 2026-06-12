@@ -48,11 +48,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -117,10 +118,10 @@ import kotlinx.coroutines.launch
 
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
-import com.asmr.player.ui.common.rememberDominantColor
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.AsmrAsyncImage
@@ -165,9 +166,11 @@ internal data class PreparedMediaPlayback(
 
 private val AlbumDetailTabContentGap = 12.dp
 private val AlbumDetailTabCollapseOvershoot = 10.dp
+private val AlbumDetailScrolledContentFadeSpan = 56.dp
+private const val AlbumDetailHeroThemeGradientStartFraction = 0.38f
+private const val AlbumDetailHeroThemeGradientSolidFraction = 0.82f
 private const val AlbumDetailInitialIntroDurationMs = 1200L
 internal val AlbumDetailHorizontalPadding = 8.dp
-private val AlbumDetailHeaderCornerRadius = 10.dp
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -250,7 +253,7 @@ fun AlbumDetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(AsmrTheme.colorScheme.background),
-        contentAlignment = Alignment.TopCenter // 浠呯敤浜庡钩鏉块€傞厤锛氬眳涓樉绀哄唴瀹?
+        contentAlignment = Alignment.TopCenter // 仅用于平板适配：居中显示内容
     ) {
         val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
         
@@ -258,7 +261,7 @@ fun AlbumDetailScreen(
             modifier = if (isCompact) {
                 Modifier.fillMaxSize()
             } else {
-                // 浠呯敤浜庡钩鏉块€傞厤锛氶檺鍒跺唴瀹瑰尯鍩熸渶澶у搴﹀苟濉厖鍙敤绌洪棿
+                // 仅用于平板适配：限制内容区域最大宽度并填充可用空间
                 Modifier
                     .fillMaxHeight()
                     .widthIn(max = 800.dp)
@@ -325,7 +328,6 @@ fun AlbumDetailScreen(
                     } else {
                         56.dp
                     }
-                    val tabContentTopPadding = tabChromeVisibleHeight + AlbumDetailTabContentGap
                     val tabTitles = remember { listOf("本地", "DL", "DL Play") }
                     val tabPagerState = rememberPagerState(
                         initialPage = selectedTab,
@@ -355,26 +357,62 @@ fun AlbumDetailScreen(
                             }
                     }
     
-                    Column(modifier = Modifier.fillMaxSize()) {
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val pageContainerColor = dynamicPageContainerColor(colorScheme)
+                        val heroHeightLimit = if (isCompact) {
+                            maxHeight * 0.62f
+                        } else {
+                            maxHeight * 0.64f
+                        }
+                        val heroMinHeight = if (isCompact) 280.dp else 360.dp
+                        val heroPreferredHeight = if (isCompact) {
+                            maxWidth
+                        } else {
+                            maxWidth * 0.88f
+                        }
+                        val heroHeight = heroPreferredHeight
+                            .coerceAtLeast(heroMinHeight)
+                            .coerceAtMost(heroHeightLimit.coerceAtLeast(heroMinHeight))
+                        val heroContentOverlap = (heroHeight * if (isCompact) 0.24f else 0.20f)
+                            .coerceIn(
+                                minimumValue = if (isCompact) 84.dp else 104.dp,
+                                maximumValue = if (isCompact) 120.dp else 152.dp
+                            )
+                        val tabChromeTop = (heroHeight - heroContentOverlap).coerceAtLeast(0.dp)
+                        val tabContentTopPadding = tabChromeTop + tabChromeVisibleHeight + AlbumDetailTabContentGap
+                        val contentFadeEndY = tabChromeTop
+                        val contentFadeStartY = (contentFadeEndY - AlbumDetailScrolledContentFadeSpan).coerceAtLeast(0.dp)
+
+                        fun headerAlbumForTab(tab: Int): Album {
+                            return if (tab == 0) (model.localAlbum ?: album) else album
+                        }
+
+                        fun shouldShowCoverLoading(tab: Int, headerAlbum: Album): Boolean {
+                            val headerHasCover = headerAlbum.coverPath.trim().isNotBlank() ||
+                                headerAlbum.coverUrl.trim().isNotBlank()
+                            return !headerHasCover && when (tab) {
+                                0 -> false
+                                1 -> model.isLoadingDlsite ||
+                                    model.isLoadingAsmrOne ||
+                                    !model.hasResolvedInitialDlsiteTarget
+                                else -> model.isLoadingDlsite ||
+                                    model.isLoadingDlsitePlay ||
+                                    !model.hasResolvedInitialDlsiteTarget
+                            }
+                        }
+
+                        val activeHeroAlbum = headerAlbumForTab(selectedTab)
+                        val pickLocalCoverAction = if (selectedTab == 0 && model.localAlbum != null) {
+                            { coverPicker.launch(arrayOf("image/*")) }
+                        } else {
+                            null
+                        }
+                        val showHeroCoverLoadingState = shouldShowCoverLoading(selectedTab, activeHeroAlbum)
+
                         val headerContent: @Composable (Int) -> Unit = { tab ->
                             val isLocalTab = tab == 0
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
-                            val headerAlbum = if (isLocalTab) (model.localAlbum ?: album) else album
-                            val headerHasCover = headerAlbum.coverPath.trim().isNotBlank() ||
-                                headerAlbum.coverUrl.trim().isNotBlank()
-                            val showCoverLoadingState = !headerHasCover && when {
-                                isLocalTab -> false
-                                tab == 1 -> {
-                                    model.isLoadingDlsite ||
-                                        model.isLoadingAsmrOne ||
-                                        !model.hasResolvedInitialDlsiteTarget
-                                }
-                                else -> {
-                                    model.isLoadingDlsite ||
-                                        model.isLoadingDlsitePlay ||
-                                        !model.hasResolvedInitialDlsiteTarget
-                                }
-                            }
+                            val headerAlbum = headerAlbumForTab(tab)
                             AlbumHeader(
                                 album = headerAlbum,
                                 listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
@@ -408,49 +446,53 @@ fun AlbumDetailScreen(
                                 saveEnabled = canSaveOnlineForTab,
                                 showGroupButton = isLocalTab && model.localAlbum != null,
                                 onOpenGroupPicker = onOpenGroupPicker,
-                                onPickLocalCover = if (isLocalTab && model.localAlbum != null) {
-                                    { coverPicker.launch(arrayOf("image/*")) }
-                                } else null,
-                                showCoverLoadingState = showCoverLoadingState,
                                 introSessionKey = introSessionKey,
                                 animateIntro = shouldAnimateHeaderIntro,
                                 messageManager = viewModel.messageManager
-                        )
-                    }
-                    
-                    LaunchedEffect(
-                        selectedTab,
-                        model.rjCode,
-                        model.dlsiteWorkno,
-                        model.hasResolvedInitialDlsiteTarget
-                    ) {
-                        when (selectedTab) {
-                            1 -> {
-                                viewModel.ensureDlsiteLoaded()
-                                viewModel.ensureAsmrOneLoaded()
-                            }
-                            2 -> {
-                                viewModel.ensureDlsiteLoaded()
-                            }
+                            )
                         }
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clipToBounds()
-                            .zIndex(0f)
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = Color.Transparent,
-                            shape = RectangleShape,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(pageContainerColor)
+                                .clipToBounds()
+                                .zIndex(0f)
                         ) {
+                            AlbumDetailHeroBackground(
+                                album = activeHeroAlbum,
+                                height = heroHeight,
+                                pageContainerColor = pageContainerColor,
+                                showCoverLoadingState = showHeroCoverLoadingState,
+                                onPickLocalCover = pickLocalCoverAction,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+
+                            LaunchedEffect(
+                                selectedTab,
+                                model.rjCode,
+                                model.dlsiteWorkno,
+                                model.hasResolvedInitialDlsiteTarget
+                            ) {
+                                when (selectedTab) {
+                                    1 -> {
+                                        viewModel.ensureDlsiteLoaded()
+                                        viewModel.ensureAsmrOneLoaded()
+                                    }
+                                    2 -> {
+                                        viewModel.ensureDlsiteLoaded()
+                                    }
+                                }
+                            }
+
                             HorizontalPager(
                                 state = tabPagerState,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .albumDetailScrolledContentFade(
+                                        fadeStartY = contentFadeStartY,
+                                        fadeEndY = contentFadeEndY
+                                    )
                             ) { tab ->
                                 when (tab) {
                                     0 -> {
@@ -513,7 +555,12 @@ fun AlbumDetailScreen(
                                                 animateIntro = shouldPlayInitialAnimations
                                             )
                                         } else {
-                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(top = tabContentTopPadding),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Text("未下载到本地")
                                             }
                                         }
@@ -612,9 +659,10 @@ fun AlbumDetailScreen(
                                     )
                                 }
                             }
-                        }
                         AlbumDetailTabChrome(
-                            modifier = Modifier.align(Alignment.TopCenter),
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset(y = tabChromeTop),
                             titles = tabTitles,
                             selectedTab = selectedTab,
                             indicatorPageOffset = tabIndicatorPageOffset,
@@ -816,7 +864,7 @@ private fun AlbumDetailTabChrome(
             .graphicsLayer {
                 translationY = animatedOffsetPx -
                     (collapseFraction.coerceIn(0f, 1f) * collapseOvershootPx)
-                alpha = 1f - (collapseFraction.coerceIn(0f, 1f) * 0.08f)
+                alpha = 1f - collapseFraction.coerceIn(0f, 1f)
             }
             .semantics { stateDescription = collapsibleHeaderUiState(collapseFraction) }
             .zIndex(1f)
@@ -927,6 +975,133 @@ private fun AlbumDetailTabChrome(
 }
 
 @Composable
+private fun AlbumDetailHeroBackground(
+    album: Album,
+    height: Dp,
+    pageContainerColor: Color,
+    showCoverLoadingState: Boolean,
+    onPickLocalCover: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val imageModel = rememberAlbumCoverImageModel(album)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .clipToBounds()
+    ) {
+        AsmrAsyncImage(
+            model = imageModel,
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            alignment = Alignment.TopCenter,
+            placeholderCornerRadius = 0,
+            modifier = Modifier.fillMaxSize(),
+            placeholder = { m -> DiscPlaceholder(modifier = m, cornerRadius = 0) },
+            loading = { m -> AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0) },
+            empty = { m ->
+                if (showCoverLoadingState) {
+                    AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0)
+                } else {
+                    DiscPlaceholder(modifier = m, cornerRadius = 0)
+                }
+            },
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black.copy(alpha = 0.44f),
+                            0.42f to Color.Black.copy(alpha = 0.16f),
+                            0.70f to Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            AlbumDetailHeroThemeGradientStartFraction to Color.Transparent,
+                            ((AlbumDetailHeroThemeGradientStartFraction + AlbumDetailHeroThemeGradientSolidFraction) / 2f) to
+                                pageContainerColor.copy(alpha = 0.68f),
+                            AlbumDetailHeroThemeGradientSolidFraction to pageContainerColor.copy(alpha = 0.96f),
+                            1f to pageContainerColor
+                        )
+                    )
+                )
+        )
+        if (onPickLocalCover != null) {
+            IconButton(
+                onClick = onPickLocalCover,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 14.dp, bottom = 14.dp)
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.38f), RoundedCornerShape(12.dp))
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Photo,
+                    contentDescription = "选择封面",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberAlbumCoverImageModel(album: Album): Any {
+    val data = album.coverPath.trim().ifEmpty { album.coverUrl.trim() }
+    return remember(data) {
+        val headers = if (data.startsWith("http", ignoreCase = true)) {
+            DlsiteAntiHotlink.headersForImageUrl(data)
+        } else {
+            emptyMap()
+        }
+        if (headers.isEmpty()) {
+            data
+        } else {
+            CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
+        }
+    }
+}
+
+private fun Modifier.albumDetailScrolledContentFade(
+    fadeStartY: Dp,
+    fadeEndY: Dp
+): Modifier {
+    return this
+        .graphicsLayer {
+            compositingStrategy = CompositingStrategy.Offscreen
+        }
+        .drawWithContent {
+            drawContent()
+            val fadeStartPx = fadeStartY.toPx().coerceAtLeast(0f)
+            val fadeEndPx = fadeEndY.toPx().coerceAtLeast(fadeStartPx + 1f)
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Transparent,
+                        (fadeStartPx / fadeEndPx).coerceIn(0f, 1f) to Color.Transparent,
+                        1f to Color.White
+                    ),
+                    startY = 0f,
+                    endY = fadeEndPx
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+}
+
+@Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun AlbumHeader(
     album: Album,
@@ -946,8 +1121,6 @@ private fun AlbumHeader(
     saveEnabled: Boolean,
     showGroupButton: Boolean,
     onOpenGroupPicker: (albumId: Long) -> Unit,
-    onPickLocalCover: (() -> Unit)? = null,
-    showCoverLoadingState: Boolean = false,
     introSessionKey: String,
     animateIntro: Boolean,
     messageManager: MessageManager
@@ -955,11 +1128,6 @@ private fun AlbumHeader(
     val context = LocalContext.current
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
-    val data = album.coverPath.trim().ifEmpty { album.coverUrl.trim() }
-    val imageModel = remember(data) {
-        val headers = if (data.startsWith("http", ignoreCase = true)) DlsiteAntiHotlink.headersForImageUrl(data) else emptyMap()
-        if (headers.isEmpty()) data else CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
-    }
 
     val rj = album.rjCode.ifBlank { album.workId }
     val normalizedTitle = album.title.trim()
@@ -980,8 +1148,6 @@ private fun AlbumHeader(
     val headerContainerModifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 12.dp)
-        .clip(RoundedCornerShape(AlbumDetailHeaderCornerRadius))
-        .background(colorScheme.surface.copy(alpha = 0.5f))
     val langCandidates = remember(dlsiteEditions) {
         dlsiteEditions
             .filter { it.lang in setOf("JPN", "CHI_HANS", "CHI_HANT") }
@@ -1000,142 +1166,85 @@ private fun AlbumHeader(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed
         )
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
+        AlbumHeaderInfoReveal(
+            revealKey = "$headerAnimationScopeKey:title",
+            delayMillis = 0,
+            enabled = animateIntro,
+            ready = !isPlaceholderTitle
+        ) {
+            Text(
+                text = album.title,
+                modifier = Modifier.clickable { copyMeta("标题", album.title) },
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colorScheme.textPrimary,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        val circle = album.circle.trim()
+        val showMetaRow = rj.isNotBlank() || circle.isNotBlank() || listenTogetherRjListenerCount != null
+        if (showMetaRow) {
+            AlbumHeaderInfoReveal(
+                revealKey = "$headerAnimationScopeKey:meta",
+                delayMillis = 40,
+                enabled = animateIntro
             ) {
-                AsmrAsyncImage(
-                    model = imageModel,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    placeholderCornerRadius = 0,
-                    modifier = Modifier.fillMaxSize(),
-                    placeholder = { m -> DiscPlaceholder(modifier = m, cornerRadius = 0) },
-                    loading = { m -> AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0) },
-                    empty = { m ->
-                        if (showCoverLoadingState) {
-                            AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0)
-                        } else {
-                            DiscPlaceholder(modifier = m, cornerRadius = 0)
-                        }
-                    },
-                )
-                if (onPickLocalCover != null) {
-                    IconButton(
-                        onClick = onPickLocalCover,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(10.dp)
-                            .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                            .size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Photo,
-                            contentDescription = "閫夋嫨灏侀潰",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
-                            )
-                        )
-                )
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AlbumHeaderInfoReveal(
-                        revealKey = "$headerAnimationScopeKey:title",
-                        delayMillis = 0,
-                        enabled = animateIntro,
-                        ready = !isPlaceholderTitle
-                    ) {
-                    Text(
-                        text = album.title,
-                        modifier = Modifier.clickable { copyMeta("标题", album.title) },
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                    AlbumPrimaryMetaRow(
+                        rjCode = rj,
+                        circle = circle,
+                        modifier = Modifier.weight(1f),
+                        rjOnClick = { copyMeta("RJ", rj) },
+                        circleOnClick = { copyMeta("社团", circle) },
+                        leadingVisual = AlbumMetaLeadingVisual.Icon,
                     )
-                    }
-                    val circle = album.circle.trim()
-                    val showMetaRow = rj.isNotBlank() || circle.isNotBlank() || listenTogetherRjListenerCount != null
-                    if (showMetaRow) {
+                    if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         AlbumHeaderInfoReveal(
-                            revealKey = "$headerAnimationScopeKey:meta",
-                            delayMillis = 40,
+                            revealKey = "$headerAnimationScopeKey:listenTogetherRjCount",
+                            delayMillis = 60,
                             enabled = animateIntro
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AlbumPrimaryMetaRow(
-                                    rjCode = rj,
-                                    circle = circle,
-                                    modifier = Modifier.weight(1f),
-                                    rjOnClick = { copyMeta("RJ", rj) },
-                                    circleOnClick = { copyMeta("社团", circle) },
-                                    appearance = AlbumMetaAppearance.OnImage,
-                                    leadingVisual = AlbumMetaLeadingVisual.Icon,
+                            Surface(
+                                color = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.16f else 0.10f),
+                                contentColor = colorScheme.primary,
+                                shape = RoundedCornerShape(999.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 0.5.dp,
+                                    color = colorScheme.primary.copy(alpha = 0.18f)
                                 )
-                                if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    AlbumHeaderInfoReveal(
-                                        revealKey = "$headerAnimationScopeKey:listenTogetherRjCount",
-                                        delayMillis = 60,
-                                        enabled = animateIntro
-                                    ) {
-                                        Surface(
-                                            color = Color.White.copy(alpha = 0.16f),
-                                            contentColor = Color.White.copy(alpha = 0.96f),
-                                            shape = RoundedCornerShape(999.dp),
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                width = 0.5.dp,
-                                                color = Color.White.copy(alpha = 0.2f)
-                                            )
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
-                                                    contentDescription = null,
-                                                    tint = Color.White.copy(alpha = 0.96f),
-                                                    modifier = Modifier.size(12.dp)
-                                                )
-                                                Text(
-                                                    text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.White.copy(alpha = 0.96f),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                        }
-                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
+                                        contentDescription = null,
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        }
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
@@ -1382,9 +1491,6 @@ private fun AlbumHeader(
                 }
             }
         }
-    }
-}
-
 private fun dlsiteLanguageButtonLabel(lang: String): String {
     return when (lang.trim().uppercase()) {
         "CHI_HANS" -> "简中"

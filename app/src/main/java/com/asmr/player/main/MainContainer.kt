@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -234,6 +235,7 @@ internal data class BatchPlaylistPickerRequest(
 private const val SecondaryPageEnterDurationMs = 440
 private const val SecondaryPageExitDurationMs = 420
 private val SecondaryPageSlideEasing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)
+private val AlbumDetailTopBarButtonShape = CircleShape
 
 private fun NavBackStackEntry.usesSecondaryPageSlideTransition(): Boolean {
     return resolveCurrentPrimaryDestinationRoute(
@@ -260,6 +262,20 @@ private fun secondaryPagePopExitTransition(): ExitTransition {
         ),
         targetOffsetX = { fullWidth -> fullWidth }
     )
+}
+
+private fun Modifier.albumDetailTopBarButtonSurface(
+    enabled: Boolean,
+    shape: Shape = AlbumDetailTopBarButtonShape
+): Modifier {
+    return if (!enabled) {
+        this
+    } else {
+        this
+            .clip(shape)
+            .background(Color.Black.copy(alpha = 0.42f))
+            .border(0.5.dp, Color.White.copy(alpha = 0.24f), shape)
+    }
 }
 
 @Composable
@@ -779,7 +795,8 @@ fun MainContainer(
     val colorScheme = AsmrTheme.colorScheme
     val materialColorScheme = MaterialTheme.colorScheme
     val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
-    val topBarContentColor = colorScheme.onSurface
+    val isAlbumDetailRoute = currentRoute?.startsWith("album_detail") == true
+    val topBarContentColor = if (isAlbumDetailRoute) Color.White else colorScheme.onSurface
     val drawerContainerColor = if (colorScheme.isDark) Color(0xFF121212) else Color.White
 
     val defaultSystemUi = remember(activity) {
@@ -1071,9 +1088,13 @@ fun MainContainer(
         val currentScreenIsPrimary = currentPrimaryRoute != null
         val showBackButton = !currentScreenIsPrimary
         val showPrimaryBrand = currentScreenIsPrimary
-        val topBarDividerColor = colorScheme.onSurface.copy(
-            alpha = if (colorScheme.isDark) 0.16f else 0.10f
-        )
+        val topBarDividerColor = if (isAlbumDetailRoute) {
+            Color.Transparent
+        } else {
+            colorScheme.onSurface.copy(
+                alpha = if (colorScheme.isDark) 0.16f else 0.10f
+            )
+        }
         val useLargeBottomChrome = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact && !isPhone
         val bottomOverlayPadding = bottomChromeOverlayHeight(useLargeBottomChrome)
         CompositionLocalProvider(
@@ -1158,26 +1179,29 @@ fun MainContainer(
                                                 else -> appName
                                             }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                                AnimatedContent(
-                                                    targetState = titleText,
-                                                    transitionSpec = {
-                                                        (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
-                                                            + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
-                                                            .togetherWith(
-                                                                fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
-                                                                    + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
-                                                            )
-                                                    },
-                                                    label = "headerTitle"
-                                                ) { targetText ->
-                                                    Text(
-                                                        targetText,
-                                                        style = if (compactTopBar) {
-                                                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                                                        } else {
-                                                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                                        }
-                                                    )
+                                                if (!isAlbumDetailRoute) {
+                                                    AnimatedContent(
+                                                        targetState = titleText,
+                                                        transitionSpec = {
+                                                            (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                                + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
+                                                                .togetherWith(
+                                                                    fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                                        + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
+                                                                )
+                                                        },
+                                                        label = "headerTitle"
+                                                    ) { targetText ->
+                                                        Text(
+                                                            text = targetText,
+                                                            color = topBarContentColor,
+                                                            style = if (compactTopBar) {
+                                                                MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                                                            } else {
+                                                                MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         },
@@ -1190,7 +1214,13 @@ fun MainContainer(
                                         ),
                                         navigationIcon = {
                                             if (showBackButton && hasPreviousBackStackEntry) {
-                                                IconButton(onClick = { navController.popBackStack() }) {
+                                                IconButton(
+                                                    onClick = { navController.popBackStack() },
+                                                    modifier = Modifier
+                                                        .padding(start = if (isAlbumDetailRoute) 4.dp else 0.dp)
+                                                        .size(if (isAlbumDetailRoute) 40.dp else 48.dp)
+                                                        .albumDetailTopBarButtonSurface(isAlbumDetailRoute)
+                                                ) {
                                                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
                                             } else if (showPrimaryBrand) {
@@ -1356,7 +1386,11 @@ fun MainContainer(
                                                             }.orEmpty()
                                                             manualRjInput = currentRj
                                                             showManualRjDialog = true
-                                                        }
+                                                        },
+                                                        modifier = Modifier
+                                                            .padding(end = 8.dp)
+                                                            .size(40.dp)
+                                                            .albumDetailTopBarButtonSurface(true)
                                                     ) {
                                                         Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }
@@ -1387,13 +1421,15 @@ fun MainContainer(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = padding.calculateTopPadding())
                         ) {
+                            val topContentPadding = padding.calculateTopPadding()
                             val hasOverlayRoute = currentPrimaryRoute == null
                             primaryContentStateHolder.SaveableStateProvider("primary_pager") {
                                 HorizontalPager(
                                     state = primaryPagerState,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(top = topContentPadding),
                                     userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
                                     key = { primaryPagerRoutes[it] }
                                 ) { page ->
@@ -1546,7 +1582,9 @@ fun MainContainer(
                                         ExitTransition.None
                                     }
                                 },
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = if (isAlbumDetailRoute) 0.dp else topContentPadding)
                             ) {
 
                 composable("library") {
@@ -1691,43 +1729,41 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val rj = backStackEntry.arguments?.getString("rj").orEmpty()
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    SecondaryPageBackground {
-                        AlbumDetailScreen(
-                            windowSizeClass = windowSizeClass,
-                            rjCode = rj,
-                            initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
-                            refreshToken = refreshToken,
-                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                            onPlayTracks = { album, tracks, startTrack ->
-                                scope.launch {
-                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                        openNowPlaying()
-                                    }
+                    AlbumDetailScreen(
+                        windowSizeClass = windowSizeClass,
+                        rjCode = rj,
+                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
+                        refreshToken = refreshToken,
+                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                        onPlayTracks = { album, tracks, startTrack ->
+                            scope.launch {
+                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                    openNowPlaying()
                                 }
-                            },
-                            onPlayMediaItems = { items, startIndex ->
-                                playerViewModel.playMediaItems(items, startIndex)
-                                openNowPlaying()
-                            },
-                            onAddToQueue = { album, track ->
-                                playerViewModel.addTrackToQueue(album, track)
-                            },
-                            onAddMediaItemsToQueue = { items ->
-                                playerViewModel.addMediaItemsToQueue(items)
-                            },
-                            onAddMediaItemsToFavorites = { items ->
-                                playlistsViewModel.addItemsToFavoritesInBackground(items)
-                            },
-                            onOpenPlaylistPicker = { item ->
-                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                            },
-                            onOpenGroupPicker = { targetAlbumId ->
-                                navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
-                            },
-                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                        )
-                    }
+                            }
+                        },
+                        onPlayMediaItems = { items, startIndex ->
+                            playerViewModel.playMediaItems(items, startIndex)
+                            openNowPlaying()
+                        },
+                        onAddToQueue = { album, track ->
+                            playerViewModel.addTrackToQueue(album, track)
+                        },
+                        onAddMediaItemsToQueue = { items ->
+                            playerViewModel.addMediaItemsToQueue(items)
+                        },
+                        onAddMediaItemsToFavorites = { items ->
+                            playlistsViewModel.addItemsToFavoritesInBackground(items)
+                        },
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                        },
+                        onOpenGroupPicker = { targetAlbumId ->
+                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
+                        },
+                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                    )
                 }
                 composable(
                     route = Routes.AlbumDetailByIdPattern,
@@ -1740,44 +1776,42 @@ fun MainContainer(
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
                     val rjCode = backStackEntry.arguments?.getString("rjCode")
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    SecondaryPageBackground {
-                        AlbumDetailScreen(
-                            windowSizeClass = windowSizeClass,
-                            albumId = albumId,
-                            rjCode = rjCode,
-                            initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
-                            refreshToken = refreshToken,
-                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                            onPlayTracks = { album, tracks, startTrack ->
-                                scope.launch {
-                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                        openNowPlaying()
-                                    }
+                    AlbumDetailScreen(
+                        windowSizeClass = windowSizeClass,
+                        albumId = albumId,
+                        rjCode = rjCode,
+                        initialTab = backStackEntry.arguments?.getString("initialTab").toAlbumDetailInitialTab(),
+                        refreshToken = refreshToken,
+                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                        onPlayTracks = { album, tracks, startTrack ->
+                            scope.launch {
+                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                    openNowPlaying()
                                 }
-                            },
-                            onPlayMediaItems = { items, startIndex ->
-                                playerViewModel.playMediaItems(items, startIndex)
-                                openNowPlaying()
-                            },
-                            onAddToQueue = { album, track ->
-                                playerViewModel.addTrackToQueue(album, track)
-                            },
-                            onAddMediaItemsToQueue = { items ->
-                                playerViewModel.addMediaItemsToQueue(items)
-                            },
-                            onAddMediaItemsToFavorites = { items ->
-                                playlistsViewModel.addItemsToFavoritesInBackground(items)
-                            },
-                            onOpenPlaylistPicker = { item ->
-                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                            },
-                            onOpenGroupPicker = { targetAlbumId ->
-                                navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
-                            },
-                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                        )
-                    }
+                            }
+                        },
+                        onPlayMediaItems = { items, startIndex ->
+                            playerViewModel.playMediaItems(items, startIndex)
+                            openNowPlaying()
+                        },
+                        onAddToQueue = { album, track ->
+                            playerViewModel.addTrackToQueue(album, track)
+                        },
+                        onAddMediaItemsToQueue = { items ->
+                            playerViewModel.addMediaItemsToQueue(items)
+                        },
+                        onAddMediaItemsToFavorites = { items ->
+                            playlistsViewModel.addItemsToFavoritesInBackground(items)
+                        },
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                        },
+                        onOpenGroupPicker = { targetAlbumId ->
+                            navController.navigateSingleTop("group_picker?albumId=$targetAlbumId")
+                        },
+                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                    )
                 }
                 composable(
                     route = "album_detail_online/{rj}",
@@ -1785,36 +1819,34 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val rj = backStackEntry.arguments?.getString("rj").orEmpty()
                     val refreshToken by backStackEntry.savedStateHandle.getStateFlow("refreshToken", 0L).collectAsState()
-                    SecondaryPageBackground {
-                        AlbumDetailScreen(
-                            windowSizeClass = windowSizeClass,
-                            rjCode = rj,
-                            refreshToken = refreshToken,
-                            onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
-                            onPlayTracks = { album, tracks, startTrack ->
-                                scope.launch {
-                                    if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
-                                        openNowPlaying()
-                                    }
+                    AlbumDetailScreen(
+                        windowSizeClass = windowSizeClass,
+                        rjCode = rj,
+                        refreshToken = refreshToken,
+                        onConsumeRefreshToken = { backStackEntry.savedStateHandle["refreshToken"] = 0L },
+                        onPlayTracks = { album, tracks, startTrack ->
+                            scope.launch {
+                                if (playerViewModel.playTracksPrepared(album, tracks, startTrack)) {
+                                    openNowPlaying()
                                 }
-                            },
-                            onPlayMediaItems = { items, startIndex ->
-                                playerViewModel.playMediaItems(items, startIndex)
-                                openNowPlaying()
-                            },
-                            onAddToQueue = { album, track ->
-                                playerViewModel.addTrackToQueue(album, track)
-                            },
-                            onOpenPlaylistPicker = { item ->
-                                albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
-                            },
-                            onOpenGroupPicker = { albumId ->
-                                navController.navigateSingleTop("group_picker?albumId=$albumId")
-                            },
-                            onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
-                            onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
-                        )
-                    }
+                            }
+                        },
+                        onPlayMediaItems = { items, startIndex ->
+                            playerViewModel.playMediaItems(items, startIndex)
+                            openNowPlaying()
+                        },
+                        onAddToQueue = { album, track ->
+                            playerViewModel.addTrackToQueue(album, track)
+                        },
+                        onOpenPlaylistPicker = { item ->
+                            albumBatchPlaylistPickerRequest = BatchPlaylistPickerRequest(listOf(item))
+                        },
+                        onOpenGroupPicker = { albumId ->
+                            navController.navigateSingleTop("group_picker?albumId=$albumId")
+                        },
+                        onOpenDlsiteLogin = { navController.navigateSingleTop("dlsite_login") },
+                        onOpenAlbumByRj = { navigator.openAlbumDetailByRjStacked(it) }
+                    )
                 }
                 composable(
                     route = "album_detail_online/{source}/{workId}",
