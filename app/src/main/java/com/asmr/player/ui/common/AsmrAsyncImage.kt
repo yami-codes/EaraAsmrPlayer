@@ -50,6 +50,7 @@ fun AsmrAsyncImage(
     loadWhenSizeStableForMillis: Long = 0L,
     fadeIn: Boolean = true,
     fadeInMillis: Int = 500,
+    peekAnySizeForInitial: Boolean = false,
 ) {
     val normalizedModel = remember(model) { normalizeImageModel(model) }
     if (normalizedModel == null) {
@@ -62,11 +63,19 @@ fun AsmrAsyncImage(
         EntryPointAccessors.fromApplication(ctx, ImageCacheEntryPoint::class.java).imageCacheManager()
     }
     val measuredSize: MutableState<IntSize?> = remember { mutableStateOf(null) }
-    val painter: MutableState<Painter?> = remember(normalizedModel) { mutableStateOf(null) }
+    // 跨尺寸即时占位：若该图片已被列表等处加载过，先用任意尺寸的缓存位图立即显示，
+    // 同时仍按精确尺寸加载原图并在完成后无缝替换，避免详情大图等待网络重新请求。
+    val seededPainter = remember(normalizedModel) {
+        if (peekAnySizeForInitial) manager.peekAnySize(normalizedModel)?.let { BitmapPainter(it) } else null
+    }
+    val painter: MutableState<Painter?> = remember(normalizedModel) { mutableStateOf(seededPainter) }
+    val seededPlaceholder = remember(normalizedModel) { mutableStateOf(seededPainter != null) }
     val state: MutableState<AsmrAsyncImageState> =
-        remember(normalizedModel) { mutableStateOf(AsmrAsyncImageState.Loading) }
+        remember(normalizedModel) {
+            mutableStateOf(if (seededPainter != null) AsmrAsyncImageState.Success else AsmrAsyncImageState.Loading)
+        }
     val loadedSize: MutableState<IntSize?> = remember(normalizedModel) { mutableStateOf(null) }
-    val crossfade = remember(normalizedModel) { Animatable(0f) }
+    val crossfade = remember(normalizedModel) { Animatable(if (seededPainter != null) 1f else 0f) }
     val sizedModifier = modifier.onSizeChanged { sz ->
         if (sz.width > 0 && sz.height > 0) measuredSize.value = IntSize(sz.width, sz.height)
     }
@@ -82,7 +91,7 @@ fun AsmrAsyncImage(
         }
         try {
             val hasExistingPainter = painter.value != null
-            val shouldRetainPainter = retainPainterDuringReload && hasExistingPainter
+            val shouldRetainPainter = (retainPainterDuringReload || seededPlaceholder.value) && hasExistingPainter
             if (!shouldRetainPainter) {
                 state.value = AsmrAsyncImageState.Loading
                 painter.value = null
@@ -96,6 +105,7 @@ fun AsmrAsyncImage(
             } ?: throw IllegalStateException("Image load timeout")
             painter.value = BitmapPainter(img)
             loadedSize.value = sz
+            seededPlaceholder.value = false
             state.value = AsmrAsyncImageState.Success
             if (fadeIn && !shouldRetainPainter) {
                 crossfade.animateTo(1f, tween(durationMillis = fadeInMillis))

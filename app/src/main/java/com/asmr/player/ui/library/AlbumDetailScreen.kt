@@ -24,6 +24,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -59,6 +61,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -144,6 +147,7 @@ import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
 import java.util.UUID
+import kotlin.math.roundToInt
 
 private enum class AlbumPrimaryAction {
     Download,
@@ -317,6 +321,44 @@ fun AlbumDetailScreen(
                         val contentFadeStartY = 0.dp
                         val contentFadeEndY = AlbumDetailScrolledContentFadeSpan
 
+                        // 随滑动自适应缩放 hero：用户向上浏览内容时 hero 跟随手指逐渐缩小，
+                        // 最多缩到原本的二分之一（顶部锚定），向上滑回顶部时再恢复。
+                        val heroDensity = LocalDensity.current
+                        val heroCollapseMaxPx = with(heroDensity) { (heroHeight * 0.5f).toPx() }
+                        val contentViewportTopPx = with(heroDensity) { contentViewportTop.toPx() }
+                        var heroCollapsePx by remember { mutableFloatStateOf(0f) }
+                        val heroNestedScroll = remember(heroCollapseMaxPx) {
+                            object : NestedScrollConnection {
+                                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                    val dy = available.y
+                                    // 向上浏览（手指上滑，dy<0）：先把滚动用于折叠 hero，再交给列表。
+                                    if (dy < 0f && heroCollapsePx < heroCollapseMaxPx) {
+                                        val target = (heroCollapsePx - dy).coerceIn(0f, heroCollapseMaxPx)
+                                        val consumed = heroCollapsePx - target // 与 dy 同号(负)
+                                        heroCollapsePx = target
+                                        return Offset(0f, consumed)
+                                    }
+                                    return Offset.Zero
+                                }
+
+                                override fun onPostScroll(
+                                    consumed: Offset,
+                                    available: Offset,
+                                    source: NestedScrollSource
+                                ): Offset {
+                                    val dy = available.y
+                                    // 列表已到顶仍有下滑剩余（dy>0）：把剩余滚动用于展开 hero。
+                                    if (dy > 0f && heroCollapsePx > 0f) {
+                                        val target = (heroCollapsePx - dy).coerceIn(0f, heroCollapseMaxPx)
+                                        val released = heroCollapsePx - target // 与 dy 同号(正)
+                                        heroCollapsePx = target
+                                        return Offset(0f, released)
+                                    }
+                                    return Offset.Zero
+                                }
+                            }
+                        }
+
                         fun headerAlbumForTab(tab: Int): Album {
                             return if (tab == 0) (model.localAlbum ?: album) else album
                         }
@@ -394,6 +436,8 @@ fun AlbumDetailScreen(
                                 listenTogetherRjListenerCount = model.listenTogetherRjListenerCount,
                                 showCoverLoadingState = showHeroCoverLoadingState,
                                 messageManager = viewModel.messageManager,
+                                collapsePx = { heroCollapsePx },
+                                collapseMaxPx = heroCollapseMaxPx,
                                 modifier = Modifier.align(Alignment.TopCenter)
                             )
 
@@ -416,9 +460,13 @@ fun AlbumDetailScreen(
 
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.BottomCenter)
+                                    .align(Alignment.TopCenter)
                                     .fillMaxWidth()
-                                    .height(contentViewportHeight)
+                                    .height(contentViewportHeight + heroHeight * 0.5f)
+                                    .offset {
+                                        IntOffset(0, (contentViewportTopPx - heroCollapsePx).roundToInt())
+                                    }
+                                    .nestedScroll(heroNestedScroll)
                                     .clipToBounds()
                                     .albumDetailScrolledContentFade(
                                         fadeStartY = contentFadeStartY,
@@ -744,9 +792,13 @@ private fun AlbumDetailHeroBackground(
     listenTogetherRjListenerCount: Int?,
     showCoverLoadingState: Boolean,
     messageManager: MessageManager,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    collapsePx: () -> Float = { 0f },
+    collapseMaxPx: Float = 0f
 ) {
     val imageModel = rememberAlbumCoverImageModel(album)
+    val density = LocalDensity.current
+    val fullHeightPx = with(density) { height.toPx() }
     val blurModifier = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Modifier.graphicsLayer {
@@ -760,10 +812,22 @@ private fun AlbumDetailHeroBackground(
         }
     }
 
+    // 真实“折叠”而非整体缩放：只压缩 hero 的布局高度（宽度保持满宽 -> 不会出现左右空白），
+    // 封面用 requiredHeight 固定为全高并顶部对齐，因此随高度收缩只是从顶部重新裁切、不变形也不重新加载；
+    // 标题/元信息底部对齐，会随折叠后的底边上移但尺寸保持不变。
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            .layout { measurable, constraints ->
+                val collapse = collapsePx().coerceIn(0f, collapseMaxPx)
+                val targetHeight = (fullHeightPx - collapse).coerceAtLeast(1f).roundToInt()
+                val placeable = measurable.measure(
+                    constraints.copy(minHeight = targetHeight, maxHeight = targetHeight)
+                )
+                layout(placeable.width, targetHeight) {
+                    placeable.place(0, 0)
+                }
+            }
             .clipToBounds()
     ) {
         AsmrAsyncImage(
@@ -772,8 +836,10 @@ private fun AlbumDetailHeroBackground(
             contentScale = ContentScale.Crop,
             alignment = Alignment.TopCenter,
             placeholderCornerRadius = 0,
+            peekAnySizeForInitial = true,
             modifier = Modifier
-                .fillMaxSize()
+                .requiredHeight(height)
+                .fillMaxWidth()
                 .graphicsLayer {
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
@@ -818,8 +884,10 @@ private fun AlbumDetailHeroBackground(
             contentScale = ContentScale.Crop,
             alignment = Alignment.TopCenter,
             placeholderCornerRadius = 0,
+            peekAnySizeForInitial = true,
             modifier = Modifier
-                .fillMaxSize()
+                .requiredHeight(height)
+                .fillMaxWidth()
                 .then(blurModifier)
                 .graphicsLayer {
                     compositingStrategy = CompositingStrategy.Offscreen

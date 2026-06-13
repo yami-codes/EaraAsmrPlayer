@@ -1266,8 +1266,8 @@ fun MainContainer(
                                                     modifier = Modifier
                                                         .padding(start = if (isAlbumDetailRoute) 4.dp else 0.dp)
                                                         .size(if (isAlbumDetailRoute) 40.dp else 48.dp)
-                                                        .albumDetailTopBarButtonSurface(isAlbumDetailRoute)
                                                         .albumDetailTopBarButtonMotion(isAlbumDetailRoute, navBackStackEntry)
+                                                        .albumDetailTopBarButtonSurface(isAlbumDetailRoute)
                                                 ) {
                                                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
@@ -1438,8 +1438,8 @@ fun MainContainer(
                                                         modifier = Modifier
                                                             .padding(end = 8.dp)
                                                             .size(40.dp)
-                                                            .albumDetailTopBarButtonSurface(true)
                                                             .albumDetailTopBarButtonMotion(true, navBackStackEntry)
+                                                            .albumDetailTopBarButtonSurface(true)
                                                     ) {
                                                         Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }

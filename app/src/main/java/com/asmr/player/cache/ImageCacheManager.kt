@@ -46,6 +46,26 @@ class ImageCacheManager(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlight = ConcurrentHashMap<String, Deferred<Result<ImageBitmap>>>()
 
+    // 数据键(忽略尺寸) -> 最近一次写入内存的完整缓存键。
+    // 用于跨尺寸即时复用同一张图片：列表已加载的小图可作为详情大图的瞬时占位。
+    private val dataKeyToLatestFullKey = ConcurrentHashMap<String, String>()
+
+    private fun putMemory(fullKey: String, dataKey: String, bmp: Bitmap) {
+        memoryCache.put(fullKey, bmp)
+        dataKeyToLatestFullKey[dataKey] = fullKey
+    }
+
+    /**
+     * 同步、仅内存：按图片数据(忽略尺寸)检索任意一张已缓存的位图。
+     * 命中则可立即作为占位显示，避免详情页等待网络重新请求同一张封面。
+     * 未命中返回 null。
+     */
+    fun peekAnySize(model: Any): ImageBitmap? {
+        val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
+        val fullKey = dataKeyToLatestFullKey[dataKey] ?: return null
+        return memoryCache.get(fullKey)?.asImageBitmap()
+    }
+
     suspend fun loadImage(
         model: Any,
         size: IntSize?,
@@ -54,12 +74,14 @@ class ImageCacheManager(
         Trace.beginSection("img.load")
         try {
         val key = CacheKeyFactory.createKey(appContext, model, size, config.cacheVersion)
+        val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
 
         if (cachePolicy.readMemory) {
             Trace.beginSection("img.mem")
             val cached = memoryCache.get(key)
             if (cached != null) {
                 stats.onMemoryHit()
+                dataKeyToLatestFullKey[dataKey] = key
                 Trace.endSection()
                 return cached.asImageBitmap()
             }
@@ -75,7 +97,7 @@ class ImageCacheManager(
                 Trace.beginSection("img.decodeDisk")
                 val bmp = decodeBytes(entry.bytes)
                 Trace.endSection()
-                if (cachePolicy.writeMemory) memoryCache.put(key, bmp)
+                if (cachePolicy.writeMemory) putMemory(key, dataKey, bmp)
                 Trace.endSection()
                 return bmp.asImageBitmap()
             }
@@ -109,7 +131,7 @@ class ImageCacheManager(
                     )
                 }
                 if (cachePolicy.writeMemory) {
-                    memoryCache.put(key, bmp)
+                    putMemory(key, dataKey, bmp)
                 }
                 bmp.asImageBitmap()
             }.also {
@@ -133,11 +155,13 @@ class ImageCacheManager(
         cachePolicy: CachePolicy = CachePolicy.DEFAULT
     ): ImageBitmap? {
         val key = CacheKeyFactory.createKey(appContext, model, size, config.cacheVersion)
+        val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
 
         if (cachePolicy.readMemory) {
             val cached = memoryCache.get(key)
             if (cached != null) {
                 stats.onMemoryHit()
+                dataKeyToLatestFullKey[dataKey] = key
                 return cached.asImageBitmap()
             }
             stats.onMemoryMiss()
@@ -148,7 +172,7 @@ class ImageCacheManager(
             if (entry != null) {
                 stats.onDiskHit()
                 val bmp = decodeBytes(entry.bytes)
-                if (cachePolicy.writeMemory) memoryCache.put(key, bmp)
+                if (cachePolicy.writeMemory) putMemory(key, dataKey, bmp)
                 return bmp.asImageBitmap()
             }
             stats.onDiskMiss()
