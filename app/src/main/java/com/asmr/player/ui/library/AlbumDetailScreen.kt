@@ -1433,9 +1433,15 @@ private fun AlbumHeader(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed && !headerHasDeferredMeta
         )
-            .padding(top = 10.dp, bottom = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(top = 10.dp, bottom = 12.dp)
+        // 不用 spacedBy 控制信息行之间的间距：cv/tags 行在网络数据到达后会以 0 高度组合、再通过
+        // AnimatedVisibility 纵向展开，而 spacedBy 的固定间距会在“0 高度的折叠内容刚组合”的那一帧
+        // 立即出现，把下方按钮行瞬间下推一截，造成展开前的下沉抖动。改为把行间距/与按钮行的间距作为
+        // 每个信息行自身的底部 padding 放进 reveal 内部——这样间距属于被 expandVertically 裁剪的高度，
+        // 会随展开动画一起从 0 平滑增长，按钮行始终被平滑下移而非瞬间跳变。
     ) {
+                // cv 行与 tags 行同属“信息行”，行间距与行内换行间距（6.dp）保持一致；
+                // 末尾信息行携带 12.dp 底部 padding 作为与下方按钮行的间距。
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
@@ -1443,13 +1449,15 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = !cvPresentInitially
                     ) {
-                        AlbumCvChipsFlow(
-                            cvText = album.cv,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            onCvClick = { cv -> copyMeta("CV", cv) },
-                            leadingVisual = AlbumMetaLeadingVisual.Icon,
-                        )
+                        Box(modifier = Modifier.padding(bottom = if (album.tags.isNotEmpty()) 6.dp else 12.dp)) {
+                            AlbumCvChipsFlow(
+                                cvText = album.cv,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                onCvClick = { cv -> copyMeta("CV", cv) },
+                                leadingVisual = AlbumMetaLeadingVisual.Icon,
+                            )
+                        }
                     }
                 }
 
@@ -1460,13 +1468,15 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = !tagsPresentInitially
                     ) {
-                        AlbumTagsFlow(
-                            tags = album.tags,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            onTagClick = { tag -> copyMeta("标签", tag) },
-                            leadingVisual = AlbumMetaLeadingVisual.Icon,
-                        )
+                        Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                            AlbumTagsFlow(
+                                tags = album.tags,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                onTagClick = { tag -> copyMeta("标签", tag) },
+                                leadingVisual = AlbumMetaLeadingVisual.Icon,
+                            )
+                        }
                     }
                 }
 
