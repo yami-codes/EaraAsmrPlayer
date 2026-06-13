@@ -98,6 +98,9 @@ fun AlbumItem(
         val headers = if (data.startsWith("http", ignoreCase = true)) DlsiteAntiHotlink.headersForImageUrl(data) else emptyMap()
         if (headers.isEmpty()) data else CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
     }
+    // 在线封面按原尺寸加载并缓存：缓存 key 与显示尺寸无关，详情页 hero 用相同 model 即可命中此缓存，
+    // 不再二次网络请求、不再低分辨率占位。本地文件封面保持按尺寸加载，避免缩略图占用过多内存。
+    val loadCoverAtOriginalSize = remember(data) { data.startsWith("http", ignoreCase = true) }
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val listItemHeight = (screenWidthDp.dp * 0.24f).coerceIn(112.dp, 140.dp)
     val coverSize = listItemHeight
@@ -133,6 +136,7 @@ fun AlbumItem(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             placeholderCornerRadius = 0,
+                            loadAtOriginalSize = loadCoverAtOriginalSize,
                             modifier = Modifier.fillMaxSize().clip(coverShape),
                             empty = { m -> AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0) },
                         )
@@ -142,6 +146,7 @@ fun AlbumItem(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             placeholderCornerRadius = 0,
+                            loadAtOriginalSize = loadCoverAtOriginalSize,
                             modifier = Modifier.fillMaxSize().clip(coverShape),
                         )
                     }
@@ -338,6 +343,8 @@ fun AlbumGridItem(
         val headers = if (data.startsWith("http", ignoreCase = true)) DlsiteAntiHotlink.headersForImageUrl(data) else emptyMap()
         if (headers.isEmpty()) data else CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
     }
+    // 在线封面按原尺寸加载并缓存，详情页 hero 用相同 model 直接命中（见 AlbumItem 同名说明）。
+    val loadCoverAtOriginalSize = remember(data) { data.startsWith("http", ignoreCase = true) }
 
     Column(
         modifier = modifier
@@ -355,6 +362,7 @@ fun AlbumGridItem(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 0,
+                    loadAtOriginalSize = loadCoverAtOriginalSize,
                     modifier = Modifier.fillMaxSize().clip(coverShape),
                     empty = { m -> AsmrShimmerPlaceholder(modifier = m, cornerRadius = 0) },
                 )
@@ -364,6 +372,7 @@ fun AlbumGridItem(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 0,
+                    loadAtOriginalSize = loadCoverAtOriginalSize,
                     modifier = Modifier.fillMaxSize().clip(coverShape),
                 )
             }

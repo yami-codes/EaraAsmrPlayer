@@ -50,6 +50,10 @@ fun AsmrAsyncImage(
     loadWhenSizeStableForMillis: Long = 0L,
     fadeIn: Boolean = true,
     fadeInMillis: Int = 500,
+    peekAnySizeForInitial: Boolean = false,
+    // 按原尺寸加载（size=null）：缓存 key 与显示尺寸无关，让列表与详情大图共用同一缓存条目，
+    // 详情页进入即内存命中、不再二次网络请求、不再低分辨率占位闪烁。显示时由 ContentScale 缩放。
+    loadAtOriginalSize: Boolean = false,
 ) {
     val normalizedModel = remember(model) { normalizeImageModel(model) }
     if (normalizedModel == null) {
@@ -62,11 +66,19 @@ fun AsmrAsyncImage(
         EntryPointAccessors.fromApplication(ctx, ImageCacheEntryPoint::class.java).imageCacheManager()
     }
     val measuredSize: MutableState<IntSize?> = remember { mutableStateOf(null) }
-    val painter: MutableState<Painter?> = remember(normalizedModel) { mutableStateOf(null) }
+    // 跨尺寸即时占位：若该图片已被列表等处加载过，先用任意尺寸的缓存位图立即显示，
+    // 同时仍按精确尺寸加载原图并在完成后无缝替换，避免详情大图等待网络重新请求。
+    val seededPainter = remember(normalizedModel) {
+        if (peekAnySizeForInitial) manager.peekAnySize(normalizedModel)?.let { BitmapPainter(it) } else null
+    }
+    val painter: MutableState<Painter?> = remember(normalizedModel) { mutableStateOf(seededPainter) }
+    val seededPlaceholder = remember(normalizedModel) { mutableStateOf(seededPainter != null) }
     val state: MutableState<AsmrAsyncImageState> =
-        remember(normalizedModel) { mutableStateOf(AsmrAsyncImageState.Loading) }
+        remember(normalizedModel) {
+            mutableStateOf(if (seededPainter != null) AsmrAsyncImageState.Success else AsmrAsyncImageState.Loading)
+        }
     val loadedSize: MutableState<IntSize?> = remember(normalizedModel) { mutableStateOf(null) }
-    val crossfade = remember(normalizedModel) { Animatable(0f) }
+    val crossfade = remember(normalizedModel) { Animatable(if (seededPainter != null) 1f else 0f) }
     val sizedModifier = modifier.onSizeChanged { sz ->
         if (sz.width > 0 && sz.height > 0) measuredSize.value = IntSize(sz.width, sz.height)
     }
@@ -77,12 +89,17 @@ fun AsmrAsyncImage(
             delay(loadWhenSizeStableForMillis)
         }
         val sz = measuredSize.value ?: initialSize
+        // 原尺寸加载：load key 与显示尺寸无关，尺寸变化（如 hero 折叠）不应触发重载，
+        // 已加载的位图由 ContentScale 重新裁切即可。
+        if (loadAtOriginalSize && painter.value != null && loadedSize.value != null) {
+            return@LaunchedEffect
+        }
         if (retainPainterDuringReload && loadedSize.value == sz && painter.value != null) {
             return@LaunchedEffect
         }
         try {
             val hasExistingPainter = painter.value != null
-            val shouldRetainPainter = retainPainterDuringReload && hasExistingPainter
+            val shouldRetainPainter = (retainPainterDuringReload || loadAtOriginalSize || seededPlaceholder.value) && hasExistingPainter
             if (!shouldRetainPainter) {
                 state.value = AsmrAsyncImageState.Loading
                 painter.value = null
@@ -92,10 +109,15 @@ fun AsmrAsyncImage(
                 crossfade.snapTo(1f)
             }
             val img = withTimeoutOrNull(15_000) {
-                manager.loadImage(model = normalizedModel, size = sz, cachePolicy = CachePolicy.DEFAULT)
+                manager.loadImage(
+                    model = normalizedModel,
+                    size = if (loadAtOriginalSize) null else sz,
+                    cachePolicy = CachePolicy.DEFAULT
+                )
             } ?: throw IllegalStateException("Image load timeout")
             painter.value = BitmapPainter(img)
             loadedSize.value = sz
+            seededPlaceholder.value = false
             state.value = AsmrAsyncImageState.Success
             if (fadeIn && !shouldRetainPainter) {
                 crossfade.animateTo(1f, tween(durationMillis = fadeInMillis))

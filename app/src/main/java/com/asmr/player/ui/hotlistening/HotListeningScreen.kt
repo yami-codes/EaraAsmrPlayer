@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.lazy.itemsIndexed as lazyItemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -64,6 +64,10 @@ private fun stableAlbumKey(album: Album): String {
     if (id.isNotEmpty()) return id
     val seed = "${album.coverUrl}|${album.title}|${album.circle}|${album.cv}"
     return "h${seed.hashCode().absoluteValue}"
+}
+
+private fun hotListeningItemKey(index: Int, album: Album): String {
+    return "hot-listening:${stableAlbumKey(album)}:$index"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -228,11 +232,11 @@ fun HotListeningScreen(
                         contentPadding = PaddingValues(bottom = 8.dp)
                             .withAddedBottomPadding(LocalBottomOverlayPadding.current)
                     ) {
-                        lazyItems(
+                        lazyItemsIndexed(
                             items = state.entries,
-                            key = { entry -> stableAlbumKey(entry.album) },
-                            contentType = { "album" }
-                        ) { entry ->
+                            key = { index, entry -> hotListeningItemKey(index, entry.album) },
+                            contentType = { _, _ -> "album" }
+                        ) { _, entry ->
                             val album = entry.album
                             AlbumItem(
                                 album = album,
@@ -264,7 +268,7 @@ fun HotListeningScreen(
                     ) {
                         items(
                             state.entries.size,
-                            key = { index -> stableAlbumKey(state.entries[index].album) },
+                            key = { index -> hotListeningItemKey(index, state.entries[index].album) },
                             contentType = { "albumGrid" }
                         ) { index ->
                             val entry = state.entries[index]

@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items as lazyItems
+import androidx.compose.foundation.lazy.itemsIndexed as lazyItemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -148,6 +148,10 @@ private fun stableAlbumKey(album: Album): String {
     if (id.isNotEmpty()) return id
     val seed = "${album.coverUrl}|${album.title}|${album.circle}|${album.cv}"
     return "h${seed.hashCode().absoluteValue}"
+}
+
+private fun searchResultItemKey(index: Int, album: Album): String {
+    return "search-result:${stableAlbumKey(album)}:$index"
 }
 
 private fun onlineDetailLoadingFor(album: Album, state: SearchUiState.Success): Boolean {
@@ -723,11 +727,11 @@ fun SearchScreen(
                                         contentPadding = PaddingValues(top = topPadding, bottom = 8.dp)
                                             .withAddedBottomPadding(LocalBottomOverlayPadding.current)
                                     ) {
-                                        lazyItems(
+                                        lazyItemsIndexed(
                                             items = state.results,
-                                            key = { album -> stableAlbumKey(album) },
-                                            contentType = { "album" }
-                                        ) { album ->
+                                            key = { index, album -> searchResultItemKey(index, album) },
+                                            contentType = { _, _ -> "album" }
+                                        ) { _, album ->
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
                                             AlbumItem(
                                                 album = album,
@@ -760,7 +764,7 @@ fun SearchScreen(
                                     ) {
                                         items(
                                             state.results.size,
-                                            key = { index -> stableAlbumKey(state.results[index]) },
+                                            key = { index -> searchResultItemKey(index, state.results[index]) },
                                             contentType = { "albumGrid" }
                                         ) { index ->
                                             val album = state.results[index]

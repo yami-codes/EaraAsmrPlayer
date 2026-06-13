@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
@@ -190,7 +190,13 @@ internal fun CloudSyncSelectionDialog(
                         .thinScrollbar(listState),
                     verticalArrangement = Arrangement.spacedBy(CLOUD_SYNC_SELECTION_ROW_SPACING)
                 ) {
-                    items(state.candidates, key = { it.workno }) { candidate ->
+                    itemsIndexed(
+                        items = state.candidates,
+                        key = { index, candidate ->
+                            val workno = candidate.workno.trim().uppercase()
+                            "cloud-sync-candidate:$workno:$index"
+                        }
+                    ) { _, candidate ->
                         CloudSyncSelectionCandidateRow(
                             candidate = candidate,
                             onClick = { onSelect(candidate.workno) }
