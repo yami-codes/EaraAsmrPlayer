@@ -1500,7 +1500,13 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = libraryScrollToTopSignal,
                                                 onAlbumClick = { album ->
-                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     navigator.openAlbumDetail(
                                                         albumId = album.id,
                                                         rj = null
@@ -1542,7 +1548,13 @@ fun MainContainer(
                                                     navController.navigateSingleTop(Routes.searchAssist(request.keyword))
                                                 },
                                                 onAlbumClick = { album, fromPurchasedOnly ->
-                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
                                                         rj = album.rjCode.ifBlank { album.workId },
@@ -1558,7 +1570,13 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = hotListeningScrollToTopSignal,
                                                 onAlbumClick = { album ->
-                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
                                                 },
                                                 viewModel = hotListeningViewModel

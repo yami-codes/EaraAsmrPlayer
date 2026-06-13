@@ -46,6 +46,7 @@ import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.listentogether.ListenTogetherRepository
 import com.asmr.player.ui.common.queryTrackFileSize
+import com.asmr.player.ui.nav.AlbumCoverHint
 import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.util.OnlineLyricsStore
 import com.asmr.player.util.RemoteSubtitleSource
@@ -550,8 +551,15 @@ class AlbumDetailViewModel @Inject constructor(
         val current = _uiState.value as? AlbumDetailUiState.Success
         if (!force && current != null && lastAlbumKey == key) return
         lastAlbumKey = key
+        val initialHint = AlbumCoverHintStore.peekHint(albumId, normalizedRj)
+        val initialRj = normalizedRj.ifBlank { initialHint?.rjCode.orEmpty() }
+        _uiState.value = AlbumDetailUiState.Success(
+            model = createInitialAlbumDetailModel(
+                rj = initialRj,
+                displayAlbum = albumFromInitialHint(initialRj, initialHint)
+            )
+        )
         viewModelScope.launch {
-            _uiState.value = AlbumDetailUiState.Loading
             try {
                 val localAlbum = if (albumId != null && albumId > 0) {
                     loadLocalAlbumById(albumId)
@@ -565,40 +573,22 @@ class AlbumDetailViewModel @Inject constructor(
                     localAlbum?.rjCode?.trim().orEmpty().ifBlank { localAlbum?.workId?.trim().orEmpty() }
                 }.uppercase()
 
+                val hint = AlbumCoverHintStore.peekHint(albumId, rj) ?: initialHint
                 val displayAlbum = localAlbum ?: Album(
-                    title = rj.ifBlank { "专辑" },
+                    title = hint?.title?.ifBlank { rj }.orEmpty().ifBlank { "专辑" },
                     path = "",
-                    workId = localAlbum?.workId.orEmpty(),
-                    rjCode = rj,
+                    workId = rj,
+                    rjCode = hint?.rjCode?.ifBlank { rj }.orEmpty().ifBlank { rj },
+                    circle = hint?.circle.orEmpty(),
                     // 种入列表点击时记录的封面 URL：让 hero 与列表卡片使用相同图片 model，
                     // 在网络解析完成前即可命中跨尺寸内存缓存，避免重复请求封面。
-                    coverUrl = AlbumCoverHintStore.peek(albumId, rj).orEmpty()
+                    coverUrl = hint?.coverUrl.orEmpty()
                 )
                 _uiState.value = AlbumDetailUiState.Success(
-                    model = AlbumDetailModel(
-                        baseRjCode = rj,
-                        rjCode = rj,
-                        listenTogetherRjListenerCount = null,
+                    model = createInitialAlbumDetailModel(
+                        rj = rj,
                         displayAlbum = displayAlbum,
-                        localAlbum = localAlbum,
-                        dlsiteInfo = null,
-                        dlsiteGalleryUrls = emptyList(),
-                        dlsiteTrialTracks = emptyList(),
-                        dlsiteRecommendations = DlsiteRecommendations(),
-                        dlsiteWorkno = rj,
-                        dlsitePlayWorkno = "",
-                        dlsiteEditions = defaultDlsiteEditions(rj),
-                        dlsiteSelectedLang = "JPN",
-                        hasResolvedInitialDlsiteTarget = false,
-                        isDlsiteLanguageUserSelected = false,
-                        asmrOneWorkId = null,
-                        asmrOneSite = null,
-                        asmrOneTree = emptyList(),
-                        dlsitePlayTree = emptyList(),
-                        isLoadingDlsite = false,
-                        isLoadingDlsiteTrial = false,
-                        isLoadingAsmrOne = false,
-                        isLoadingDlsitePlay = false
+                        localAlbum = localAlbum
                     )
                 )
                 localTracksObserveJob?.cancel()
@@ -1630,6 +1620,50 @@ class AlbumDetailViewModel @Inject constructor(
             rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } },
             // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
             coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
+        )
+    }
+
+    private fun albumFromInitialHint(rj: String, hint: AlbumCoverHint?): Album {
+        val normalizedRj = rj.ifBlank { hint?.rjCode.orEmpty() }
+        return Album(
+            title = hint?.title?.ifBlank { normalizedRj }.orEmpty().ifBlank { "专辑" },
+            path = "",
+            workId = normalizedRj,
+            rjCode = normalizedRj,
+            circle = hint?.circle.orEmpty(),
+            coverUrl = hint?.coverUrl.orEmpty()
+        )
+    }
+
+    private fun createInitialAlbumDetailModel(
+        rj: String,
+        displayAlbum: Album,
+        localAlbum: Album? = null
+    ): AlbumDetailModel {
+        return AlbumDetailModel(
+            baseRjCode = rj,
+            rjCode = rj,
+            listenTogetherRjListenerCount = null,
+            displayAlbum = displayAlbum,
+            localAlbum = localAlbum,
+            dlsiteInfo = null,
+            dlsiteGalleryUrls = emptyList(),
+            dlsiteTrialTracks = emptyList(),
+            dlsiteRecommendations = DlsiteRecommendations(),
+            dlsiteWorkno = rj,
+            dlsitePlayWorkno = "",
+            dlsiteEditions = defaultDlsiteEditions(rj),
+            dlsiteSelectedLang = "JPN",
+            hasResolvedInitialDlsiteTarget = false,
+            isDlsiteLanguageUserSelected = false,
+            asmrOneWorkId = null,
+            asmrOneSite = null,
+            asmrOneTree = emptyList(),
+            dlsitePlayTree = emptyList(),
+            isLoadingDlsite = false,
+            isLoadingDlsiteTrial = false,
+            isLoadingAsmrOne = false,
+            isLoadingDlsitePlay = false
         )
     }
 
