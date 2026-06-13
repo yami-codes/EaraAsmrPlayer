@@ -2,10 +2,7 @@
 
 import android.content.Intent
 import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -285,7 +282,13 @@ private fun DlsiteRecommendationsBlock(
             color = colorScheme.textPrimary
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(items.take(30), key = { sanitizeRj(it.rjCode).ifBlank { it.rjCode } }) { w ->
+            itemsIndexed(
+                items = items.take(30),
+                key = { index, work ->
+                    val rj = sanitizeRj(work.rjCode).ifBlank { work.rjCode }
+                    "recommendation:$rj:$index"
+                }
+            ) { _, w ->
                 val rj = sanitizeRj(w.rjCode).ifBlank { w.rjCode }
                 DlsiteRecommendedWorkCard(work = w, displayRj = rj, onClick = { onOpenAlbumByRj(rj) })
             }

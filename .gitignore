@@ -26,6 +26,8 @@ app/.cxx/
 *.perfetto-trace
 *.png
 !example_screen/*.png
+!app/src/main/res/drawable/image_empty_dark.png
+!app/src/main/res/drawable/image_empty_light.png
 *.xml
 !app/src/**/*.xml
 app/src/**/generated/baselineProfiles/

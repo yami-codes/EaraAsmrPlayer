@@ -692,6 +692,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     trialTracks: List<Track>,
     trialDownloadEnabled: Boolean,
     isLoading: Boolean,
+    isAwaitingInitialLoad: Boolean,
     asmrOneTree: List<AsmrOneTrackNodeResponse>,
     isLoadingAsmrOne: Boolean,
     isLoadingTrial: Boolean,
@@ -761,7 +762,8 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     LaunchedEffect(currentPath, treeStateKey) {
         onPersistCurrentPath(currentPath)
     }
-    val isInitialDlsiteLoading = dlsiteInfo == null && isLoading
+    val isInitialDlsiteLoading = dlsiteInfo == null && (isLoading || isAwaitingInitialLoad)
+    val isAsmrOnePending = isAwaitingInitialLoad || isLoadingAsmrOne
 
     LazyColumn(
         modifier = Modifier
@@ -838,7 +840,9 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            if (galleryUrls.isEmpty()) {
+            if (galleryUrls.isEmpty() && isInitialDlsiteLoading) {
+                DlsiteGalleryLoadingRow()
+            } else if (galleryUrls.isEmpty()) {
                 DlsiteSectionEmptyState(
                     text = "暂无样图",
                     artworkKind = DlsiteEmptyArtworkKind.Gallery,
@@ -1028,7 +1032,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                     )
                 }
             }
-        } else if (isLoadingAsmrOne || (asmrOneTree.isNotEmpty() && browser == null)) {
+        } else if (isAsmrOnePending || (asmrOneTree.isNotEmpty() && browser == null)) {
             item(key = "dlsite-one-content") {
                 Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
                     DlsiteDirectoryLoadingPanel()

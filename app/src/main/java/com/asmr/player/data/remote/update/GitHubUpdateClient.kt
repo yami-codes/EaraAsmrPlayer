@@ -1,5 +1,6 @@
 package com.asmr.player.data.remote.update
 
+import com.asmr.player.data.remote.NetworkHeaders
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import okhttp3.OkHttpClient
@@ -11,6 +12,7 @@ data class UpdateRelease(
     val title: String,
     val body: String,
     val publishedAt: String?,
+    val htmlUrl: String,
     val apkName: String,
     val apkUrl: String
 )
@@ -25,6 +27,7 @@ class GitHubUpdateClient(
             .url(url)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "Eara-Android")
+            .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
             .get()
             .build()
 
@@ -47,6 +50,7 @@ class GitHubUpdateClient(
                 title = parsed.name.orEmpty().ifBlank { tag },
                 body = parsed.body.orEmpty(),
                 publishedAt = parsed.publishedAt,
+                htmlUrl = parsed.htmlUrl.orEmpty().ifBlank { releasePageUrl(owner, repo, tag) },
                 apkName = asset.name.orEmpty(),
                 apkUrl = asset.browserDownloadUrl.orEmpty()
             )
@@ -91,6 +95,15 @@ class GitHubUpdateClient(
             m.value.toIntOrNull()
         }.toList()
     }
+
+    private fun releasePageUrl(owner: String, repo: String, tagName: String): String {
+        val normalizedTag = tagName.trim()
+        return if (normalizedTag.isBlank()) {
+            "https://github.com/$owner/$repo/releases/latest"
+        } else {
+            "https://github.com/$owner/$repo/releases/tag/$normalizedTag"
+        }
+    }
 }
 
 data class GitHubReleaseResponse(
@@ -98,6 +111,7 @@ data class GitHubReleaseResponse(
     val name: String? = null,
     val body: String? = null,
     @SerializedName("published_at") val publishedAt: String? = null,
+    @SerializedName("html_url") val htmlUrl: String? = null,
     val assets: List<GitHubReleaseAsset>? = null
 )
 
@@ -106,4 +120,3 @@ data class GitHubReleaseAsset(
     @SerializedName("browser_download_url") val browserDownloadUrl: String? = null,
     val size: Long? = null
 )
-

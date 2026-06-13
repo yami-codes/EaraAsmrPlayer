@@ -64,15 +64,17 @@ fun AlbumCarousel(
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Box {
+                val coverData = album.coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
+                    .orEmpty()
+                    .ifBlank { album.coverPath }
+                    .ifEmpty { album.coverUrl }
                 AsmrAsyncImage(
-                    model = album.coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
-                        .orEmpty()
-                        .ifBlank { album.coverPath }
-                        .ifEmpty { album.coverUrl },
+                    model = coverData,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 16,
+                    loadAtOriginalSize = coverData.startsWith("http", ignoreCase = true),
                 )
                 Surface(
                     modifier = Modifier

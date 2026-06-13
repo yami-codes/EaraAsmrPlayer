@@ -42,17 +42,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -104,14 +110,20 @@ import com.asmr.player.ui.search.SearchAssistScreen
 import com.asmr.player.ui.search.SearchScreen
 import com.asmr.player.ui.search.SearchViewModel
 import com.asmr.player.domain.model.SearchSource
+import com.asmr.player.ui.settings.AppUpdateState
 import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
+import com.asmr.player.ui.settings.UpdateCheckSource
+import com.asmr.player.ui.common.FlatActionDialog
+import com.asmr.player.ui.common.FlatDialogAction
+import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
 import com.asmr.player.ui.drawer.StatisticsViewModel
 import com.asmr.player.ui.drawer.SiteStatus
 import com.asmr.player.ui.drawer.SiteStatusType
+import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.ui.nav.AppNavigator
 import com.asmr.player.ui.nav.BottomChrome
 import com.asmr.player.ui.nav.Routes
@@ -128,6 +140,7 @@ import java.net.URLEncoder
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -144,6 +157,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.*
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -180,6 +194,9 @@ import com.asmr.player.ui.theme.neutralPaletteForMode
 import com.asmr.player.ui.theme.rememberDynamicHuePalette
 import com.asmr.player.ui.theme.rememberDynamicHuePaletteFromVideoFrame
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.ui.update.AppUpdateInstallResult
+import com.asmr.player.ui.update.launchDownloadedApkInstall
+import com.asmr.player.ui.update.openUpdateReleasePage
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
@@ -217,6 +234,115 @@ internal data class PlaylistPickerRequest(
 internal data class BatchPlaylistPickerRequest(
     val items: List<MediaItem>
 )
+
+private const val SecondaryPageEnterDurationMs = 440
+private const val SecondaryPageExitDurationMs = 420
+private val SecondaryPageSlideEasing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)
+private val AlbumDetailTopBarButtonShape = CircleShape
+
+private fun NavBackStackEntry.usesSecondaryPageSlideTransition(): Boolean {
+    return resolveCurrentPrimaryDestinationRoute(
+        currentRoute = destination.route,
+        playlistSystemType = arguments?.getString("type")
+    ) == null
+}
+
+private fun secondaryPageEnterTransition(): EnterTransition {
+    return slideInHorizontally(
+        animationSpec = tween(
+            durationMillis = SecondaryPageEnterDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        initialOffsetX = { fullWidth -> fullWidth }
+    )
+}
+
+private fun secondaryPagePopExitTransition(): ExitTransition {
+    return slideOutHorizontally(
+        animationSpec = tween(
+            durationMillis = SecondaryPageExitDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        targetOffsetX = { fullWidth -> fullWidth }
+    )
+}
+
+private fun Modifier.albumDetailTopBarButtonSurface(
+    enabled: Boolean,
+    shape: Shape = AlbumDetailTopBarButtonShape
+): Modifier {
+    return if (!enabled) {
+        this
+    } else {
+        this
+            .background(Color.Black.copy(alpha = 0.42f), shape)
+            .border(0.5.dp, Color.White.copy(alpha = 0.24f), shape)
+            .clip(shape)
+    }
+}
+
+@Composable
+private fun Modifier.albumDetailTopBarButtonMotion(
+    enabled: Boolean,
+    motionKey: Any?
+): Modifier {
+    if (!enabled) return this
+
+    var entered by remember(motionKey) { mutableStateOf(false) }
+    LaunchedEffect(motionKey) {
+        entered = false
+        withFrameNanos { }
+        entered = true
+    }
+    val offsetX by animateDpAsState(
+        targetValue = if (entered) 0.dp else 30.dp,
+        animationSpec = tween(
+            durationMillis = SecondaryPageEnterDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        label = "albumDetailTopBarButtonOffset"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 260,
+            delayMillis = 70,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "albumDetailTopBarButtonAlpha"
+    )
+    val density = LocalDensity.current
+    return this.graphicsLayer {
+        translationX = with(density) { offsetX.toPx() }
+        this.alpha = alpha
+        clip = false
+    }
+}
+
+@Composable
+private fun SecondaryPageBackground(
+    modifier: Modifier = Modifier,
+    topPadding: Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val pageBackgroundColor = remember(colorScheme.background, colorScheme.primarySoft, colorScheme.isDark) {
+        if (colorScheme.isDark) {
+            colorScheme.background
+        } else {
+            colorScheme.primarySoft.copy(alpha = 0.16f).compositeOver(colorScheme.background)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(pageBackgroundColor)
+            .padding(top = topPadding)
+    ) {
+        content()
+    }
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
@@ -277,6 +403,8 @@ fun MainContainer(
         initialPage = initialPrimaryPage,
         pageCount = { primaryPagerRoutes.size }
     )
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val primaryContentStateHolder = rememberSaveableStateHolder()
     var primaryPagerScrollLocked by remember { mutableStateOf(false) }
     var pendingPrimaryNavigationRoute by remember { mutableStateOf<String?>(null) }
@@ -400,6 +528,10 @@ fun MainContainer(
     val isPhone = configuration.smallestScreenWidthDp < 600
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+    val updateState by settingsViewModel.updateState.collectAsState()
+    var automaticUpdateDialogDismissed by rememberSaveable { mutableStateOf(false) }
+    var automaticUpdateInstallRequested by rememberSaveable { mutableStateOf(false) }
+    var pendingAutomaticInstallPath by rememberSaveable { mutableStateOf<String?>(null) }
     var nowPlayingVisible by rememberSaveable { mutableStateOf(false) }
     var nowPlayingUsesInlineVolumeControl by remember { mutableStateOf(false) }
     var nowPlayingEqualizerVisible by remember { mutableStateOf(false) }
@@ -542,6 +674,69 @@ fun MainContainer(
         navController.popBackStack(Routes.Search, false)
     }
 
+    fun handleAutomaticInstallResult(result: AppUpdateInstallResult, apkPath: String) {
+        when (result) {
+            AppUpdateInstallResult.Started -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showInfo("正在打开系统安装器")
+            }
+            AppUpdateInstallResult.PermissionRequired -> {
+                pendingAutomaticInstallPath = apkPath
+                messageManager.showInfo("请允许 Eara 安装未知来源应用后继续安装")
+            }
+            AppUpdateInstallResult.FileInvalid -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showError("下载文件无效，请重新下载")
+            }
+            is AppUpdateInstallResult.Failed -> {
+                pendingAutomaticInstallPath = null
+                messageManager.showError(result.message)
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, pendingAutomaticInstallPath, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            val apkPath = pendingAutomaticInstallPath ?: return@LifecycleEventObserver
+            val canInstall = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                context.packageManager.canRequestPackageInstalls()
+            if (!canInstall) return@LifecycleEventObserver
+            handleAutomaticInstallResult(
+                result = launchDownloadedApkInstall(context, apkPath),
+                apkPath = apkPath
+            )
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(settingsViewModel) {
+        settingsViewModel.checkUpdateAutomatically()
+    }
+
+    LaunchedEffect(updateState, automaticUpdateInstallRequested) {
+        if (!automaticUpdateInstallRequested) return@LaunchedEffect
+        when (val state = updateState) {
+            is AppUpdateState.ReadyToInstall -> {
+                if (state.source != UpdateCheckSource.Automatic) return@LaunchedEffect
+                automaticUpdateInstallRequested = false
+                handleAutomaticInstallResult(
+                    result = launchDownloadedApkInstall(context, state.apkPath),
+                    apkPath = state.apkPath
+                )
+            }
+            is AppUpdateState.Failed -> {
+                if (state.source != UpdateCheckSource.Automatic) return@LaunchedEffect
+                automaticUpdateInstallRequested = false
+                messageManager.showError(state.message)
+            }
+            else -> Unit
+        }
+    }
+
     LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute) {
         val route = currentPrimaryRoute ?: return@LaunchedEffect
         val pendingRoute = pendingPrimaryNavigationRoute
@@ -557,10 +752,13 @@ fun MainContainer(
 
     LaunchedEffect(primaryPagerState, primaryPagerRoutes) {
         snapshotFlow { primaryPagerState.isScrollInProgress }
-            .filter { !it }
-            .map { primaryPagerState.currentPage }
-            .distinctUntilChanged()
-            .collect { page ->
+            .collect { inProgress ->
+                if (inProgress) {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                    return@collect
+                }
+                val page = primaryPagerState.currentPage
                 val currentPrimary = currentPrimaryRouteState.value ?: return@collect
                 val targetRoute = primaryPagerRoutes.getOrNull(page) ?: return@collect
                 if (targetRoute != currentPrimary) {
@@ -640,7 +838,8 @@ fun MainContainer(
     val colorScheme = AsmrTheme.colorScheme
     val materialColorScheme = MaterialTheme.colorScheme
     val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
-    val topBarContentColor = colorScheme.onSurface
+    val isAlbumDetailRoute = currentRoute?.startsWith("album_detail") == true
+    val topBarContentColor = if (isAlbumDetailRoute) Color.White else colorScheme.onSurface
     val drawerContainerColor = if (colorScheme.isDark) Color(0xFF121212) else Color.White
 
     val defaultSystemUi = remember(activity) {
@@ -932,9 +1131,13 @@ fun MainContainer(
         val currentScreenIsPrimary = currentPrimaryRoute != null
         val showBackButton = !currentScreenIsPrimary
         val showPrimaryBrand = currentScreenIsPrimary
-        val topBarDividerColor = colorScheme.onSurface.copy(
-            alpha = if (colorScheme.isDark) 0.16f else 0.10f
-        )
+        val topBarDividerColor = if (isAlbumDetailRoute) {
+            Color.Transparent
+        } else {
+            colorScheme.onSurface.copy(
+                alpha = if (colorScheme.isDark) 0.16f else 0.10f
+            )
+        }
         val useLargeBottomChrome = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact && !isPhone
         val bottomOverlayPadding = bottomChromeOverlayHeight(useLargeBottomChrome)
         CompositionLocalProvider(
@@ -977,9 +1180,14 @@ fun MainContainer(
                                             currentRoute == "downloads" ||
                                             currentRoute == "dlsite_login" ||
                                             currentRoute?.startsWith("album_detail") == true
+                                    val topBarHeight = when {
+                                        isAlbumDetailRoute -> 56.dp
+                                        compactTopBar -> 48.dp
+                                        else -> 64.dp
+                                    }
                                     Spacer(modifier = Modifier.windowInsetsTopHeight(StableWindowInsets.statusBars))
                                     CenterAlignedTopAppBar(
-                                        modifier = Modifier.height(if (compactTopBar) 48.dp else 64.dp),
+                                        modifier = Modifier.height(topBarHeight),
                                         title = {
                                             val entry = navBackStackEntry
                                             val resolvedTitleRoute = if (currentScreenIsPrimary) visualPrimaryRoute else currentRoute
@@ -1019,26 +1227,29 @@ fun MainContainer(
                                                 else -> appName
                                             }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
-                                                AnimatedContent(
-                                                    targetState = titleText,
-                                                    transitionSpec = {
-                                                        (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
-                                                            + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
-                                                            .togetherWith(
-                                                                fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
-                                                                    + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
-                                                            )
-                                                    },
-                                                    label = "headerTitle"
-                                                ) { targetText ->
-                                                    Text(
-                                                        targetText,
-                                                        style = if (compactTopBar) {
-                                                            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                                                        } else {
-                                                            MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                                        }
-                                                    )
+                                                if (!isAlbumDetailRoute) {
+                                                    AnimatedContent(
+                                                        targetState = titleText,
+                                                        transitionSpec = {
+                                                            (fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                                                                + slideInHorizontally(animationSpec = tween(220, easing = LinearOutSlowInEasing)) { it / 4 })
+                                                                .togetherWith(
+                                                                    fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing))
+                                                                        + slideOutHorizontally(animationSpec = tween(180, easing = FastOutLinearInEasing)) { -it / 4 }
+                                                                )
+                                                        },
+                                                        label = "headerTitle"
+                                                    ) { targetText ->
+                                                        Text(
+                                                            text = targetText,
+                                                            color = topBarContentColor,
+                                                            style = if (compactTopBar) {
+                                                                MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                                                            } else {
+                                                                MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                             }
                                         },
@@ -1051,7 +1262,14 @@ fun MainContainer(
                                         ),
                                         navigationIcon = {
                                             if (showBackButton && hasPreviousBackStackEntry) {
-                                                IconButton(onClick = { navController.popBackStack() }) {
+                                                IconButton(
+                                                    onClick = { navController.popBackStack() },
+                                                    modifier = Modifier
+                                                        .padding(start = if (isAlbumDetailRoute) 4.dp else 0.dp)
+                                                        .size(if (isAlbumDetailRoute) 40.dp else 48.dp)
+                                                        .albumDetailTopBarButtonMotion(isAlbumDetailRoute, navBackStackEntry)
+                                                        .albumDetailTopBarButtonSurface(isAlbumDetailRoute)
+                                                ) {
                                                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
                                             } else if (showPrimaryBrand) {
@@ -1217,7 +1435,12 @@ fun MainContainer(
                                                             }.orEmpty()
                                                             manualRjInput = currentRj
                                                             showManualRjDialog = true
-                                                        }
+                                                        },
+                                                        modifier = Modifier
+                                                            .padding(end = 8.dp)
+                                                            .size(40.dp)
+                                                            .albumDetailTopBarButtonMotion(true, navBackStackEntry)
+                                                            .albumDetailTopBarButtonSurface(true)
                                                     ) {
                                                         Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }
@@ -1248,24 +1471,42 @@ fun MainContainer(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = padding.calculateTopPadding())
                         ) {
+                            val topContentPadding = padding.calculateTopPadding()
+                            val hasOverlayRoute = currentPrimaryRoute == null
+                            // 详情页等 overlay 路由会把共享顶栏增高（48dp->56dp），导致 Scaffold top padding 变大。
+                            // 但底层 pager 始终只承载主路由（库/搜索/热门），转场期间仍可见——若跟随顶栏增高会整体下沉 8dp。
+                            // 因此 pager 专用 padding 在 overlay 激活时冻结为最近一次主路由的值，避免进入详情页时来源列表抖动下沉。
+                            // 注意：NavHost 内的 secondary 页面仍用 topContentPadding（真实值），不受此冻结影响。
+                            var lastPrimaryTopPadding by remember { mutableStateOf(topContentPadding) }
+                            if (!hasOverlayRoute) {
+                                lastPrimaryTopPadding = topContentPadding
+                            }
+                            val pagerTopContentPadding = if (hasOverlayRoute) lastPrimaryTopPadding else topContentPadding
                             primaryContentStateHolder.SaveableStateProvider("primary_pager") {
-                                if (currentPrimaryRoute != null) {
-                                    HorizontalPager(
-                                        state = primaryPagerState,
-                                        modifier = Modifier.fillMaxSize(),
-                                        userScrollEnabled = !primaryPagerScrollLocked,
-                                        key = { primaryPagerRoutes[it] }
-                                    ) { page ->
-                                        val route = primaryPagerRoutes[page]
-                                        primaryContentStateHolder.SaveableStateProvider("primary_route:$route") {
-                                            when (route) {
+                                HorizontalPager(
+                                    state = primaryPagerState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(top = pagerTopContentPadding),
+                                    userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
+                                    key = { primaryPagerRoutes[it] }
+                                ) { page ->
+                                    val route = primaryPagerRoutes[page]
+                                    primaryContentStateHolder.SaveableStateProvider("primary_route:$route") {
+                                        when (route) {
                                         Routes.Library -> {
                                             LibraryScreen(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = libraryScrollToTopSignal,
                                                 onAlbumClick = { album ->
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     navigator.openAlbumDetail(
                                                         albumId = album.id,
                                                         rj = null
@@ -1307,6 +1548,13 @@ fun MainContainer(
                                                     navController.navigateSingleTop(Routes.searchAssist(request.keyword))
                                                 },
                                                 onAlbumClick = { album, fromPurchasedOnly ->
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
                                                         rj = album.rjCode.ifBlank { album.workId },
@@ -1322,6 +1570,13 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = hotListeningScrollToTopSignal,
                                                 onAlbumClick = { album ->
+                                                    AlbumCoverHintStore.record(
+                                                        albumId = album.id,
+                                                        rjCode = album.rjCode.ifBlank { album.workId },
+                                                        title = album.title,
+                                                        circle = album.circle,
+                                                        coverUrl = album.coverUrl
+                                                    )
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
                                                 },
                                                 viewModel = hotListeningViewModel
@@ -1384,7 +1639,6 @@ fun MainContainer(
                                             )
                                         }
                                     }
-                                    }
                                 }
                             }
                             }
@@ -1392,21 +1646,36 @@ fun MainContainer(
                             NavHost(
                                 navController = navController,
                                 startDestination = initialDestination,
-                                enterTransition = { EnterTransition.None },
+                                enterTransition = {
+                                    if (targetState.usesSecondaryPageSlideTransition()) {
+                                        secondaryPageEnterTransition()
+                                    } else {
+                                        EnterTransition.None
+                                    }
+                                },
                                 exitTransition = { ExitTransition.None },
                                 popEnterTransition = { EnterTransition.None },
-                                popExitTransition = { ExitTransition.None },
-                                modifier = Modifier.fillMaxSize()
+                                popExitTransition = {
+                                    if (initialState.usesSecondaryPageSlideTransition()) {
+                                        secondaryPagePopExitTransition()
+                                    } else {
+                                        ExitTransition.None
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
                             ) {
 
                 composable("library") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
                                 composable("library_filter") {
-                    LibraryFilterScreen(
-                        onClose = { navController.popBackStack() },
-                        viewModel = libraryViewModel
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        LibraryFilterScreen(
+                            onClose = { navController.popBackStack() },
+                            viewModel = libraryViewModel
+                        )
+                    }
                 }
                 composable("search") { backStackEntry ->
                     val submittedKeyword by backStackEntry.savedStateHandle
@@ -1485,15 +1754,17 @@ fun MainContainer(
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable(route = Routes.SearchAssist) {
-                    SearchAssistScreen(
-                        windowSizeClass = windowSizeClass,
-                        initialRequest = searchAssistInitialRequest,
-                        onSubmitSearch = ::submitSearchAssistRequest,
-                        onOpenFullRanking = {
-                            navController.popBackStack(Routes.Search, false)
-                            openPrimaryRoute(Routes.HotListening)
-                        }
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        SearchAssistScreen(
+                            windowSizeClass = windowSizeClass,
+                            initialRequest = searchAssistInitialRequest,
+                            onSubmitSearch = ::submitSearchAssistRequest,
+                            onOpenFullRanking = {
+                                navController.popBackStack(Routes.Search, false)
+                                openPrimaryRoute(Routes.HotListening)
+                            }
+                        )
+                    }
                 }
                 composable(
                     route = Routes.SearchAssistPattern,
@@ -1513,15 +1784,17 @@ fun MainContainer(
                         searchAssistInitialRequest.copy(keyword = initialKeyword)
                     }
 
-                    SearchAssistScreen(
-                        windowSizeClass = windowSizeClass,
-                        initialRequest = initialRequest,
-                        onSubmitSearch = ::submitSearchAssistRequest,
-                        onOpenFullRanking = {
-                            navController.popBackStack(Routes.Search, false)
-                            openPrimaryRoute(Routes.HotListening)
-                        }
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        SearchAssistScreen(
+                            windowSizeClass = windowSizeClass,
+                            initialRequest = initialRequest,
+                            onSubmitSearch = ::submitSearchAssistRequest,
+                            onOpenFullRanking = {
+                                navController.popBackStack(Routes.Search, false)
+                                openPrimaryRoute(Routes.HotListening)
+                            }
+                        )
+                    }
                 }
                 composable("hot_listening") {
                     Box(modifier = Modifier.fillMaxSize())
@@ -1688,15 +1961,17 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val groupId = backStackEntry.arguments?.getLong("groupId") ?: 0L
                     val groupName = decodeRouteArg(backStackEntry.arguments?.getString("groupName").orEmpty())
-                    com.asmr.player.ui.groups.AlbumGroupDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        groupId = groupId,
-                        title = groupName,
-                        onPlayMediaItems = { items, startIndex ->
-                            playerViewModel.playMediaItems(items, startIndex)
-                            openNowPlaying()
-                        }
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        com.asmr.player.ui.groups.AlbumGroupDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            groupId = groupId,
+                            title = groupName,
+                            onPlayMediaItems = { items, startIndex ->
+                                playerViewModel.playMediaItems(items, startIndex)
+                                openNowPlaying()
+                            }
+                        )
+                    }
                 }
                 composable(
                     route = "group_picker?albumId={albumId}",
@@ -1705,12 +1980,14 @@ fun MainContainer(
                     )
                 ) { backStackEntry ->
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: 0L
-                    com.asmr.player.ui.groups.AlbumGroupPickerScreen(
-                        windowSizeClass = windowSizeClass,
-                        albumId = albumId,
-                        onBack = { navController.popBackStack() },
-                        viewModel = albumGroupsViewModel
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        com.asmr.player.ui.groups.AlbumGroupPickerScreen(
+                            windowSizeClass = windowSizeClass,
+                            albumId = albumId,
+                            onBack = { navController.popBackStack() },
+                            viewModel = albumGroupsViewModel
+                        )
+                    }
                 }
                 composable(
                     route = "playlist/{playlistId}/{playlistName}",
@@ -1721,40 +1998,46 @@ fun MainContainer(
                 ) { backStackEntry ->
                     val playlistId = backStackEntry.arguments?.getLong("playlistId") ?: 0L
                     val playlistName = decodeRouteArg(backStackEntry.arguments?.getString("playlistName").orEmpty())
-                    PlaylistDetailScreen(
-                        windowSizeClass = windowSizeClass,
-                        playlistId = playlistId,
-                        title = playlistName,
-                        onPlayAll = { items, startItem ->
-                            playerViewModel.playPlaylistItems(items, startItem)
-                            openNowPlaying()
-                        }
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        PlaylistDetailScreen(
+                            windowSizeClass = windowSizeClass,
+                            playlistId = playlistId,
+                            title = playlistName,
+                            onPlayAll = { items, startItem ->
+                                playerViewModel.playPlaylistItems(items, startItem)
+                                openNowPlaying()
+                            }
+                        )
+                    }
                 }
                 composable("playlist_system/{type}") { backStackEntry ->
                     val type = backStackEntry.arguments?.getString("type").orEmpty()
                     if (type == "favorites") {
                         Box(modifier = Modifier.fillMaxSize())
                     } else {
-                        SystemPlaylistScreen(
-                            windowSizeClass = windowSizeClass,
-                            onPlayAll = { items, startItem ->
-                                playerViewModel.playPlaylistItems(items, startItem)
-                                openNowPlaying()
-                            },
-                            viewModel = playlistsViewModel
-                        )
+                        SecondaryPageBackground(topPadding = topContentPadding) {
+                            SystemPlaylistScreen(
+                                windowSizeClass = windowSizeClass,
+                                onPlayAll = { items, startItem ->
+                                    playerViewModel.playPlaylistItems(items, startItem)
+                                    openNowPlaying()
+                                },
+                                viewModel = playlistsViewModel
+                            )
+                        }
                     }
                 }
                 composable("settings") {
                     Box(modifier = Modifier.fillMaxSize())
                 }
                 composable("downloads") {
-                    DownloadsScreen(
-                        windowSizeClass = windowSizeClass,
-                        scrollToTopSignal = downloadsScrollToTopSignal,
-                        viewModel = downloadsViewModel
-                    )
+                    SecondaryPageBackground(topPadding = topContentPadding) {
+                        DownloadsScreen(
+                            windowSizeClass = windowSizeClass,
+                            scrollToTopSignal = downloadsScrollToTopSignal,
+                            viewModel = downloadsViewModel
+                        )
+                    }
                 }
                 composable("dlsite_login") {
                     Box(modifier = Modifier.fillMaxSize())
@@ -2079,6 +2362,79 @@ fun MainContainer(
                         },
                         warningSessionState = appVolumeWarningSessionState
                     )
+                }
+            }
+        }
+
+        val automaticUpdateAvailable = (updateState as? AppUpdateState.UpdateAvailable)
+            ?.takeIf { it.source == UpdateCheckSource.Automatic && !automaticUpdateDialogDismissed }
+        automaticUpdateAvailable?.let { available ->
+            val release = available.release
+            FlatActionDialog(
+                message = "发现新版本：${release.tagName}",
+                onDismissRequest = { automaticUpdateDialogDismissed = true },
+                actions = listOf(
+                    FlatDialogAction(
+                        text = "立即更新",
+                        tone = FlatDialogActionTone.Primary,
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            automaticUpdateInstallRequested = true
+                            settingsViewModel.downloadLatestApk()
+                            messageManager.showInfo("开始下载更新…")
+                        }
+                    ),
+                    FlatDialogAction(
+                        text = "不再提醒",
+                        tone = FlatDialogActionTone.Danger,
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            settingsViewModel.disableAutoUpdateCheck()
+                            messageManager.showInfo("已关闭启动时自动检查更新")
+                        }
+                    ),
+                    FlatDialogAction(
+                        text = "详情",
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_github),
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        },
+                        onClick = {
+                            automaticUpdateDialogDismissed = true
+                            if (!openUpdateReleasePage(context, release)) {
+                                messageManager.showError("无法打开 GitHub 发布页")
+                            }
+                        }
+                    )
+                )
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "当前版本：${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.textSecondary
+                    )
+                    if (release.title.isNotBlank() && release.title != release.tagName) {
+                        Text(
+                            text = release.title,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (release.apkName.isNotBlank()) {
+                        Text(
+                            text = "安装包：${release.apkName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.asmr.player.data.remote.api
 import android.os.Build
 import com.asmr.player.BuildConfig
 import com.asmr.player.data.remote.NetworkHeaders
+import com.asmr.player.data.remote.withSearchTimeouts
 import com.asmr.player.listentogether.XxHash64
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -73,6 +74,7 @@ class AsmrOneAvailabilityApi @Inject constructor(
     private val appHeaderValue = "com.asmr.player/${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
     private val deviceFingerprint = buildDeviceFingerprint()
     private val userAgent = buildUserAgent()
+    private val requestClient by lazy { okHttpClient.withSearchTimeouts() }
 
     suspend fun check(rjs: List<String>): Map<String, Boolean> {
         val normalized = rjs
@@ -95,7 +97,7 @@ class AsmrOneAvailabilityApi @Inject constructor(
                     .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
                     .post(gson.toJson(AsmrOneAvailabilityRequest(normalized)).toRequestBody(JSON_MEDIA_TYPE))
                     .build()
-                okHttpClient.newCall(request).execute().use { response ->
+                requestClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext emptyMap()
                     val raw = response.body?.string().orEmpty()
                     if (raw.isBlank()) return@withContext emptyMap()
@@ -127,7 +129,7 @@ class AsmrOneAvailabilityApi @Inject constructor(
                 .header(NetworkHeaders.HEADER_SILENT_IO_ERROR, NetworkHeaders.SILENT_IO_ERROR_ON)
                 .get()
                 .build()
-            okHttpClient.newCall(request).execute().use { response ->
+            requestClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IOException("asmr.one search failed: HTTP ${response.code}")
                 }

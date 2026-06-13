@@ -20,6 +20,20 @@ object CacheKeyFactory {
         return md5("$version|$dark|$w|$h|$data")
     }
 
+    /**
+     * 与 [createKey] 相同的归一化逻辑，但忽略尺寸维度。
+     * 用于按“同一张图片数据”跨尺寸检索已缓存的任意位图（即时占位复用）。
+     */
+    fun createDataKey(
+        context: Context,
+        model: Any,
+        version: String
+    ): String {
+        val data = normalizeModel(model)
+        val dark = isDarkMode(context)
+        return md5("$version|$dark|$data")
+    }
+
     private fun normalizeModel(model: Any): String {
         return when (model) {
             is CacheImageModel -> "model:${model.keyTag}|${normalizeModelData(model.data)}"

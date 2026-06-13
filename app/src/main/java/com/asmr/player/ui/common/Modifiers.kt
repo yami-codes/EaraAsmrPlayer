@@ -67,9 +67,11 @@ fun Modifier.clearFocusOnTapOutside(): Modifier {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
             val start = down.position
+            val longPressTimeoutMillis = viewConfiguration.longPressTimeoutMillis.toLong()
             val touchSlop = viewConfiguration.touchSlop
             val touchSlopSquared = touchSlop * touchSlop
             var isTap = true
+            var isLongPress = false
             do {
                 val event = awaitPointerEvent(PointerEventPass.Final)
                 if (isTap) {
@@ -78,8 +80,15 @@ fun Modifier.clearFocusOnTapOutside(): Modifier {
                         delta.x * delta.x + delta.y * delta.y > touchSlopSquared
                     }
                 }
+                if (!isLongPress) {
+                    val activeChange = event.changes.firstOrNull { it.id == down.id }
+                        ?: event.changes.firstOrNull()
+                    isLongPress =
+                        activeChange != null &&
+                            activeChange.uptimeMillis - down.uptimeMillis >= longPressTimeoutMillis
+                }
             } while (event.changes.any { it.pressed })
-            if (isTap) {
+            if (isTap && !isLongPress) {
                 focusManager.clearFocus()
                 keyboardController?.hide()
             }
