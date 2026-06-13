@@ -812,8 +812,10 @@ private fun AlbumDetailHeroBackground(
         }
     }
 
-    // 真实“折叠”而非整体缩放：只压缩 hero 的布局高度（宽度保持满宽 -> 不会出现左右空白），
-    // 封面用 requiredHeight 固定为全高并顶部对齐，因此随高度收缩只是从顶部重新裁切、不变形也不重新加载；
+    // 真实“折叠”而非整体缩放：只压缩 hero 的布局高度（宽度保持满宽 -> 不会出现左右空白）。
+    // 封面填充折叠后的盒子高度（fillMaxSize + Crop）：盒子变矮时 Crop 的缩放因子随之减小，
+    // 宽方向原本被裁掉的左右两侧逐渐显露出来（封面通常较宽，折叠即“横向缩小”露出更多画面）。
+    // 折叠过程中保留当前位图、稳定后再按新尺寸重载，避免逐帧重复解码与闪烁。
     // 标题/元信息底部对齐，会随折叠后的底边上移但尺寸保持不变。
     Box(
         modifier = modifier
@@ -837,9 +839,9 @@ private fun AlbumDetailHeroBackground(
             alignment = Alignment.TopCenter,
             placeholderCornerRadius = 0,
             peekAnySizeForInitial = true,
+            loadAtOriginalSize = true,
             modifier = Modifier
-                .requiredHeight(height)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .graphicsLayer {
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
@@ -885,9 +887,9 @@ private fun AlbumDetailHeroBackground(
             alignment = Alignment.TopCenter,
             placeholderCornerRadius = 0,
             peekAnySizeForInitial = true,
+            loadAtOriginalSize = true,
             modifier = Modifier
-                .requiredHeight(height)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .then(blurModifier)
                 .graphicsLayer {
                     compositingStrategy = CompositingStrategy.Offscreen
@@ -1155,6 +1157,11 @@ private fun AlbumHeader(
         headerIntroPlayed = true
     }
 
+    // 记录“首帧时各信息块是否已存在”：本地库专辑进入时 cv/tags 已就绪，应直接淡入不撑开（消除下沉抖动）；
+    // 在线专辑进入时 cv/tags 为空，待网络返回后才出现，那时才用 expandVertically 平滑撑开下方内容。
+    val cvPresentInitially = remember(headerAnimationScopeKey) { album.cv.isNotBlank() }
+    val tagsPresentInitially = remember(headerAnimationScopeKey) { album.tags.isNotEmpty() }
+
     val headerContainerModifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = AlbumDetailHorizontalPadding)
@@ -1183,7 +1190,8 @@ private fun AlbumHeader(
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
                         delayMillis = 80,
-                        enabled = animateIntro
+                        enabled = animateIntro,
+                        expandLayout = !cvPresentInitially
                     ) {
                         AlbumCvChipsFlow(
                             cvText = album.cv,
@@ -1199,7 +1207,8 @@ private fun AlbumHeader(
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:tags",
                         delayMillis = 120,
-                        enabled = animateIntro
+                        enabled = animateIntro,
+                        expandLayout = !tagsPresentInitially
                     ) {
                         AlbumTagsFlow(
                             tags = album.tags,
@@ -1214,7 +1223,8 @@ private fun AlbumHeader(
                 AlbumHeaderInfoReveal(
                     revealKey = "$headerAnimationScopeKey:actions",
                     delayMillis = 160,
-                    enabled = animateIntro
+                    enabled = animateIntro,
+                    expandLayout = false
                 ) {
                     BoxWithConstraints(
                         modifier = Modifier
@@ -1440,6 +1450,7 @@ private fun AlbumHeaderInfoReveal(
     delayMillis: Int = 0,
     enabled: Boolean = true,
     ready: Boolean = true,
+    expandLayout: Boolean = true,
     content: @Composable () -> Unit
 ) {
     var hasPlayed by rememberSaveable(revealKey) { mutableStateOf(false) }
@@ -1484,6 +1495,21 @@ private fun AlbumHeaderInfoReveal(
         label = "albumHeaderInfoOffsetY"
     )
     val density = LocalDensity.current
+    if (!expandLayout) {
+        // 进入时就已存在的内容（本地库 cv/tags、按钮行）：只做淡入 + 轻微上移，
+        // 不改变布局高度，避免从 0 高度展开把下方列表先推下再回弹（“下沉”抖动）。
+        Box(
+            modifier = Modifier.graphicsLayer {
+                this.alpha = alpha
+                translationY = with(density) { offsetY.toPx() }
+            }
+        ) {
+            content()
+        }
+        return
+    }
+    // 网络数据到达后才出现的内容（在线 cv/tags）：用 expandVertically 平滑撑开下方内容，
+    // 避免数据突然出现、生硬撑开造成的突兀感。
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(animationSpec = tween(durationMillis = 220)) + expandVertically(

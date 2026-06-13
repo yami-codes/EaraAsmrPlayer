@@ -51,6 +51,9 @@ fun AsmrAsyncImage(
     fadeIn: Boolean = true,
     fadeInMillis: Int = 500,
     peekAnySizeForInitial: Boolean = false,
+    // 按原尺寸加载（size=null）：缓存 key 与显示尺寸无关，让列表与详情大图共用同一缓存条目，
+    // 详情页进入即内存命中、不再二次网络请求、不再低分辨率占位闪烁。显示时由 ContentScale 缩放。
+    loadAtOriginalSize: Boolean = false,
 ) {
     val normalizedModel = remember(model) { normalizeImageModel(model) }
     if (normalizedModel == null) {
@@ -86,12 +89,17 @@ fun AsmrAsyncImage(
             delay(loadWhenSizeStableForMillis)
         }
         val sz = measuredSize.value ?: initialSize
+        // 原尺寸加载：load key 与显示尺寸无关，尺寸变化（如 hero 折叠）不应触发重载，
+        // 已加载的位图由 ContentScale 重新裁切即可。
+        if (loadAtOriginalSize && painter.value != null && loadedSize.value != null) {
+            return@LaunchedEffect
+        }
         if (retainPainterDuringReload && loadedSize.value == sz && painter.value != null) {
             return@LaunchedEffect
         }
         try {
             val hasExistingPainter = painter.value != null
-            val shouldRetainPainter = (retainPainterDuringReload || seededPlaceholder.value) && hasExistingPainter
+            val shouldRetainPainter = (retainPainterDuringReload || loadAtOriginalSize || seededPlaceholder.value) && hasExistingPainter
             if (!shouldRetainPainter) {
                 state.value = AsmrAsyncImageState.Loading
                 painter.value = null
@@ -101,7 +109,11 @@ fun AsmrAsyncImage(
                 crossfade.snapTo(1f)
             }
             val img = withTimeoutOrNull(15_000) {
-                manager.loadImage(model = normalizedModel, size = sz, cachePolicy = CachePolicy.DEFAULT)
+                manager.loadImage(
+                    model = normalizedModel,
+                    size = if (loadAtOriginalSize) null else sz,
+                    cachePolicy = CachePolicy.DEFAULT
+                )
             } ?: throw IllegalStateException("Image load timeout")
             painter.value = BitmapPainter(img)
             loadedSize.value = sz

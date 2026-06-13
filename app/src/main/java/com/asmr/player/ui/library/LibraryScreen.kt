@@ -1364,6 +1364,7 @@ private fun AlbumGridItem(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 placeholderCornerRadius = 0,
+                loadAtOriginalSize = coverModel?.startsWith("http", ignoreCase = true) == true,
                 modifier = Modifier.fillMaxSize().clip(coverShape),
             )
             
@@ -1551,6 +1552,7 @@ private fun AlbumItem(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         placeholderCornerRadius = 0,
+                        loadAtOriginalSize = coverModel?.startsWith("http", ignoreCase = true) == true,
                         modifier = Modifier.fillMaxSize().clip(coverShape),
                     )
                     

@@ -123,6 +123,7 @@ import com.asmr.player.ui.drawer.DrawerStatusViewModel
 import com.asmr.player.ui.drawer.StatisticsViewModel
 import com.asmr.player.ui.drawer.SiteStatus
 import com.asmr.player.ui.drawer.SiteStatusType
+import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.ui.nav.AppNavigator
 import com.asmr.player.ui.nav.BottomChrome
 import com.asmr.player.ui.nav.Routes
@@ -1473,12 +1474,21 @@ fun MainContainer(
                         ) {
                             val topContentPadding = padding.calculateTopPadding()
                             val hasOverlayRoute = currentPrimaryRoute == null
+                            // 详情页等 overlay 路由会把共享顶栏增高（48dp->56dp），导致 Scaffold top padding 变大。
+                            // 但底层 pager 始终只承载主路由（库/搜索/热门），转场期间仍可见——若跟随顶栏增高会整体下沉 8dp。
+                            // 因此 pager 专用 padding 在 overlay 激活时冻结为最近一次主路由的值，避免进入详情页时来源列表抖动下沉。
+                            // 注意：NavHost 内的 secondary 页面仍用 topContentPadding（真实值），不受此冻结影响。
+                            var lastPrimaryTopPadding by remember { mutableStateOf(topContentPadding) }
+                            if (!hasOverlayRoute) {
+                                lastPrimaryTopPadding = topContentPadding
+                            }
+                            val pagerTopContentPadding = if (hasOverlayRoute) lastPrimaryTopPadding else topContentPadding
                             primaryContentStateHolder.SaveableStateProvider("primary_pager") {
                                 HorizontalPager(
                                     state = primaryPagerState,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(top = topContentPadding),
+                                        .padding(top = pagerTopContentPadding),
                                     userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
                                     key = { primaryPagerRoutes[it] }
                                 ) { page ->
@@ -1490,6 +1500,7 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = libraryScrollToTopSignal,
                                                 onAlbumClick = { album ->
+                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
                                                     navigator.openAlbumDetail(
                                                         albumId = album.id,
                                                         rj = null
@@ -1531,6 +1542,7 @@ fun MainContainer(
                                                     navController.navigateSingleTop(Routes.searchAssist(request.keyword))
                                                 },
                                                 onAlbumClick = { album, fromPurchasedOnly ->
+                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
                                                         rj = album.rjCode.ifBlank { album.workId },
@@ -1546,6 +1558,7 @@ fun MainContainer(
                                                 windowSizeClass = windowSizeClass,
                                                 scrollToTopSignal = hotListeningScrollToTopSignal,
                                                 onAlbumClick = { album ->
+                                                    AlbumCoverHintStore.record(album.id, album.rjCode.ifBlank { album.workId }, album.coverUrl)
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
                                                 },
                                                 viewModel = hotListeningViewModel

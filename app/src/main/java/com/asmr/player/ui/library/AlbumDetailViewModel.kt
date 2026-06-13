@@ -46,6 +46,7 @@ import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.listentogether.ListenTogetherRepository
 import com.asmr.player.ui.common.queryTrackFileSize
+import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.util.OnlineLyricsStore
 import com.asmr.player.util.RemoteSubtitleSource
 import com.asmr.player.util.SubtitleMatchSupport
@@ -568,7 +569,10 @@ class AlbumDetailViewModel @Inject constructor(
                     title = rj.ifBlank { "专辑" },
                     path = "",
                     workId = localAlbum?.workId.orEmpty(),
-                    rjCode = rj
+                    rjCode = rj,
+                    // 种入列表点击时记录的封面 URL：让 hero 与列表卡片使用相同图片 model，
+                    // 在网络解析完成前即可命中跨尺寸内存缓存，避免重复请求封面。
+                    coverUrl = AlbumCoverHintStore.peek(albumId, rj).orEmpty()
                 )
                 _uiState.value = AlbumDetailUiState.Success(
                     model = AlbumDetailModel(
@@ -1089,7 +1093,8 @@ class AlbumDetailViewModel @Inject constructor(
                             rjCode = resolvedTarget.workno,
                             localAlbum = latestResolved.localAlbum,
                             dlsiteInfo = latestResolved.dlsiteInfo,
-                            asmrOneWorkId = latestResolved.asmrOneWorkId
+                            asmrOneWorkId = latestResolved.asmrOneWorkId,
+                            fallbackCoverUrl = latestResolved.displayAlbum.coverUrl
                         ),
                         dlsiteWorkno = resolvedTarget.workno,
                         dlsiteEditions = resolvedTarget.editions,
@@ -1163,7 +1168,7 @@ class AlbumDetailViewModel @Inject constructor(
                 )
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (token != dlsiteLoadToken) return@launch
-                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, dlsiteInfo, updated.asmrOneWorkId)
+                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, dlsiteInfo, updated.asmrOneWorkId, updated.displayAlbum.coverUrl)
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
                         displayAlbum = displayAlbum,
@@ -1228,7 +1233,8 @@ class AlbumDetailViewModel @Inject constructor(
                     rjCode = workno,
                     localAlbum = current.model.localAlbum,
                     dlsiteInfo = null,
-                    asmrOneWorkId = null
+                    asmrOneWorkId = null,
+                    fallbackCoverUrl = current.model.displayAlbum.coverUrl
                 ),
                 dlsiteInfo = null,
                 dlsiteGalleryUrls = emptyList(),
@@ -1257,7 +1263,7 @@ class AlbumDetailViewModel @Inject constructor(
             }
             val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
             if (!updated.rjCode.equals(workno, ignoreCase = true)) return@launch
-            val displayAlbum = buildDisplayAlbum(updated.rjCode, local, updated.dlsiteInfo, updated.asmrOneWorkId)
+            val displayAlbum = buildDisplayAlbum(updated.rjCode, local, updated.dlsiteInfo, updated.asmrOneWorkId, updated.displayAlbum.coverUrl)
             _uiState.value = AlbumDetailUiState.Success(
                 model = updated.copy(
                     localAlbum = local,
@@ -1459,7 +1465,7 @@ class AlbumDetailViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, updated.dlsiteInfo, workId)
+                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, updated.dlsiteInfo, workId, updated.displayAlbum.coverUrl)
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
                         displayAlbum = displayAlbum,
@@ -1615,12 +1621,15 @@ class AlbumDetailViewModel @Inject constructor(
         rjCode: String,
         localAlbum: Album?,
         dlsiteInfo: Album?,
-        asmrOneWorkId: String?
+        asmrOneWorkId: String?,
+        fallbackCoverUrl: String = ""
     ): Album {
         val base = dlsiteInfo ?: localAlbum ?: Album(title = rjCode.ifBlank { "专辑" }, path = "")
         return base.copy(
             workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: base.workId,
-            rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } }
+            rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } },
+            // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
+            coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
         )
     }
 

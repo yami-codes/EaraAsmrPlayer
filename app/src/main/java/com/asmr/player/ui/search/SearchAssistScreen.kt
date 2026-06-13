@@ -801,6 +801,8 @@ private fun SearchAssistWorkChip(
         }
         if (headers.isEmpty()) coverData else CacheImageModel(data = coverData, headers = headers, keyTag = "dlsite")
     }
+    // 在线封面按原尺寸加载并缓存，详情页 hero 用相同 model 直接命中、不再二次网络请求。
+    val loadCoverAtOriginalSize = remember(coverData) { coverData.startsWith("http", ignoreCase = true) }
     val containerColor = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.72f else 0.82f)
         .compositeOver(colorScheme.background)
     val meta = listOf(album.cv, album.circle)
@@ -827,6 +829,7 @@ private fun SearchAssistWorkChip(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             placeholderCornerRadius = 0,
+            loadAtOriginalSize = loadCoverAtOriginalSize,
             modifier = Modifier
                 .aspectRatio(1f)
                 .height(if (compact) 76.dp else 84.dp)
