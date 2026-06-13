@@ -108,6 +108,11 @@ data class DlsiteWorkInfo(
     val recommendations: DlsiteRecommendations
 )
 
+data class DlsiteWorkInitialDetail(
+    val workInfo: DlsiteWorkInfo?,
+    val trialTracks: List<Track> = emptyList()
+)
+
 data class DlsiteRecommendedWork(
     val rjCode: String,
     val title: String,
@@ -455,8 +460,21 @@ class DLSiteScraper @Inject constructor(
 
     suspend fun getWorkInfo(workId: String, locale: String? = null): DlsiteWorkInfo? = withContext(Dispatchers.IO) {
         val doc = fetchWorkDocument(workId, locale = locale) ?: return@withContext null
+        parseWorkInfo(workId, doc)
+    }
 
-        val title = doc.selectFirst("#work_name")?.text()?.trim() ?: return@withContext null
+    suspend fun getInitialWorkDetail(workId: String, locale: String? = null): DlsiteWorkInitialDetail = withContext(Dispatchers.IO) {
+        val clean = workId.trim().uppercase()
+        if (clean.isBlank()) return@withContext DlsiteWorkInitialDetail(workInfo = null)
+        val doc = fetchWorkDocument(clean, locale = locale) ?: return@withContext DlsiteWorkInitialDetail(workInfo = null)
+        DlsiteWorkInitialDetail(
+            workInfo = parseWorkInfo(clean, doc),
+            trialTracks = parseTracksFromWorkDocument(clean, locale, doc, allowFallback = true)
+        )
+    }
+
+    private fun parseWorkInfo(workId: String, doc: Document): DlsiteWorkInfo? {
+        val title = doc.selectFirst("#work_name")?.text()?.trim() ?: return null
         val circle = doc.selectFirst(".maker_name a")?.text()?.trim() ?: ""
         
         val cvNames = mutableListOf<String>()
@@ -507,7 +525,7 @@ class DLSiteScraper @Inject constructor(
         val galleryUrls = runCatching { extractGalleryUrls(doc, doc.baseUri()) }.getOrDefault(emptyList())
         val recommendations = runCatching { extractRecommendations(doc, doc.baseUri()) }.getOrDefault(DlsiteRecommendations())
 
-        DlsiteWorkInfo(
+        return DlsiteWorkInfo(
             album = Album(
                 title = title,
                 path = "",
@@ -530,6 +548,16 @@ class DLSiteScraper @Inject constructor(
     }
 
     suspend fun getTracks(workId: String, locale: String? = null): List<Track> = withContext(Dispatchers.IO) {
+        val doc = fetchWorkDocument(workId, locale = locale) ?: return@withContext emptyList()
+        parseTracksFromWorkDocument(workId, locale, doc, allowFallback = true)
+    }
+
+    private suspend fun parseTracksFromWorkDocument(
+        workId: String,
+        locale: String?,
+        doc: Document,
+        allowFallback: Boolean
+    ): List<Track> {
         fun parseTrackListFromDoc(doc: Document): List<Track> {
             val out = mutableListOf<Track>()
             doc.select(".track-list li").forEach { item ->
@@ -602,14 +630,13 @@ class DLSiteScraper @Inject constructor(
             return u
         }
 
-        suspend fun internal(workId0: String, allowFallback: Boolean): List<Track> {
-            val doc = fetchWorkDocument(workId0, locale = locale) ?: return emptyList()
+        suspend fun internal(workId0: String, doc0: Document, allowFallback0: Boolean): List<Track> {
             val tracks = mutableListOf<Track>()
 
-            tracks.addAll(parseTrackListFromDoc(doc))
+            tracks.addAll(parseTrackListFromDoc(doc0))
             if (tracks.isNotEmpty()) return tracks
 
-            doc.select(".work_parts_area audio source, .work_parts_area video source").forEach { source ->
+            doc0.select(".work_parts_area audio source, .work_parts_area video source").forEach { source ->
                 val src = source.attr("src").trim()
                 if (src.isNotEmpty()) {
                     val fullUrl = if (src.startsWith("//")) "https:$src" else if (src.startsWith("/")) "https://www.dlsite.com$src" else src
@@ -620,7 +647,7 @@ class DLSiteScraper @Inject constructor(
 
             var embedUrl = fetchChobitEmbedUrl(workId0)
             if (embedUrl.isBlank()) {
-                embedUrl = parseChobitFromHtml(doc.html())
+                embedUrl = parseChobitFromHtml(doc0.html())
             }
             if (embedUrl.isNotBlank()) {
                 val acceptLanguage = acceptLanguageForLocale(locale)
@@ -639,24 +666,25 @@ class DLSiteScraper @Inject constructor(
                 if (v.isNotEmpty()) return v
             }
 
-            if (allowFallback) {
-                val jpLink = doc.select("a.work_edition_linklist_item").firstOrNull { it.text().contains("日本語") }
+            if (allowFallback0) {
+                val jpLink = doc0.select("a.work_edition_linklist_item").firstOrNull { it.text().contains("日本語") }
                 val href = jpLink?.attr("href").orEmpty()
                 val m = Regex("""product_id/(RJ\d+)""", RegexOption.IGNORE_CASE).find(href)
                 val jpId = m?.groupValues?.getOrNull(1).orEmpty().uppercase()
                 if (jpId.isNotBlank() && jpId != workId0.uppercase()) {
-                    val fallback = internal(jpId, allowFallback = false)
+                    val jpDoc = fetchWorkDocument(jpId, locale = locale)
+                    val fallback = if (jpDoc != null) internal(jpId, jpDoc, allowFallback0 = false) else emptyList()
                     if (fallback.isNotEmpty()) return fallback
                 }
             }
 
-            val dl = parseTrialDownload(doc)
+            val dl = parseTrialDownload(doc0)
             if (dl.isNotEmpty()) return dl
 
             return emptyList()
         }
 
-        internal(workId, allowFallback = true)
+        return internal(workId, doc, allowFallback0 = allowFallback)
     }
 
     private fun extractGalleryUrls(doc: Document, baseUrl: String): List<String> {

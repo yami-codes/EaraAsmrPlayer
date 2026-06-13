@@ -543,11 +543,25 @@ fun AlbumDetailScreen(
                             val isLocalTab = tab == 0
                             val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
                             val headerAlbum = headerAlbumForTab(tab)
+                            val headerDlsiteEditions = if (isLocalTab) {
+                                emptyList()
+                            } else {
+                                model.dlsiteEditions.ifEmpty {
+                                    listOf(
+                                        DlsiteLanguageEdition(
+                                            workno = model.baseRjCode.ifBlank { model.rjCode },
+                                            lang = "JPN",
+                                            label = "日本語",
+                                            displayOrder = 1
+                                        )
+                                    )
+                                }
+                            }
                             AlbumHeader(
                                 album = headerAlbum,
                                 dlsiteUrl = model.dlsiteWorkno.takeIf { it.isNotBlank() }?.let { "https://www.dlsite.com/maniax/work/=/product_id/$it.html" }.orEmpty(),
                                 asmrOneUrl = model.asmrOneWorkId?.takeIf { it.isNotBlank() }?.let { "https://asmr.one/work/$it" }.orEmpty(),
-                                dlsiteEditions = if (isLocalTab) emptyList() else model.dlsiteEditions,
+                                dlsiteEditions = headerDlsiteEditions,
                                 dlsiteSelectedLang = model.dlsiteSelectedLang,
                                 onDlsiteLangSelected = { viewModel.selectDlsiteLanguage(it) },
                                 canSaveOnline = canSaveOnlineForTab,
@@ -577,6 +591,7 @@ fun AlbumDetailScreen(
                                 onOpenGroupPicker = onOpenGroupPicker,
                                 introSessionKey = introSessionKey,
                                 animateIntro = shouldAnimateHeaderIntro,
+                                deferMetaRevealExpected = !isLocalTab,
                                 messageManager = viewModel.messageManager
                             )
                         }
@@ -719,6 +734,7 @@ fun AlbumDetailScreen(
                                         trialTracks = model.dlsiteTrialTracks,
                                         trialDownloadEnabled = trialDownloadTree.isNotEmpty(),
                                         isLoading = model.isLoadingDlsite,
+                                        isAwaitingInitialLoad = !model.hasResolvedInitialDlsiteTarget,
                                         asmrOneTree = asmrOneTree,
                                         isLoadingAsmrOne = model.isLoadingAsmrOne,
                                         isLoadingTrial = model.isLoadingDlsiteTrial,
@@ -1371,6 +1387,7 @@ private fun AlbumHeader(
     onOpenGroupPicker: (albumId: Long) -> Unit,
     introSessionKey: String,
     animateIntro: Boolean,
+    deferMetaRevealExpected: Boolean,
     messageManager: MessageManager
 ) {
     val context = LocalContext.current
@@ -1390,9 +1407,10 @@ private fun AlbumHeader(
     }
 
     // 记录“首帧时各信息块是否已存在”：本地库专辑进入时 cv/tags 已就绪，应直接淡入不撑开（消除下沉抖动）；
-    // 在线专辑进入时 cv/tags 为空，待网络返回后才出现，那时才用 expandVertically 平滑撑开下方内容。
+    // 在线专辑进入时 cv/tags 为空，待网络返回后由信息行自身执行展开动画。
     val cvPresentInitially = remember(headerAnimationScopeKey) { album.cv.isNotBlank() }
     val tagsPresentInitially = remember(headerAnimationScopeKey) { album.tags.isNotEmpty() }
+    val headerHasDeferredMeta = deferMetaRevealExpected && (!cvPresentInitially || !tagsPresentInitially)
 
     val headerContainerModifier = Modifier
         .fillMaxWidth()
@@ -1413,11 +1431,17 @@ private fun AlbumHeader(
     Column(
         modifier = dlsiteElasticItemModifier(
             modifier = headerContainerModifier,
-            enabled = animateIntro && !headerIntroPlayed
+            enabled = animateIntro && !headerIntroPlayed && !headerHasDeferredMeta
         )
-            .padding(top = 10.dp, bottom = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(top = 10.dp, bottom = 12.dp)
+        // 不用 spacedBy 控制信息行之间的间距：cv/tags 行在网络数据到达后会以 0 高度组合、再通过
+        // AnimatedVisibility 纵向展开，而 spacedBy 的固定间距会在“0 高度的折叠内容刚组合”的那一帧
+        // 立即出现，把下方按钮行瞬间下推一截，造成展开前的下沉抖动。改为把行间距/与按钮行的间距作为
+        // 每个信息行自身的底部 padding 放进 reveal 内部——这样间距属于被 expandVertically 裁剪的高度，
+        // 会随展开动画一起从 0 平滑增长，按钮行始终被平滑下移而非瞬间跳变。
     ) {
+                // cv 行与 tags 行同属“信息行”，行间距与行内换行间距（6.dp）保持一致；
+                // 末尾信息行携带 12.dp 底部 padding 作为与下方按钮行的间距。
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
@@ -1425,13 +1449,15 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = !cvPresentInitially
                     ) {
-                        AlbumCvChipsFlow(
-                            cvText = album.cv,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            onCvClick = { cv -> copyMeta("CV", cv) },
-                            leadingVisual = AlbumMetaLeadingVisual.Icon,
-                        )
+                        Box(modifier = Modifier.padding(bottom = if (album.tags.isNotEmpty()) 6.dp else 12.dp)) {
+                            AlbumCvChipsFlow(
+                                cvText = album.cv,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                onCvClick = { cv -> copyMeta("CV", cv) },
+                                leadingVisual = AlbumMetaLeadingVisual.Icon,
+                            )
+                        }
                     }
                 }
 
@@ -1442,13 +1468,15 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = !tagsPresentInitially
                     ) {
-                        AlbumTagsFlow(
-                            tags = album.tags,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            onTagClick = { tag -> copyMeta("标签", tag) },
-                            leadingVisual = AlbumMetaLeadingVisual.Icon,
-                        )
+                        Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                            AlbumTagsFlow(
+                                tags = album.tags,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                onTagClick = { tag -> copyMeta("标签", tag) },
+                                leadingVisual = AlbumMetaLeadingVisual.Icon,
+                            )
+                        }
                     }
                 }
 
@@ -1597,28 +1625,37 @@ private fun AlbumHeader(
                                 }
                             }
 
-                            if (langCandidates.size > 1) {
+                            if (langCandidates.isNotEmpty()) {
                                 Box {
                                     OutlinedButton(
-                                        onClick = { languageMenuExpanded = true },
+                                        onClick = {
+                                            if (langCandidates.size > 1) languageMenuExpanded = true
+                                        },
+                                        enabled = langCandidates.size > 1,
                                         modifier = Modifier
                                             .height(36.dp)
                                             .widthIn(min = selectorMinWidth, max = selectorMaxWidth),
                                         shape = RoundedCornerShape(10.dp),
                                         contentPadding = PaddingValues(horizontal = smallButtonPadding, vertical = 0.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            colorScheme.primary.copy(alpha = if (langCandidates.size > 1) 0.3f else 0.16f)
+                                        ),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            disabledContentColor = colorScheme.textSecondary
+                                        )
                                     ) {
                                         Text(
                                             text = selectedLangLabel,
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = colorScheme.primary,
+                                            color = if (langCandidates.size > 1) colorScheme.primary else colorScheme.textSecondary,
                                             maxLines = 1
                                         )
                                         Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
                                         Icon(
                                             imageVector = Icons.Rounded.ArrowDropDown,
                                             contentDescription = null,
-                                            tint = colorScheme.primary,
+                                            tint = if (langCandidates.size > 1) colorScheme.primary else colorScheme.textTertiary,
                                             modifier = Modifier.size(primaryIconSize)
                                         )
                                     }
@@ -1740,8 +1777,8 @@ private fun AlbumHeaderInfoReveal(
         }
         return
     }
-    // 网络数据到达后才出现的内容（在线 cv/tags）：用 expandVertically 平滑撑开下方内容，
-    // 避免数据突然出现、生硬撑开造成的突兀感。
+    // 网络数据到达后才出现的内容（在线 cv/tags）：保留原有的纵向展开，
+    // 但避免再叠加父级 animateContentSize，减少同一尺寸变化被双重动画驱动。
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(animationSpec = tween(durationMillis = 420)) + expandVertically(
