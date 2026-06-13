@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -180,8 +181,15 @@ private val AlbumDetailHeroTransitionHeight = 96.dp
 private val AlbumDetailHeroBlurRampHeight = 188.dp
 private val AlbumDetailScrolledContentFadeSpan = 10.dp
 private const val AlbumDetailInitialIntroDurationMs = 1200L
-private const val AlbumDetailHeroOvershootResistance = 0.32f
-private const val AlbumDetailHeroExpandOvershootScale = 0.18f
+private const val AlbumDetailHeroOvershootResistance = 0.30f
+private const val AlbumDetailHeroOvershootReleaseMultiplier = 0.72f
+private const val AlbumDetailHeroExpandOvershootScale = 0.16f
+private const val AlbumDetailHeroFlingVelocityMin = 2400f
+private const val AlbumDetailHeroFlingVelocityMax = 12_000f
+private const val AlbumDetailHeroFlingOvershootPortion = 0.24f
+private const val AlbumDetailHeroFlingOvershootMaxPortion = 0.14f
+private const val AlbumDetailHeroFlingApproachMillis = 560
+private const val AlbumDetailHeroFlingSettleMillis = 980
 private const val AlbumDetailRevealSettleMs = 760L
 private const val AlbumDetailHeroTitleRevealDelayMs = 120
 private const val AlbumDetailHeroMetaRevealDelayMs = 280
@@ -192,7 +200,7 @@ internal val AlbumDetailHorizontalPadding = 8.dp
 
 private val AlbumDetailHeroBounceBackSpec = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessVeryLow
+    stiffness = Spring.StiffnessLow
 )
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
@@ -362,15 +370,23 @@ fun AlbumDetailScreen(
                         }
                         val heroNestedScroll = remember(heroCollapseMaxPx, heroVisualOvershootMaxPx, scope) {
                             object : NestedScrollConnection {
-                                private fun settleVisualOvershoot(): Boolean {
+                                private fun settleVisualOvershoot(initialVelocity: Float = 0f): Boolean {
                                     if (abs(heroVisualOvershootAnim.value) < 0.5f) return false
                                     scope.launch {
                                         heroVisualOvershootAnim.animateTo(
                                             0f,
-                                            animationSpec = AlbumDetailHeroBounceBackSpec
+                                            animationSpec = AlbumDetailHeroBounceBackSpec,
+                                            initialVelocity = initialVelocity
                                         )
                                     }
                                     return true
+                                }
+
+                                private fun dragOvershootDelta(delta: Float): Float {
+                                    val progress = (-heroVisualOvershootAnim.value / heroVisualOvershootMaxPx)
+                                        .coerceIn(0f, 1f)
+                                    val resistance = AlbumDetailHeroOvershootResistance * (1f - progress * progress * 0.62f)
+                                    return delta * resistance
                                 }
 
                                 private fun applyCollapseDelta(delta: Float): Float {
@@ -378,18 +394,78 @@ fun AlbumDetailScreen(
                                     scope.launch { heroCollapseAnim.stop() }
                                     scope.launch { heroVisualOvershootAnim.stop() }
                                     val current = heroCollapseAnim.value.coerceIn(0f, heroCollapseMaxPx)
-                                    val rawTarget = current + delta
-                                    val target = rawTarget.coerceIn(0f, heroCollapseMaxPx)
-                                    val overflow = rawTarget - target
-                                    if (overflow < 0f) {
-                                        val visualTarget = (heroVisualOvershootAnim.value + overflow * AlbumDetailHeroOvershootResistance)
+                                    var remaining = delta
+                                    var consumed = 0f
+
+                                    if (remaining > 0f && heroVisualOvershootAnim.value < 0f) {
+                                        val visualRelease = (remaining * AlbumDetailHeroOvershootReleaseMultiplier)
+                                            .coerceAtMost(-heroVisualOvershootAnim.value)
+                                        if (visualRelease > 0f) {
+                                            scope.launch {
+                                                heroVisualOvershootAnim.snapTo(heroVisualOvershootAnim.value + visualRelease)
+                                            }
+                                            remaining -= visualRelease / AlbumDetailHeroOvershootReleaseMultiplier
+                                            consumed += visualRelease / AlbumDetailHeroOvershootReleaseMultiplier
+                                        }
+                                    }
+
+                                    if (remaining != 0f) {
+                                        val collapseTarget = (current + remaining).coerceIn(0f, heroCollapseMaxPx)
+                                        val collapseApplied = collapseTarget - current
+                                        if (collapseApplied != 0f) {
+                                            scope.launch { heroCollapseAnim.snapTo(collapseTarget) }
+                                            remaining -= collapseApplied
+                                            consumed += collapseApplied
+                                        }
+                                    }
+
+                                    if (remaining < 0f) {
+                                        val visualDelta = dragOvershootDelta(remaining)
+                                        val visualTarget = (heroVisualOvershootAnim.value + visualDelta)
                                             .coerceIn(-heroVisualOvershootMaxPx, 0f)
                                         scope.launch { heroVisualOvershootAnim.snapTo(visualTarget) }
-                                    } else if (heroVisualOvershootAnim.value != 0f) {
-                                        scope.launch { heroVisualOvershootAnim.snapTo(0f) }
+                                        consumed += remaining
                                     }
-                                    scope.launch { heroCollapseAnim.snapTo(target) }
-                                    return target - current
+
+                                    return consumed
+                                }
+
+                                private fun flingOvershootTarget(velocityY: Float): Float {
+                                    if (velocityY <= AlbumDetailHeroFlingVelocityMin) return 0f
+                                    val velocityProgress = ((velocityY - AlbumDetailHeroFlingVelocityMin) /
+                                        (AlbumDetailHeroFlingVelocityMax - AlbumDetailHeroFlingVelocityMin))
+                                        .coerceIn(0f, 1f)
+                                    val eased = velocityProgress * velocityProgress
+                                    val target = heroVisualOvershootMaxPx * AlbumDetailHeroFlingOvershootPortion * eased
+                                    val cappedTarget = target.coerceAtMost(
+                                        heroVisualOvershootMaxPx * AlbumDetailHeroFlingOvershootMaxPortion
+                                    )
+                                    return -cappedTarget
+                                }
+
+                                private fun absorbFlingOvershoot(velocityY: Float): Boolean {
+                                    val target = flingOvershootTarget(velocityY)
+                                    if (target >= -0.5f) return settleVisualOvershoot()
+                                    scope.launch {
+                                        heroVisualOvershootAnim.stop()
+                                        if (target < heroVisualOvershootAnim.value) {
+                                            heroVisualOvershootAnim.animateTo(
+                                                target,
+                                                animationSpec = tween(
+                                                    durationMillis = AlbumDetailHeroFlingApproachMillis,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            )
+                                        }
+                                        heroVisualOvershootAnim.animateTo(
+                                            0f,
+                                            animationSpec = tween(
+                                                durationMillis = AlbumDetailHeroFlingSettleMillis,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        )
+                                    }
+                                    return true
                                 }
 
                                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -432,7 +508,11 @@ fun AlbumDetailScreen(
                                 }
 
                                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                                    settleVisualOvershoot()
+                                    if (available.y > 0f && heroCollapseAnim.value <= 0.5f) {
+                                        absorbFlingOvershoot(available.y)
+                                    } else {
+                                        settleVisualOvershoot()
+                                    }
                                     return Velocity.Zero
                                 }
                             }
