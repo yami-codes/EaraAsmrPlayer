@@ -139,6 +139,7 @@ import java.net.URLEncoder
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -273,9 +274,47 @@ private fun Modifier.albumDetailTopBarButtonSurface(
         this
     } else {
         this
-            .clip(shape)
-            .background(Color.Black.copy(alpha = 0.42f))
+            .background(Color.Black.copy(alpha = 0.42f), shape)
             .border(0.5.dp, Color.White.copy(alpha = 0.24f), shape)
+            .clip(shape)
+    }
+}
+
+@Composable
+private fun Modifier.albumDetailTopBarButtonMotion(
+    enabled: Boolean,
+    motionKey: Any?
+): Modifier {
+    if (!enabled) return this
+
+    var entered by remember(motionKey) { mutableStateOf(false) }
+    LaunchedEffect(motionKey) {
+        entered = false
+        withFrameNanos { }
+        entered = true
+    }
+    val offsetX by animateDpAsState(
+        targetValue = if (entered) 0.dp else 30.dp,
+        animationSpec = tween(
+            durationMillis = SecondaryPageEnterDurationMs,
+            easing = SecondaryPageSlideEasing
+        ),
+        label = "albumDetailTopBarButtonOffset"
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 260,
+            delayMillis = 70,
+            easing = LinearOutSlowInEasing
+        ),
+        label = "albumDetailTopBarButtonAlpha"
+    )
+    val density = LocalDensity.current
+    return this.graphicsLayer {
+        translationX = with(density) { offsetX.toPx() }
+        this.alpha = alpha
+        clip = false
     }
 }
 
@@ -1140,9 +1179,14 @@ fun MainContainer(
                                             currentRoute == "downloads" ||
                                             currentRoute == "dlsite_login" ||
                                             currentRoute?.startsWith("album_detail") == true
+                                    val topBarHeight = when {
+                                        isAlbumDetailRoute -> 56.dp
+                                        compactTopBar -> 48.dp
+                                        else -> 64.dp
+                                    }
                                     Spacer(modifier = Modifier.windowInsetsTopHeight(StableWindowInsets.statusBars))
                                     CenterAlignedTopAppBar(
-                                        modifier = Modifier.height(if (compactTopBar) 48.dp else 64.dp),
+                                        modifier = Modifier.height(topBarHeight),
                                         title = {
                                             val entry = navBackStackEntry
                                             val resolvedTitleRoute = if (currentScreenIsPrimary) visualPrimaryRoute else currentRoute
@@ -1223,6 +1267,7 @@ fun MainContainer(
                                                         .padding(start = if (isAlbumDetailRoute) 4.dp else 0.dp)
                                                         .size(if (isAlbumDetailRoute) 40.dp else 48.dp)
                                                         .albumDetailTopBarButtonSurface(isAlbumDetailRoute)
+                                                        .albumDetailTopBarButtonMotion(isAlbumDetailRoute, navBackStackEntry)
                                                 ) {
                                                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                                                 }
@@ -1394,6 +1439,7 @@ fun MainContainer(
                                                             .padding(end = 8.dp)
                                                             .size(40.dp)
                                                             .albumDetailTopBarButtonSurface(true)
+                                                            .albumDetailTopBarButtonMotion(true, navBackStackEntry)
                                                     ) {
                                                         Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
                                                     }

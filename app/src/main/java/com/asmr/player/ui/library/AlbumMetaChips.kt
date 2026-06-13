@@ -415,31 +415,39 @@ private fun albumMetaPalette(
     appearance: AlbumMetaAppearance,
 ): AlbumMetaPalette {
     if (appearance == AlbumMetaAppearance.OnImage) {
+        val primaryContainer = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.36f else 0.30f)
+        val primarySoftContainer = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.24f else 0.20f)
+        val primaryContent = if (colorScheme.isDark) {
+            Color.White.copy(alpha = 0.96f)
+        } else {
+            colorScheme.textPrimary.copy(alpha = 0.88f)
+        }
+        val primaryBorder = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.52f else 0.42f)
         return when (tone) {
             AlbumMetaTone.Rj -> AlbumMetaPalette(
-                container = Color.Black.copy(alpha = 0.5f),
-                content = Color.White,
-                border = Color.White.copy(alpha = 0.24f),
+                container = primaryContainer,
+                content = primaryContent,
+                border = primaryBorder,
             )
             AlbumMetaTone.Circle -> AlbumMetaPalette(
-                container = Color.Black.copy(alpha = 0.46f),
-                content = Color.White,
-                border = Color.White.copy(alpha = 0.22f),
+                container = primarySoftContainer,
+                content = primaryContent,
+                border = primaryBorder.copy(alpha = 0.78f),
             )
             AlbumMetaTone.CvLabel -> AlbumMetaPalette(
-                container = Color.White.copy(alpha = 0.18f),
-                content = Color.White,
-                border = Color.White.copy(alpha = 0.24f),
+                container = primarySoftContainer,
+                content = primaryContent,
+                border = primaryBorder.copy(alpha = 0.72f),
             )
             AlbumMetaTone.CvValue -> AlbumMetaPalette(
-                container = Color.White.copy(alpha = 0.1f),
-                content = Color.White.copy(alpha = 0.96f),
-                border = Color.White.copy(alpha = 0.16f),
+                container = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.18f else 0.16f),
+                content = primaryContent,
+                border = primaryBorder.copy(alpha = 0.56f),
             )
             AlbumMetaTone.Tag -> AlbumMetaPalette(
-                container = Color.Black.copy(alpha = 0.26f),
-                content = Color.White.copy(alpha = 0.92f),
-                border = Color.White.copy(alpha = 0.12f),
+                container = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.18f else 0.14f),
+                content = primaryContent.copy(alpha = 0.92f),
+                border = primaryBorder.copy(alpha = 0.42f),
             )
         }
     }

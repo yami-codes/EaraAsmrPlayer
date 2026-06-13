@@ -169,6 +169,7 @@ internal data class PreparedMediaPlayback(
 
 private val AlbumDetailHeroContentGap = 8.dp
 private val AlbumDetailHeroTransitionHeight = 96.dp
+private val AlbumDetailHeroBlurRampHeight = 188.dp
 private val AlbumDetailScrolledContentFadeSpan = 10.dp
 private const val AlbumDetailInitialIntroDurationMs = 1200L
 internal val AlbumDetailHorizontalPadding = 8.dp
@@ -777,13 +778,14 @@ private fun AlbumDetailHeroBackground(
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithCache {
-                    val fadeHeightPx = AlbumDetailHeroTransitionHeight.toPx()
-                        .coerceAtMost(size.height * 0.28f)
+                    val fadeHeightPx = AlbumDetailHeroBlurRampHeight.toPx()
+                        .coerceAtMost(size.height * 0.52f)
                     val fadeStartY = (size.height - fadeHeightPx).coerceAtLeast(0f)
                     val stops = (0..5).map { i ->
                         val t = i / 5f
                         val eased = t * t * (3f - 2f * t)
-                        t to Color.White.copy(alpha = 1f - eased)
+                        val alpha = 1f - eased * 0.38f
+                        t to Color.White.copy(alpha = alpha)
                     }.toTypedArray()
                     val mask = Brush.verticalGradient(
                         colorStops = arrayOf(
@@ -809,8 +811,7 @@ private fun AlbumDetailHeroBackground(
                 }
             },
         )
-        // 渐进式毛玻璃：在锐利封面之上叠加一层模糊副本，并用 smoothstep 缓动的垂直遮罩
-        // 让模糊从中部开始、向下逐渐加强，形成自上而下平滑过渡的高级质感。
+        // 渐进式毛玻璃：从标题区域开始叠加模糊副本，让标题和元信息下方仍保留封面纹理。
         AsmrAsyncImage(
             model = imageModel,
             contentDescription = null,
@@ -824,13 +825,13 @@ private fun AlbumDetailHeroBackground(
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithCache {
-                    val rampHeightPx = AlbumDetailHeroTransitionHeight.toPx()
-                        .coerceAtMost(size.height * 0.28f)
+                    val rampHeightPx = AlbumDetailHeroBlurRampHeight.toPx()
+                        .coerceAtMost(size.height * 0.52f)
                     val rampStartY = (size.height - rampHeightPx).coerceAtLeast(0f)
                     val stops = (0..6).map { i ->
                         val t = i / 6f
                         val eased = t * t * (3f - 2f * t)
-                        t to Color.White.copy(alpha = eased)
+                        t to Color.White.copy(alpha = 0.18f + eased * 0.82f)
                     }.toTypedArray()
                     val mask = Brush.verticalGradient(
                         colorStops = arrayOf(
@@ -864,17 +865,20 @@ private fun AlbumDetailHeroBackground(
                     )
                 )
         )
-        // 底部短渐变，让封面快速融入页面底色，避免过渡区随屏幕高度变胖。
+        // 只在封面容器内部做底缘融色，让封面边缘轻轻透出页面背景。
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(AlbumDetailHeroTransitionHeight)
+                .height(AlbumDetailHeroTransitionHeight * 1.7f)
                 .background(
                     Brush.verticalGradient(
                         colorStops = arrayOf(
                             0f to Color.Transparent,
-                            0.52f to pageContainerColor.copy(alpha = 0.82f),
+                            0.28f to pageContainerColor.copy(alpha = 0.08f),
+                            0.52f to pageContainerColor.copy(alpha = 0.30f),
+                            0.74f to pageContainerColor.copy(alpha = 0.70f),
+                            0.88f to pageContainerColor,
                             1f to pageContainerColor
                         )
                     )
@@ -896,6 +900,7 @@ private fun AlbumHeroIdentityOverlay(
     messageManager: MessageManager,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
     val rj = album.rjCode.ifBlank { album.workId }.trim()
     val circle = album.circle.trim()
@@ -915,15 +920,16 @@ private fun AlbumHeroIdentityOverlay(
         Text(
             text = album.title,
             modifier = Modifier.clickable { copyMeta("标题", album.title) },
-            style = MaterialTheme.typography.titleLarge.copy(
+            style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
                 shadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.58f),
+                    color = if (colorScheme.isDark) Color.White.copy(alpha = 0.58f) else Color.Black.copy(alpha = 0.58f),
                     offset = Offset(0f, 2f),
                     blurRadius = 8f
                 )
             ),
-            color = Color.White,
+            color = if (colorScheme.isDark) Color.White else Color.Black,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
@@ -944,13 +950,20 @@ private fun AlbumHeroIdentityOverlay(
                 )
                 if (listenTogetherRjListenerCount != null && rj.isNotBlank()) {
                     Spacer(modifier = Modifier.width(8.dp))
+                    val listenerContainer = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.36f else 0.30f)
+                    val listenerContent = if (colorScheme.isDark) {
+                        Color.White.copy(alpha = 0.96f)
+                    } else {
+                        colorScheme.textPrimary.copy(alpha = 0.88f)
+                    }
+                    val listenerBorder = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.52f else 0.42f)
                     Surface(
-                        color = Color.Black.copy(alpha = 0.46f),
-                        contentColor = Color.White,
+                        color = listenerContainer,
+                        contentColor = listenerContent,
                         shape = RoundedCornerShape(999.dp),
                         border = androidx.compose.foundation.BorderStroke(
                             width = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.22f)
+                            color = listenerBorder
                         )
                     ) {
                         Row(
@@ -961,13 +974,13 @@ private fun AlbumHeroIdentityOverlay(
                             Icon(
                                 painter = painterResource(id = com.asmr.player.R.drawable.ic_users_round),
                                 contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.94f),
+                                tint = listenerContent,
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
                                 text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.94f),
+                                color = listenerContent,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -1095,7 +1108,7 @@ private fun AlbumHeader(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed
         )
-            .padding(top = 18.dp, bottom = 12.dp),
+            .padding(top = 10.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
                 if (album.cv.isNotBlank()) {
