@@ -70,6 +70,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
@@ -1039,14 +1041,37 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     private suspend fun enrichRecommendationsWithAsmrOne(recommendations: DlsiteRecommendations): DlsiteRecommendations {
-        suspend fun enrich(list: List<DlsiteRecommendedWork>): List<DlsiteRecommendedWork> {
-            return list.map { w ->
-                val rj = w.rjCode.trim().uppercase()
-                val asmr = runCatching { asmrOneCrawler.getDetails(rj) }.getOrNull()
-                if (asmr == null) return@map w
-                w.copy(
-                    title = asmr.title.ifBlank { w.title },
-                    coverUrl = asmr.mainCoverUrl.ifBlank { w.coverUrl }
+        val candidates = (recommendations.circleWorks + recommendations.sameVoiceWorks + recommendations.alsoBoughtWorks)
+            .asSequence()
+            .map { it.rjCode.trim().uppercase() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .take(MAX_RECOMMENDATION_ASMR_ONE_ENRICH)
+            .toList()
+        if (candidates.isEmpty()) return recommendations
+
+        val semaphore = Semaphore(RECOMMENDATION_ASMR_ONE_ENRICH_CONCURRENCY)
+        val detailsByRj = coroutineScope {
+            candidates.map { rj ->
+                async(Dispatchers.IO) {
+                    semaphore.withPermit {
+                        val asmr = runCatching { asmrOneCrawler.getDetails(rj) }.getOrNull()
+                        rj to asmr
+                    }
+                }
+            }.mapNotNull { deferred ->
+                val (rj, details) = runCatching { deferred.await() }.getOrNull() ?: return@mapNotNull null
+                details?.let { rj to it }
+            }.toMap()
+        }
+        if (detailsByRj.isEmpty()) return recommendations
+
+        fun enrich(list: List<DlsiteRecommendedWork>): List<DlsiteRecommendedWork> {
+            return list.map { work ->
+                val asmr = detailsByRj[work.rjCode.trim().uppercase()] ?: return@map work
+                work.copy(
+                    title = asmr.title.ifBlank { work.title },
+                    coverUrl = asmr.mainCoverUrl.ifBlank { work.coverUrl }
                 )
             }
         }
@@ -1107,17 +1132,18 @@ class AlbumDetailViewModel @Inject constructor(
                     return@launch
                 }
                 val locale = dlsiteLocaleForLang(loadModel.dlsiteSelectedLang)
-                val (dlsiteWorkInfo, dlsiteRecommendationsFromV2, dlsiteTrialTracks) = coroutineScope {
-                    val infoDeferred = async { runCatching { dlsiteScraper.getWorkInfo(workno, locale = locale) }.getOrNull() }
+                val (dlsiteInitialDetail, dlsiteRecommendationsFromV2) = coroutineScope {
+                    val initialDeferred = async {
+                        runCatching { dlsiteScraper.getInitialWorkDetail(workno, locale = locale) }.getOrNull()
+                    }
                     val recDeferred = async {
                         runCatching { dlsiteScraper.getRecommendationsDetailV2(workno, locale = locale) }
                             .getOrDefault(DlsiteRecommendations())
                     }
-                    val tracksDeferred = async {
-                        runCatching { dlsiteScraper.getTracks(workno, locale = locale) }.getOrDefault(emptyList())
-                    }
-                    Triple(infoDeferred.await(), recDeferred.await(), tracksDeferred.await())
+                    initialDeferred.await() to recDeferred.await()
                 }
+                val dlsiteWorkInfo = dlsiteInitialDetail?.workInfo
+                val dlsiteTrialTracks = dlsiteInitialDetail?.trialTracks.orEmpty()
 
                 val dlsiteInfo = dlsiteWorkInfo?.album
                 val dlsiteGalleryUrls = dlsiteWorkInfo?.galleryUrls.orEmpty()
@@ -2594,5 +2620,10 @@ class AlbumDetailViewModel @Inject constructor(
     override fun onCleared() {
         cancelCloudSyncSelection()
         super.onCleared()
+    }
+
+    private companion object {
+        const val MAX_RECOMMENDATION_ASMR_ONE_ENRICH = 12
+        const val RECOMMENDATION_ASMR_ONE_ENRICH_CONCURRENCY = 4
     }
 }
