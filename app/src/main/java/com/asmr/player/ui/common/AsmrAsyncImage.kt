@@ -89,12 +89,18 @@ fun AsmrAsyncImage(
             delay(loadWhenSizeStableForMillis)
         }
         val sz = measuredSize.value ?: initialSize
+        suspend fun finishWithExistingPainter() {
+            state.value = AsmrAsyncImageState.Success
+            crossfade.snapTo(1f)
+        }
         // 原尺寸加载：load key 与显示尺寸无关，尺寸变化（如 hero 折叠）不应触发重载，
         // 已加载的位图由 ContentScale 重新裁切即可。
         if (loadAtOriginalSize && painter.value != null && loadedSize.value != null) {
+            finishWithExistingPainter()
             return@LaunchedEffect
         }
         if (retainPainterDuringReload && loadedSize.value == sz && painter.value != null) {
+            finishWithExistingPainter()
             return@LaunchedEffect
         }
         try {
