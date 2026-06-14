@@ -251,6 +251,14 @@ internal fun resolvePrimaryNavVisualRoute(
     return pendingRoute?.takeIf { it in pagerRoutes } ?: activeRoute
 }
 
+internal fun resolvePrimaryPagerApproachPage(
+    currentPage: Int,
+    targetPage: Int
+): Int? {
+    if (kotlin.math.abs(targetPage - currentPage) <= 1) return null
+    return targetPage + if (targetPage > currentPage) -1 else 1
+}
+
 internal fun resolveCurrentPrimaryDestinationRoute(
     currentRoute: String?,
     playlistSystemType: String? = null

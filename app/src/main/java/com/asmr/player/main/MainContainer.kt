@@ -206,6 +206,7 @@ import com.asmr.player.ui.common.AudioOutputRouteIcon
 import com.asmr.player.ui.common.DismissOutsideBoundsOverlay
 import com.asmr.player.service.AudioOutputRouteKind
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -611,17 +612,48 @@ fun MainContainer(
         label = "nowPlayingBackdropAlpha"
     )
     val currentPrimaryRouteState = rememberUpdatedState(currentPrimaryRoute)
+    val pendingPrimaryNavigationRouteState = rememberUpdatedState(pendingPrimaryNavigationRoute)
+    var primaryNavigationJob by remember { mutableStateOf<Job?>(null) }
+    var primaryNavigationRequestId by remember { mutableLongStateOf(0L) }
+    DisposableEffect(Unit) {
+        onDispose {
+            primaryNavigationJob?.cancel()
+        }
+    }
+
     fun openPrimaryRoute(route: String, pagerRoutes: List<String> = primaryPagerRoutes) {
         val targetPage = pagerRoutes.indexOf(route)
+        primaryNavigationJob?.cancel()
+        primaryNavigationRequestId += 1L
+        val requestId = primaryNavigationRequestId
         if (targetPage >= 0 && currentPrimaryRoute != null) {
-            scope.launch {
-                pendingPrimaryNavigationRoute = route
-                primaryPagerState.animateScrollToPage(targetPage)
-                if (currentPrimaryRouteState.value != route) {
-                    navController.navigatePrimaryRoute(route)
+            pendingPrimaryNavigationRoute = route
+            primaryNavigationJob = scope.launch {
+                var completed = false
+                try {
+                    val currentPage = primaryPagerState.currentPage
+                    resolvePrimaryPagerApproachPage(
+                        currentPage = currentPage,
+                        targetPage = targetPage
+                    )?.let { approachPage ->
+                        primaryPagerState.scrollToPage(approachPage)
+                    }
+                    primaryPagerState.animateScrollToPage(targetPage)
+                    if (currentPrimaryRouteState.value != route) {
+                        navController.navigatePrimaryRoute(route)
+                    }
+                    completed = true
+                } finally {
+                    if (primaryNavigationRequestId == requestId) {
+                        primaryNavigationJob = null
+                        if (!completed && pendingPrimaryNavigationRouteState.value == route) {
+                            pendingPrimaryNavigationRoute = null
+                        }
+                    }
                 }
             }
         } else {
+            primaryNavigationJob = null
             pendingPrimaryNavigationRoute = null
             navController.navigatePrimaryRoute(route)
         }
@@ -737,16 +769,18 @@ fun MainContainer(
         }
     }
 
-    LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute) {
+    LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute, primaryNavigationJob) {
         val route = currentPrimaryRoute ?: return@LaunchedEffect
         val pendingRoute = pendingPrimaryNavigationRoute
-        if (pendingRoute != null && route != pendingRoute) return@LaunchedEffect
+        if (pendingRoute != null) {
+            if (route == pendingRoute && primaryNavigationJob == null) {
+                pendingPrimaryNavigationRoute = null
+            }
+            return@LaunchedEffect
+        }
         val targetPage = primaryPagerRoutes.indexOf(route)
         if (targetPage >= 0 && primaryPagerState.currentPage != targetPage) {
             primaryPagerState.scrollToPage(targetPage)
-        }
-        if (pendingRoute == route) {
-            pendingPrimaryNavigationRoute = null
         }
     }
 
@@ -758,6 +792,7 @@ fun MainContainer(
                     keyboardController?.hide()
                     return@collect
                 }
+                if (pendingPrimaryNavigationRouteState.value != null) return@collect
                 val page = primaryPagerState.currentPage
                 val currentPrimary = currentPrimaryRouteState.value ?: return@collect
                 val targetRoute = primaryPagerRoutes.getOrNull(page) ?: return@collect
@@ -1489,6 +1524,7 @@ fun MainContainer(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(top = pagerTopContentPadding),
+                                    beyondBoundsPageCount = 1,
                                     userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
                                     key = { primaryPagerRoutes[it] }
                                 ) { page ->
@@ -2144,7 +2180,7 @@ fun MainContainer(
                         },
                         onOpenQueue = onShowQueue,
                         onNavigate = { route ->
-                            if (shouldScrollPrimaryRouteToTop(
+                            if (pendingPrimaryNavigationRoute == null && shouldScrollPrimaryRouteToTop(
                                     requestedRoute = route,
                                     activePrimaryRoute = activePrimaryRoute,
                                     currentPrimaryRoute = currentPrimaryRoute
