@@ -48,6 +48,7 @@ import com.asmr.player.hotlistening.HotListeningSortMode
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
@@ -129,8 +130,8 @@ fun HotListeningScreen(
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         viewModel.resetScrollPosition()
         when (viewMode) {
-            0 -> runCatching { listState.animateScrollToItem(0) }
-            else -> runCatching { gridState.animateScrollToItem(0) }
+            0 -> listState.smoothScrollToTop()
+            else -> gridState.smoothScrollToTop()
         }
     }
 

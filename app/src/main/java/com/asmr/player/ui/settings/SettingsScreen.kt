@@ -69,6 +69,7 @@ import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.update.launchDownloadedApkInstall
@@ -155,7 +156,7 @@ fun SettingsScreen(
     ) { padding ->
         LaunchedEffect(scrollToTopSignal) {
             if (scrollToTopSignal == 0L) return@LaunchedEffect
-            runCatching { listState.animateScrollToItem(0) }
+            listState.smoothScrollToTop()
         }
         Box(
             modifier = Modifier
