@@ -1505,6 +1505,7 @@ fun MainContainer(
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
+                                                        cv = album.cv,
                                                         coverUrl = album.coverUrl
                                                     )
                                                     navigator.openAlbumDetail(
@@ -1553,6 +1554,7 @@ fun MainContainer(
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
+                                                        cv = album.cv,
                                                         coverUrl = album.coverUrl
                                                     )
                                                     openAlbumDetailFromSearch(
@@ -1575,6 +1577,7 @@ fun MainContainer(
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
+                                                        cv = album.cv,
                                                         coverUrl = album.coverUrl
                                                     )
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })

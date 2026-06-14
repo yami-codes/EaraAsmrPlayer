@@ -169,6 +169,24 @@ data class AlbumDetailModel(
     val isLoadingDlsitePlay: Boolean
 )
 
+internal fun buildDisplayAlbum(
+    rjCode: String,
+    localAlbum: Album?,
+    dlsiteInfo: Album?,
+    asmrOneWorkId: String?,
+    fallbackCv: String = "",
+    fallbackCoverUrl: String = ""
+): Album {
+    val base = dlsiteInfo ?: localAlbum ?: Album(title = rjCode.ifBlank { "专辑" }, path = "")
+    return base.copy(
+        workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: base.workId,
+        rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } },
+        cv = base.cv.ifBlank { fallbackCv },
+        // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
+        coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
+    )
+}
+
 internal enum class DlsiteChinesePreference {
     None,
     Hans,

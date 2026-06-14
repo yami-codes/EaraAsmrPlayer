@@ -219,6 +219,13 @@ internal fun dlsiteElasticItemModifier(
     }
 }
 
+internal fun shouldExpandAlbumHeaderMetaReveal(
+    deferMetaRevealExpected: Boolean,
+    presentInitially: Boolean
+): Boolean {
+    return deferMetaRevealExpected || !presentInitially
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AlbumDetailScreen(
@@ -1407,10 +1414,12 @@ private fun AlbumHeader(
     }
 
     // 记录“首帧时各信息块是否已存在”：本地库专辑进入时 cv/tags 已就绪，应直接淡入不撑开（消除下沉抖动）；
-    // 在线专辑进入时 cv/tags 为空，待网络返回后由信息行自身执行展开动画。
+    // 在线专辑即使从列表 hint 拿到了 cv，也仍按延迟元信息处理，保留平移撑开的进入节奏。
     val cvPresentInitially = remember(headerAnimationScopeKey) { album.cv.isNotBlank() }
     val tagsPresentInitially = remember(headerAnimationScopeKey) { album.tags.isNotEmpty() }
-    val headerHasDeferredMeta = deferMetaRevealExpected && (!cvPresentInitially || !tagsPresentInitially)
+    val cvExpandLayout = shouldExpandAlbumHeaderMetaReveal(deferMetaRevealExpected, cvPresentInitially)
+    val tagsExpandLayout = shouldExpandAlbumHeaderMetaReveal(deferMetaRevealExpected, tagsPresentInitially)
+    val headerHasDeferredMeta = deferMetaRevealExpected
 
     val headerContainerModifier = Modifier
         .fillMaxWidth()
@@ -1447,7 +1456,7 @@ private fun AlbumHeader(
                         revealKey = "$headerAnimationScopeKey:cv",
                         delayMillis = AlbumDetailCvRevealDelayMs,
                         enabled = animateIntro,
-                        expandLayout = !cvPresentInitially
+                        expandLayout = cvExpandLayout
                     ) {
                         Box(modifier = Modifier.padding(bottom = if (album.tags.isNotEmpty()) 6.dp else 12.dp)) {
                             AlbumCvChipsFlow(
@@ -1466,7 +1475,7 @@ private fun AlbumHeader(
                         revealKey = "$headerAnimationScopeKey:tags",
                         delayMillis = AlbumDetailTagsRevealDelayMs,
                         enabled = animateIntro,
-                        expandLayout = !tagsPresentInitially
+                        expandLayout = tagsExpandLayout
                     ) {
                         Box(modifier = Modifier.padding(bottom = 12.dp)) {
                             AlbumTagsFlow(
