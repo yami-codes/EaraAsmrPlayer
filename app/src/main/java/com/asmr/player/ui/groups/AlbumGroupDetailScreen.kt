@@ -78,6 +78,7 @@ import com.asmr.player.ui.common.queryTrackFileSize
 import com.asmr.player.ui.common.rememberAudioMeta
 import com.asmr.player.ui.common.rememberAudioMetaText
 import com.asmr.player.ui.common.SubtitleStamp
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.rememberTrackMetaLine
 import com.asmr.player.ui.common.reorderable.ItemPosition
@@ -207,7 +208,7 @@ internal fun AlbumGroupDetailContent(
     }
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
-        runCatching { listState.animateScrollToItem(0) }
+        listState.smoothScrollToTop()
     }
 
     Box(

@@ -72,6 +72,7 @@ import com.asmr.player.ui.common.FlatActionDialog
 import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.util.Formatting
@@ -98,7 +99,7 @@ fun DownloadsScreen(
 
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
-        runCatching { listState.animateScrollToItem(0) }
+        listState.smoothScrollToTop()
     }
 
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact

@@ -65,6 +65,7 @@ import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.rememberAudioMeta
 import com.asmr.player.ui.common.rememberAudioMetaText
 import com.asmr.player.ui.common.rememberTrackMetaLine
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.withAddedBottomPadding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
@@ -335,8 +336,8 @@ fun LibraryScreen(
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         when (mode) {
-            1 -> runCatching { gridState.animateScrollToItem(0) }
-            else -> runCatching { listState.animateScrollToItem(0) }
+            1 -> gridState.smoothScrollToTop()
+            else -> listState.smoothScrollToTop()
         }
         chromeState.expand()
     }

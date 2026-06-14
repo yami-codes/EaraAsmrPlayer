@@ -108,6 +108,7 @@ import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.clearFocusOnTapOutside
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
@@ -577,8 +578,8 @@ fun SearchScreen(
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         pullNextPageDragPx = 0f
         when (viewMode) {
-            0 -> runCatching { listState.animateScrollToItem(0) }
-            else -> runCatching { gridState.animateScrollToItem(0) }
+            0 -> listState.smoothScrollToTop()
+            else -> gridState.smoothScrollToTop()
         }
         chromeState.expand()
     }
