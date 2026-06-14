@@ -1,5 +1,7 @@
 package com.asmr.player.di
 
+import com.asmr.player.BuildConfig
+import com.asmr.player.data.local.DeviceIdentityStore
 import com.asmr.player.data.remote.api.AsmrOneApi
 import com.asmr.player.data.remote.api.Asmr200Api
 import com.asmr.player.data.remote.api.Asmr100Api
@@ -12,6 +14,7 @@ import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
@@ -36,7 +39,8 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         messageManager: MessageManager,
-        trafficStatsInterceptor: TrafficStatsInterceptor
+        trafficStatsInterceptor: TrafficStatsInterceptor,
+        deviceIdentityStore: DeviceIdentityStore
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
@@ -49,6 +53,10 @@ object NetworkModule {
             
             val builder = request.newBuilder()
                 .header("User-Agent", NetworkHeaders.USER_AGENT)
+
+            if (isEaraBackendHost(host)) {
+                builder.header(NetworkHeaders.HEADER_EARA_DEVICE_ID, deviceIdentityStore.getOrCreateDeviceId())
+            }
 
             if (suppressAutoErrorMessage) {
                 builder.removeHeader(NetworkHeaders.HEADER_SILENT_IO_ERROR)
@@ -102,7 +110,8 @@ object NetworkModule {
     @Singleton
     @Named("image")
     fun provideImageOkHttpClient(
-        trafficStatsInterceptor: TrafficStatsInterceptor
+        trafficStatsInterceptor: TrafficStatsInterceptor,
+        deviceIdentityStore: DeviceIdentityStore
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
@@ -113,6 +122,10 @@ object NetworkModule {
 
             val builder = request.newBuilder()
                 .header("User-Agent", NetworkHeaders.USER_AGENT)
+
+            if (isEaraBackendHost(host)) {
+                builder.header(NetworkHeaders.HEADER_EARA_DEVICE_ID, deviceIdentityStore.getOrCreateDeviceId())
+            }
 
             if (host.contains("asmr.one")) {
                 builder.header("Origin", "https://www.asmr.one")
@@ -190,5 +203,15 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         return retrofit.create(Asmr300Api::class.java)
+    }
+
+    private val earaBackendHost: String?
+        get() = BuildConfig.LISTEN_TOGETHER_BASE_URL
+            .toHttpUrlOrNull()
+            ?.host
+            ?.lowercase()
+
+    private fun isEaraBackendHost(host: String): Boolean {
+        return earaBackendHost?.let { host == it } == true
     }
 }

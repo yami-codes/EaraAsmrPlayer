@@ -1109,6 +1109,7 @@ class AlbumDetailViewModel @Inject constructor(
                             localAlbum = latestResolved.localAlbum,
                             dlsiteInfo = latestResolved.dlsiteInfo,
                             asmrOneWorkId = latestResolved.asmrOneWorkId,
+                            fallbackCv = latestResolved.displayAlbum.cv,
                             fallbackCoverUrl = latestResolved.displayAlbum.coverUrl
                         ),
                         dlsiteWorkno = resolvedTarget.workno,
@@ -1184,7 +1185,14 @@ class AlbumDetailViewModel @Inject constructor(
                 )
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (token != dlsiteLoadToken) return@launch
-                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, dlsiteInfo, updated.asmrOneWorkId, updated.displayAlbum.coverUrl)
+                val displayAlbum = buildDisplayAlbum(
+                    rjCode = updated.rjCode,
+                    localAlbum = updated.localAlbum,
+                    dlsiteInfo = dlsiteInfo,
+                    asmrOneWorkId = updated.asmrOneWorkId,
+                    fallbackCv = updated.displayAlbum.cv,
+                    fallbackCoverUrl = updated.displayAlbum.coverUrl
+                )
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
                         displayAlbum = displayAlbum,
@@ -1250,6 +1258,7 @@ class AlbumDetailViewModel @Inject constructor(
                     localAlbum = current.model.localAlbum,
                     dlsiteInfo = null,
                     asmrOneWorkId = null,
+                    fallbackCv = current.model.displayAlbum.cv,
                     fallbackCoverUrl = current.model.displayAlbum.coverUrl
                 ),
                 dlsiteInfo = null,
@@ -1279,7 +1288,14 @@ class AlbumDetailViewModel @Inject constructor(
             }
             val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
             if (!updated.rjCode.equals(workno, ignoreCase = true)) return@launch
-            val displayAlbum = buildDisplayAlbum(updated.rjCode, local, updated.dlsiteInfo, updated.asmrOneWorkId, updated.displayAlbum.coverUrl)
+            val displayAlbum = buildDisplayAlbum(
+                rjCode = updated.rjCode,
+                localAlbum = local,
+                dlsiteInfo = updated.dlsiteInfo,
+                asmrOneWorkId = updated.asmrOneWorkId,
+                fallbackCv = updated.displayAlbum.cv,
+                fallbackCoverUrl = updated.displayAlbum.coverUrl
+            )
             _uiState.value = AlbumDetailUiState.Success(
                 model = updated.copy(
                     localAlbum = local,
@@ -1481,7 +1497,14 @@ class AlbumDetailViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                val displayAlbum = buildDisplayAlbum(updated.rjCode, updated.localAlbum, updated.dlsiteInfo, workId, updated.displayAlbum.coverUrl)
+                val displayAlbum = buildDisplayAlbum(
+                    rjCode = updated.rjCode,
+                    localAlbum = updated.localAlbum,
+                    dlsiteInfo = updated.dlsiteInfo,
+                    asmrOneWorkId = workId,
+                    fallbackCv = updated.displayAlbum.cv,
+                    fallbackCoverUrl = updated.displayAlbum.coverUrl
+                )
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
                         displayAlbum = displayAlbum,
@@ -1633,22 +1656,6 @@ class AlbumDetailViewModel @Inject constructor(
         return Triple(null, null, emptyList())
     }
 
-    private fun buildDisplayAlbum(
-        rjCode: String,
-        localAlbum: Album?,
-        dlsiteInfo: Album?,
-        asmrOneWorkId: String?,
-        fallbackCoverUrl: String = ""
-    ): Album {
-        val base = dlsiteInfo ?: localAlbum ?: Album(title = rjCode.ifBlank { "专辑" }, path = "")
-        return base.copy(
-            workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: base.workId,
-            rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } },
-            // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
-            coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
-        )
-    }
-
     private fun albumFromInitialHint(rj: String, hint: AlbumCoverHint?): Album {
         val normalizedRj = rj.ifBlank { hint?.rjCode.orEmpty() }
         return Album(
@@ -1657,6 +1664,7 @@ class AlbumDetailViewModel @Inject constructor(
             workId = normalizedRj,
             rjCode = normalizedRj,
             circle = hint?.circle.orEmpty(),
+            cv = hint?.cv.orEmpty(),
             coverUrl = hint?.coverUrl.orEmpty()
         )
     }

@@ -2,7 +2,7 @@ package com.asmr.player.ui.nav
 
 /**
  * 轻量内存存储：在列表点击进入专辑详情时，记录列表已知的首屏信息，
- * 供详情页在网络解析完成前先种入标题、RJ、社团与封面。
+ * 供详情页在网络解析完成前先种入标题、RJ、社团、CV 与封面。
  *
  * 这样 hero 封面与列表卡片使用完全相同的图片 model（同一 coverUrl + 同一 keyTag），
  * 跨尺寸缓存复用（peekAnySize）即可命中，避免重复发起网络请求。
@@ -22,15 +22,28 @@ object AlbumCoverHintStore {
             rjCode = rjCode,
             title = null,
             circle = null,
+            cv = null,
             coverUrl = coverUrl
         )
     }
 
     fun record(albumId: Long?, rjCode: String?, title: String?, circle: String?, coverUrl: String?) {
+        record(
+            albumId = albumId,
+            rjCode = rjCode,
+            title = title,
+            circle = circle,
+            cv = null,
+            coverUrl = coverUrl
+        )
+    }
+
+    fun record(albumId: Long?, rjCode: String?, title: String?, circle: String?, cv: String?, coverUrl: String?) {
         val hint = AlbumCoverHint(
             title = title?.trim().orEmpty(),
             rjCode = rjCode?.trim().orEmpty().uppercase(),
             circle = circle?.trim().orEmpty(),
+            cv = cv?.trim().orEmpty(),
             coverUrl = coverUrl?.trim().orEmpty().takeIf { it.startsWith("http", ignoreCase = true) }.orEmpty()
         )
         if (hint.isBlank()) return
@@ -61,9 +74,10 @@ data class AlbumCoverHint(
     val title: String,
     val rjCode: String,
     val circle: String,
+    val cv: String,
     val coverUrl: String
 ) {
     fun isBlank(): Boolean {
-        return title.isBlank() && rjCode.isBlank() && circle.isBlank() && coverUrl.isBlank()
+        return title.isBlank() && rjCode.isBlank() && circle.isBlank() && cv.isBlank() && coverUrl.isBlank()
     }
 }
