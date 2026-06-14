@@ -57,6 +57,13 @@ class MainNavigationSupportTest {
     }
 
     @Test
+    fun resolvePrimaryPagerApproachPage_onlySkipsLongProgrammaticJumps() {
+        assertEquals(null, resolvePrimaryPagerApproachPage(currentPage = 1, targetPage = 2))
+        assertEquals(2, resolvePrimaryPagerApproachPage(currentPage = 0, targetPage = 3))
+        assertEquals(1, resolvePrimaryPagerApproachPage(currentPage = 4, targetPage = 0))
+    }
+
+    @Test
     fun resolveCurrentPrimaryDestinationRoute_handlesFavoritesSystemPlaylist() {
         assertEquals(
             "playlist_system/favorites",
