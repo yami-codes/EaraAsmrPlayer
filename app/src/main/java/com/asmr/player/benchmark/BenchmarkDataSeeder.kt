@@ -7,15 +7,19 @@ import com.asmr.player.data.local.db.AppDatabase
 import com.asmr.player.data.local.db.entities.AlbumEntity
 import com.asmr.player.data.local.db.entities.AlbumGroupEntity
 import com.asmr.player.data.local.db.entities.AlbumGroupItemEntity
+import com.asmr.player.data.local.db.entities.DownloadItemEntity
+import com.asmr.player.data.local.db.entities.DownloadTaskEntity
 import com.asmr.player.data.local.db.entities.PlaylistEntity
 import com.asmr.player.data.local.db.entities.PlaylistItemEntity
 import com.asmr.player.data.local.db.entities.TrackEntity
 import com.asmr.player.data.repository.PlaylistRepository
+import com.asmr.player.data.remote.download.DOWNLOAD_STATE_QUEUED
 import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.playback.PlayerConnection
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +55,8 @@ class BenchmarkDataSeeder @Inject constructor(
         private const val AlbumCount = 1_200
         private const val UserPlaylistCount = 1_200
         private const val UserGroupCount = 1_200
+        private const val DownloadTaskCount = 180
+        private const val DownloadItemsPerTask = 4
         private const val QueueConnectTimeoutMs = 15_000L
 
         private const val FavoritesPlaylistName = PlaylistRepository.PLAYLIST_FAVORITES
@@ -87,6 +93,7 @@ class BenchmarkDataSeeder @Inject constructor(
             val playlistItemDao = database.playlistItemDao()
             val groupDao = database.albumGroupDao()
             val groupItemDao = database.albumGroupItemDao()
+            val downloadDao = database.downloadDao()
 
             val trackSeeds = ArrayList<BenchmarkTrackSeed>(AlbumCount)
 
@@ -197,6 +204,7 @@ class BenchmarkDataSeeder @Inject constructor(
                 )
             }
             groupItemDao.upsertItems(genericGroupItems + detailGroupItems)
+            seedDownloadTasks(downloadDao)
 
             val sample = trackSeeds.first()
             BenchmarkSeedSummary(
@@ -215,6 +223,78 @@ class BenchmarkDataSeeder @Inject constructor(
                 sampleRjCode = sample.rjCode
             )
         }
+    }
+
+    private suspend fun seedDownloadTasks(
+        downloadDao: com.asmr.player.data.local.db.dao.DownloadDao
+    ) {
+        val now = System.currentTimeMillis()
+        val states = listOf(
+            DOWNLOAD_STATE_QUEUED,
+            "RUNNING",
+            "SUCCEEDED",
+            "FAILED",
+            "PAUSED"
+        )
+        for (taskIndex in 0 until DownloadTaskCount) {
+            val ordinal = taskIndex + 1
+            val rjCode = "RJ9${ordinal.toString().padStart(7, '0')}"
+            val rootDir = "/benchmark/downloads/$rjCode"
+            val taskId = downloadDao.insertTask(
+                DownloadTaskEntity(
+                    taskKey = "benchmark_download_$ordinal",
+                    title = rjCode,
+                    subtitle = "Benchmark Download Album $ordinal",
+                    rootDir = rootDir,
+                    albumTitle = "Benchmark Download Album $ordinal",
+                    albumCircle = "Download Circle ${taskIndex % 16}",
+                    albumCv = "Download CV ${taskIndex % 12}",
+                    albumTagsCsv = "ASMR,Earpick,Sleep",
+                    albumWorkId = rjCode,
+                    albumRjCode = rjCode,
+                    createdAt = now - taskIndex,
+                    updatedAt = now - taskIndex
+                )
+            )
+            if (taskId <= 0L) continue
+            for (itemIndex in 0 until DownloadItemsPerTask) {
+                val state = states[(taskIndex + itemIndex) % states.size]
+                val totalBytes = 42_000_000L + ((taskIndex + itemIndex) % 12) * 3_000_000L
+                val downloadedBytes = when (state) {
+                    "SUCCEEDED" -> totalBytes
+                    "FAILED" -> totalBytes / 3
+                    "PAUSED" -> totalBytes / 2
+                    "RUNNING" -> totalBytes / 4
+                    else -> 0L
+                }
+                val relativePath = "track_${(itemIndex + 1).toString().padStart(2, '0')}.mp3"
+                val workId = benchmarkDownloadWorkId(taskIndex, itemIndex)
+                downloadDao.upsertItem(
+                    DownloadItemEntity(
+                        taskId = taskId,
+                        workId = workId,
+                        url = "https://benchmark.invalid/$rjCode/$relativePath",
+                        relativePath = relativePath,
+                        fileName = relativePath,
+                        targetDir = rootDir,
+                        filePath = "$rootDir/$relativePath",
+                        state = state,
+                        downloaded = downloadedBytes,
+                        total = totalBytes,
+                        speed = if (state == "RUNNING") 1_200_000L + itemIndex * 120_000L else 0L,
+                        createdAt = now - taskIndex,
+                        updatedAt = now - taskIndex
+                    )
+                )
+            }
+        }
+    }
+
+    private fun benchmarkDownloadWorkId(
+        taskIndex: Int,
+        itemIndex: Int
+    ): String {
+        return UUID.nameUUIDFromBytes("benchmark-download-$taskIndex-$itemIndex".toByteArray()).toString()
     }
 
     private suspend fun prepareQueue(summary: BenchmarkSeedSummary) {

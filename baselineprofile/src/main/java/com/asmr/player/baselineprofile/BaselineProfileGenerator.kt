@@ -17,6 +17,19 @@ class BaselineProfileGenerator {
     }
 
     @Test
+    fun primaryNavigationPagerAndScrollToTop() = baselineProfileRule.collectBaselineProfile {
+        startMainActivity()
+        device.performPrimaryNavigationProfile()
+    }
+
+    @Test
+    fun secondaryNavigationTransitions() = baselineProfileRule.collectBaselineProfile {
+        startHarnessScenario(BenchmarkScenarioValue.LibraryAlbums)
+        startMainActivity(clearData = false)
+        device.performSecondaryNavigationTransitionsProfile()
+    }
+
+    @Test
     fun libraryAndPlaylistLongLists() = baselineProfileRule.collectBaselineProfile {
         startHarnessScenario(BenchmarkScenarioValue.LibraryAlbums)
         device.performLongListScrollProfile()
@@ -35,7 +48,7 @@ class BaselineProfileGenerator {
     }
 
     @Test
-    fun groupsQueueAndPickers() = baselineProfileRule.collectBaselineProfile {
+    fun groupsDownloadsSettingsQueueAndPickers() = baselineProfileRule.collectBaselineProfile {
         startHarnessScenario(BenchmarkScenarioValue.GroupsList)
         device.performLongListScrollProfile()
 
@@ -43,6 +56,13 @@ class BaselineProfileGenerator {
         device.performLongListScrollProfile()
 
         startHarnessScenario(BenchmarkScenarioValue.Queue)
+        device.performLongListScrollProfile()
+
+        startHarnessScenario(BenchmarkScenarioValue.DownloadsList)
+        device.expandFirstVisibleDownloadTask()
+        device.performLongListScrollProfile()
+
+        startHarnessScenario(BenchmarkScenarioValue.Settings)
         device.performLongListScrollProfile()
 
         startHarnessScenario(BenchmarkScenarioValue.PlaylistPicker)

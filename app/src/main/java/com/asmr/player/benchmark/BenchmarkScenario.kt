@@ -11,10 +11,13 @@ enum class BenchmarkScenario(
     FavoritesDetail("favorites_detail"),
     PlaylistsList("playlists_list"),
     PlaylistDetail("playlist_detail"),
+    PlaylistPicker("playlist_picker"),
+    DownloadsList("downloads_list"),
     GroupsList("groups_list"),
     GroupDetail("group_detail"),
     GroupPicker("group_picker"),
-    Queue("queue");
+    Queue("queue"),
+    Settings("settings");
 
     companion object {
         const val EXTRA_SCENARIO = "benchmark_scenario"
