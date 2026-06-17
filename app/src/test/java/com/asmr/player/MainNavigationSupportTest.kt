@@ -90,6 +90,27 @@ class MainNavigationSupportTest {
     }
 
     @Test
+    fun shouldHideStatusBarForImmersivePage_hidesAlbumDetailRoutes() {
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail/{albumId}?rjCode={rjCode}", false))
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail_rj/{rj}?initialTab={initialTab}", false))
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail_online/{rj}", false))
+    }
+
+    @Test
+    fun shouldHideStatusBarForImmersivePage_hidesNowPlayingAndLyricsOverlay() {
+        assertEquals(true, shouldHideStatusBarForImmersivePage("library", true))
+        assertEquals(true, shouldHideStatusBarForImmersivePage(null, true))
+    }
+
+    @Test
+    fun shouldHideStatusBarForImmersivePage_keepsRegularRoutesVisible() {
+        assertEquals(false, shouldHideStatusBarForImmersivePage("library", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage("search", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage("settings", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage(null, false))
+    }
+
+    @Test
     fun toThemeMediaSource_prefersArtworkForVideoWhenAvailable() {
         val item = MediaItem.Builder()
             .setUri("file:///sample.mp4")
