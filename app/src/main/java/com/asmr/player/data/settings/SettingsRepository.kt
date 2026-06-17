@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 data class PlaybackRuntimeSettings(
     val pauseOnOutputDisconnect: Boolean = true,
@@ -40,6 +41,10 @@ class SettingsRepository @Inject constructor(
 
     val searchViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.SEARCH_VIEW_MODE] ?: 1 // Default to Grid (1)
+    }
+
+    val searchBlockedKeywords: Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
+        decodeSearchBlockedKeywords(prefs[SettingsKeys.SEARCH_BLOCKED_KEYWORDS])
     }
 
     val hotListeningViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
@@ -357,6 +362,35 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun addSearchBlockedKeyword(keyword: String) {
+        val normalizedKeyword = keyword.trim()
+        if (normalizedKeyword.isBlank()) return
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                val current = decodeSearchBlockedKeywords(prefs[SettingsKeys.SEARCH_BLOCKED_KEYWORDS])
+                val next = normalizeSearchBlockedKeywords(current + normalizedKeyword)
+                prefs[SettingsKeys.SEARCH_BLOCKED_KEYWORDS] = encodeSearchBlockedKeywords(next)
+            }
+        }
+    }
+
+    suspend fun removeSearchBlockedKeyword(keyword: String) {
+        val normalizedKeyword = keyword.trim()
+        if (normalizedKeyword.isBlank()) return
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                val normalizedTarget = normalizedKeyword.lowercase(Locale.ROOT)
+                val next = decodeSearchBlockedKeywords(prefs[SettingsKeys.SEARCH_BLOCKED_KEYWORDS])
+                    .filterNot { it.lowercase(Locale.ROOT) == normalizedTarget }
+                if (next.isEmpty()) {
+                    prefs.remove(SettingsKeys.SEARCH_BLOCKED_KEYWORDS)
+                } else {
+                    prefs[SettingsKeys.SEARCH_BLOCKED_KEYWORDS] = encodeSearchBlockedKeywords(next)
+                }
+            }
+        }
+    }
+
     suspend fun setHotListeningViewMode(mode: Int) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.HOT_LISTENING_VIEW_MODE] = mode }
@@ -442,4 +476,27 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+}
+
+private fun decodeSearchBlockedKeywords(raw: String?): List<String> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return normalizeSearchBlockedKeywords(raw.split('\n'))
+}
+
+private fun encodeSearchBlockedKeywords(keywords: List<String>): String {
+    return normalizeSearchBlockedKeywords(keywords).joinToString(separator = "\n")
+}
+
+private fun normalizeSearchBlockedKeywords(keywords: List<String>): List<String> {
+    val seen = linkedSetOf<String>()
+    val result = mutableListOf<String>()
+    keywords.forEach { keyword ->
+        val trimmed = keyword.trim()
+        if (trimmed.isBlank()) return@forEach
+        val key = trimmed.lowercase(Locale.ROOT)
+        if (seen.add(key)) {
+            result += trimmed
+        }
+    }
+    return result
 }

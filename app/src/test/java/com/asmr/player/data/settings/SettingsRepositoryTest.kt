@@ -117,6 +117,32 @@ class SettingsRepositoryTest {
         assertEquals(false, stored.sceneEffectExpanded)
     }
 
+    @Test
+    fun searchBlockedKeywords_defaultToEmptyList() = runBlocking {
+        assertEquals(emptyList<String>(), repository.searchBlockedKeywords.first())
+    }
+
+    @Test
+    fun addSearchBlockedKeyword_trimsIgnoresBlankAndDeduplicatesIgnoringCase() = runBlocking {
+        repository.addSearchBlockedKeyword("  言语侵犯  ")
+        repository.addSearchBlockedKeyword("")
+        repository.addSearchBlockedKeyword("言语侵犯")
+        repository.addSearchBlockedKeyword("VOICE")
+        repository.addSearchBlockedKeyword("voice")
+
+        assertEquals(listOf("言语侵犯", "VOICE"), repository.searchBlockedKeywords.first())
+    }
+
+    @Test
+    fun removeSearchBlockedKeyword_removesIgnoringCase() = runBlocking {
+        repository.addSearchBlockedKeyword("言语侵犯")
+        repository.addSearchBlockedKeyword("VOICE")
+
+        repository.removeSearchBlockedKeyword("voice")
+
+        assertEquals(listOf("言语侵犯"), repository.searchBlockedKeywords.first())
+    }
+
     private suspend fun SettingsRepository.appVolumePercentValue(): Int {
         return appVolumePercent.first()
     }

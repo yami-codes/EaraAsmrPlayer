@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +38,7 @@ import org.jsoup.HttpStatusException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -430,9 +432,13 @@ class SearchViewModel @Inject constructor(
             val resp = dlsitePlayLibraryClient.searchPurchased(keyword, page, pageSize)
             return SearchPageResult(items = resp.items, canGoNext = resp.canGoNext)
         }
+        val keywordWithBlockedTerms = appendBlockedKeywordsForOnlineSearch(
+            keyword = keyword,
+            blockedKeywords = settingsRepository.searchBlockedKeywords.first()
+        )
         if (collectedOnly) {
             val offset = (page.coerceAtLeast(1) - 1) * pageSize
-            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset, collectedSort.backendSort)
+            val resp = asmrOneAvailabilityApi.search(keywordWithBlockedTerms, pageSize, offset, collectedSort.backendSort)
             val items = resp.items.orEmpty().map { it.toCollectedAlbum() }
             val total = resp.total.coerceAtLeast(0)
             val responseOffset = resp.offset.coerceAtLeast(offset)
@@ -443,7 +449,13 @@ class SearchViewModel @Inject constructor(
         }
         val normalizedKeyword = keyword.trim()
         val normalizedRj = normalizedKeyword.uppercase()
-        if (!presaleOnly && !chineseTranslatedOnly && page == 1 && Regex("""RJ\d{6,}""").matches(normalizedRj)) {
+        if (
+            keywordWithBlockedTerms == normalizedKeyword &&
+            !presaleOnly &&
+            !chineseTranslatedOnly &&
+            page == 1 &&
+            Regex("""RJ\d{6,}""").matches(normalizedRj)
+        ) {
             val preferred = currentLocale
             val info = when {
                 !preferred.isNullOrBlank() -> {
@@ -465,7 +477,7 @@ class SearchViewModel @Inject constructor(
             }
         }
         val result = dlsiteScraper.search(
-            keyword = keyword,
+            keyword = keywordWithBlockedTerms,
             page = page,
             order = order.dlsiteOrder,
             locale = currentLocale,
@@ -839,6 +851,27 @@ private data class SearchPageResult(
     val items: List<Album>,
     val canGoNext: Boolean
 )
+
+internal fun appendBlockedKeywordsForOnlineSearch(
+    keyword: String,
+    blockedKeywords: List<String>
+): String {
+    val base = keyword.trim()
+    val exclusions = blockedKeywords
+        .map { it.trim() }
+        .map { it.removePrefix("-").trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase(Locale.ROOT) }
+    if (exclusions.isEmpty()) return base
+    return buildString {
+        if (base.isNotBlank()) append(base)
+        exclusions.forEach { blocked ->
+            if (isNotEmpty()) append(' ')
+            append('-')
+            append(blocked)
+        }
+    }
+}
 
 sealed class SearchUiState {
     object Idle : SearchUiState()

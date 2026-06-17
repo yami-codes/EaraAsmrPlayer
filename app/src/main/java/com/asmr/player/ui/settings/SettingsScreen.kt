@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -40,13 +42,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,6 +109,7 @@ fun SettingsScreen(
     val pauseFadeOutMs by viewModel.pauseFadeOutMs.collectAsState()
     val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsState()
     val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsState()
+    val searchBlockedKeywords by viewModel.searchBlockedKeywords.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsState()
     val scanRoots by libraryViewModel.scanRoots.collectAsState()
@@ -123,6 +129,7 @@ fun SettingsScreen(
     
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var activeTipKey by remember { mutableStateOf<String?>(null) }
+    var searchBlockedKeywordInput by rememberSaveable { mutableStateOf("") }
     DisposableEffect(onHorizontalControlInteractionChanged) {
         onDispose { onHorizontalControlInteractionChanged(false) }
     }
@@ -310,6 +317,24 @@ fun SettingsScreen(
                 }
             }
         }
+
+                item(key = "group:block_words") {
+                    SettingsGroup(title = "屏蔽词") {
+                        SearchBlockedKeywordsSection(
+                            input = searchBlockedKeywordInput,
+                            keywords = searchBlockedKeywords,
+                            onInputChange = { searchBlockedKeywordInput = it },
+                            onAddKeyword = {
+                                val keyword = searchBlockedKeywordInput.trim()
+                                if (keyword.isNotBlank()) {
+                                    viewModel.addSearchBlockedKeyword(keyword)
+                                    searchBlockedKeywordInput = ""
+                                }
+                            },
+                            onRemoveKeyword = viewModel::removeSearchBlockedKeyword
+                        )
+                    }
+                }
 
                 item(key = "group:appearance") {
                     SettingsGroup(title = "外观") {
@@ -933,6 +958,310 @@ private fun formatTreeRootLabel(uriString: String): String {
     if (treeId.isBlank()) return uriString
     val doc = treeId.substringAfterLast(':', treeId)
     return doc.ifBlank { treeId }
+}
+
+@Composable
+private fun SearchBlockedKeywordsSection(
+    input: String,
+    keywords: List<String>,
+    onInputChange: (String) -> Unit,
+    onAddKeyword: () -> Unit,
+    onRemoveKeyword: (String) -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val isDark = colorScheme.isDark
+    val addButtonColors = ButtonDefaults.filledTonalButtonColors(
+        containerColor = colorScheme.primarySoft,
+        contentColor = if (isDark) colorScheme.onPrimaryContainer else colorScheme.primaryStrong
+    )
+    var showHelp by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "屏蔽关键词",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.textPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = { showHelp = true },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = "搜索高级用法",
+                    tint = colorScheme.textSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SearchBlockedKeywordInputField(
+                value = input,
+                onValueChange = onInputChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+            )
+            FilledTonalButton(
+                onClick = onAddKeyword,
+                enabled = input.isNotBlank(),
+                colors = addButtonColors,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+            ) {
+                Text("添加")
+            }
+        }
+
+        if (keywords.isEmpty()) {
+            Text(
+                text = "暂无屏蔽关键词",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.textSecondary
+            )
+        } else {
+            SearchBlockedKeywordsChips(
+                keywords = keywords,
+                onRemoveKeyword = onRemoveKeyword
+            )
+        }
+    }
+    if (showHelp) {
+        SearchBlockedKeywordsHelpDialog(onDismissRequest = { showHelp = false })
+    }
+}
+
+@Composable
+private fun SearchBlockedKeywordsHelpDialog(
+    onDismissRequest: () -> Unit
+) {
+    FlatActionDialog(
+        message = "搜索高级用法",
+        onDismissRequest = onDismissRequest,
+        actions = listOf(
+            FlatDialogAction(
+                text = "知道了",
+                tone = FlatDialogActionTone.Primary,
+                onClick = onDismissRequest
+            )
+        )
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SearchHelpText("和 搜索(空格分割)：「学校 制服」，表示同时包含指定关键词")
+            SearchHelpText("或 搜索(英文竖线分割)：「学校|制服」，表示包含一个或多个指定关键词均可")
+            SearchHelpText("排除 搜索(空格与减号)：「学校 -制服」，表示排除指定关键词")
+            SearchHelpText("完整 搜索(英文双引号包裹)：「\"【简体中文】 舔耳\"」，表示将多个词当做完整词组搜索")
+        }
+    }
+}
+
+@Composable
+private fun SearchHelpText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = AsmrTheme.colorScheme.textSecondary
+    )
+}
+
+@Composable
+private fun SearchBlockedKeywordsChips(
+    keywords: List<String>,
+    onRemoveKeyword: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val horizontalSpacing = 8.dp
+    val verticalSpacing = 4.dp
+    SubcomposeLayout(modifier = modifier.fillMaxWidth()) { constraints ->
+        val itemSpacingPx = horizontalSpacing.roundToPx()
+        val lineSpacingPx = verticalSpacing.roundToPx()
+        val looseConstraints = Constraints()
+
+        val keywordPlaceables = keywords.mapIndexed { index, keyword ->
+            subcompose("keyword:$index:$keyword") {
+                SearchBlockedKeywordChip(
+                    keyword = keyword,
+                    onRemoveKeyword = onRemoveKeyword
+                )
+            }.first().measure(looseConstraints)
+        }
+
+        val naturalSingleLineWidth = keywordPlaceables.sumOf { it.width } +
+            itemSpacingPx * (keywordPlaceables.size - 1).coerceAtLeast(0)
+
+        val contentFitsSingleLine = naturalSingleLineWidth <= constraints.maxWidth
+        if (contentFitsSingleLine) {
+            val rowHeight = keywordPlaceables.maxOfOrNull { it.height } ?: 0
+            return@SubcomposeLayout layout(constraints.maxWidth, rowHeight) {
+                var x = 0
+                keywordPlaceables.forEachIndexed { index, placeable ->
+                    placeable.placeRelative(
+                        x,
+                        (rowHeight - placeable.height) / 2
+                    )
+                    x += placeable.width
+                    if (index < keywordPlaceables.lastIndex) {
+                        x += itemSpacingPx
+                    }
+                }
+            }
+        }
+        val lines = mutableListOf<MutableList<Int>>()
+        val lineHeights = mutableListOf<Int>()
+        var currentLine = mutableListOf<Int>()
+        var currentWidth = 0
+        var currentHeight = 0
+
+        fun commitLine() {
+            if (currentLine.isEmpty()) return
+            lines += currentLine
+            lineHeights += currentHeight
+            currentLine = mutableListOf()
+            currentWidth = 0
+            currentHeight = 0
+        }
+
+        keywordPlaceables.forEachIndexed { index, placeable ->
+            val nextWidth = if (currentLine.isEmpty()) {
+                placeable.width
+            } else {
+                currentWidth + itemSpacingPx + placeable.width
+            }
+            if (currentLine.isNotEmpty() && nextWidth > constraints.maxWidth) {
+                commitLine()
+            }
+            currentWidth = if (currentLine.isEmpty()) {
+                placeable.width
+            } else {
+                currentWidth + itemSpacingPx + placeable.width
+            }
+            currentHeight = maxOf(currentHeight, placeable.height)
+            currentLine += index
+        }
+        commitLine()
+
+        val layoutHeight = lineHeights.sum() +
+            lineSpacingPx * (lineHeights.size - 1).coerceAtLeast(0)
+
+        layout(constraints.maxWidth, layoutHeight) {
+            var y = 0
+            lines.forEachIndexed { lineIndex, line ->
+                val lineHeight = lineHeights[lineIndex]
+                var x = 0
+                line.forEachIndexed { itemIndex, placeableIndex ->
+                    val placeable = keywordPlaceables[placeableIndex]
+                    placeable.placeRelative(
+                        x,
+                        y + (lineHeight - placeable.height) / 2
+                    )
+                    x += placeable.width
+                    if (itemIndex < line.lastIndex) {
+                        x += itemSpacingPx
+                    }
+                }
+                y += lineHeight + lineSpacingPx
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBlockedKeywordInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.textPrimary),
+        cursorBrush = SolidColor(colorScheme.primary),
+        decorationBox = { innerTextField ->
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = shape,
+                color = colorScheme.surface.copy(alpha = 0.38f),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.VisibilityOff,
+                        contentDescription = null,
+                        tint = colorScheme.textSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = "屏蔽关键词，例如：NTR",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SearchBlockedKeywordChip(
+    keyword: String,
+    onRemoveKeyword: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+        InputChip(
+            selected = false,
+            onClick = { onRemoveKeyword(keyword) },
+            modifier = modifier,
+            label = {
+                Text(
+                    text = keyword,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "删除 $keyword",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
+    }
 }
 
 @Composable
