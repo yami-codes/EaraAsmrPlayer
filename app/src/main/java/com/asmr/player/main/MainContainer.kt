@@ -2,6 +2,7 @@
 
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -345,6 +346,94 @@ private fun SecondaryPageBackground(
     }
 }
 
+private fun applyMainContainerSystemUi(
+    window: android.view.Window,
+    defaultSystemUi: DefaultSystemUiState?,
+    forceImmersive: Boolean,
+    hideStatusBarForImmersivePage: Boolean,
+    nowPlayingVisible: Boolean,
+    isDark: Boolean
+) {
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        window.isStatusBarContrastEnforced = false
+        window.isNavigationBarContrastEnforced = false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = if (forceImmersive || hideStatusBarForImmersivePage || nowPlayingVisible) {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            } else {
+                defaultSystemUi?.layoutInDisplayCutoutMode
+                    ?: WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+            }
+        }
+    }
+
+    when {
+        forceImmersive -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
+        }
+        nowPlayingVisible -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+            controller.hide(WindowInsetsCompat.Type.navigationBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
+        }
+        hideStatusBarForImmersivePage -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+            controller.show(WindowInsetsCompat.Type.navigationBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = !isDark
+        }
+        else -> {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = !isDark
+            controller.isAppearanceLightNavigationBars = !isDark
+        }
+    }
+}
+
+private fun restoreMainContainerSystemUi(
+    window: android.view.Window,
+    defaultSystemUi: DefaultSystemUiState?
+) {
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    controller.show(WindowInsetsCompat.Type.systemBars())
+    defaultSystemUi?.let { ui ->
+        window.statusBarColor = ui.statusBarColor
+        window.navigationBarColor = ui.navigationBarColor
+        controller.isAppearanceLightStatusBars = ui.lightStatusBars
+        controller.isAppearanceLightNavigationBars = ui.lightNavigationBars
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ui.statusBarContrastEnforced?.let { window.isStatusBarContrastEnforced = it }
+            ui.navigationBarContrastEnforced?.let { window.isNavigationBarContrastEnforced = it }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ui.layoutInDisplayCutoutMode?.let { mode ->
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode = mode
+                }
+            }
+        }
+    }
+}
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -542,7 +631,10 @@ fun MainContainer(
     }
     var nowPlayingPlaylistPickerRequest by remember { mutableStateOf<PlaylistPickerRequest?>(null) }
     var albumBatchPlaylistPickerRequest by remember { mutableStateOf<BatchPlaylistPickerRequest?>(null) }
-    val playerImmersive = nowPlayingVisible
+    val hideStatusBarForImmersivePage = shouldHideStatusBarForImmersivePage(
+        currentRoute = currentRoute,
+        nowPlayingVisible = nowPlayingVisible
+    )
     val openNowPlaying = openNowPlaying@{
         if (nowPlayingVisible) return@openNowPlaying
         nowPlayingBackdropActive = true
@@ -894,61 +986,33 @@ fun MainContainer(
                     act.window.isNavigationBarContrastEnforced
                 } else {
                     null
+                },
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    act.window.attributes.layoutInDisplayCutoutMode
+                } else {
+                    null
                 }
             )
         }
     }
 
-    DisposableEffect(activity, forceImmersive, playerImmersive, colorScheme.isDark) {
+    DisposableEffect(activity) {
         val act = activity ?: return@DisposableEffect onDispose { }
-        val window = act.window
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        // 始终由应用控制系统栏区域绘制，避免 fitsSystemWindows 切换导致的布局跳动
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
-
-        if (forceImmersive) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = false
-        } else if (playerImmersive) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.show(WindowInsetsCompat.Type.statusBars())
-            controller.hide(WindowInsetsCompat.Type.navigationBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = false
-        } else {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = !colorScheme.isDark
-            controller.isAppearanceLightNavigationBars = !colorScheme.isDark
-        }
         onDispose {
-            val window2 = act.window
-            val controller2 = WindowInsetsControllerCompat(window2, window2.decorView)
-            // 退出时保持 false，交给 Compose 处理 padding
-            WindowCompat.setDecorFitsSystemWindows(window2, false)
-            controller2.show(WindowInsetsCompat.Type.systemBars())
-            defaultSystemUi?.let { ui ->
-                window2.statusBarColor = ui.statusBarColor
-                window2.navigationBarColor = ui.navigationBarColor
-                controller2.isAppearanceLightStatusBars = ui.lightStatusBars
-                controller2.isAppearanceLightNavigationBars = ui.lightNavigationBars
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ui.statusBarContrastEnforced?.let { window2.isStatusBarContrastEnforced = it }
-                    ui.navigationBarContrastEnforced?.let { window2.isNavigationBarContrastEnforced = it }
-                }
-            }
+            restoreMainContainerSystemUi(act.window, defaultSystemUi)
         }
+    }
+
+    SideEffect {
+        val act = activity ?: return@SideEffect
+        applyMainContainerSystemUi(
+            window = act.window,
+            defaultSystemUi = defaultSystemUi,
+            forceImmersive = forceImmersive,
+            hideStatusBarForImmersivePage = hideStatusBarForImmersivePage,
+            nowPlayingVisible = nowPlayingVisible,
+            isDark = colorScheme.isDark
+        )
     }
 
     // 屏幕旋转管理逻辑

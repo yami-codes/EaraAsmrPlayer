@@ -276,6 +276,14 @@ internal fun resolveCurrentPrimaryDestinationRoute(
     }
 }
 
+internal fun shouldHideStatusBarForImmersivePage(
+    currentRoute: String?,
+    nowPlayingVisible: Boolean
+): Boolean {
+    if (nowPlayingVisible) return true
+    return currentRoute?.startsWith("album_detail") == true
+}
+
 internal fun NavHostController.navigateSingleTop(route: String, popUpToRoute: String? = null) {
     navigate(route) {
         launchSingleTop = true
@@ -373,7 +381,8 @@ internal data class DefaultSystemUiState(
     val lightStatusBars: Boolean,
     val lightNavigationBars: Boolean,
     val statusBarContrastEnforced: Boolean? = null,
-    val navigationBarContrastEnforced: Boolean? = null
+    val navigationBarContrastEnforced: Boolean? = null,
+    val layoutInDisplayCutoutMode: Int? = null
 )
 
 internal data class ThemeMediaSource(
