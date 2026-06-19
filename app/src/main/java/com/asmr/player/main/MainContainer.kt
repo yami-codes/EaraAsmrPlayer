@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -127,6 +128,7 @@ import com.asmr.player.ui.drawer.SiteStatusType
 import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.ui.nav.AppNavigator
 import com.asmr.player.ui.nav.BottomChrome
+import com.asmr.player.ui.nav.BottomChromeNavItem
 import com.asmr.player.ui.nav.Routes
 import com.asmr.player.ui.nav.bottomChromeNavItems
 import com.asmr.player.ui.nav.bottomChromeOverlayHeight
@@ -435,6 +437,56 @@ private fun restoreMainContainerSystemUi(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun PrimaryBottomChrome(
+    activeRoute: String,
+    pagerState: PagerState,
+    pagerRoutes: List<String>,
+    fallbackRoute: String,
+    lockedRoute: String?,
+    miniPlayerVisible: Boolean,
+    miniPlayerDisplayMode: MiniPlayerDisplayMode,
+    onMiniPlayerDisplayModeChange: (MiniPlayerDisplayMode) -> Unit,
+    onOpenNowPlaying: () -> Unit,
+    onOpenQueue: () -> Unit,
+    onNavigate: (String) -> Unit,
+    largeLayout: Boolean = false,
+    modifier: Modifier = Modifier,
+    navItems: List<BottomChromeNavItem> = bottomChromeNavItems()
+) {
+    val selectionProgresses by remember(
+        pagerState,
+        pagerRoutes,
+        fallbackRoute,
+        lockedRoute
+    ) {
+        derivedStateOf {
+            computePrimaryNavSelectionProgresses(
+                pagerRoutes = pagerRoutes,
+                currentPage = pagerState.currentPage,
+                currentPageOffsetFraction = pagerState.currentPageOffsetFraction,
+                fallbackRoute = fallbackRoute,
+                lockedRoute = lockedRoute
+            )
+        }
+    }
+
+    BottomChrome(
+        activeRoute = activeRoute,
+        selectionProgresses = selectionProgresses,
+        miniPlayerVisible = miniPlayerVisible,
+        miniPlayerDisplayMode = miniPlayerDisplayMode,
+        onMiniPlayerDisplayModeChange = onMiniPlayerDisplayModeChange,
+        onOpenNowPlaying = onOpenNowPlaying,
+        onOpenQueue = onOpenQueue,
+        onNavigate = onNavigate,
+        largeLayout = largeLayout,
+        modifier = modifier,
+        navItems = navItems
+    )
+}
+
+@Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
 fun MainContainer(
@@ -504,22 +556,6 @@ fun MainContainer(
             pendingRoute = pendingPrimaryNavigationRoute,
             pagerRoutes = primaryPagerRoutes
         )
-    }
-    val primaryNavSelectionProgresses by remember(
-        primaryPagerState,
-        primaryPagerRoutes,
-        activePrimaryRoute,
-        pendingPrimaryNavigationRoute
-    ) {
-        derivedStateOf {
-            computePrimaryNavSelectionProgresses(
-                pagerRoutes = primaryPagerRoutes,
-                currentPage = primaryPagerState.currentPage,
-                currentPageOffsetFraction = primaryPagerState.currentPageOffsetFraction,
-                fallbackRoute = activePrimaryRoute,
-                lockedRoute = pendingPrimaryNavigationRoute
-            )
-        }
     }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -2226,9 +2262,12 @@ fun MainContainer(
                         .padding(start = bottomChromeHorizontalPadding, bottom = 24.dp)
                         .width(chromeWidth)
                 ) {
-                    BottomChrome(
+                    PrimaryBottomChrome(
                         activeRoute = visualPrimaryRoute,
-                        selectionProgresses = primaryNavSelectionProgresses,
+                        pagerState = primaryPagerState,
+                        pagerRoutes = primaryPagerRoutes,
+                        fallbackRoute = activePrimaryRoute,
+                        lockedRoute = pendingPrimaryNavigationRoute,
                         miniPlayerVisible = miniPlayerVisible,
                         miniPlayerDisplayMode = miniPlayerDisplayMode,
                         largeLayout = useLargeBottomChrome,
@@ -2250,7 +2289,7 @@ fun MainContainer(
                                     currentPrimaryRoute = currentPrimaryRoute
                                 )) {
                                 triggerPrimaryRouteScrollToTop(route)
-                                return@BottomChrome
+                                return@PrimaryBottomChrome
                             }
                             openPrimaryRoute(route)
                         }

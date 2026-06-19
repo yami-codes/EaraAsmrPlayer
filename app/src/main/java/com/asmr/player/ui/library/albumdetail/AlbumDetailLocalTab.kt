@@ -181,10 +181,14 @@ internal fun AlbumLocalBreadcrumbTabV2(
             .distinctUntilChanged()
             .collect { (idx, off) -> onPersistScroll(idx, off) }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, stateKey) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(currentPath, stateKey) {
         onPersistCurrentPath(currentPath)

@@ -754,10 +754,14 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             .distinctUntilChanged()
             .collect { (idx, off) -> onPersistScroll(idx, off) }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, treeStateKey) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(currentPath, treeStateKey) {
         onPersistCurrentPath(currentPath)
@@ -1215,10 +1219,14 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                 onPersistScroll(persistedIndex, off)
             }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, treeStateKey) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
 
     val rj = rjCode.trim().uppercase()

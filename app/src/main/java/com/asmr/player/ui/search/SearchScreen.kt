@@ -119,6 +119,8 @@ import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.snapshotFlow
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -564,15 +566,25 @@ fun SearchScreen(
             lastChromeResetKey = chromeResetKey
         }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, viewMode) {
-        if (viewMode == 0 && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, viewMode) {
+        if (viewMode != 0) return@LaunchedEffect
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
-    LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset, viewMode) {
-        if (viewMode != 0 && gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(gridState, viewMode) {
+        if (viewMode == 0) return@LaunchedEffect
+        snapshotFlow {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
@@ -806,32 +818,6 @@ fun SearchScreen(
                                     }
                                 }
                             )
-                                /* modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(top = topPadding),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.WifiOff,
-                                    contentDescription = null,
-                                    tint = colorScheme.textSecondary.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(92.dp)
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(text = "网络错误", color = colorScheme.textSecondary)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                FilledTonalButton(
-                                    onClick = { viewModel.retry() },
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = colorScheme.primaryContainer,
-                                        contentColor = colorScheme.onPrimaryContainer
-                                    )
-                                ) {
-                                    Text("刷新")
-                                }
-                            } */
 
                             else -> Column(
                                 modifier = Modifier

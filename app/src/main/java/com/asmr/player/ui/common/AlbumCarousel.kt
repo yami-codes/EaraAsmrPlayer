@@ -74,7 +74,6 @@ fun AlbumCarousel(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 16,
-                    loadAtOriginalSize = coverData.startsWith("http", ignoreCase = true),
                 )
                 Surface(
                     modifier = Modifier

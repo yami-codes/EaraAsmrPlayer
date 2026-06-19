@@ -31,20 +31,16 @@ fun Modifier.thinScrollbar(
     bottomPadding: Dp = 8.dp,
     minThumbLength: Dp = 32.dp,
 ): Modifier {
-    val metrics = state.thinScrollbarMetrics()
-    val canScroll = state.canScrollBackward || state.canScrollForward
     val scrollbarColor = AsmrTheme.colorScheme.textSecondary
     val alpha by animateFloatAsState(
-        targetValue = when {
-            metrics == null || !canScroll -> 0f
-            state.isScrollInProgress -> 0.72f
-            else -> 0.34f
-        },
+        targetValue = if (state.isScrollInProgress) 0.72f else 0.34f,
         animationSpec = tween(durationMillis = 180),
         label = "lazyListThinScrollbarAlpha"
     )
     return drawThinScrollbar(
-        metrics = metrics,
+        metricsProvider = {
+            if (!state.canScrollBackward && !state.canScrollForward) null else state.thinScrollbarMetrics()
+        },
         color = scrollbarColor,
         alpha = alpha,
         thickness = thickness,
@@ -64,20 +60,16 @@ fun Modifier.thinScrollbar(
     bottomPadding: Dp = 8.dp,
     minThumbLength: Dp = 32.dp,
 ): Modifier {
-    val metrics = state.thinScrollbarMetrics()
-    val canScroll = state.canScrollBackward || state.canScrollForward
     val scrollbarColor = AsmrTheme.colorScheme.textSecondary
     val alpha by animateFloatAsState(
-        targetValue = when {
-            metrics == null || !canScroll -> 0f
-            state.isScrollInProgress -> 0.72f
-            else -> 0.34f
-        },
+        targetValue = if (state.isScrollInProgress) 0.72f else 0.34f,
         animationSpec = tween(durationMillis = 180),
         label = "lazyGridThinScrollbarAlpha"
     )
     return drawThinScrollbar(
-        metrics = metrics,
+        metricsProvider = {
+            if (!state.canScrollBackward && !state.canScrollForward) null else state.thinScrollbarMetrics()
+        },
         color = scrollbarColor,
         alpha = alpha,
         thickness = thickness,
@@ -97,20 +89,16 @@ fun Modifier.thinScrollbar(
     bottomPadding: Dp = 8.dp,
     minThumbLength: Dp = 32.dp,
 ): Modifier {
-    val metrics = state.thinScrollbarMetrics()
-    val canScroll = state.canScrollBackward || state.canScrollForward
     val scrollbarColor = AsmrTheme.colorScheme.textSecondary
     val alpha by animateFloatAsState(
-        targetValue = when {
-            metrics == null || !canScroll -> 0f
-            state.isScrollInProgress -> 0.72f
-            else -> 0.34f
-        },
+        targetValue = if (state.isScrollInProgress) 0.72f else 0.34f,
         animationSpec = tween(durationMillis = 180),
         label = "scrollStateThinScrollbarAlpha"
     )
     return drawThinScrollbar(
-        metrics = metrics,
+        metricsProvider = {
+            if (!state.canScrollBackward && !state.canScrollForward) null else state.thinScrollbarMetrics()
+        },
         color = scrollbarColor,
         alpha = alpha,
         thickness = thickness,
@@ -122,7 +110,7 @@ fun Modifier.thinScrollbar(
 }
 
 private fun Modifier.drawThinScrollbar(
-    metrics: ThinScrollbarMetrics?,
+    metricsProvider: () -> ThinScrollbarMetrics?,
     color: androidx.compose.ui.graphics.Color,
     alpha: Float,
     thickness: Dp,
@@ -134,7 +122,7 @@ private fun Modifier.drawThinScrollbar(
     return then(
         Modifier.drawWithContent {
             drawContent()
-            val resolvedMetrics = metrics ?: return@drawWithContent
+            val resolvedMetrics = metricsProvider() ?: return@drawWithContent
             if (alpha <= 0f) return@drawWithContent
 
             val resolvedColor = color.copy(alpha = alpha)
