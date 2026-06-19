@@ -34,6 +34,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -63,6 +64,9 @@ import com.asmr.player.ui.library.AlbumItem
 import com.asmr.player.ui.library.rememberAlbumMetaCopyAction
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlin.math.absoluteValue
 
 private fun stableAlbumKey(album: Album): String {
@@ -119,17 +123,36 @@ fun HotListeningScreen(
     }
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+        snapshotFlow { listState.isScrollInProgress }
+            .filter { scrolling -> !scrolling }
+            .map { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
             .collect { (index, offset) ->
                 viewModel.updateListScrollPosition(index, offset)
             }
     }
 
     LaunchedEffect(gridState) {
-        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+        snapshotFlow { gridState.isScrollInProgress }
+            .filter { scrolling -> !scrolling }
+            .map { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
             .collect { (index, offset) ->
                 viewModel.updateGridScrollPosition(index, offset)
             }
+    }
+
+    DisposableEffect(listState, gridState, viewModel) {
+        onDispose {
+            viewModel.updateListScrollPosition(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+            viewModel.updateGridScrollPosition(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset
+            )
+        }
     }
 
     LaunchedEffect(scrollToTopSignal) {

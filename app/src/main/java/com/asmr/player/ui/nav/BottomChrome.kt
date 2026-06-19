@@ -56,8 +56,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -921,31 +923,53 @@ private fun BottomNavigationPillSurface(
             }
             .graphicsLayer { clip = false }
             .drawBehind {
-                val outline = buildBottomNavContainerPath(
-                    width = size.width,
-                    height = size.height,
-                    barHeight = metrics.barHeight.toPx(),
-                    barRadius = metrics.barCornerRadius.toPx(),
-                    overflowAnchorX = overflowPanelCenterPx,
-                    overflowHeadroom = overflowHeadroomPx,
-                    overflowPanelWidth = overflowPanelWidthPx,
-                    overflowTopCapHeight = metrics.overflowTopCapHeight.toPx(),
-                    overflowShoulderLift = metrics.overflowShoulderLift.toPx(),
-                    overflowNeckBottomOffset = metrics.overflowNeckBottomOffset.toPx(),
-                    leftShoulderReach = metrics.overflowLeftShoulderReach.toPx(),
-                    rightShoulderReach = metrics.overflowRightShoulderReach.toPx(),
-                    overflowShapeProgress = overflowOutlineProgress
+                val drawBarHeightPx = metrics.barHeight.toPx()
+                val drawBarRadiusPx = metrics.barCornerRadius.toPx()
+                val borderStroke = Stroke(
+                    width = BottomNavBorderWidth.toPx(),
+                    join = StrokeJoin.Round,
+                    cap = StrokeCap.Round
                 )
-                drawPath(path = outline, color = containerColor)
-                drawPath(
-                    path = outline,
-                    color = borderColor,
-                    style = Stroke(
-                        width = BottomNavBorderWidth.toPx(),
-                        join = StrokeJoin.Round,
-                        cap = StrokeCap.Round
+                if (overflowOutlineProgress <= 0.001f || !overflowPanelCenterPx.isFinite()) {
+                    val topLeft = Offset(0f, size.height - drawBarHeightPx)
+                    val barSize = Size(size.width, drawBarHeightPx)
+                    val cornerRadius = CornerRadius(drawBarRadiusPx, drawBarRadiusPx)
+                    drawRoundRect(
+                        color = containerColor,
+                        topLeft = topLeft,
+                        size = barSize,
+                        cornerRadius = cornerRadius
                     )
-                )
+                    drawRoundRect(
+                        color = borderColor,
+                        topLeft = topLeft,
+                        size = barSize,
+                        cornerRadius = cornerRadius,
+                        style = borderStroke
+                    )
+                } else {
+                    val outline = buildBottomNavContainerPath(
+                        width = size.width,
+                        height = size.height,
+                        barHeight = drawBarHeightPx,
+                        barRadius = drawBarRadiusPx,
+                        overflowAnchorX = overflowPanelCenterPx,
+                        overflowHeadroom = overflowHeadroomPx,
+                        overflowPanelWidth = overflowPanelWidthPx,
+                        overflowTopCapHeight = metrics.overflowTopCapHeight.toPx(),
+                        overflowShoulderLift = metrics.overflowShoulderLift.toPx(),
+                        overflowNeckBottomOffset = metrics.overflowNeckBottomOffset.toPx(),
+                        leftShoulderReach = metrics.overflowLeftShoulderReach.toPx(),
+                        rightShoulderReach = metrics.overflowRightShoulderReach.toPx(),
+                        overflowShapeProgress = overflowOutlineProgress
+                    )
+                    drawPath(path = outline, color = containerColor)
+                    drawPath(
+                        path = outline,
+                        color = borderColor,
+                        style = borderStroke
+                    )
+                }
             }
     ) {
         Box(

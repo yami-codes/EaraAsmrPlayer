@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.util.DlsiteAntiHotlink
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 internal const val SEARCH_ASSIST_INPUT_TAG = "search_assist_input"
 internal const val SEARCH_ASSIST_SUBMIT_TAG = "search_assist_submit"
@@ -257,10 +259,14 @@ internal fun SearchAssistContent(
         )
     }
 
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
 
     LaunchedEffect(inputFocusRequester) {
@@ -801,8 +807,6 @@ private fun SearchAssistWorkChip(
         }
         if (headers.isEmpty()) coverData else CacheImageModel(data = coverData, headers = headers, keyTag = "dlsite")
     }
-    // 在线封面按原尺寸加载并缓存，详情页 hero 用相同 model 直接命中、不再二次网络请求。
-    val loadCoverAtOriginalSize = remember(coverData) { coverData.startsWith("http", ignoreCase = true) }
     val containerColor = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.72f else 0.82f)
         .compositeOver(colorScheme.background)
     val meta = listOf(album.cv, album.circle)
@@ -829,7 +833,6 @@ private fun SearchAssistWorkChip(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             placeholderCornerRadius = 0,
-            loadAtOriginalSize = loadCoverAtOriginalSize,
             modifier = Modifier
                 .aspectRatio(1f)
                 .height(if (compact) 76.dp else 84.dp)
