@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatAlignLeft
@@ -337,151 +339,183 @@ fun SettingsScreen(
                 }
 
                 item(key = "group:appearance") {
-                    SettingsGroup(title = "外观") {
-                Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ThemeModeChip(
-                        label = "系统",
-                        selected = themeMode == "system",
-                        onClick = { viewModel.setThemeMode("system") }
-                    )
-                    ThemeModeChip(
-                        label = "浅色",
-                        selected = themeMode == "light",
-                        onClick = { viewModel.setThemeMode("light") }
-                    )
-                    ThemeModeChip(
-                        label = "深色",
-                        selected = themeMode == "dark",
-                        onClick = { viewModel.setThemeMode("dark") }
-                    )
-                    ThemeModeChip(
-                        label = "柔和深色",
-                        selected = themeMode == "soft_dark",
-                        onClick = { viewModel.setThemeMode("soft_dark") }
-                    )
-                }
+                    SettingsGroup(
+                        title = "外观",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                ThemeModeChip(
+                                    label = "系统",
+                                    selected = themeMode == "system",
+                                    onClick = { viewModel.setThemeMode("system") }
+                                )
+                                ThemeModeChip(
+                                    label = "浅色",
+                                    selected = themeMode == "light",
+                                    onClick = { viewModel.setThemeMode("light") }
+                                )
+                                ThemeModeChip(
+                                    label = "深色",
+                                    selected = themeMode == "dark",
+                                    onClick = { viewModel.setThemeMode("dark") }
+                                )
+                                ThemeModeChip(
+                                    label = "柔和深色",
+                                    selected = themeMode == "soft_dark",
+                                    onClick = { viewModel.setThemeMode("soft_dark") }
+                                )
+                            }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val currentHueArgb = if (themeMode == "light") staticHueArgbLight else staticHueArgbDark
-                    ThemeColorDot(
-                        color = null,
-                        selected = currentHueArgb == null,
-                        onClick = { viewModel.setStaticHueArgb(null) }
-                    )
-                    ThemeMonochromeDot(
-                        selected = currentHueArgb == MONOCHROME_THEME_SENTINEL,
-                        onClick = { viewModel.setStaticHueArgb(MONOCHROME_THEME_SENTINEL) }
-                    )
-                // 浅色主题用深色调（深红、深蓝、墨綠等），深色/柔和深色主题用高饱和亮色
-                val presets = if (themeMode == "light") {
-                    listOf(
-                        Color(0xFF0B3D2E), // 墨綠
-                        Color(0xFF0D47A1), // 深蓝
-                        Color(0xFF880E4F), // 深玫红
-                        Color(0xFF4A148C), // 深紫
-                        Color(0xFF7B1A1A), // 深砖红
-                        Color(0xFF004D40)  // 深青綠
-                    )
-                } else {
-                    // dark / soft_dark：饱和度稍高的亮色，在暗背景上清晰醒目
-                    listOf(
-                        Color(0xFF29B6F6), // 亮天蓝
-                        Color(0xFF26C17A), // 亮翠綠
-                        Color(0xFF7C4DFF), // 亮紫罗兰
-                        Color(0xFFFF5252), // 亮珊瑚红
-                        Color(0xFFFFCA28), // 亮琥珀黄
-                        Color(0xFF26C7C7)  // 亮青色
-                    )
-                }
-                presets.forEach { c ->
-                        ThemeColorDot(
-                            color = c,
-                            selected = currentHueArgb == c.toArgb(),
-                            onClick = { viewModel.setStaticHueArgb(c.toArgb()) }
-                        )
-                    }
-                }
-
-                SettingsToggleRow(
-                    text = "封面动态主题（全局）",
-                    checked = dynamicPlayerHueEnabled,
-                    onCheckedChange = viewModel::setDynamicPlayerHueEnabled
-                )
-
-                SettingsToggleRow(
-                    text = "播放页/歌词页封面背景",
-                    checked = coverBackgroundEnabled,
-                    onCheckedChange = viewModel::setCoverBackgroundEnabled
-                )
-                /*
-                SettingsToggleRow(
-                    text = "封面随手机转动查看完整图片",
-                    checked = coverMotionEnabled,
-                    onCheckedChange = viewModel::setCoverMotionEnabled
-                )
-                */
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
-                    PreviewModeInfoTip(
-                        active = activeTipKey == "cover_preview_mode",
-                        onToggle = {
-                            activeTipKey = if (activeTipKey == "cover_preview_mode") null else "cover_preview_mode"
+                            Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val currentHueArgb = if (themeMode == "light") staticHueArgbLight else staticHueArgbDark
+                                ThemeColorDot(
+                                    color = null,
+                                    selected = currentHueArgb == null,
+                                    onClick = { viewModel.setStaticHueArgb(null) }
+                                )
+                                ThemeMonochromeDot(
+                                    selected = currentHueArgb == MONOCHROME_THEME_SENTINEL,
+                                    onClick = { viewModel.setStaticHueArgb(MONOCHROME_THEME_SENTINEL) }
+                                )
+                                // 浅色主题用深色调（深红、深蓝、墨綠等），深色/柔和深色主题用高饱和亮色
+                                val presets = if (themeMode == "light") {
+                                    listOf(
+                                        Color(0xFF0B3D2E), // 墨綠
+                                        Color(0xFF0D47A1), // 深蓝
+                                        Color(0xFF880E4F), // 深玫红
+                                        Color(0xFF4A148C), // 深紫
+                                        Color(0xFF7B1A1A), // 深砖红
+                                        Color(0xFF004D40)  // 深青綠
+                                    )
+                                } else {
+                                    // dark / soft_dark：饱和度稍高的亮色，在暗背景上清晰醒目
+                                    listOf(
+                                        Color(0xFF29B6F6), // 亮天蓝
+                                        Color(0xFF26C17A), // 亮翠綠
+                                        Color(0xFF7C4DFF), // 亮紫罗兰
+                                        Color(0xFFFF5252), // 亮珊瑚红
+                                        Color(0xFFFFCA28), // 亮琥珀黄
+                                        Color(0xFF26C7C7)  // 亮青色
+                                    )
+                                }
+                                presets.forEach { c ->
+                                    ThemeColorDot(
+                                        color = c,
+                                        selected = currentHueArgb == c.toArgb(),
+                                        onClick = { viewModel.setStaticHueArgb(c.toArgb()) }
+                                    )
+                                }
+                            }
                         }
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    SingleChoiceSegmentedButtonRow {
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Disabled,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Disabled) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("关闭") }
+                    ) {
+                        SettingsToggleRow(
+                            text = "封面动态主题（全局）",
+                            checked = dynamicPlayerHueEnabled,
+                            onCheckedChange = viewModel::setDynamicPlayerHueEnabled
                         )
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Drag,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Drag) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("滑动") }
-                        )
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Motion,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Motion) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("转动") }
-                        )
-                    }
-                }
-                if (coverBackgroundEnabled) {
-                    key("cover_background_clarity_slider") {
-                        DeferredCommitSettingsSliderRow(
-                            committedValue = coverBackgroundClarity,
-                            range = 0f..1f,
-                            stepSize = 0.05f,
-                            textForValue = { value ->
-                                "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
-                            },
-                            onValueCommitted = viewModel::setCoverBackgroundClarity,
-                            onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
-                        )
-                    }
-                }
-            }
 
+                        SettingsToggleRow(
+                            text = "播放页/歌词页封面背景",
+                            checked = coverBackgroundEnabled,
+                            onCheckedChange = viewModel::setCoverBackgroundEnabled
+                        )
+                        /*
+                        SettingsToggleRow(
+                            text = "封面随手机转动查看完整图片",
+                            checked = coverMotionEnabled,
+                            onCheckedChange = viewModel::setCoverMotionEnabled
+                        )
+                        */
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
+                            PreviewModeInfoTip(
+                                active = activeTipKey == "cover_preview_mode",
+                                onToggle = {
+                                    activeTipKey = if (activeTipKey == "cover_preview_mode") null else "cover_preview_mode"
+                                }
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            SingleChoiceSegmentedButtonRow {
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Disabled,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Disabled) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("关闭") }
+                                )
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Drag,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Drag) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("滑动") }
+                                )
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Motion,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Motion) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("转动") }
+                                )
+                            }
+                        }
+                        if (coverBackgroundEnabled) {
+                            key("cover_background_clarity_slider") {
+                                DeferredCommitSettingsSliderRow(
+                                    committedValue = coverBackgroundClarity,
+                                    range = 0f..1f,
+                                    stepSize = 0.05f,
+                                    textForValue = { value ->
+                                        "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
+                                    },
+                                    onValueCommitted = viewModel::setCoverBackgroundClarity,
+                                    onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item(key = "group:playback") {
-                    SettingsGroup(title = "播放设置") {
+                    SettingsGroup(
+                        title = "播放设置",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            SettingsToggleRow(
+                                text = "迷你播放栏开关",
+                                checked = showMiniPlayerBar,
+                                onCheckedChange = viewModel::setShowMiniPlayerBar,
+                                infoKey = "show_mini_player_bar",
+                                infoTitle = "迷你播放栏",
+                                infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+                                activeTipKey = activeTipKey,
+                                onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                            )
+                            SettingsToggleRow(
+                                text = "SFW开关",
+                                checked = sfwHideSystemControls,
+                                onCheckedChange = viewModel::setSfwHideSystemControls,
+                                infoKey = "sfw_hide_system_controls",
+                                infoTitle = "SFW",
+                                infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
+                                activeTipKey = activeTipKey,
+                                onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                            )
+                        }
+                    ) {
                         SettingsToggleRow(
                             text = "断开扬声器、有线/蓝牙耳机或蓝牙关闭时立刻暂停播放",
                             checked = pauseOnOutputDisconnect,
@@ -499,16 +533,6 @@ fun SettingsScreen(
                             infoKey = "resume_on_output_connect",
                             infoTitle = "输出接入自动恢复",
                             infoText = "检测到耳机、蓝牙耳机、USB 音频、HDMI 或 AUX 等外接输出接入时，如果播放器当前处于暂停，会自动尝试恢复播放；手机扬声器不触发。",
-                            activeTipKey = activeTipKey,
-                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
-                        )
-                        SettingsToggleRow(
-                            text = "其他应用播放音/视频时暂停",
-                            checked = pauseOnOtherAudio,
-                            onCheckedChange = viewModel::setPauseOnOtherAudio,
-                            infoKey = "pause_on_other_audio",
-                            infoTitle = "音频焦点暂停",
-                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -539,22 +563,12 @@ fun SettingsScreen(
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
                         )
                         SettingsToggleRow(
-                            text = "SFW开关",
-                            checked = sfwHideSystemControls,
-                            onCheckedChange = viewModel::setSfwHideSystemControls,
-                            infoKey = "sfw_hide_system_controls",
-                            infoTitle = "SFW",
-                            infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
-                            activeTipKey = activeTipKey,
-                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
-                        )
-                        SettingsToggleRow(
-                            text = "迷你播放栏开关",
-                            checked = showMiniPlayerBar,
-                            onCheckedChange = viewModel::setShowMiniPlayerBar,
-                            infoKey = "show_mini_player_bar",
-                            infoTitle = "迷你播放栏",
-                            infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+                            text = "其他应用播放音/视频时暂停",
+                            checked = pauseOnOtherAudio,
+                            onCheckedChange = viewModel::setPauseOnOtherAudio,
+                            infoKey = "pause_on_other_audio",
+                            infoTitle = "音频焦点暂停",
+                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -563,7 +577,18 @@ fun SettingsScreen(
 
                 // 悬浮歌词
                 item(key = "group:lyrics") {
-                    SettingsGroup(title = "歌词") {
+                    SettingsGroup(
+                        title = "歌词",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            SettingsToggleRow(
+                                text = "开启悬浮歌词",
+                                checked = floatingLyricsEnabled,
+                                onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
+                            )
+                        }
+                    ) {
                         LyricsPageSettingsSection(
                             settings = lyricsPageSettings,
                             segmentedButtonColors = segmentedButtonColors,
@@ -572,13 +597,7 @@ fun SettingsScreen(
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-
-                        Text("悬浮歌词", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        SettingsToggleRow(
-                            text = "开启悬浮歌词",
-                            checked = floatingLyricsEnabled,
-                            onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
-                        )
+                        Text("悬浮歌词细节", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
                         if (!overlayGranted && floatingLyricsEnabled) {
                             OutlinedButton(
@@ -1265,16 +1284,52 @@ private fun SearchBlockedKeywordChip(
 }
 
 @Composable
-private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsGroup(
+    title: String,
+    collapsible: Boolean = false,
+    initiallyExpanded: Boolean = true,
+    collapsedContent: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
     val colorScheme = AsmrTheme.colorScheme
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (collapsible) {
+                        Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { expanded = !expanded }
+                            .padding(start = 2.dp, end = 4.dp, bottom = 6.dp)
+                    } else {
+                        Modifier.padding(bottom = 6.dp)
+                    }
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            if (collapsible) {
+                Text(
+                    text = if (expanded) "收起" else "展开",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.textSecondary
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (expanded) "收起$title" else "展开$title",
+                    tint = colorScheme.textSecondary
+                )
+            }
+        }
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = colorScheme.surface.copy(alpha = 0.5f),
@@ -1282,10 +1337,20 @@ private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> 
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                content()
+                if (collapsible) {
+                    collapsedContent?.invoke(this)
+                    if (expanded) {
+                        if (collapsedContent != null) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                        }
+                        content()
+                    }
+                } else {
+                    content()
+                }
             }
         }
     }
