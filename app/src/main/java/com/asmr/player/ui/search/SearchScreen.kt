@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -145,6 +146,10 @@ private const val SearchPullNextPageDragResistance = 0.68f
 private val SearchPullNextPageTriggerDistance = 96.dp
 private val SearchPullNextPageMaxDistance = 156.dp
 private val SearchPullNextPageIndicatorMaxLift = 92.dp
+private val SearchResultPlacementSpring = spring<IntOffset>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
 
 private fun stableAlbumKey(album: Album): String {
     val id = album.rjCode.ifBlank { album.workId }.trim()
@@ -215,7 +220,7 @@ private fun SearchFilterIconView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     windowSizeClass: WindowSizeClass,
@@ -749,6 +754,7 @@ fun SearchScreen(
                                             AlbumItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
@@ -785,6 +791,7 @@ fun SearchScreen(
                                             AlbumGridItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },

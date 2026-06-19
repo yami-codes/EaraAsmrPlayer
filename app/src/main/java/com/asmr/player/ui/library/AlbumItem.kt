@@ -1,5 +1,14 @@
 package com.asmr.player.ui.library
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
@@ -7,9 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.asmr.player.domain.model.Album
 import com.asmr.player.cache.CacheImageModel
@@ -48,6 +60,7 @@ import com.asmr.player.ui.library.AlbumMetaLeadingVisual.Icon
 import com.asmr.player.util.DlsiteAntiHotlink
 
 import com.asmr.player.ui.theme.AsmrTheme
+import kotlinx.coroutines.delay
 
 internal val AlbumListItemCornerRadius = 6.dp
 internal val AlbumGridItemCornerRadius = 6.dp
@@ -58,6 +71,11 @@ private val AlbumItemCoverContentSpacing = 8.dp
 private val AlbumGridInfoHorizontalPadding = 6.dp
 private val AlbumGridInfoVerticalPadding = 8.dp
 private val AlbumDetailSkeletonHeight = 18.dp
+private val AlbumOnlineDetailResizeSpring = spring<IntSize>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
+private const val AlbumOnlineDetailExitSettleMillis = 320L
 internal const val ALBUM_ITEM_CARD_TAG = "album_item_card"
 internal const val ALBUM_ITEM_STATS_TAG = "album_item_stats"
 
@@ -210,43 +228,44 @@ fun AlbumItem(
                         order = AlbumPrimaryMetaOrder.CircleThenRj,
                     )
 
-                    if (album.cv.isNotBlank()) {
+                    AlbumOnlineDetailAnimatedLine(
+                        content = album.cv,
+                        loading = onlineDetailLoading
+                    ) {
                         AlbumCvChipsSingleLine(
                             cvText = album.cv,
                             modifier = Modifier.fillMaxWidth(),
                             onCvClick = onCvClick,
                             leadingVisual = Icon,
                         )
-                    } else if (onlineDetailLoading) {
-                        AlbumDetailSkeletonLine(widthFraction = 0.62f)
                     }
-                    if (album.tags.isNotEmpty()) {
+                    AlbumOnlineDetailAnimatedLine(
+                        content = album.tags.joinToString(separator = "\n"),
+                        loading = onlineDetailLoading,
+                        loadingContent = {
+                            AlbumDetailSkeletonLine(widthFraction = 0.86f)
+                        }
+                    ) {
                         AlbumTagsSingleLine(
                             tags = album.tags,
                             modifier = Modifier.fillMaxWidth(),
                             onTagClick = onTagClick,
                             leadingVisual = Icon,
                         )
-                    } else if (onlineDetailLoading) {
-                        AlbumDetailSkeletonLine(widthFraction = 0.86f)
                     }
 
-                    if (statsText.isNotBlank()) {
+                    AlbumOnlineDetailAnimatedLine(
+                        content = statsText,
+                        loading = onlineDetailLoading && !album.hasRatingInfo(),
+                        modifier = Modifier.testTag(ALBUM_ITEM_STATS_TAG)
+                    ) {
                         Text(
                             text = statsText,
                             style = MaterialTheme.typography.labelSmall,
                             color = colorScheme.textTertiary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag(ALBUM_ITEM_STATS_TAG)
-                        )
-                    }
-                    if (onlineDetailLoading && !album.hasRatingInfo()) {
-                        AlbumDetailSkeletonLine(
-                            widthFraction = 0.46f,
-                            modifier = if (statsText.isBlank()) Modifier.testTag(ALBUM_ITEM_STATS_TAG) else Modifier
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -389,14 +408,17 @@ fun AlbumGridItem(
                 )
             }
 
-            if (album.releaseDate.isNotBlank()) {
+            AlbumOnlineDetailAnimatedOverlay(
+                visible = album.releaseDate.isNotBlank(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+            ) {
                 Text(
                     text = album.releaseDate,
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
                         .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 4.dp, vertical = 2.dp)
                 )
@@ -439,14 +461,18 @@ fun AlbumGridItem(
                 leadingVisual = Icon,
             )
 
-            if (album.cv.isNotBlank()) {
+            AlbumOnlineDetailAnimatedLine(
+                content = album.cv,
+                loading = onlineDetailLoading,
+                loadingContent = {
+                    AlbumDetailSkeletonLine(widthFraction = 0.72f)
+                }
+            ) {
                 AlbumCvChipsFlow(
                     cvText = album.cv,
                     onCvClick = onCvClick,
                     leadingVisual = Icon,
                 )
-            } else if (onlineDetailLoading) {
-                AlbumDetailSkeletonLine(widthFraction = 0.72f)
             }
 
             val statsText = remember(album.ratingValue, album.ratingCount, album.priceJpy) {
@@ -463,18 +489,26 @@ fun AlbumGridItem(
                     }
                 }
             }
-            if (album.tags.isNotEmpty()) {
+
+            AlbumOnlineDetailAnimatedLine(
+                content = album.tags.joinToString(separator = "\n"),
+                loading = onlineDetailLoading,
+                loadingContent = {
+                    AlbumDetailSkeletonLine(widthFraction = 0.92f)
+                }
+            ) {
                 AlbumTagsFlow(
                     tags = album.tags,
                     modifier = Modifier.padding(top = 2.dp),
                     onTagClick = onTagClick,
                     leadingVisual = Icon,
                 )
-            } else if (onlineDetailLoading) {
-                AlbumDetailSkeletonLine(widthFraction = 0.92f)
             }
 
-            if (statsText.isNotBlank()) {
+            AlbumOnlineDetailAnimatedLine(
+                content = statsText,
+                loading = onlineDetailLoading && !album.hasRatingInfo()
+            ) {
                 Text(
                     text = statsText,
                     style = MaterialTheme.typography.labelSmall,
@@ -483,10 +517,125 @@ fun AlbumGridItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (onlineDetailLoading && !album.hasRatingInfo()) {
-                AlbumDetailSkeletonLine(widthFraction = 0.54f)
-            }
         }
+    }
+}
+
+@Composable
+private fun AlbumOnlineDetailAnimatedLine(
+    content: String,
+    loading: Boolean,
+    modifier: Modifier = Modifier,
+    loadingContent: @Composable () -> Unit = {
+        AlbumDetailSkeletonLine(widthFraction = 0.62f)
+    },
+    contentBlock: @Composable () -> Unit,
+) {
+    val stateKey = onlineDetailLineStateKey(content = content, loading = loading)
+    var keepMounted by remember { mutableStateOf(stateKey != "empty") }
+    LaunchedEffect(stateKey) {
+        if (stateKey != "empty") {
+            keepMounted = true
+        } else if (keepMounted) {
+            delay(AlbumOnlineDetailExitSettleMillis)
+            keepMounted = false
+        }
+    }
+    if (stateKey == "empty" && !keepMounted) return
+    AlbumOnlineDetailAnimatedLine(
+        stateKey = stateKey,
+        modifier = modifier,
+    ) { targetState ->
+        when (targetState) {
+            "loading" -> loadingContent()
+            "empty" -> Unit
+            else -> contentBlock()
+        }
+    }
+}
+
+private fun onlineDetailLineStateKey(
+    content: String,
+    loading: Boolean,
+): String {
+    return when {
+        content.isNotBlank() -> "content:$content"
+        loading -> "loading"
+        else -> "empty"
+    }
+}
+
+@Composable
+private fun AlbumOnlineDetailAnimatedOverlay(
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    AnimatedContent(
+        targetState = visible,
+        modifier = modifier,
+        transitionSpec = {
+            (
+                fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                    slideInVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) { height -> height / 3 }
+                ) togetherWith (
+                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+                    slideOutVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    ) { height -> height / 4 }
+                ) using SizeTransform(clip = false)
+        },
+        label = "albumOnlineDetailOverlay"
+    ) { targetVisible ->
+        if (targetVisible) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun AlbumOnlineDetailAnimatedLine(
+    stateKey: String,
+    modifier: Modifier = Modifier,
+    content: @Composable (String) -> Unit,
+) {
+    AnimatedContent(
+        targetState = stateKey,
+        modifier = modifier
+            .fillMaxWidth(),
+        transitionSpec = {
+            (
+                fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                    slideInVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ) { height -> height / 3 }
+                ) togetherWith (
+                fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+                    slideOutVertically(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    ) { height -> -height / 4 }
+                ) using SizeTransform(
+                clip = false,
+                sizeAnimationSpec = { _, _ -> AlbumOnlineDetailResizeSpring }
+            )
+        },
+        label = "albumOnlineDetailLine"
+    ) { targetState ->
+        content(targetState)
     }
 }
 
