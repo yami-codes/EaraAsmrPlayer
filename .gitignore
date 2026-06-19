@@ -13,6 +13,8 @@ keystore.properties
 
 .gradle/
 .gradle-home
+.gradle-user-home/
+.gradle-temp/
 **/build/
 .build_asmr_player_android/
 .debug_device_db/

@@ -97,6 +97,7 @@ fun AlbumItem(
     onTagClick: ((String) -> Unit)? = null,
     coverBadge: AlbumCoverBadge? = null,
     onlineDetailLoading: Boolean = false,
+    onlineCvLoading: Boolean = onlineDetailLoading,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumListItemCornerRadius) }
@@ -229,8 +230,8 @@ fun AlbumItem(
                     )
 
                     AlbumOnlineDetailAnimatedLine(
-                        content = album.cv,
-                        loading = onlineDetailLoading
+                        content = if (onlineCvLoading) "" else album.cv,
+                        loading = onlineCvLoading
                     ) {
                         AlbumCvChipsSingleLine(
                             cvText = album.cv,
@@ -338,6 +339,7 @@ fun AlbumGridItem(
     onTagClick: ((String) -> Unit)? = null,
     coverBadge: AlbumCoverBadge? = null,
     onlineDetailLoading: Boolean = false,
+    onlineCvLoading: Boolean = onlineDetailLoading,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val shape = remember { RoundedCornerShape(AlbumGridItemCornerRadius) }
@@ -462,8 +464,8 @@ fun AlbumGridItem(
             )
 
             AlbumOnlineDetailAnimatedLine(
-                content = album.cv,
-                loading = onlineDetailLoading,
+                content = if (onlineCvLoading) "" else album.cv,
+                loading = onlineCvLoading,
                 loadingContent = {
                     AlbumDetailSkeletonLine(widthFraction = 0.72f)
                 }

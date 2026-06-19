@@ -224,7 +224,7 @@ private fun SearchFilterIconView(
 @Composable
 fun SearchScreen(
     windowSizeClass: WindowSizeClass,
-    onAlbumClick: (Album, Boolean) -> Unit,
+    onAlbumClick: (Album, Boolean, Boolean) -> Unit,
     onOpenSearchAssist: (SearchAssistSearchRequest) -> Unit = {},
     submittedSearchKeyword: String = "",
     submittedSearchOrderName: String = SearchSortOption.Trend.name,
@@ -623,6 +623,7 @@ fun SearchScreen(
                                 downloadPath = album.downloadPath,
                                 circle = album.circle,
                                 cv = album.cv,
+                                tags = album.tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
                                 coverUrl = album.coverUrl,
                                 coverPath = album.coverPath,
                                 coverThumbPath = album.coverThumbPath,
@@ -630,6 +631,7 @@ fun SearchScreen(
                                 rjCode = album.rjCode,
                                 description = album.description
                             ),
+                            false,
                             false
                         )
                     },
@@ -751,12 +753,15 @@ fun SearchScreen(
                                             contentType = { _, _ -> "album" }
                                         ) { _, album ->
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+                                            val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
                                                 modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
+                                                onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -788,12 +793,15 @@ fun SearchScreen(
                                         ) { index ->
                                             val album = state.results[index]
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+                                            val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumGridItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
                                                 modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
+                                                onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },

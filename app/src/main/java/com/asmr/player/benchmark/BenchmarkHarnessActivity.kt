@@ -157,7 +157,7 @@ private fun BenchmarkScenarioScreen(
         BenchmarkScenario.SearchNetwork -> {
             SearchScreen(
                 windowSizeClass = windowSizeClass,
-                onAlbumClick = { _, _ -> }
+                onAlbumClick = { _, _, _ -> }
             )
         }
 

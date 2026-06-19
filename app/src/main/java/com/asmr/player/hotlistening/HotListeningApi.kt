@@ -40,7 +40,17 @@ data class HotListeningItem(
     val tags: String = "",
     val coverUrl: String = "",
     val playCount: Int = 0,
-    val listenDurationMs: Long = 0L
+    val listenDurationMs: Long = 0L,
+    val releaseDate: String = "",
+    val rateAverage2dp: Double? = null,
+    val ratingValue: Double? = null,
+    val rateCount: Int? = null,
+    val reviewCount: Int? = null,
+    val ratingCount: Int? = null,
+    val dlCount: Int = 0,
+    val price: Int? = null,
+    val priceJpy: Int? = null,
+    val description: String = ""
 ) {
     val cvList: List<String>
         get() = cv.split(",").map { it.trim() }.filter { it.isNotBlank() }
