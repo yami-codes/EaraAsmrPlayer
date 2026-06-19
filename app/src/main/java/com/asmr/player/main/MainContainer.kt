@@ -1684,14 +1684,23 @@ fun MainContainer(
                                                     searchAssistInitialRequest = request
                                                     navController.navigateSingleTop(Routes.searchAssist(request.keyword))
                                                 },
-                                                onAlbumClick = { album, fromPurchasedOnly ->
+                                                onAlbumClick = { album, fromPurchasedOnly, hasResolvedDetail ->
                                                     AlbumCoverHintStore.record(
                                                         albumId = album.id,
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
                                                         cv = album.cv,
-                                                        coverUrl = album.coverUrl
+                                                        coverUrl = album.coverUrl,
+                                                        tags = album.tags,
+                                                        ratingValue = album.ratingValue,
+                                                        ratingCount = album.ratingCount,
+                                                        releaseDate = album.releaseDate,
+                                                        dlCount = album.dlCount,
+                                                        priceJpy = album.priceJpy,
+                                                        hasAsmrOne = album.hasAsmrOne,
+                                                        description = album.description,
+                                                        hasResolvedDlsiteInfo = hasResolvedDetail && !fromPurchasedOnly
                                                     )
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
@@ -1714,7 +1723,16 @@ fun MainContainer(
                                                         title = album.title,
                                                         circle = album.circle,
                                                         cv = album.cv,
-                                                        coverUrl = album.coverUrl
+                                                        coverUrl = album.coverUrl,
+                                                        tags = album.tags,
+                                                        ratingValue = album.ratingValue,
+                                                        ratingCount = album.ratingCount,
+                                                        releaseDate = album.releaseDate,
+                                                        dlCount = album.dlCount,
+                                                        priceJpy = album.priceJpy,
+                                                        hasAsmrOne = album.hasAsmrOne,
+                                                        description = album.description,
+                                                        hasResolvedDlsiteInfo = true
                                                     )
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
                                                 },

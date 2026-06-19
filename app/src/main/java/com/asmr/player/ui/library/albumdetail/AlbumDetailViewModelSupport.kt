@@ -158,6 +158,9 @@ data class AlbumDetailModel(
     val dlsiteEditions: List<DlsiteLanguageEdition>,
     val dlsiteSelectedLang: String,
     val hasResolvedInitialDlsiteTarget: Boolean,
+    val hasLoadedInitialDlsiteContent: Boolean,
+    val hasResolvedAsmrOneContent: Boolean,
+    val preserveHeaderAlbumMetadata: Boolean,
     val isDlsiteLanguageUserSelected: Boolean,
     val asmrOneWorkId: String?,
     val asmrOneSite: Int?,
@@ -185,6 +188,47 @@ internal fun buildDisplayAlbum(
         // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
         coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
     )
+}
+
+internal fun Album.withResolvedWorkIdentity(
+    rjCode: String,
+    asmrOneWorkId: String?
+): Album {
+    return copy(
+        workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: workId,
+        rjCode = rjCode.ifBlank { this.rjCode.ifBlank { workId } }
+    )
+}
+
+internal fun mergeDetailHeaderAlbum(
+    currentDisplayAlbum: Album,
+    localAlbum: Album?,
+    fetchedDlsiteInfo: Album?,
+    rjCode: String,
+    asmrOneWorkId: String?,
+    preserveHeaderAlbumMetadata: Boolean
+): Album {
+    if (preserveHeaderAlbumMetadata) {
+        return currentDisplayAlbum.withResolvedWorkIdentity(
+            rjCode = rjCode,
+            asmrOneWorkId = asmrOneWorkId
+        )
+    }
+    return if (fetchedDlsiteInfo != null) {
+        buildDisplayAlbum(
+            rjCode = rjCode,
+            localAlbum = localAlbum,
+            dlsiteInfo = fetchedDlsiteInfo,
+            asmrOneWorkId = asmrOneWorkId,
+            fallbackCv = currentDisplayAlbum.cv,
+            fallbackCoverUrl = currentDisplayAlbum.coverUrl
+        )
+    } else {
+        currentDisplayAlbum.withResolvedWorkIdentity(
+            rjCode = rjCode,
+            asmrOneWorkId = asmrOneWorkId
+        )
+    }
 }
 
 internal enum class DlsiteChinesePreference {

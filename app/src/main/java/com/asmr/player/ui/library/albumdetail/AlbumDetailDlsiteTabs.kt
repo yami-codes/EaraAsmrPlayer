@@ -683,16 +683,27 @@ private fun LazyItemScope.dlsiteAnimatedSectionModifier(
     )
 }
 
+internal fun shouldShowAsmrOneDirectoryLoading(
+    isAwaitingAsmrOneLoad: Boolean,
+    isLoadingAsmrOne: Boolean,
+    hasAsmrOneTree: Boolean,
+    hasDirectoryBrowser: Boolean
+): Boolean {
+    return isAwaitingAsmrOneLoad ||
+        isLoadingAsmrOne ||
+        (hasAsmrOneTree && !hasDirectoryBrowser)
+}
+
 @Composable
 internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     album: Album,
     header: @Composable () -> Unit,
-    dlsiteInfo: Album?,
     galleryUrls: List<String>,
     trialTracks: List<Track>,
     trialDownloadEnabled: Boolean,
     isLoading: Boolean,
     isAwaitingInitialLoad: Boolean,
+    isAwaitingAsmrOneLoad: Boolean,
     asmrOneTree: List<AsmrOneTrackNodeResponse>,
     isLoadingAsmrOne: Boolean,
     isLoadingTrial: Boolean,
@@ -766,8 +777,13 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     LaunchedEffect(currentPath, treeStateKey) {
         onPersistCurrentPath(currentPath)
     }
-    val isInitialDlsiteLoading = dlsiteInfo == null && (isLoading || isAwaitingInitialLoad)
-    val isAsmrOnePending = isAwaitingInitialLoad || isLoadingAsmrOne
+    val isInitialDlsiteLoading = isLoading || isAwaitingInitialLoad
+    val isAsmrOnePending = shouldShowAsmrOneDirectoryLoading(
+        isAwaitingAsmrOneLoad = isAwaitingAsmrOneLoad,
+        isLoadingAsmrOne = isLoadingAsmrOne,
+        hasAsmrOneTree = asmrOneTree.isNotEmpty(),
+        hasDirectoryBrowser = browser != null
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -1036,7 +1052,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                     )
                 }
             }
-        } else if (isAsmrOnePending || (asmrOneTree.isNotEmpty() && browser == null)) {
+        } else if (isAsmrOnePending) {
             item(key = "dlsite-one-content") {
                 Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
                     DlsiteDirectoryLoadingPanel()

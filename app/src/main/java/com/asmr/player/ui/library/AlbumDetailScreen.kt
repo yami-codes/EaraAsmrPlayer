@@ -12,7 +12,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -154,9 +153,10 @@ import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private enum class AlbumPrimaryAction {
-    Download,
-    Save
+private enum class AlbumHeaderButtonGroupState {
+    DownloadOnly,
+    Save,
+    Lossless
 }
 
 private enum class OnlineDownloadSource {
@@ -196,11 +196,22 @@ private const val AlbumDetailHeroMetaRevealDelayMs = 280
 private const val AlbumDetailCvRevealDelayMs = 220
 private const val AlbumDetailTagsRevealDelayMs = 360
 private const val AlbumDetailActionsRevealDelayMs = 500
+private const val AlbumDetailHeaderMotionSettleMs = 940L
 internal val AlbumDetailHorizontalPadding = 8.dp
 
 private val AlbumDetailHeroBounceBackSpec = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessLow
+)
+
+private val AlbumHeaderEnterFloatSpec = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessVeryLow
+)
+
+private val AlbumHeaderActionMorphSpec = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow
 )
 
 private val DlsiteElasticResizeSpring = spring<IntSize>(
@@ -736,12 +747,14 @@ fun AlbumDetailScreen(
                                     1 -> AlbumDlsiteInfoBreadcrumbTabV2(
                                         album = album,
                                         header = { headerContent(1) },
-                                        dlsiteInfo = model.dlsiteInfo,
                                         galleryUrls = model.dlsiteGalleryUrls,
                                         trialTracks = model.dlsiteTrialTracks,
                                         trialDownloadEnabled = trialDownloadTree.isNotEmpty(),
                                         isLoading = model.isLoadingDlsite,
-                                        isAwaitingInitialLoad = !model.hasResolvedInitialDlsiteTarget,
+                                        isAwaitingInitialLoad = !model.hasLoadedInitialDlsiteContent,
+                                        isAwaitingAsmrOneLoad = model.hasResolvedInitialDlsiteTarget &&
+                                            !model.hasResolvedAsmrOneContent &&
+                                            asmrOneTree.isEmpty(),
                                         asmrOneTree = asmrOneTree,
                                         isLoadingAsmrOne = model.isLoadingAsmrOne,
                                         isLoadingTrial = model.isLoadingDlsiteTrial,
@@ -1409,7 +1422,7 @@ private fun AlbumHeader(
             headerIntroPlayed = true
             return@LaunchedEffect
         }
-        delay(700)
+        delay(AlbumDetailActionsRevealDelayMs + AlbumDetailHeaderMotionSettleMs)
         headerIntroPlayed = true
     }
 
@@ -1450,7 +1463,7 @@ private fun AlbumHeader(
         // 会随展开动画一起从 0 平滑增长，按钮行始终被平滑下移而非瞬间跳变。
     ) {
                 // cv 行与 tags 行同属“信息行”，行间距与行内换行间距（6.dp）保持一致；
-                // 末尾信息行携带 12.dp 底部 padding 作为与下方按钮行的间距。
+                // 末尾信息行携带 8.dp 底部 padding 作为与下方按钮行的间距。
                 if (album.cv.isNotBlank()) {
                     AlbumHeaderInfoReveal(
                         revealKey = "$headerAnimationScopeKey:cv",
@@ -1458,7 +1471,7 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = cvExpandLayout
                     ) {
-                        Box(modifier = Modifier.padding(bottom = if (album.tags.isNotEmpty()) 6.dp else 12.dp)) {
+                        Box(modifier = Modifier.padding(bottom = if (album.tags.isNotEmpty()) 6.dp else 8.dp)) {
                             AlbumCvChipsFlow(
                                 cvText = album.cv,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1477,7 +1490,7 @@ private fun AlbumHeader(
                         enabled = animateIntro,
                         expandLayout = tagsExpandLayout
                     ) {
-                        Box(modifier = Modifier.padding(bottom = 12.dp)) {
+                        Box(modifier = Modifier.padding(bottom = 8.dp)) {
                             AlbumTagsFlow(
                                 tags = album.tags,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1498,7 +1511,6 @@ private fun AlbumHeader(
                     BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp)
                     ) {
                         val compact = maxWidth < 400.dp
                         val ultraCompact = maxWidth < 340.dp
@@ -1546,67 +1558,24 @@ private fun AlbumHeader(
                                     .height(36.dp)
                                     .weight(1f)
                             ) {
-                                val radius = 10.dp
-                                val hasSecondaryPrimaryAction = canSaveOnline || showDlsitePlayLossless
-                                val leftShape = if (hasSecondaryPrimaryAction) {
-                                    RoundedCornerShape(topStart = radius, bottomStart = radius, topEnd = 0.dp, bottomEnd = 0.dp)
-                                } else {
-                                    RoundedCornerShape(radius)
+                                val groupState = when {
+                                    showDlsitePlayLossless -> AlbumHeaderButtonGroupState.Lossless
+                                    canSaveOnline -> AlbumHeaderButtonGroupState.Save
+                                    else -> AlbumHeaderButtonGroupState.DownloadOnly
                                 }
-                                val rightShape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = radius, bottomEnd = radius)
-
-                                Button(
-                                    onClick = onDownloadClick,
-                                    enabled = downloadEnabled,
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .weight(1f),
-                                    shape = leftShape,
-                                    contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
-                                ) {
-                                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(primaryIconSize))
-                                    Spacer(modifier = Modifier.width(primaryIconGap))
-                                    Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                                }
-
-                                if (showDlsitePlayLossless) {
-                                    Button(
-                                        onClick = onLosslessDownloadClick,
-                                        enabled = losslessDownloadEnabled,
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .weight(1f),
-                                        shape = rightShape,
-                                        contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = colorScheme.primary.copy(alpha = 0.14f),
-                                            contentColor = colorScheme.primary
-                                        )
-                                    ) {
-                                        Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(primaryIconSize))
-                                        Spacer(modifier = Modifier.width(primaryIconGap))
-                                        Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                                    }
-                                } else if (canSaveOnline) {
-                                    Button(
-                                        onClick = onSaveClick,
-                                        enabled = saveEnabled,
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .weight(1f),
-                                        shape = rightShape,
-                                        contentPadding = PaddingValues(horizontal = primaryButtonPadding, vertical = 0.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = colorScheme.primary.copy(alpha = 0.14f),
-                                            contentColor = colorScheme.primary
-                                        )
-                                    ) {
-                                        Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(primaryIconSize))
-                                        Spacer(modifier = Modifier.width(primaryIconGap))
-                                        Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                                    }
-                                }
+                                AlbumHeaderDownloadAction(
+                                    groupState = groupState,
+                                    onDownloadClick = onDownloadClick,
+                                    onSaveClick = onSaveClick,
+                                    onLosslessDownloadClick = onLosslessDownloadClick,
+                                    downloadEnabled = downloadEnabled,
+                                    saveEnabled = saveEnabled,
+                                    losslessDownloadEnabled = losslessDownloadEnabled,
+                                    horizontalPadding = primaryButtonPadding,
+                                    iconSize = primaryIconSize,
+                                    iconGap = primaryIconGap,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
 
                             if (showGroupButton) {
@@ -1635,12 +1604,25 @@ private fun AlbumHeader(
                             }
 
                             if (langCandidates.isNotEmpty()) {
+                                val languageSelectable = langCandidates.size > 1
+                                val languageContainerColor = colorScheme.primary.copy(
+                                    alpha = if (languageSelectable) {
+                                        if (colorScheme.isDark) 0.18f else 0.10f
+                                    } else {
+                                        if (colorScheme.isDark) 0.08f else 0.06f
+                                    }
+                                )
+                                val languageContentColor = if (languageSelectable) {
+                                    colorScheme.primary
+                                } else {
+                                    colorScheme.textSecondary
+                                }
                                 Box {
                                     OutlinedButton(
                                         onClick = {
-                                            if (langCandidates.size > 1) languageMenuExpanded = true
+                                            if (languageSelectable) languageMenuExpanded = true
                                         },
-                                        enabled = langCandidates.size > 1,
+                                        enabled = languageSelectable,
                                         modifier = Modifier
                                             .height(36.dp)
                                             .widthIn(min = selectorMinWidth, max = selectorMaxWidth),
@@ -1648,40 +1630,46 @@ private fun AlbumHeader(
                                         contentPadding = PaddingValues(horizontal = smallButtonPadding, vertical = 0.dp),
                                         border = androidx.compose.foundation.BorderStroke(
                                             1.dp,
-                                            colorScheme.primary.copy(alpha = if (langCandidates.size > 1) 0.3f else 0.16f)
+                                            colorScheme.primary.copy(alpha = if (languageSelectable) 0.34f else 0.16f)
                                         ),
                                         colors = ButtonDefaults.outlinedButtonColors(
-                                            disabledContentColor = colorScheme.textSecondary
+                                            containerColor = languageContainerColor,
+                                            contentColor = languageContentColor,
+                                            disabledContainerColor = languageContainerColor,
+                                            disabledContentColor = languageContentColor
                                         )
                                     ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Translate,
+                                            contentDescription = null,
+                                            tint = languageContentColor,
+                                            modifier = Modifier.size(primaryIconSize)
+                                        )
+                                        Spacer(modifier = Modifier.width(primaryIconGap))
                                         Text(
                                             text = selectedLangLabel,
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = if (langCandidates.size > 1) colorScheme.primary else colorScheme.textSecondary,
+                                            color = languageContentColor,
                                             maxLines = 1
                                         )
                                         Spacer(modifier = Modifier.width(if (compact) 2.dp else 4.dp))
                                         Icon(
                                             imageVector = Icons.Rounded.ArrowDropDown,
                                             contentDescription = null,
-                                            tint = if (langCandidates.size > 1) colorScheme.primary else colorScheme.textTertiary,
+                                            tint = if (languageSelectable) colorScheme.primary else colorScheme.textTertiary,
                                             modifier = Modifier.size(primaryIconSize)
                                         )
                                     }
-                                    DropdownMenu(
+                                    AlbumHeaderLanguageDropdownMenu(
                                         expanded = languageMenuExpanded,
-                                        onDismissRequest = { languageMenuExpanded = false }
-                                    ) {
-                                        langCandidates.forEach { edition ->
-                                            DropdownMenuItem(
-                                                text = { Text(dlsiteLanguageButtonLabel(edition.lang)) },
-                                                onClick = {
-                                                    languageMenuExpanded = false
-                                                    onDlsiteLangSelected(edition.lang)
-                                                }
-                                            )
+                                        candidates = langCandidates,
+                                        selectedLang = dlsiteSelectedLang,
+                                        onDismiss = { languageMenuExpanded = false },
+                                        onSelect = { lang ->
+                                            languageMenuExpanded = false
+                                            onDlsiteLangSelected(lang)
                                         }
-                                    }
+                                    )
                                 }
                             }
 
@@ -1723,6 +1711,230 @@ private fun dlsiteLanguageButtonLabel(lang: String): String {
 }
 
 @Composable
+private fun AlbumHeaderLanguageDropdownMenu(
+    expanded: Boolean,
+    candidates: List<DlsiteLanguageEdition>,
+    selectedLang: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val materialColorScheme = MaterialTheme.colorScheme
+    val menuContainer = if (colorScheme.isDark) {
+        colorScheme.surfaceVariant.copy(alpha = 0.98f)
+    } else {
+        colorScheme.surface.copy(alpha = 0.98f)
+    }
+    MaterialTheme(
+        colorScheme = materialColorScheme.copy(
+            surface = menuContainer,
+            onSurface = colorScheme.textPrimary,
+            surfaceVariant = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.22f else 0.12f),
+            onSurfaceVariant = colorScheme.textSecondary
+        )
+    ) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss,
+            modifier = Modifier
+                .background(menuContainer, RoundedCornerShape(14.dp))
+                .border(
+                    width = 0.5.dp,
+                    color = colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.28f else 0.20f),
+                    shape = RoundedCornerShape(14.dp)
+                )
+        ) {
+            candidates.forEachIndexed { index, edition ->
+                val selected = edition.lang.equals(selectedLang, ignoreCase = true)
+                if (index > 0) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        thickness = 0.5.dp,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = if (colorScheme.isDark) 0.22f else 0.16f)
+                    )
+                }
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = dlsiteLanguageButtonLabel(edition.lang),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) colorScheme.primary else colorScheme.textPrimary,
+                            maxLines = 1
+                        )
+                    },
+                    onClick = { onSelect(edition.lang) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.Translate,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (selected) colorScheme.primary else colorScheme.textSecondary
+                        )
+                    },
+                    trailingIcon = {
+                        if (selected) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 22.dp, height = 6.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.46f else 0.30f))
+                            )
+                        }
+                    },
+                    colors = MenuDefaults.itemColors(
+                        textColor = colorScheme.textPrimary,
+                        leadingIconColor = colorScheme.textSecondary,
+                        trailingIconColor = colorScheme.primary,
+                        disabledTextColor = colorScheme.textTertiary,
+                        disabledLeadingIconColor = colorScheme.textTertiary,
+                        disabledTrailingIconColor = colorScheme.textTertiary
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumHeaderDownloadAction(
+    groupState: AlbumHeaderButtonGroupState,
+    onDownloadClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    onLosslessDownloadClick: () -> Unit,
+    downloadEnabled: Boolean,
+    saveEnabled: Boolean,
+    losslessDownloadEnabled: Boolean,
+    horizontalPadding: Dp,
+    iconSize: Dp,
+    iconGap: Dp,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val hasSecondaryAction = groupState != AlbumHeaderButtonGroupState.DownloadOnly
+    var displayedSecondaryState by remember { mutableStateOf(groupState) }
+    LaunchedEffect(groupState) {
+        if (groupState != AlbumHeaderButtonGroupState.DownloadOnly) {
+            displayedSecondaryState = groupState
+        }
+    }
+    val morphProgress by animateFloatAsState(
+        targetValue = if (hasSecondaryAction) 1f else 0f,
+        animationSpec = AlbumHeaderActionMorphSpec,
+        label = "albumHeaderDownloadActionMorph",
+        finishedListener = { value ->
+            if (value == 0f && groupState == AlbumHeaderButtonGroupState.DownloadOnly) {
+                displayedSecondaryState = AlbumHeaderButtonGroupState.DownloadOnly
+            }
+        }
+    )
+    val enabledProgress by animateFloatAsState(
+        targetValue = if (downloadEnabled) 1f else 0f,
+        animationSpec = AlbumHeaderActionMorphSpec,
+        label = "albumHeaderDownloadActionEnabled"
+    )
+    val radius = 10.dp
+    val secondaryContentAlpha = ((morphProgress - 0.22f) / 0.78f).coerceIn(0f, 1f)
+    val mainEndRadius = radius * (1f - morphProgress)
+    val mainShape = RoundedCornerShape(
+        topStart = radius,
+        bottomStart = radius,
+        topEnd = mainEndRadius,
+        bottomEnd = mainEndRadius
+    )
+    val secondaryShape = RoundedCornerShape(
+        topStart = 0.dp,
+        bottomStart = 0.dp,
+        topEnd = radius,
+        bottomEnd = radius
+    )
+    val disabledContainer = colorScheme.surfaceVariant.copy(
+        alpha = if (colorScheme.isDark) 0.54f else 0.74f
+    )
+    val disabledContent = colorScheme.textTertiary.copy(alpha = if (colorScheme.isDark) 0.72f else 0.86f)
+    val primaryContainer = lerp(disabledContainer, colorScheme.primary, enabledProgress)
+    val primaryContent = lerp(disabledContent, colorScheme.onPrimary, enabledProgress)
+    val secondaryContainer = colorScheme.primary.copy(
+        alpha = if (colorScheme.isDark) 0.22f else 0.14f
+    )
+    val activeSecondaryState = if (hasSecondaryAction) groupState else displayedSecondaryState
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Button(
+            onClick = onDownloadClick,
+            enabled = downloadEnabled,
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(1f),
+            shape = mainShape,
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = primaryContainer,
+                contentColor = primaryContent,
+                disabledContainerColor = primaryContainer,
+                disabledContentColor = primaryContent
+            )
+        ) {
+            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(iconSize))
+            Spacer(modifier = Modifier.width(iconGap))
+            Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(morphProgress.coerceAtLeast(0.001f))
+                .graphicsLayer { alpha = morphProgress }
+        ) {
+            when (activeSecondaryState) {
+                AlbumHeaderButtonGroupState.Save -> Button(
+                    onClick = onSaveClick,
+                    enabled = saveEnabled && secondaryContentAlpha > 0.92f,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = secondaryContentAlpha },
+                    shape = secondaryShape,
+                    contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = secondaryContainer,
+                        contentColor = colorScheme.primary,
+                        disabledContainerColor = secondaryContainer,
+                        disabledContentColor = colorScheme.primary.copy(alpha = 0.72f)
+                    )
+                ) {
+                    Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(iconSize))
+                    Spacer(modifier = Modifier.width(iconGap))
+                    Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                }
+
+                AlbumHeaderButtonGroupState.Lossless -> Button(
+                    onClick = onLosslessDownloadClick,
+                    enabled = losslessDownloadEnabled && secondaryContentAlpha > 0.92f,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = secondaryContentAlpha },
+                    shape = secondaryShape,
+                    contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = secondaryContainer,
+                        contentColor = colorScheme.primary,
+                        disabledContainerColor = secondaryContainer,
+                        disabledContentColor = colorScheme.primary.copy(alpha = 0.72f)
+                    )
+                ) {
+                    Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(iconSize))
+                    Spacer(modifier = Modifier.width(iconGap))
+                    Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                }
+
+                AlbumHeaderButtonGroupState.DownloadOnly -> Unit
+            }
+        }
+    }
+}
+
+@Composable
 private fun AlbumHeaderInfoReveal(
     revealKey: String,
     delayMillis: Int = 0,
@@ -1758,28 +1970,23 @@ private fun AlbumHeaderInfoReveal(
     }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = AlbumHeaderEnterFloatSpec,
         label = "albumHeaderInfoAlpha"
     )
-    val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else 14.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+    val offsetYProgress by animateFloatAsState(
+        targetValue = if (visible) 0f else 1f,
+        animationSpec = AlbumHeaderEnterFloatSpec,
         label = "albumHeaderInfoOffsetY"
     )
     val density = LocalDensity.current
+    val offsetYPx = with(density) { 14.dp.toPx() } * offsetYProgress
     if (!expandLayout) {
         // 进入时就已存在的内容（本地库 cv/tags、按钮行）：只做淡入 + 轻微上移，
         // 不改变布局高度，避免从 0 高度展开把下方列表先推下再回弹（“下沉”抖动）。
         Box(
             modifier = Modifier.graphicsLayer {
                 this.alpha = alpha
-                translationY = with(density) { offsetY.toPx() }
+                translationY = offsetYPx
             }
         ) {
             content()
@@ -1808,7 +2015,7 @@ private fun AlbumHeaderInfoReveal(
         Box(
             modifier = Modifier.graphicsLayer {
                 this.alpha = alpha
-                translationY = with(density) { offsetY.toPx() }
+                translationY = offsetYPx
             }
         ) {
             content()

@@ -135,7 +135,13 @@ class HotListeningViewModel @Inject constructor(
                 cv = cv,
                 tags = tagList,
                 coverUrl = coverUrl,
-                rjCode = rj
+                rjCode = rj,
+                releaseDate = releaseDate.trim(),
+                ratingValue = ratingValue ?: rateAverage2dp,
+                ratingCount = (ratingCount ?: rateCount ?: reviewCount ?: 0).coerceAtLeast(0),
+                dlCount = dlCount.coerceAtLeast(0),
+                priceJpy = (priceJpy ?: price ?: 0).coerceAtLeast(0),
+                description = description.trim()
             ),
             playCount = playCount,
             listenDurationMs = listenDurationMs,
