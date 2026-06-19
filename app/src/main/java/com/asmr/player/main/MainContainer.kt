@@ -538,6 +538,9 @@ fun MainContainer(
     )
     var miniPlayerDisplayMode by rememberSaveable { mutableStateOf(MiniPlayerDisplayMode.CoverOnly) }
     val primaryPagerRoutes = remember(bottomNavItems) { bottomNavItems.map { it.route } }
+    val primaryPagerBeyondBoundsPageCount = remember(primaryPagerRoutes) {
+        resolvePrimaryPagerBeyondBoundsPageCount(primaryPagerRoutes.size)
+    }
     val initialPrimaryPage = remember(initialDestination, primaryPagerRoutes) {
         primaryPagerRoutes.indexOf(initialDestination).takeIf { it >= 0 } ?: 0
     }
@@ -1624,7 +1627,7 @@ fun MainContainer(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(top = pagerTopContentPadding),
-                                    beyondBoundsPageCount = 1,
+                                    beyondBoundsPageCount = primaryPagerBeyondBoundsPageCount,
                                     userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
                                     key = { primaryPagerRoutes[it] }
                                 ) { page ->

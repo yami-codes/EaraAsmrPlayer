@@ -259,6 +259,10 @@ internal fun resolvePrimaryPagerApproachPage(
     return targetPage + if (targetPage > currentPage) -1 else 1
 }
 
+internal fun resolvePrimaryPagerBeyondBoundsPageCount(pageCount: Int): Int {
+    return (pageCount - 1).coerceAtLeast(0)
+}
+
 internal fun resolveCurrentPrimaryDestinationRoute(
     currentRoute: String?,
     playlistSystemType: String? = null
