@@ -610,7 +610,15 @@ fun MainContainer(
             .map { it.currentMediaItem != null }
             .distinctUntilChanged()
     }.collectAsState(initial = false)
-    val sharedPlayerPlayback by playerViewModel.playback.collectAsState()
+    val sharedPlayerItem by remember(playerViewModel) {
+        playerViewModel.playback
+            .map { it.currentMediaItem }
+            .distinctUntilChanged { old, new ->
+                old?.mediaId == new?.mediaId &&
+                    old?.localConfiguration?.uri == new?.localConfiguration?.uri &&
+                    old?.mediaMetadata?.artworkUri == new?.mediaMetadata?.artworkUri
+            }
+    }.collectAsState(initial = null)
     val drawerStatusViewModel: DrawerStatusViewModel = hiltViewModel()
     val statisticsViewModel: StatisticsViewModel = hiltViewModel()
     val bulkProgress by libraryViewModel.bulkProgress.collectAsState()
@@ -687,7 +695,6 @@ fun MainContainer(
         nowPlayingVisible = false
     }
     val playerBackdropVisible = nowPlayingVisible
-    val sharedPlayerItem = sharedPlayerPlayback.currentMediaItem
     val sharedPlayerUriText = sharedPlayerItem?.localConfiguration?.uri?.toString().orEmpty()
     val sharedPlayerMimeType = sharedPlayerItem?.localConfiguration?.mimeType.orEmpty()
     val sharedPlayerExt = sharedPlayerUriText
@@ -2352,7 +2359,7 @@ fun MainContainer(
                         .graphicsLayer { alpha = nowPlayingBackdropAlpha }
                 ) {
                     PlayerSharedBackdrop(
-                        playback = sharedPlayerPlayback,
+                        mediaItem = sharedPlayerItem,
                         enabled = coverBackgroundEnabled,
                         clarity = coverBackgroundClarity,
                         artworkAlignment = sharedPlayerBackdropAlignment

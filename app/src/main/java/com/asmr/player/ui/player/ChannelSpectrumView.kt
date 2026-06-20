@@ -211,11 +211,13 @@ class ChannelSpectrumView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         (parent as? android.view.ViewGroup)?.clipChildren = false
+        StereoSpectrumBus.registerCaptureConsumer()
         start()
     }
 
     override fun onDetachedFromWindow() {
         stop()
+        StereoSpectrumBus.unregisterCaptureConsumer()
         super.onDetachedFromWindow()
     }
 

@@ -37,11 +37,15 @@ fun CoverArtworkBackground(
         coverArtworkBackdropStyle(clarity = clarity, isDark = isDark)
     }
 
+    Box(modifier = Modifier.fillMaxSize().background(overlayBaseColor))
+
     // Keep the backdrop anchored to the extracted cover hue, but keep the base veil lighter.
     val baseBackdropColor = remember(style.baseTintAlpha, overlayBaseColor, tintBaseColor) {
         tintBaseColor.copy(alpha = style.baseTintAlpha).compositeOver(overlayBaseColor)
     }
-    Box(modifier = Modifier.fillMaxSize().background(baseBackdropColor))
+    if (style.baseTintAlpha > 0f) {
+        Box(modifier = Modifier.fillMaxSize().background(baseBackdropColor))
+    }
 
     val artworkModifier = remember(style.blurDp) {
         if (style.blurDp.value <= 0f) {
@@ -58,7 +62,7 @@ fun CoverArtworkBackground(
         }
     }
 
-    if (artworkModel != null) {
+    if (artworkModel != null && style.artworkAlpha > 0f) {
         AsmrAsyncImage(
             model = artworkModel,
             contentDescription = null,
@@ -70,8 +74,12 @@ fun CoverArtworkBackground(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(overlayBaseColor.copy(alpha = style.overlayAlpha)))
-    Box(modifier = Modifier.fillMaxSize().background(tintBaseColor.copy(alpha = style.tintAlpha)))
+    if (style.overlayAlpha > 0f) {
+        Box(modifier = Modifier.fillMaxSize().background(overlayBaseColor.copy(alpha = style.overlayAlpha)))
+    }
+    if (style.tintAlpha > 0f) {
+        Box(modifier = Modifier.fillMaxSize().background(tintBaseColor.copy(alpha = style.tintAlpha)))
+    }
 
     if (style.scrimAlpha > 0f) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = style.scrimAlpha)))
@@ -109,7 +117,7 @@ internal fun coverArtworkBackdropStyle(
             start = if (isDark) 0.10f else 0.08f,
             end = if (isDark) 0.98f else 0.99f,
             fraction = reveal
-        ),
+        ).takeIf { normalized > 0f } ?: 0f,
         overlayAlpha = lerpFloat(
             start = if (isDark) 0.04f else 0.02f,
             end = if (isDark) 0f else 0f,

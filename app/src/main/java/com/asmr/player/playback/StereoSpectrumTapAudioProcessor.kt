@@ -27,7 +27,7 @@ class StereoSpectrumTapAudioProcessor(
     override fun queueInput(inputBuffer: ByteBuffer) {
         if (!inputBuffer.hasRemaining()) return
 
-        if (tapEnabled) {
+        if (tapEnabled && StereoSpectrumBus.captureActive) {
             val start = inputBuffer.position()
             val end = inputBuffer.limit()
 

@@ -8,10 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -666,9 +666,9 @@ private fun DlsiteRecommendationsLoadingBlocks() {
     }
 }
 
-private val DlsiteSectionPlacementSpring = spring<IntOffset>(
-    dampingRatio = Spring.DampingRatioLowBouncy,
-    stiffness = Spring.StiffnessLow
+private val DlsiteSectionPlacementTweenSpec = tween<IntOffset>(
+    durationMillis = 280,
+    easing = FastOutSlowInEasing
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -677,8 +677,8 @@ private fun LazyItemScope.dlsiteAnimatedSectionModifier(
     animateIntro: Boolean = true
 ): Modifier {
     if (!animateIntro) return modifier
-    return dlsiteElasticItemModifier(
-        modifier = modifier.animateItemPlacement(animationSpec = DlsiteSectionPlacementSpring),
+    return dlsiteSectionRevealModifier(
+        modifier = modifier.animateItemPlacement(animationSpec = DlsiteSectionPlacementTweenSpec),
         enabled = true
     )
 }

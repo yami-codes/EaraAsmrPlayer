@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -190,13 +191,13 @@ private const val AlbumDetailHeroFlingOvershootPortion = 0.24f
 private const val AlbumDetailHeroFlingOvershootMaxPortion = 0.14f
 private const val AlbumDetailHeroFlingApproachMillis = 560
 private const val AlbumDetailHeroFlingSettleMillis = 980
-private const val AlbumDetailRevealSettleMs = 760L
+private const val AlbumDetailRevealSettleMs = 420L
 private const val AlbumDetailHeroTitleRevealDelayMs = 120
 private const val AlbumDetailHeroMetaRevealDelayMs = 280
 private const val AlbumDetailCvRevealDelayMs = 220
 private const val AlbumDetailTagsRevealDelayMs = 360
 private const val AlbumDetailActionsRevealDelayMs = 500
-private const val AlbumDetailHeaderMotionSettleMs = 940L
+private const val AlbumDetailHeaderMotionSettleMs = 520L
 internal val AlbumDetailHorizontalPadding = 8.dp
 
 private val AlbumDetailHeroBounceBackSpec = spring<Float>(
@@ -204,9 +205,14 @@ private val AlbumDetailHeroBounceBackSpec = spring<Float>(
     stiffness = Spring.StiffnessLow
 )
 
-private val AlbumHeaderEnterFloatSpec = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessVeryLow
+private val AlbumHeaderEnterTweenSpec = tween<Float>(
+    durationMillis = 320,
+    easing = FastOutLinearInEasing
+)
+
+private val AlbumHeaderExpandTweenSpec = tween<IntSize>(
+    durationMillis = 320,
+    easing = FastOutLinearInEasing
 )
 
 private val AlbumHeaderActionMorphSpec = spring<Float>(
@@ -214,17 +220,17 @@ private val AlbumHeaderActionMorphSpec = spring<Float>(
     stiffness = Spring.StiffnessMediumLow
 )
 
-private val DlsiteElasticResizeSpring = spring<IntSize>(
-    dampingRatio = Spring.DampingRatioLowBouncy,
-    stiffness = Spring.StiffnessLow
+private val DlsiteSectionResizeTweenSpec = tween<IntSize>(
+    durationMillis = 280,
+    easing = FastOutSlowInEasing
 )
 
-internal fun dlsiteElasticItemModifier(
+internal fun dlsiteSectionRevealModifier(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ): Modifier {
     return if (enabled) {
-        modifier.animateContentSize(animationSpec = DlsiteElasticResizeSpring)
+        modifier.animateContentSize(animationSpec = DlsiteSectionResizeTweenSpec)
     } else {
         modifier
     }
@@ -1451,7 +1457,7 @@ private fun AlbumHeader(
     var languageMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
-        modifier = dlsiteElasticItemModifier(
+        modifier = dlsiteSectionRevealModifier(
             modifier = headerContainerModifier,
             enabled = animateIntro && !headerIntroPlayed && !headerHasDeferredMeta
         )
@@ -1970,12 +1976,12 @@ private fun AlbumHeaderInfoReveal(
     }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = AlbumHeaderEnterFloatSpec,
+        animationSpec = AlbumHeaderEnterTweenSpec,
         label = "albumHeaderInfoAlpha"
     )
     val offsetYProgress by animateFloatAsState(
         targetValue = if (visible) 0f else 1f,
-        animationSpec = AlbumHeaderEnterFloatSpec,
+        animationSpec = AlbumHeaderEnterTweenSpec,
         label = "albumHeaderInfoOffsetY"
     )
     val density = LocalDensity.current
@@ -1997,18 +2003,12 @@ private fun AlbumHeaderInfoReveal(
     // 但避免再叠加父级 animateContentSize，减少同一尺寸变化被双重动画驱动。
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(animationSpec = tween(durationMillis = 420)) + expandVertically(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
+        enter = fadeIn(animationSpec = AlbumHeaderEnterTweenSpec) + expandVertically(
+            animationSpec = AlbumHeaderExpandTweenSpec,
             expandFrom = Alignment.Top
         ),
         exit = fadeOut(animationSpec = tween(durationMillis = 120)) + shrinkVertically(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            ),
+            animationSpec = tween(durationMillis = 160, easing = FastOutLinearInEasing),
             shrinkTowards = Alignment.Top
         )
     ) {

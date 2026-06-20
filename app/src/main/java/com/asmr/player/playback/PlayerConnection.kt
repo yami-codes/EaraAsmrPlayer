@@ -96,6 +96,7 @@ class PlayerConnection @Inject constructor(
     private val meteredWarnedMediaIds = LinkedHashSet<String>()
     private var lastMeteredWarnAtMs: Long = 0L
     private val connectMutex = Mutex()
+    private var videoSurfaceVisible: Boolean = false
     @Volatile private var reconnecting = false
 
     val appVolumePercent: StateFlow<Int> = settingsRepository.appVolumePercent
@@ -160,7 +161,7 @@ class PlayerConnection @Inject constructor(
                         }
                     }
 
-                    _snapshot.value = _snapshot.value.copy(
+                    updateSnapshotIfChanged(
                         positionMs = c.currentPosition.coerceAtLeast(0L),
                         durationMs = duration,
                         audioSessionId = sessionId,
@@ -170,7 +171,7 @@ class PlayerConnection @Inject constructor(
 
                     applySliceLoopIfNeeded(c)
                 }
-                delay(250)
+                delay(resolvePositionPollIntervalMs())
             }
         }
         scope.launch {
@@ -731,6 +732,14 @@ class PlayerConnection @Inject constructor(
         sendCustomCommand("RELOAD_LYRICS", android.os.Bundle.EMPTY)
     }
 
+    fun setVideoSurfaceVisible(visible: Boolean) {
+        videoSurfaceVisible = visible
+        sendCustomCommand(
+            "SET_VIDEO_SURFACE_VISIBLE",
+            android.os.Bundle().apply { putBoolean("visible", visible) }
+        )
+    }
+
     fun setAppVolumePercent(percent: Int) {
         scope.launch {
             settingsRepository.setAppVolumePercent(percent)
@@ -746,6 +755,45 @@ class PlayerConnection @Inject constructor(
     private fun updateQueue() {
         val c = controller ?: return
         _queue.value = (0 until c.mediaItemCount).map { idx -> c.getMediaItemAt(idx) }
+    }
+
+    private fun updateSnapshotIfChanged(
+        positionMs: Long,
+        durationMs: Long,
+        audioSessionId: Int,
+        playbackSpeed: Float,
+        playbackPitch: Float
+    ) {
+        val current = _snapshot.value
+        if (
+            current.positionMs == positionMs &&
+            current.durationMs == durationMs &&
+            current.audioSessionId == audioSessionId &&
+            current.playbackSpeed == playbackSpeed &&
+            current.playbackPitch == playbackPitch
+        ) {
+            return
+        }
+
+        _snapshot.value = current.copy(
+            positionMs = positionMs,
+            durationMs = durationMs,
+            audioSessionId = audioSessionId,
+            playbackSpeed = playbackSpeed,
+            playbackPitch = playbackPitch
+        )
+    }
+
+    private fun resolvePositionPollIntervalMs(): Long {
+        val snapshot = _snapshot.value
+        if (slicePlaybackController.sliceModeEnabled.value || slicePlaybackController.previewSlice.value != null) {
+            return 250L
+        }
+        return if (snapshot.currentMediaItem.isVideoMediaItem() && !videoSurfaceVisible) {
+            1_000L
+        } else {
+            250L
+        }
     }
 
     private fun applySliceLoopIfNeeded(c: MediaController) {
@@ -811,6 +859,20 @@ private fun Player.toSnapshot(
         durationMs = duration.coerceAtLeast(0L),
         audioSessionId = audioSessionId
     )
+}
+
+private fun MediaItem?.isVideoMediaItem(): Boolean {
+    val item = this ?: return false
+    val uriString = item.localConfiguration?.uri?.toString().orEmpty()
+    val mime = item.localConfiguration?.mimeType.orEmpty()
+    val ext = uriString
+        .substringBefore('#')
+        .substringBefore('?')
+        .substringAfterLast('.', "")
+        .lowercase()
+    return item.mediaMetadata.extras?.getBoolean("is_video") == true ||
+        mime.startsWith("video/") ||
+        ext in setOf("mp4", "m4v", "webm", "mkv", "mov")
 }
 
 private data class PlaybackStateKey(

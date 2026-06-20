@@ -259,7 +259,11 @@ class MainActivity : ComponentActivity() {
                     .map { it.currentMediaItem.toThemeMediaSource() }
                     .distinctUntilChanged()
             }.collectAsState(initial = ThemeMediaSource())
-            val playbackSnapshot by playerViewModel.playback.collectAsState()
+            val playbackRestoreResolved by remember(playerViewModel) {
+                playerViewModel.playback
+                    .map { it.startupRestoreResolved }
+                    .distinctUntilChanged()
+            }.collectAsState(initial = false)
             val systemDark = isSystemInDarkTheme()
             val themePref = themeBootstrap.theme
             val mode = resolveThemeMode(themePref = themePref, systemDark = systemDark)
@@ -315,14 +319,14 @@ class MainActivity : ComponentActivity() {
             }
             val bootstrapDynamicHueSeedArgb = remember(
                 globalDynamicHueEnabled,
-                playbackSnapshot.startupRestoreResolved,
+                playbackRestoreResolved,
                 activeSourceKey,
                 themeBootstrap.lastDynamicHueSourceKey,
                 themeBootstrap.lastDynamicHueSeedArgb
             ) {
                 resolveBootstrapDynamicHueSeedArgb(
                     dynamicHueEnabled = globalDynamicHueEnabled,
-                    playbackRestoreResolved = playbackSnapshot.startupRestoreResolved,
+                    playbackRestoreResolved = playbackRestoreResolved,
                     currentSourceKey = activeSourceKey,
                     persistedSourceKey = themeBootstrap.lastDynamicHueSourceKey,
                     persistedSeedArgb = themeBootstrap.lastDynamicHueSeedArgb
@@ -349,16 +353,18 @@ class MainActivity : ComponentActivity() {
             val dynamicFallbackHue = remember(baseStaticHue, bootstrapDynamicHue) {
                 bootstrapDynamicHue ?: baseStaticHue
             }
-            if (isVideo && artworkUri == null) {
-                PrewarmDynamicHuePaletteFromVideoFrame(
-                    videoUri = videoUri,
-                    fallbackHue = dynamicFallbackHue
-                )
-            } else {
-                PrewarmDynamicHuePalette(
-                    artworkModel = artworkUri,
-                    fallbackHue = dynamicFallbackHue
-                )
+            if (globalDynamicHueEnabled) {
+                if (isVideo && artworkUri == null) {
+                    PrewarmDynamicHuePaletteFromVideoFrame(
+                        videoUri = videoUri,
+                        fallbackHue = dynamicFallbackHue
+                    )
+                } else {
+                    PrewarmDynamicHuePalette(
+                        artworkModel = artworkUri,
+                        fallbackHue = dynamicFallbackHue
+                    )
+                }
             }
             val globalHue = if (globalDynamicHueEnabled) {
                 val state = if (isVideo && artworkUri == null) {
@@ -409,7 +415,7 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(
                 globalDynamicHueEnabled,
-                playbackSnapshot.startupRestoreResolved,
+                playbackRestoreResolved,
                 activeSourceKey,
                 themeBootstrap.lastDynamicHueSourceKey,
                 themeBootstrap.lastDynamicHueSeedArgb
@@ -417,7 +423,7 @@ class MainActivity : ComponentActivity() {
                 if (
                     shouldClearPersistedDynamicHueSeed(
                         dynamicHueEnabled = globalDynamicHueEnabled,
-                        playbackRestoreResolved = playbackSnapshot.startupRestoreResolved,
+                        playbackRestoreResolved = playbackRestoreResolved,
                         currentSourceKey = activeSourceKey,
                         persistedSourceKey = themeBootstrap.lastDynamicHueSourceKey,
                         persistedSeedArgb = themeBootstrap.lastDynamicHueSeedArgb
