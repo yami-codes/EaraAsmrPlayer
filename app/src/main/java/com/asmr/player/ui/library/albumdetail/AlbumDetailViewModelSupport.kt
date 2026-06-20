@@ -321,18 +321,6 @@ internal data class AsmrOneLeafDownload(
     val duration: Double?
 )
 
-internal suspend fun fetchAsmrOneTracksBackendFirst(
-    workId: String,
-    fetchBackend: suspend (String) -> List<AsmrOneTrackNodeResponse>,
-    fetchFallback: suspend (String) -> List<AsmrOneTrackNodeResponse>
-): List<AsmrOneTrackNodeResponse> {
-    val normalizedId = workId.trim()
-    if (normalizedId.isBlank()) return emptyList()
-    val backendTree = runCatching { fetchBackend(normalizedId) }.getOrDefault(emptyList())
-    if (backendTree.isNotEmpty()) return backendTree
-    return runCatching { fetchFallback(normalizedId) }.getOrDefault(emptyList())
-}
-
 internal const val DlsiteTrialDownloadDirectoryName = "体验版"
 
 internal fun flattenAsmrOneTracks(tree: List<AsmrOneTrackNodeResponse>): List<Track> {

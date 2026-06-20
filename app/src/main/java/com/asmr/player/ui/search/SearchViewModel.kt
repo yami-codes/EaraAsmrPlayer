@@ -691,7 +691,7 @@ class SearchViewModel @Inject constructor(
         return Album(
             title = title.trim().ifBlank { normalizedRj.ifBlank { "已收录作品" } },
             path = "",
-            workId = workId.takeIf { it > 0 }?.toString().orEmpty().ifBlank { normalizedRj },
+            workId = normalizedRj,
             rjCode = normalizedRj,
             circle = circle.trim(),
             cv = cvs.orEmpty()

@@ -56,7 +56,6 @@ object AlbumCoverHintStore {
         dlCount: Int = 0,
         priceJpy: Int = 0,
         hasAsmrOne: Boolean = false,
-        asmrOneWorkId: String? = null,
         description: String? = null,
         hasResolvedDlsiteInfo: Boolean = false
     ) {
@@ -76,7 +75,6 @@ object AlbumCoverHintStore {
             dlCount = dlCount.coerceAtLeast(0),
             priceJpy = priceJpy.coerceAtLeast(0),
             hasAsmrOne = hasAsmrOne,
-            asmrOneWorkId = asmrOneWorkId?.trim().orEmpty(),
             description = description?.trim().orEmpty(),
             hasResolvedDlsiteInfo = hasResolvedDlsiteInfo
         )
@@ -117,7 +115,6 @@ data class AlbumCoverHint(
     val dlCount: Int,
     val priceJpy: Int,
     val hasAsmrOne: Boolean,
-    val asmrOneWorkId: String,
     val description: String,
     val hasResolvedDlsiteInfo: Boolean
 ) {
@@ -134,7 +131,6 @@ data class AlbumCoverHint(
             dlCount <= 0 &&
             priceJpy <= 0 &&
             !hasAsmrOne &&
-            asmrOneWorkId.isBlank() &&
             description.isBlank()
     }
 }
@@ -144,7 +140,7 @@ internal fun albumFromCoverHint(rj: String, hint: AlbumCoverHint?): Album {
     return Album(
         title = hint?.title?.ifBlank { normalizedRj }.orEmpty().ifBlank { "专辑" },
         path = "",
-        workId = hint?.asmrOneWorkId?.ifBlank { normalizedRj }.orEmpty().ifBlank { normalizedRj },
+        workId = normalizedRj,
         rjCode = normalizedRj,
         circle = hint?.circle.orEmpty(),
         cv = hint?.cv.orEmpty(),

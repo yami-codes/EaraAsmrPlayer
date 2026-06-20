@@ -1709,7 +1709,6 @@ fun MainContainer(
                                                         dlCount = album.dlCount,
                                                         priceJpy = album.priceJpy,
                                                         hasAsmrOne = album.hasAsmrOne,
-                                                        asmrOneWorkId = album.workId.takeIf { album.hasAsmrOne },
                                                         description = album.description,
                                                         hasResolvedDlsiteInfo = hasResolvedDetail && !fromPurchasedOnly
                                                     )
@@ -1742,7 +1741,6 @@ fun MainContainer(
                                                         dlCount = album.dlCount,
                                                         priceJpy = album.priceJpy,
                                                         hasAsmrOne = album.hasAsmrOne,
-                                                        asmrOneWorkId = album.workId.takeIf { album.hasAsmrOne },
                                                         description = album.description,
                                                         hasResolvedDlsiteInfo = true
                                                     )
