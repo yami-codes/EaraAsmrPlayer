@@ -140,6 +140,7 @@ import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.ImagePreviewDialog
 import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.collapsibleHeaderUiState
+import com.asmr.player.ui.common.consumeTapThrough
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.theme.AsmrTheme
@@ -627,6 +628,12 @@ fun AlbumDetailScreen(
                                 .clipToBounds()
                                 .zIndex(0f)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .consumeTapThrough()
+                            )
+
                             AlbumDetailHeroBackground(
                                 album = activeHeroAlbum,
                                 coverSessionKey = screenKey,
@@ -1053,6 +1060,11 @@ private fun AlbumDetailHeroBackground(
             }
             .clipToBounds()
     ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .consumeTapThrough()
+        )
         AsmrAsyncImage(
             model = imageModel,
             contentDescription = null,

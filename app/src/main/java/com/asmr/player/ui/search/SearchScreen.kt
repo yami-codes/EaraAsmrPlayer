@@ -108,6 +108,7 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.clearFocusOnTapOutside
 import com.asmr.player.ui.common.collapsibleHeaderUiState
+import com.asmr.player.ui.common.consumeTapThrough
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
@@ -186,16 +187,6 @@ internal fun resolveSearchChromeLockState(uiState: SearchUiState): SearchChromeL
         showSearchSpinner = interactionLocked
     )
 }
-
-private fun Modifier.consumeTapThrough(): Modifier =
-    pointerInput(Unit) {
-        awaitEachGesture {
-            do {
-                val event = awaitPointerEvent()
-                event.changes.forEach { change -> change.consume() }
-            } while (event.changes.any { it.pressed })
-        }
-    }
 
 @Composable
 private fun SearchFilterIconView(
