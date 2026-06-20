@@ -20,6 +20,7 @@ class AlbumCoverHintStoreTest {
             dlCount = 1200,
             priceJpy = 990,
             hasAsmrOne = true,
+            asmrOneWorkId = "1583603",
             description = "简介",
             hasResolvedDlsiteInfo = true
         )
@@ -27,6 +28,7 @@ class AlbumCoverHintStoreTest {
         val album = albumFromCoverHint("", hint)
 
         assertEquals("RJ123456", album.rjCode)
+        assertEquals("1583603", album.workId)
         assertEquals("Alice, Bob", album.cv)
         assertEquals(listOf("耳语", "安眠"), album.tags)
         assertEquals(4.8, album.ratingValue ?: 0.0, 0.0)
