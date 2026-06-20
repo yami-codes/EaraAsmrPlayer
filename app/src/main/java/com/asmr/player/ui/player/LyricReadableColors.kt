@@ -65,7 +65,7 @@ private fun inactiveLyricTextColor(
     fallback: Color
 ): Color {
     val lightGrayCandidate = Color(0xFFD7DCE4)
-    val darkGrayCandidate = Color(0xFF58606C)
+    val darkGrayCandidate = Color(0xFF3E4651)
     return if (activeText.luminance() > 0.5f) {
         lightGrayCandidate
     } else if (activeText.luminance() < 0.2f) {
