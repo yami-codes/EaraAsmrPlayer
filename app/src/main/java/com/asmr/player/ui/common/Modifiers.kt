@@ -59,6 +59,16 @@ fun Modifier.glassMenu(
     .background(color = baseColor, shape = shape)
     .clip(shape)
 
+fun Modifier.consumeTapThrough(): Modifier =
+    pointerInput(Unit) {
+        awaitEachGesture {
+            do {
+                val event = awaitPointerEvent()
+                event.changes.forEach { change -> change.consume() }
+            } while (event.changes.any { it.pressed })
+        }
+    }
+
 @Composable
 fun Modifier.clearFocusOnTapOutside(): Modifier {
     val focusManager = LocalFocusManager.current
