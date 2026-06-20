@@ -253,6 +253,12 @@ internal fun ArtworkBox(
 ) {
     val shape = RoundedCornerShape(28.dp)
     val hasArtwork = metadata?.artworkUri != null
+    val videoSurfaceHandle = remember(viewModel) {
+        VideoSurfaceVisibilityHandle { visible -> viewModel.setVideoSurfaceVisible(visible) }
+    }
+    DisposableEffect(videoSurfaceHandle) {
+        onDispose { videoSurfaceHandle.releaseAll() }
+    }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -271,6 +277,8 @@ internal fun ArtworkBox(
             if (!fullscreen) {
                 NowPlayingVideoPlayer(
                     player = player,
+                    onSurfaceVisible = videoSurfaceHandle::acquire,
+                    onSurfaceHidden = videoSurfaceHandle::release,
                     fullscreen = false,
                     onToggleFullscreen = { fullscreen = true },
                     viewKey = "inline",
@@ -288,6 +296,8 @@ internal fun ArtworkBox(
                 ) {
                     NowPlayingVideoPlayer(
                         player = player,
+                        onSurfaceVisible = videoSurfaceHandle::acquire,
+                        onSurfaceHidden = videoSurfaceHandle::release,
                         fullscreen = true,
                         onToggleFullscreen = { fullscreen = false },
                         viewKey = "fullscreen",
@@ -336,6 +346,8 @@ internal fun ArtworkBox(
 @Composable
 private fun NowPlayingVideoPlayer(
     player: Player?,
+    onSurfaceVisible: () -> Unit,
+    onSurfaceHidden: () -> Unit,
     fullscreen: Boolean,
     onToggleFullscreen: () -> Unit,
     viewKey: String,
@@ -343,10 +355,12 @@ private fun NowPlayingVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     var playerView by remember { mutableStateOf<PlayerView?>(null) }
-    DisposableEffect(viewKey) {
+    DisposableEffect(viewKey, player) {
+        if (player != null) onSurfaceVisible()
         onDispose {
             playerView?.player = null
             playerView = null
+            if (player != null) onSurfaceHidden()
         }
     }
 
@@ -364,12 +378,15 @@ private fun NowPlayingVideoPlayer(
                         pv.useController = false
                         pv.player = player
                         pv.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        pv.setBackgroundColor(backdropColor.toArgb())
                         pv.setShutterBackgroundColor(backdropColor.toArgb())
                         playerView = pv
                     }
                 },
                 update = { view ->
                     if (view.player !== player) view.player = player
+                    view.setBackgroundColor(backdropColor.toArgb())
+                    view.setShutterBackgroundColor(backdropColor.toArgb())
                 }
             )
         }
@@ -387,6 +404,29 @@ private fun NowPlayingVideoPlayer(
                 tint = Color.White
             )
         }
+    }
+}
+
+private class VideoSurfaceVisibilityHandle(
+    private val onVisibleChanged: (Boolean) -> Unit
+) {
+    private var visibleCount = 0
+
+    fun acquire() {
+        visibleCount += 1
+        if (visibleCount == 1) onVisibleChanged(true)
+    }
+
+    fun release() {
+        if (visibleCount <= 0) return
+        visibleCount -= 1
+        if (visibleCount == 0) onVisibleChanged(false)
+    }
+
+    fun releaseAll() {
+        if (visibleCount == 0) return
+        visibleCount = 0
+        onVisibleChanged(false)
     }
 }
 

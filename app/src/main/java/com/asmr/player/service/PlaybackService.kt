@@ -20,6 +20,7 @@ import android.util.Log
 import androidx.core.app.TaskStackBuilder
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -136,6 +137,7 @@ class PlaybackService : MediaSessionService() {
     private var hasAudioFocus: Boolean = false
     private var notificationProvider: LyricMediaNotificationProvider? = null
     private var sfwHideSystemControlsEnabled: Boolean = false
+    private var videoSurfaceVisible: Boolean = false
 
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -316,6 +318,7 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+        applyVideoSurfaceVisibility()
 
         spectrumAnalyzer.start()
 
@@ -354,6 +357,7 @@ class PlaybackService : MediaSessionService() {
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                 serviceScope.launch { updateArtworkForCurrentMedia() }
                 serviceScope.launch { loadLyricsForCurrentMedia() }
+                applyVideoSurfaceVisibility()
                 if (exoPlayer.isPlaying) {
                     markCurrentAlbumPlayed()
                 }
@@ -765,6 +769,7 @@ class PlaybackService : MediaSessionService() {
                             .add(androidx.media3.session.SessionCommand("GET_AUDIO_SESSION_ID", android.os.Bundle.EMPTY))
                             .add(androidx.media3.session.SessionCommand("UPDATE_SESSION_EQ", android.os.Bundle.EMPTY))
                             .add(androidx.media3.session.SessionCommand("RELOAD_LYRICS", android.os.Bundle.EMPTY))
+                            .add(androidx.media3.session.SessionCommand("SET_VIDEO_SURFACE_VISIBLE", android.os.Bundle.EMPTY))
                             .build()
                     }
                     val playerCommands = if (
@@ -868,11 +873,50 @@ class PlaybackService : MediaSessionService() {
                                 androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS, android.os.Bundle.EMPTY)
                             )
                         }
+
+                        "SET_VIDEO_SURFACE_VISIBLE" -> {
+                            setVideoSurfaceVisible(args.getBoolean("visible", false))
+                            return com.google.common.util.concurrent.Futures.immediateFuture(
+                                androidx.media3.session.SessionResult(androidx.media3.session.SessionResult.RESULT_SUCCESS, android.os.Bundle.EMPTY)
+                            )
+                        }
                     }
                     return super.onCustomCommand(session, controller, customCommand, args)
                 }
             })
             .build()
+    }
+
+    private fun setVideoSurfaceVisible(visible: Boolean) {
+        if (videoSurfaceVisible == visible) return
+        videoSurfaceVisible = visible
+        applyVideoSurfaceVisibility()
+    }
+
+    private fun applyVideoSurfaceVisibility() {
+        val item = exoPlayer.currentMediaItem
+        val videoActive = videoSurfaceVisible && item.isVideoMediaItem()
+        val params = exoPlayer.trackSelectionParameters
+        val updated = params.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !videoActive)
+            .build()
+        if (updated != params) {
+            exoPlayer.trackSelectionParameters = updated
+        }
+    }
+
+    private fun MediaItem?.isVideoMediaItem(): Boolean {
+        val item = this ?: return false
+        val uriString = item.localConfiguration?.uri?.toString().orEmpty()
+        val mime = item.localConfiguration?.mimeType.orEmpty()
+        val ext = uriString
+            .substringBefore('#')
+            .substringBefore('?')
+            .substringAfterLast('.', "")
+            .lowercase()
+        return item.mediaMetadata.extras?.getBoolean("is_video") == true ||
+            mime.startsWith("video/") ||
+            ext in setOf("mp4", "m4v", "webm", "mkv", "mov")
     }
 
     private fun refreshMediaNotificationControllerRegistration() {

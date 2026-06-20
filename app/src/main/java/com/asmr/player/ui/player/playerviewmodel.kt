@@ -70,7 +70,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val ONLINE_MANUAL_LYRICS_MESSAGE = "\u5728\u7ebf\u97f3\u9891\u5982\u9700\u66ff\u6362\u6b4c\u8bcd\uff0c\u8bf7\u5148\u4e0b\u8f7d\u97f3\u9891\u5230\u672c\u5730"
+private const val ONLINE_MANUAL_LYRICS_MESSAGE = "在线音频如需替换歌词，请先下载音频到本地"
 
 @HiltViewModel
 @OptIn(FlowPreview::class)
@@ -257,15 +257,16 @@ class PlayerViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            trackMediaIdFlow.collect { }
+            playback
+                .map { it.currentMediaItem }
+                .distinctUntilChanged { old, new -> old?.mediaId == new?.mediaId }
+                .collect { item ->
+                    handleListenTogetherState(
+                        mediaId = item?.mediaId?.takeIf { id -> id.isNotBlank() },
+                        item = item
+                    )
+                }
         }
-
-        viewModelScope.launch {
-            playback.collect { snapshot ->
-                handleListenTogetherState(snapshot)
-            }
-        }
-
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -394,7 +395,6 @@ class PlayerViewModel @Inject constructor(
     fun setPlaybackSpeed(speed: Float) = playerConnection.setPlaybackSpeed(speed)
     fun setPlaybackPitch(pitch: Float) = playerConnection.setPlaybackPitch(pitch)
     fun setPlaybackParameters(speed: Float, pitch: Float) = playerConnection.setPlaybackParameters(speed, pitch)
-
     fun setUserScrubbing(scrubbing: Boolean) {
         slicePlaybackController.setUserScrubbing(scrubbing)
     }
@@ -772,6 +772,10 @@ class PlayerViewModel @Inject constructor(
 
     fun playerOrNull(): Player? = playerConnection.getControllerOrNull()
 
+    fun setVideoSurfaceVisible(visible: Boolean) {
+        playerConnection.setVideoSurfaceVisible(visible)
+    }
+
     override fun onCleared() {
         listenTogetherSyncJob?.cancel()
         val identity = activeListenTogetherIdentity
@@ -810,8 +814,7 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private suspend fun handleListenTogetherState(snapshot: PlaybackSnapshot) {
-        val item = snapshot.currentMediaItem
+    private suspend fun handleListenTogetherState(mediaId: String?, item: MediaItem?) {
         if (item == null) {
             stopListenTogether(clearCount = true)
             listenTogetherLastFailedMediaId = null
@@ -827,7 +830,8 @@ class PlayerViewModel @Inject constructor(
         }
 
         val currentIdentity = activeListenTogetherIdentity
-        if (currentIdentity != null && currentIdentity.mediaId == item.mediaId) {
+        val itemMediaId = mediaId.orEmpty().ifBlank { item.mediaId }
+        if (currentIdentity != null && currentIdentity.mediaId == itemMediaId) {
             _listenTogetherUiState.value = _listenTogetherUiState.value.copy(
                 syncing = listenTogetherRepository.isBackendConfigured,
                 backendConfigured = listenTogetherRepository.isBackendConfigured,
@@ -840,7 +844,7 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
-        if (item.mediaId == listenTogetherLastFailedMediaId) {
+        if (itemMediaId == listenTogetherLastFailedMediaId) {
             _listenTogetherUiState.value = ListenTogetherUiState(
                 available = false,
                 listenerCount = null,
@@ -871,7 +875,7 @@ class PlayerViewModel @Inject constructor(
         }.getOrNull()
 
         if (identity == null) {
-            listenTogetherLastFailedMediaId = item.mediaId
+            listenTogetherLastFailedMediaId = itemMediaId
             _listenTogetherUiState.value = ListenTogetherUiState(
                 available = false,
                 listenerCount = null,

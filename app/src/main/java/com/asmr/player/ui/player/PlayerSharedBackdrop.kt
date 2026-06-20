@@ -4,12 +4,12 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import com.asmr.player.playback.PlaybackSnapshot
+import androidx.media3.common.MediaItem
 import com.asmr.player.ui.theme.AsmrTheme
 
 @Composable
 internal fun PlayerSharedBackdrop(
-    playback: PlaybackSnapshot,
+    mediaItem: MediaItem?,
     enabled: Boolean,
     clarity: Float,
     artworkAlignment: Alignment
@@ -17,22 +17,19 @@ internal fun PlayerSharedBackdrop(
     if (!enabled) return
 
     val colorScheme = AsmrTheme.colorScheme
-    val item = playback.currentMediaItem
-    val metadata = item?.mediaMetadata
-    val uriText = item?.localConfiguration?.uri?.toString().orEmpty()
-    val mimeType = item?.localConfiguration?.mimeType.orEmpty()
+    val metadata = mediaItem?.mediaMetadata
+    val uriText = mediaItem?.localConfiguration?.uri?.toString().orEmpty()
+    val mimeType = mediaItem?.localConfiguration?.mimeType.orEmpty()
     val ext = uriText.substringBefore('#').substringBefore('?').substringAfterLast('.', "").lowercase()
     val isVideo = metadata?.extras?.getBoolean("is_video") == true ||
         mimeType.startsWith("video/") ||
         ext in setOf("mp4", "m4v", "webm", "mkv", "mov")
 
-    if (isVideo) return
-
     val artworkModel = remember(metadata?.artworkUri) {
         sanitizeBackdropArtworkModel(metadata?.artworkUri)
     }
     val playerThemeColors = rememberPlayerThemeColors(
-        mediaItem = item,
+        mediaItem = mediaItem,
         colorScheme = colorScheme,
         coverBackgroundEnabled = enabled,
         transitionDurationMs = 0,
@@ -44,7 +41,7 @@ internal fun PlayerSharedBackdrop(
         enabled = enabled,
         clarity = clarity,
         overlayBaseColor = colorScheme.background,
-        tintBaseColor = playerThemeColors.backdropTintColor,
+        tintBaseColor = if (isVideo) playerThemeColors.videoBackdropColor else playerThemeColors.backdropTintColor,
         artworkAlignment = artworkAlignment,
         isDark = colorScheme.isDark
     )

@@ -6,16 +6,19 @@ import com.asmr.player.ui.player.isOnlineMedia
 import com.asmr.player.util.DlsiteWorkNo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@OptIn(FlowPreview::class)
 class ListeningTracker @Inject constructor(
     private val hotListeningApi: HotListeningApi
 ) {
@@ -28,6 +31,7 @@ class ListeningTracker @Inject constructor(
         stop()
         observationJob = scope.launch {
             playback
+                .sample(TrackerObservationIntervalMs)
                 .map { snapshot ->
                     val item = snapshot.currentMediaItem
                     val mediaId = item?.mediaId ?: ""
@@ -166,6 +170,7 @@ class ListeningTracker @Inject constructor(
 
     private companion object {
         private const val REPORT_THRESHOLD_MS = 30_000L
+        private const val TrackerObservationIntervalMs = 1_000L
     }
 }
 

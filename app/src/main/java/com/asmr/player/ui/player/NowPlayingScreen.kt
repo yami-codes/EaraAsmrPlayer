@@ -63,6 +63,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -116,11 +117,140 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private enum class NowPlayingSurfaceMode {
     PLAYER,
     LYRICS
+}
+
+private const val VideoProgressUiTickMs = 1_000L
+
+private data class NowPlayingStaticPlayback(
+    val isConnected: Boolean,
+    val startupRestoreResolved: Boolean,
+    val isPlaying: Boolean,
+    val playbackState: Int,
+    val repeatMode: Int,
+    val shuffleEnabled: Boolean,
+    val playbackSpeed: Float,
+    val playbackPitch: Float,
+    val currentMediaItem: MediaItem?,
+    val durationMs: Long,
+    val audioSessionId: Int
+) {
+    fun toSnapshot(positionMs: Long): PlaybackSnapshot {
+        return PlaybackSnapshot(
+            isConnected = isConnected,
+            startupRestoreResolved = startupRestoreResolved,
+            isPlaying = isPlaying,
+            playbackState = playbackState,
+            repeatMode = repeatMode,
+            shuffleEnabled = shuffleEnabled,
+            playbackSpeed = playbackSpeed,
+            playbackPitch = playbackPitch,
+            currentMediaItem = currentMediaItem,
+            positionMs = positionMs,
+            durationMs = durationMs,
+            audioSessionId = audioSessionId
+        )
+    }
+}
+
+private data class NowPlayingProgressState(
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L
+)
+
+private fun PlaybackSnapshot.toStaticPlayback(): NowPlayingStaticPlayback {
+    return NowPlayingStaticPlayback(
+        isConnected = isConnected,
+        startupRestoreResolved = startupRestoreResolved,
+        isPlaying = isPlaying,
+        playbackState = playbackState,
+        repeatMode = repeatMode,
+        shuffleEnabled = shuffleEnabled,
+        playbackSpeed = playbackSpeed,
+        playbackPitch = playbackPitch,
+        currentMediaItem = currentMediaItem,
+        durationMs = durationMs,
+        audioSessionId = audioSessionId
+    )
+}
+
+@Composable
+private fun PlaybackProgressContent(
+    viewModel: PlayerViewModel,
+    isVideo: Boolean,
+    content: @Composable (NowPlayingProgressState) -> Unit
+) {
+    val progressState by remember(viewModel, isVideo) {
+        viewModel.playback
+            .map { snapshot ->
+                val positionMs = if (isVideo) {
+                    (snapshot.positionMs / VideoProgressUiTickMs) * VideoProgressUiTickMs
+                } else {
+                    snapshot.positionMs
+                }
+                NowPlayingProgressState(positionMs, snapshot.durationMs)
+            }
+            .distinctUntilChanged()
+    }.collectAsState(initial = NowPlayingProgressState())
+
+    content(progressState)
+}
+
+private fun Modifier.fitVideoPreviewAspectRatio(
+    aspectRatio: Float,
+    maxWidth: Dp = Dp.Unspecified
+): Modifier {
+    val boundedModifier = if (maxWidth != Dp.Unspecified) {
+        this.widthIn(max = maxWidth)
+    } else {
+        this
+    }
+    return boundedModifier.layout { measurable, constraints ->
+        val ratio = aspectRatio
+            .takeIf { it.isFinite() && it > 0f }
+            ?.coerceIn(0.5f, 3f)
+            ?: (16f / 9f)
+        val hasBoundedWidth = constraints.maxWidth != androidx.compose.ui.unit.Constraints.Infinity
+        val hasBoundedHeight = constraints.maxHeight != androidx.compose.ui.unit.Constraints.Infinity
+        if (!hasBoundedWidth && !hasBoundedHeight) {
+            val placeable = measurable.measure(constraints)
+            return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
+
+        val availableWidth = when {
+            hasBoundedWidth -> constraints.maxWidth
+            hasBoundedHeight -> (constraints.maxHeight * ratio).roundToInt()
+            else -> constraints.minWidth
+        }.coerceAtLeast(1)
+        val availableHeight = when {
+            hasBoundedHeight -> constraints.maxHeight
+            hasBoundedWidth -> (constraints.maxWidth / ratio).roundToInt()
+            else -> constraints.minHeight
+        }.coerceAtLeast(1)
+
+        var width = availableWidth
+        var height = (width / ratio).roundToInt().coerceAtLeast(1)
+        if (height > availableHeight) {
+            height = availableHeight
+            width = (height * ratio).roundToInt().coerceAtLeast(1)
+        }
+
+        val placeable = measurable.measure(
+            androidx.compose.ui.unit.Constraints.fixed(
+                width = width.coerceAtMost(availableWidth),
+                height = height.coerceAtMost(availableHeight)
+            )
+        )
+        layout(placeable.width, placeable.height) {
+            placeable.place(0, 0)
+        }
+    }
 }
 
 private fun AnimatedContentTransitionScope<NowPlayingSurfaceMode>.nowPlayingSurfaceTransform(): ContentTransform {
@@ -414,7 +544,12 @@ internal fun NowPlayingScreen(
     enableStaggeredRouteEntry: Boolean = true,
     lyricsViewModel: LyricsViewModel = hiltViewModel()
 ) {
-    val playback by viewModel.playback.collectAsState()
+    val staticPlayback by remember(viewModel) {
+        viewModel.playback
+            .map { it.toStaticPlayback() }
+            .distinctUntilChanged()
+    }.collectAsState(initial = PlaybackSnapshot().toStaticPlayback())
+    val playback = staticPlayback.toSnapshot(positionMs = 0L)
     val resolvedDurationMs by viewModel.resolvedDurationMs.collectAsState()
     val sliceUiState by viewModel.sliceUiState.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsState()
@@ -439,16 +574,18 @@ internal fun NowPlayingScreen(
     val tagViewModel: NowPlayingTagViewModel = hiltViewModel()
     val tagDialog by tagViewModel.dialogState.collectAsState()
     val availableTags by tagViewModel.availableTags.collectAsState()
+    val playerArtworkBackdropEnabled = coverBackgroundEnabled && !isVideo
     val playerThemeColors = rememberPlayerThemeColors(
         mediaItem = item,
         colorScheme = colorScheme,
-        coverBackgroundEnabled = coverBackgroundEnabled
+        coverBackgroundEnabled = coverBackgroundEnabled,
+        artworkBackdropEnabled = playerArtworkBackdropEnabled
     )
     val accentColor = playerThemeColors.accentColor
     val lyricColors = rememberLyricReadableColors(
         accentColor = accentColor,
         backdropTintColor = playerThemeColors.backdropTintColor,
-        coverBackgroundEnabled = coverBackgroundEnabled,
+        coverBackgroundEnabled = playerArtworkBackdropEnabled,
         coverBackgroundClarity = coverBackgroundClarity
     )
     val onAccentColor = playerThemeColors.onAccentColor
@@ -534,12 +671,6 @@ internal fun NowPlayingScreen(
     val toggleSelectedSlice = { sliceId: Long ->
         viewModel.selectSlice(if (sliceUiState.selectedSliceId == sliceId) null else sliceId)
     }
-    val highlightedPlaybackSliceId = currentSliceIdForPosition(
-        positionMs = playback.positionMs,
-        slices = sliceUiState.slices,
-        sliceModeEnabled = sliceUiState.sliceModeEnabled
-    )
-    
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val widthClass = windowSizeClass.widthSizeClass
@@ -817,22 +948,43 @@ internal fun NowPlayingScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .widthIn(max = 420.dp)
-                                .aspectRatio(if (isVideo) videoAspectRatio else 1f)
-                                .then(coverMotion)
+                                .then(
+                                    if (isVideo) {
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                    } else {
+                                        Modifier
+                                            .widthIn(max = 420.dp)
+                                            .aspectRatio(1f)
+                                    }
+                                )
+                                .then(coverMotion),
+                            contentAlignment = Alignment.Center
                         ) {
-                            ArtworkBox(
-                                isVideo = isVideo,
-                                metadata = metadata,
-                                viewModel = viewModel,
-                                onOpenLyrics = showLyricsSurface,
-                                edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
-                                videoBackdropColor = videoBackdropColor,
-                                artworkAlignment = coverPreviewAlignment,
-                                dragPreviewEnabled = useDragPreview,
-                                dragPreviewState = coverDragPreviewState
-                            )
+                            Box(
+                                modifier = if (isVideo) {
+                                    Modifier.fitVideoPreviewAspectRatio(
+                                        aspectRatio = videoAspectRatio,
+                                        maxWidth = 420.dp
+                                    )
+                                } else {
+                                    Modifier.fillMaxSize()
+                                }
+                            ) {
+                                ArtworkBox(
+                                    isVideo = isVideo,
+                                    metadata = metadata,
+                                    viewModel = viewModel,
+                                    onOpenLyrics = showLyricsSurface,
+                                    edgeBlendEnabled = false,
+                                    edgeBlendColor = if (playerArtworkBackdropEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
+                                    videoBackdropColor = videoBackdropColor,
+                                    artworkAlignment = coverPreviewAlignment,
+                                    dragPreviewEnabled = useDragPreview,
+                                    dragPreviewState = coverDragPreviewState
+                                )
+                            }
                         }
                         
                         key(item?.mediaId) {
@@ -841,24 +993,26 @@ internal fun NowPlayingScreen(
                                     .fillMaxWidth()
                                     .then(progressMotion)
                             ) {
-                                PlayerProgress(
-                                    positionMs = playback.positionMs,
-                                    durationMs = progressDurationMs,
-                                    sliceUiState = sliceUiState,
-                                    onSeekTo = { viewModel.seekTo(it) },
-                                    onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
-                                    onScrubbingChanged = { viewModel.setUserScrubbing(it) },
-                                    onSelectSlice = { viewModel.selectSlice(it) },
-                                    onLongPressSlice = {
-                                        viewModel.selectSlice(it)
-                                        showSliceSheet = true
-                                    },
-                                    onUpdateSliceRange = { sliceId, startMs, endMs ->
-                                        viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
-                                    },
-                                    activeColor = accentColor,
-                                    inactiveColor = accentColor.copy(alpha = 0.2f)
-                                )
+                                PlaybackProgressContent(viewModel, isVideo) { progress ->
+                                    PlayerProgress(
+                                        positionMs = progress.positionMs,
+                                        durationMs = progressDurationMs,
+                                        sliceUiState = sliceUiState,
+                                        onSeekTo = { viewModel.seekTo(it) },
+                                        onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
+                                        onScrubbingChanged = { viewModel.setUserScrubbing(it) },
+                                        onSelectSlice = { viewModel.selectSlice(it) },
+                                        onLongPressSlice = {
+                                            viewModel.selectSlice(it)
+                                            showSliceSheet = true
+                                        },
+                                        onUpdateSliceRange = { sliceId, startMs, endMs ->
+                                            viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
+                                        },
+                                        activeColor = accentColor,
+                                        inactiveColor = accentColor.copy(alpha = 0.2f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -905,17 +1059,23 @@ internal fun NowPlayingScreen(
                                     }
                                 )
 
-                                AppleLyricsView(
-                                    lyrics = lyricsState.lyrics,
-                                    currentPosition = playback.positionMs,
-                                    onSeekTo = { viewModel.seekTo(it) },
-                                    onOpenLyrics = showLyricsSurface,
-                                    colors = lyricColors,
+                                Box(
                                     modifier = Modifier
                                         .weight(0.70f)
-                                        .fillMaxHeight(),
-                                    isLandscape = true
-                                )
+                                        .fillMaxHeight()
+                                ) {
+                                    PlaybackProgressContent(viewModel, isVideo) { progress ->
+                                        AppleLyricsView(
+                                            lyrics = lyricsState.lyrics,
+                                            currentPosition = progress.positionMs,
+                                            onSeekTo = { viewModel.seekTo(it) },
+                                            onOpenLyrics = showLyricsSurface,
+                                            colors = lyricColors,
+                                            modifier = Modifier.fillMaxSize(),
+                                            isLandscape = true
+                                        )
+                                    }
+                                }
 
                                 AndroidView(
                                     modifier = Modifier
@@ -1039,22 +1199,29 @@ internal fun NowPlayingScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .aspectRatio(if (isVideo) videoAspectRatio else 1f)
                                 .then(coverMotion),
                             contentAlignment = Alignment.Center
                         ) {
-                            ArtworkBox(
-                                isVideo = isVideo,
-                                metadata = metadata,
-                                viewModel = viewModel,
-                                onOpenLyrics = showLyricsSurface,
-                                edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
-                                videoBackdropColor = videoBackdropColor,
-                                artworkAlignment = coverPreviewAlignment,
-                                dragPreviewEnabled = useDragPreview,
-                                dragPreviewState = coverDragPreviewState
-                            )
+                            Box(
+                                modifier = if (isVideo) {
+                                    Modifier.fitVideoPreviewAspectRatio(videoAspectRatio)
+                                } else {
+                                    Modifier.aspectRatio(1f)
+                                }
+                            ) {
+                                ArtworkBox(
+                                    isVideo = isVideo,
+                                    metadata = metadata,
+                                    viewModel = viewModel,
+                                    onOpenLyrics = showLyricsSurface,
+                                    edgeBlendEnabled = false,
+                                    edgeBlendColor = if (playerArtworkBackdropEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
+                                    videoBackdropColor = videoBackdropColor,
+                                    artworkAlignment = coverPreviewAlignment,
+                                    dragPreviewEnabled = useDragPreview,
+                                    dragPreviewState = coverDragPreviewState
+                                )
+                            }
                         }
 
                         key(item?.mediaId) {
@@ -1063,24 +1230,26 @@ internal fun NowPlayingScreen(
                                     .fillMaxWidth()
                                     .then(progressMotion)
                             ) {
-                                PlayerProgress(
-                                    positionMs = playback.positionMs,
-                                    durationMs = progressDurationMs,
-                                    sliceUiState = sliceUiState,
-                                    onSeekTo = { viewModel.seekTo(it) },
-                                    onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
-                                    onScrubbingChanged = { viewModel.setUserScrubbing(it) },
-                                    onSelectSlice = { viewModel.selectSlice(it) },
-                                    onLongPressSlice = {
-                                        viewModel.selectSlice(it)
-                                        showSliceSheet = true
-                                    },
-                                    onUpdateSliceRange = { sliceId, startMs, endMs ->
-                                        viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
-                                    },
-                                    activeColor = accentColor,
-                                    inactiveColor = accentColor.copy(alpha = 0.2f)
-                                )
+                                PlaybackProgressContent(viewModel, isVideo) { progress ->
+                                    PlayerProgress(
+                                        positionMs = progress.positionMs,
+                                        durationMs = progressDurationMs,
+                                        sliceUiState = sliceUiState,
+                                        onSeekTo = { viewModel.seekTo(it) },
+                                        onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
+                                        onScrubbingChanged = { viewModel.setUserScrubbing(it) },
+                                        onSelectSlice = { viewModel.selectSlice(it) },
+                                        onLongPressSlice = {
+                                            viewModel.selectSlice(it)
+                                            showSliceSheet = true
+                                        },
+                                        onUpdateSliceRange = { sliceId, startMs, endMs ->
+                                            viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
+                                        },
+                                        activeColor = accentColor,
+                                        inactiveColor = accentColor.copy(alpha = 0.2f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1116,17 +1285,23 @@ internal fun NowPlayingScreen(
                                     }
                                 )
 
-                                AppleLyricsView(
-                                    lyrics = lyricsState.lyrics,
-                                    currentPosition = playback.positionMs,
-                                    onSeekTo = { viewModel.seekTo(it) },
-                                    onOpenLyrics = showLyricsSurface,
-                                    colors = lyricColors,
+                                Box(
                                     modifier = Modifier
                                         .weight(0.72f)
-                                        .fillMaxHeight(),
-                                    isLandscape = true
-                                )
+                                        .fillMaxHeight()
+                                ) {
+                                    PlaybackProgressContent(viewModel, isVideo) { progress ->
+                                        AppleLyricsView(
+                                            lyrics = lyricsState.lyrics,
+                                            currentPosition = progress.positionMs,
+                                            onSeekTo = { viewModel.seekTo(it) },
+                                            onOpenLyrics = showLyricsSurface,
+                                            colors = lyricColors,
+                                            modifier = Modifier.fillMaxSize(),
+                                            isLandscape = true
+                                        )
+                                    }
+                                }
 
                                 AndroidView(
                                     modifier = Modifier
@@ -1293,8 +1468,7 @@ internal fun NowPlayingScreen(
                                     if (isVideo) {
                                         Modifier
                                             .widthIn(max = if (widthClass == WindowWidthSizeClass.Compact) 1000.dp else 400.dp)
-                                            .fillMaxWidth()
-                                            .aspectRatio(videoAspectRatio)
+                                            .fitVideoPreviewAspectRatio(videoAspectRatio)
                                     } else {
                                         Modifier
                                             .fillMaxHeight()
@@ -1309,7 +1483,7 @@ internal fun NowPlayingScreen(
                                 viewModel = viewModel,
                                 onOpenLyrics = showLyricsSurface,
                                 edgeBlendEnabled = false,
-                                edgeBlendColor = if (coverBackgroundEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
+                                edgeBlendColor = if (playerArtworkBackdropEnabled) playerThemeColors.backdropTintColor else colorScheme.background,
                                 videoBackdropColor = videoBackdropColor,
                                 artworkAlignment = coverPreviewAlignment,
                                 dragPreviewEnabled = useDragPreview,
@@ -1319,15 +1493,17 @@ internal fun NowPlayingScreen(
                     }
 
                     if (!isVideo) {
-                        SingleLineLyrics(
-                            lyrics = lyricsState.lyrics,
-                            currentPosition = playback.positionMs,
-                            onOpenLyrics = showLyricsSurface,
-                            colors = lyricColors,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .then(lyricsMotion)
-                        )
+                        PlaybackProgressContent(viewModel, isVideo) { progress ->
+                            SingleLineLyrics(
+                                lyrics = lyricsState.lyrics,
+                                currentPosition = progress.positionMs,
+                                onOpenLyrics = showLyricsSurface,
+                                colors = lyricColors,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(lyricsMotion)
+                            )
+                        }
                     }
 
                     key(item?.mediaId) {
@@ -1336,24 +1512,26 @@ internal fun NowPlayingScreen(
                                 .fillMaxWidth()
                                 .then(progressMotion)
                         ) {
-                            PlayerProgress(
-                                positionMs = playback.positionMs,
-                                durationMs = progressDurationMs,
-                                sliceUiState = sliceUiState,
-                                onSeekTo = { viewModel.seekTo(it) },
-                                onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
-                                onScrubbingChanged = { viewModel.setUserScrubbing(it) },
-                                onSelectSlice = { viewModel.selectSlice(it) },
-                                onLongPressSlice = {
-                                    viewModel.selectSlice(it)
-                                    showSliceSheet = true
-                                },
-                                onUpdateSliceRange = { sliceId, startMs, endMs ->
-                                    viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
-                                },
-                                activeColor = accentColor,
-                                inactiveColor = accentColor.copy(alpha = 0.2f)
-                            )
+                            PlaybackProgressContent(viewModel, isVideo) { progress ->
+                                PlayerProgress(
+                                    positionMs = progress.positionMs,
+                                    durationMs = progressDurationMs,
+                                    sliceUiState = sliceUiState,
+                                    onSeekTo = { viewModel.seekTo(it) },
+                                    onCutPressed = { viewModel.onCutPressed(progressDurationMs) },
+                                    onScrubbingChanged = { viewModel.setUserScrubbing(it) },
+                                    onSelectSlice = { viewModel.selectSlice(it) },
+                                    onLongPressSlice = {
+                                        viewModel.selectSlice(it)
+                                        showSliceSheet = true
+                                    },
+                                    onUpdateSliceRange = { sliceId, startMs, endMs ->
+                                        viewModel.updateSliceRange(sliceId, startMs, endMs, progressDurationMs)
+                                    },
+                                    activeColor = accentColor,
+                                    inactiveColor = accentColor.copy(alpha = 0.2f)
+                                )
+                            }
                         }
                     }
 
@@ -1398,18 +1576,20 @@ internal fun NowPlayingScreen(
             }
             }
             } else {
-                NowPlayingLyricsSurface(
-                    isLandscape = isLandscape,
-                    playbackPositionMs = playback.positionMs,
-                    lyrics = lyricsState.lyrics,
-                    lyricColors = lyricColors,
-                    lyricsPageSettings = lyricsPageSettings,
-                    onSeekTo = { viewModel.seekTo(it) },
-                    onAddLyrics = openManualLyricsAction,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(routeTransition.nowPlayingMotionModifier(currentMotionLayout, NowPlayingMotionSlot.COVER))
-                )
+                PlaybackProgressContent(viewModel, isVideo) { progress ->
+                    NowPlayingLyricsSurface(
+                        isLandscape = isLandscape,
+                        playbackPositionMs = progress.positionMs,
+                        lyrics = lyricsState.lyrics,
+                        lyricColors = lyricColors,
+                        lyricsPageSettings = lyricsPageSettings,
+                        onSeekTo = { viewModel.seekTo(it) },
+                        onAddLyrics = openManualLyricsAction,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(routeTransition.nowPlayingMotionModifier(currentMotionLayout, NowPlayingMotionSlot.COVER))
+                    )
+                }
             }
                 }
             }
@@ -1458,22 +1638,29 @@ internal fun NowPlayingScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    SliceOverviewBar(
-                        positionMs = playback.positionMs,
-                        durationMs = progressDurationMs,
-                        slices = sliceUiState.slices,
-                        highlightedSliceId = highlightedPlaybackSliceId,
-                        selectedSliceId = sliceUiState.selectedSliceId,
-                        activeColor = accentColor,
-                        inactiveColor = accentColor.copy(alpha = 0.18f),
-                        onSeekTo = { viewModel.seekTo(it) },
-                        onSelectSlice = { id ->
-                            if (id == null) viewModel.selectSlice(null) else toggleSelectedSlice(id)
-                        },
-                        onLongPressSlice = { id ->
-                            toggleSelectedSlice(id)
-                        }
-                    )
+                    PlaybackProgressContent(viewModel, isVideo) { progress ->
+                        val highlightedPlaybackSliceId = currentSliceIdForPosition(
+                            positionMs = progress.positionMs,
+                            slices = sliceUiState.slices,
+                            sliceModeEnabled = sliceUiState.sliceModeEnabled
+                        )
+                        SliceOverviewBar(
+                            positionMs = progress.positionMs,
+                            durationMs = progressDurationMs,
+                            slices = sliceUiState.slices,
+                            highlightedSliceId = highlightedPlaybackSliceId,
+                            selectedSliceId = sliceUiState.selectedSliceId,
+                            activeColor = accentColor,
+                            inactiveColor = accentColor.copy(alpha = 0.18f),
+                            onSeekTo = { viewModel.seekTo(it) },
+                            onSelectSlice = { id ->
+                                if (id == null) viewModel.selectSlice(null) else toggleSelectedSlice(id)
+                            },
+                            onLongPressSlice = { id ->
+                                toggleSelectedSlice(id)
+                            }
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -1568,21 +1755,23 @@ internal fun NowPlayingScreen(
         if (edit != null) {
             val slice = sliceUiState.slices.firstOrNull { it.id == edit.first }
             if (slice != null) {
-                SliceTimeEditDialog(
-                    title = if (edit.second) "修改起点" else "修改终点",
-                    durationMs = progressDurationMs,
-                    currentMs = playback.positionMs,
-                    initialMs = if (edit.second) slice.startMs else slice.endMs,
-                    onDismiss = { timeEditTarget = null },
-                    onConfirm = { newMs ->
-                        if (edit.second) {
-                            viewModel.updateSliceRange(slice.id, newMs, slice.endMs, progressDurationMs)
-                        } else {
-                            viewModel.updateSliceRange(slice.id, slice.startMs, newMs, progressDurationMs)
+                PlaybackProgressContent(viewModel, isVideo) { progress ->
+                    SliceTimeEditDialog(
+                        title = if (edit.second) "修改起点" else "修改终点",
+                        durationMs = progressDurationMs,
+                        currentMs = progress.positionMs,
+                        initialMs = if (edit.second) slice.startMs else slice.endMs,
+                        onDismiss = { timeEditTarget = null },
+                        onConfirm = { newMs ->
+                            if (edit.second) {
+                                viewModel.updateSliceRange(slice.id, newMs, slice.endMs, progressDurationMs)
+                            } else {
+                                viewModel.updateSliceRange(slice.id, slice.startMs, newMs, progressDurationMs)
+                            }
+                            timeEditTarget = null
                         }
-                        timeEditTarget = null
-                    }
-                )
+                    )
+                }
             } else {
                 timeEditTarget = null
             }
