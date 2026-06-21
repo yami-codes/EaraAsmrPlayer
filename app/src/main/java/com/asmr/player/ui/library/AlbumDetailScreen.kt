@@ -654,8 +654,7 @@ fun AlbumDetailScreen(
                             LaunchedEffect(
                                 selectedTab,
                                 model.rjCode,
-                                model.dlsiteWorkno,
-                                model.hasResolvedInitialDlsiteTarget
+                                model.dlsiteWorkno
                             ) {
                                 when (selectedTab) {
                                     1 -> {
@@ -765,8 +764,7 @@ fun AlbumDetailScreen(
                                         trialDownloadEnabled = trialDownloadTree.isNotEmpty(),
                                         isLoading = model.isLoadingDlsite,
                                         isAwaitingInitialLoad = !model.hasLoadedInitialDlsiteContent,
-                                        isAwaitingAsmrOneLoad = model.hasResolvedInitialDlsiteTarget &&
-                                            !model.hasResolvedAsmrOneContent &&
+                                        isAwaitingAsmrOneLoad = !model.hasResolvedAsmrOneContent &&
                                             asmrOneTree.isEmpty(),
                                         asmrOneTree = asmrOneTree,
                                         isLoadingAsmrOne = model.isLoadingAsmrOne,
