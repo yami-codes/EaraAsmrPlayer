@@ -8,17 +8,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed as lazyItemsIndexed
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,24 +34,27 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.domain.model.Album
 import com.asmr.player.hotlistening.HotListeningSortMode
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
@@ -57,6 +64,9 @@ import com.asmr.player.ui.library.AlbumItem
 import com.asmr.player.ui.library.rememberAlbumMetaCopyAction
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlin.math.absoluteValue
 
 private fun stableAlbumKey(album: Album): String {
@@ -66,8 +76,8 @@ private fun stableAlbumKey(album: Album): String {
     return "h${seed.hashCode().absoluteValue}"
 }
 
-private fun hotListeningItemKey(index: Int, album: Album): String {
-    return "hot-listening:${stableAlbumKey(album)}:$index"
+private fun hotListeningItemKey(section: String, index: Int, album: Album): String {
+    return "hot-listening:$section:${stableAlbumKey(album)}:$index"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +96,7 @@ fun HotListeningScreen(
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
     val scope = rememberCoroutineScope()
     val isCompactWidth = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+    var showBlockedEntries by rememberSaveable { mutableStateOf(false) }
 
     val savedScrollPosition = viewModel.scrollPosition
     val listState = rememberSaveable(saver = LazyListState.Saver) {
@@ -112,25 +123,44 @@ fun HotListeningScreen(
     }
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+        snapshotFlow { listState.isScrollInProgress }
+            .filter { scrolling -> !scrolling }
+            .map { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
             .collect { (index, offset) ->
                 viewModel.updateListScrollPosition(index, offset)
             }
     }
 
     LaunchedEffect(gridState) {
-        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+        snapshotFlow { gridState.isScrollInProgress }
+            .filter { scrolling -> !scrolling }
+            .map { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .distinctUntilChanged()
             .collect { (index, offset) ->
                 viewModel.updateGridScrollPosition(index, offset)
             }
+    }
+
+    DisposableEffect(listState, gridState, viewModel) {
+        onDispose {
+            viewModel.updateListScrollPosition(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+            viewModel.updateGridScrollPosition(
+                gridState.firstVisibleItemIndex,
+                gridState.firstVisibleItemScrollOffset
+            )
+        }
     }
 
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         viewModel.resetScrollPosition()
         when (viewMode) {
-            0 -> runCatching { listState.animateScrollToItem(0) }
-            else -> runCatching { gridState.animateScrollToItem(0) }
+            0 -> listState.smoothScrollToTop()
+            else -> gridState.smoothScrollToTop()
         }
     }
 
@@ -215,7 +245,11 @@ fun HotListeningScreen(
             )
 
             is HotListeningUiState.Success -> {
-                if (state.entries.isEmpty()) {
+                LaunchedEffect(state.period, state.sortMode) {
+                    showBlockedEntries = false
+                }
+
+                if (state.entries.isEmpty() && state.blockedEntries.isEmpty()) {
                     EaraBrandedEmptyState(
                         sectionTitle = "热门收听",
                         headline = "暂无排行数据",
@@ -234,20 +268,39 @@ fun HotListeningScreen(
                     ) {
                         lazyItemsIndexed(
                             items = state.entries,
-                            key = { index, entry -> hotListeningItemKey(index, entry.album) },
+                            key = { index, entry -> hotListeningItemKey("visible", index, entry.album) },
                             contentType = { _, _ -> "album" }
                         ) { _, entry ->
-                            val album = entry.album
-                            AlbumItem(
-                                album = album,
-                                onClick = { onAlbumClick(album) },
-                                emptyCoverUseShimmer = true,
-                                coverBadge = entry.toCoverBadge(),
-                                onRjClick = { copyMeta("RJ", it) },
-                                onCircleClick = { copyMeta("社团", it) },
-                                onCvClick = { copyMeta("CV", it) },
-                                onTagClick = { copyMeta("标签", it) },
+                            HotListeningListItem(
+                                entry = entry,
+                                onAlbumClick = onAlbumClick,
+                                copyMeta = copyMeta
                             )
+                        }
+                        if (state.blockedEntries.isNotEmpty()) {
+                            item(
+                                key = "blocked-footer",
+                                contentType = "blockedFooter"
+                            ) {
+                                BlockedHotListeningFooter(
+                                    blockedCount = state.blockedEntries.size,
+                                    expanded = showBlockedEntries,
+                                    onToggle = { showBlockedEntries = !showBlockedEntries }
+                                )
+                            }
+                            if (showBlockedEntries) {
+                                lazyItemsIndexed(
+                                    items = state.blockedEntries,
+                                    key = { index, entry -> hotListeningItemKey("blocked", index, entry.album) },
+                                    contentType = { _, _ -> "album" }
+                                ) { _, entry ->
+                                    HotListeningListItem(
+                                        entry = entry,
+                                        onAlbumClick = onAlbumClick,
+                                        copyMeta = copyMeta
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
@@ -268,25 +321,117 @@ fun HotListeningScreen(
                     ) {
                         items(
                             state.entries.size,
-                            key = { index -> hotListeningItemKey(index, state.entries[index].album) },
+                            key = { index -> hotListeningItemKey("visible", index, state.entries[index].album) },
                             contentType = { "albumGrid" }
                         ) { index ->
-                            val entry = state.entries[index]
-                            val album = entry.album
-                            AlbumGridItem(
-                                album = album,
-                                onClick = { onAlbumClick(album) },
-                                emptyCoverUseShimmer = true,
-                                coverBadge = entry.toCoverBadge(),
-                                onRjClick = { copyMeta("RJ", it) },
-                                onCircleClick = { copyMeta("社团", it) },
-                                onCvClick = { copyMeta("CV", it) },
-                                onTagClick = { copyMeta("标签", it) },
+                            HotListeningGridItem(
+                                entry = state.entries[index],
+                                onAlbumClick = onAlbumClick,
+                                copyMeta = copyMeta
                             )
+                        }
+                        if (state.blockedEntries.isNotEmpty()) {
+                            item(
+                                key = "blocked-footer",
+                                contentType = "blockedFooter",
+                                span = StaggeredGridItemSpan.FullLine
+                            ) {
+                                BlockedHotListeningFooter(
+                                    blockedCount = state.blockedEntries.size,
+                                    expanded = showBlockedEntries,
+                                    onToggle = { showBlockedEntries = !showBlockedEntries }
+                                )
+                            }
+                            if (showBlockedEntries) {
+                                items(
+                                    state.blockedEntries.size,
+                                    key = { index ->
+                                        hotListeningItemKey("blocked", index, state.blockedEntries[index].album)
+                                    },
+                                    contentType = { "albumGrid" }
+                                ) { index ->
+                                    HotListeningGridItem(
+                                        entry = state.blockedEntries[index],
+                                        onAlbumClick = onAlbumClick,
+                                        copyMeta = copyMeta
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HotListeningListItem(
+    entry: HotListeningEntry,
+    onAlbumClick: (Album) -> Unit,
+    copyMeta: (String, String) -> Unit
+) {
+    val album = entry.album
+    AlbumItem(
+        album = album,
+        onClick = { onAlbumClick(album) },
+        emptyCoverUseShimmer = true,
+        coverBadge = entry.toCoverBadge(),
+        onRjClick = { copyMeta("RJ", it) },
+        onCircleClick = { copyMeta("社团", it) },
+        onCvClick = { copyMeta("CV", it) },
+        onTagClick = { copyMeta("标签", it) },
+    )
+}
+
+@Composable
+private fun HotListeningGridItem(
+    entry: HotListeningEntry,
+    onAlbumClick: (Album) -> Unit,
+    copyMeta: (String, String) -> Unit
+) {
+    val album = entry.album
+    AlbumGridItem(
+        album = album,
+        onClick = { onAlbumClick(album) },
+        emptyCoverUseShimmer = true,
+        coverBadge = entry.toCoverBadge(),
+        onRjClick = { copyMeta("RJ", it) },
+        onCircleClick = { copyMeta("社团", it) },
+        onCvClick = { copyMeta("CV", it) },
+        onTagClick = { copyMeta("标签", it) },
+    )
+}
+
+@Composable
+private fun BlockedHotListeningFooter(
+    blockedCount: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$blockedCount 个作品被屏蔽",
+            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+            color = colorScheme.textSecondary
+        )
+        TextButton(onClick = onToggle) {
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 2.dp)
+                    .size(18.dp)
+            )
+            Text(if (expanded) "折叠" else "展开")
         }
     }
 }

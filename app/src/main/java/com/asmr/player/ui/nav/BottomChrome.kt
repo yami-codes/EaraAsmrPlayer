@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -56,8 +55,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -67,7 +68,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -79,6 +79,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.asmr.player.ui.common.consumeTapThrough
 import com.asmr.player.ui.player.MiniPlayer
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
 import com.asmr.player.ui.theme.AsmrTheme
@@ -552,16 +553,6 @@ private fun computeBottomNavEntryVisibility(
         .coerceIn(0f, 1f)
 }
 
-private fun Modifier.consumeTapThrough(): Modifier =
-    pointerInput(Unit) {
-        awaitEachGesture {
-            do {
-                val event = awaitPointerEvent()
-                event.changes.forEach { change -> change.consume() }
-            } while (event.changes.any { it.pressed })
-        }
-    }
-
 @Composable
 fun BottomChrome(
     activeRoute: String,
@@ -921,31 +912,53 @@ private fun BottomNavigationPillSurface(
             }
             .graphicsLayer { clip = false }
             .drawBehind {
-                val outline = buildBottomNavContainerPath(
-                    width = size.width,
-                    height = size.height,
-                    barHeight = metrics.barHeight.toPx(),
-                    barRadius = metrics.barCornerRadius.toPx(),
-                    overflowAnchorX = overflowPanelCenterPx,
-                    overflowHeadroom = overflowHeadroomPx,
-                    overflowPanelWidth = overflowPanelWidthPx,
-                    overflowTopCapHeight = metrics.overflowTopCapHeight.toPx(),
-                    overflowShoulderLift = metrics.overflowShoulderLift.toPx(),
-                    overflowNeckBottomOffset = metrics.overflowNeckBottomOffset.toPx(),
-                    leftShoulderReach = metrics.overflowLeftShoulderReach.toPx(),
-                    rightShoulderReach = metrics.overflowRightShoulderReach.toPx(),
-                    overflowShapeProgress = overflowOutlineProgress
+                val drawBarHeightPx = metrics.barHeight.toPx()
+                val drawBarRadiusPx = metrics.barCornerRadius.toPx()
+                val borderStroke = Stroke(
+                    width = BottomNavBorderWidth.toPx(),
+                    join = StrokeJoin.Round,
+                    cap = StrokeCap.Round
                 )
-                drawPath(path = outline, color = containerColor)
-                drawPath(
-                    path = outline,
-                    color = borderColor,
-                    style = Stroke(
-                        width = BottomNavBorderWidth.toPx(),
-                        join = StrokeJoin.Round,
-                        cap = StrokeCap.Round
+                if (overflowOutlineProgress <= 0.001f || !overflowPanelCenterPx.isFinite()) {
+                    val topLeft = Offset(0f, size.height - drawBarHeightPx)
+                    val barSize = Size(size.width, drawBarHeightPx)
+                    val cornerRadius = CornerRadius(drawBarRadiusPx, drawBarRadiusPx)
+                    drawRoundRect(
+                        color = containerColor,
+                        topLeft = topLeft,
+                        size = barSize,
+                        cornerRadius = cornerRadius
                     )
-                )
+                    drawRoundRect(
+                        color = borderColor,
+                        topLeft = topLeft,
+                        size = barSize,
+                        cornerRadius = cornerRadius,
+                        style = borderStroke
+                    )
+                } else {
+                    val outline = buildBottomNavContainerPath(
+                        width = size.width,
+                        height = size.height,
+                        barHeight = drawBarHeightPx,
+                        barRadius = drawBarRadiusPx,
+                        overflowAnchorX = overflowPanelCenterPx,
+                        overflowHeadroom = overflowHeadroomPx,
+                        overflowPanelWidth = overflowPanelWidthPx,
+                        overflowTopCapHeight = metrics.overflowTopCapHeight.toPx(),
+                        overflowShoulderLift = metrics.overflowShoulderLift.toPx(),
+                        overflowNeckBottomOffset = metrics.overflowNeckBottomOffset.toPx(),
+                        leftShoulderReach = metrics.overflowLeftShoulderReach.toPx(),
+                        rightShoulderReach = metrics.overflowRightShoulderReach.toPx(),
+                        overflowShapeProgress = overflowOutlineProgress
+                    )
+                    drawPath(path = outline, color = containerColor)
+                    drawPath(
+                        path = outline,
+                        color = borderColor,
+                        style = borderStroke
+                    )
+                }
             }
     ) {
         Box(

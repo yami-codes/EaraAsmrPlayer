@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -107,7 +108,9 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.clearFocusOnTapOutside
 import com.asmr.player.ui.common.collapsibleHeaderUiState
+import com.asmr.player.ui.common.consumeTapThrough
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.library.AlbumGridItem
@@ -118,6 +121,8 @@ import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.snapshotFlow
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -142,6 +147,10 @@ private const val SearchPullNextPageDragResistance = 0.68f
 private val SearchPullNextPageTriggerDistance = 96.dp
 private val SearchPullNextPageMaxDistance = 156.dp
 private val SearchPullNextPageIndicatorMaxLift = 92.dp
+private val SearchResultPlacementSpring = spring<IntOffset>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
 
 private fun stableAlbumKey(album: Album): String {
     val id = album.rjCode.ifBlank { album.workId }.trim()
@@ -179,16 +188,6 @@ internal fun resolveSearchChromeLockState(uiState: SearchUiState): SearchChromeL
     )
 }
 
-private fun Modifier.consumeTapThrough(): Modifier =
-    pointerInput(Unit) {
-        awaitEachGesture {
-            do {
-                val event = awaitPointerEvent()
-                event.changes.forEach { change -> change.consume() }
-            } while (event.changes.any { it.pressed })
-        }
-    }
-
 @Composable
 private fun SearchFilterIconView(
     icon: SearchFilterIcon,
@@ -212,11 +211,11 @@ private fun SearchFilterIconView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     windowSizeClass: WindowSizeClass,
-    onAlbumClick: (Album, Boolean) -> Unit,
+    onAlbumClick: (Album, Boolean, Boolean) -> Unit,
     onOpenSearchAssist: (SearchAssistSearchRequest) -> Unit = {},
     submittedSearchKeyword: String = "",
     submittedSearchOrderName: String = SearchSortOption.Trend.name,
@@ -563,22 +562,32 @@ fun SearchScreen(
             lastChromeResetKey = chromeResetKey
         }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, viewMode) {
-        if (viewMode == 0 && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, viewMode) {
+        if (viewMode != 0) return@LaunchedEffect
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
-    LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset, viewMode) {
-        if (viewMode != 0 && gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(gridState, viewMode) {
+        if (viewMode == 0) return@LaunchedEffect
+        snapshotFlow {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         pullNextPageDragPx = 0f
         when (viewMode) {
-            0 -> runCatching { listState.animateScrollToItem(0) }
-            else -> runCatching { gridState.animateScrollToItem(0) }
+            0 -> listState.smoothScrollToTop()
+            else -> gridState.smoothScrollToTop()
         }
         chromeState.expand()
     }
@@ -605,6 +614,7 @@ fun SearchScreen(
                                 downloadPath = album.downloadPath,
                                 circle = album.circle,
                                 cv = album.cv,
+                                tags = album.tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
                                 coverUrl = album.coverUrl,
                                 coverPath = album.coverPath,
                                 coverThumbPath = album.coverThumbPath,
@@ -612,6 +622,7 @@ fun SearchScreen(
                                 rjCode = album.rjCode,
                                 description = album.description
                             ),
+                            false,
                             false
                         )
                     },
@@ -733,11 +744,15 @@ fun SearchScreen(
                                             contentType = { _, _ -> "album" }
                                         ) { _, album ->
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+                                            val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
+                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
+                                                onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -769,11 +784,15 @@ fun SearchScreen(
                                         ) { index ->
                                             val album = state.results[index]
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+                                            val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumGridItem(
                                                 album = album,
-                                                onClick = { onAlbumClick(album, state.purchasedOnly) },
+                                                onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
+                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
                                                 emptyCoverUseShimmer = true,
                                                 onlineDetailLoading = onlineDetailLoading,
+                                                onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
                                                 onCircleClick = { copyMeta("社团", it) },
                                                 onCvClick = { copyMeta("CV", it) },
@@ -805,32 +824,6 @@ fun SearchScreen(
                                     }
                                 }
                             )
-                                /* modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(top = topPadding),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.WifiOff,
-                                    contentDescription = null,
-                                    tint = colorScheme.textSecondary.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(92.dp)
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(text = "网络错误", color = colorScheme.textSecondary)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                FilledTonalButton(
-                                    onClick = { viewModel.retry() },
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = colorScheme.primaryContainer,
-                                        contentColor = colorScheme.onPrimaryContainer
-                                    )
-                                ) {
-                                    Text("刷新")
-                                }
-                            } */
 
                             else -> Column(
                                 modifier = Modifier

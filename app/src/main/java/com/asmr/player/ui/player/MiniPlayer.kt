@@ -63,13 +63,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.media3.common.MediaItem
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 enum class MiniPlayerDisplayMode {
     CoverOnly,
     Expanded
+}
+
+private data class MiniPlayerProgress(
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L
+) {
+    val fraction: Float
+        get() = if (durationMs > 0L) {
+            (positionMs.toDouble() / durationMs.toDouble()).toFloat().coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+}
+
+private fun sameMiniPlayerMediaItem(old: MediaItem?, new: MediaItem?): Boolean {
+    if (old === new) return true
+    if (old == null || new == null) return false
+    return old.mediaId == new.mediaId &&
+        old.localConfiguration?.uri == new.localConfiguration?.uri &&
+        old.mediaMetadata.artworkUri == new.mediaMetadata.artworkUri &&
+        old.mediaMetadata.title?.toString() == new.mediaMetadata.title?.toString() &&
+        old.mediaMetadata.artist?.toString() == new.mediaMetadata.artist?.toString()
 }
 
 @Composable
@@ -83,9 +109,27 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    val playback by viewModel.playback.collectAsState()
+    val currentItemState by remember(viewModel) {
+        viewModel.playback
+            .map { it.currentMediaItem }
+            .distinctUntilChanged(::sameMiniPlayerMediaItem)
+    }.collectAsState(initial = null)
+    val isPlaying by remember(viewModel) {
+        viewModel.playback
+            .map { it.isPlaying }
+            .distinctUntilChanged()
+    }.collectAsState(initial = false)
+    val progressState by remember(viewModel, displayMode) {
+        if (displayMode == MiniPlayerDisplayMode.Expanded) {
+            viewModel.playback
+                .map { MiniPlayerProgress(it.positionMs, it.durationMs) }
+                .distinctUntilChanged()
+        } else {
+            flowOf(MiniPlayerProgress())
+        }
+    }.collectAsState(initial = MiniPlayerProgress())
     val isFavorite by viewModel.isFavorite.collectAsState()
-    val item = playback.currentMediaItem ?: return
+    val item = currentItemState ?: return
     val metadata = item.mediaMetadata
     val colorScheme = AsmrTheme.colorScheme
     val currentMediaId = item.mediaId
@@ -100,7 +144,7 @@ fun MiniPlayer(
 
     var optimisticIsPlaying by remember { mutableStateOf<Boolean?>(null) }
     var stableMediaId by remember { mutableStateOf(currentMediaId) }
-    val isPlayingEffective = optimisticIsPlaying ?: playback.isPlaying
+    val isPlayingEffective = optimisticIsPlaying ?: isPlaying
 
     LaunchedEffect(currentMediaId) {
         if (currentMediaId != stableMediaId) {
@@ -116,11 +160,7 @@ fun MiniPlayer(
         }
     }
 
-    val progress = if (playback.durationMs > 0) {
-        (playback.positionMs.toDouble() / playback.durationMs.toDouble()).toFloat().coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val progress = progressState.fraction
 
     AnimatedContent(
         targetState = displayMode,
@@ -248,7 +288,7 @@ fun MiniPlayer(
                                 }
                                     IconButton(
                                         onClick = {
-                                            optimisticIsPlaying = !(optimisticIsPlaying ?: playback.isPlaying)
+                                            optimisticIsPlaying = !(optimisticIsPlaying ?: isPlaying)
                                             viewModel.togglePlayPause()
                                         },
                                         modifier = Modifier.size(controlsButtonSize)

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,8 +28,13 @@ class HotListeningViewModel @Inject constructor(
     val messageManager: MessageManager,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<HotListeningUiState>(HotListeningUiState.Loading)
-    val uiState: StateFlow<HotListeningUiState> = _uiState.asStateFlow()
+    private val _rawUiState = MutableStateFlow<HotListeningRawUiState>(HotListeningRawUiState.Loading)
+    val uiState: StateFlow<HotListeningUiState> = combine(
+        _rawUiState,
+        settingsRepository.searchBlockedKeywords
+    ) { rawState, blockedKeywords ->
+        rawState.toUiState(blockedKeywords)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HotListeningUiState.Loading)
 
     private val _selectedPeriod = MutableStateFlow("day")
     val selectedPeriod: StateFlow<String> = _selectedPeriod.asStateFlow()
@@ -95,27 +101,27 @@ class HotListeningViewModel @Inject constructor(
 
     private suspend fun loadTopListings(period: String, sortMode: HotListeningSortMode) {
         if (!hotListeningApi.isBackendConfigured) {
-            _uiState.update { HotListeningUiState.Error("后端未配置") }
+            _rawUiState.update { HotListeningRawUiState.Error("后端未配置") }
             return
         }
-        _uiState.update { HotListeningUiState.Loading }
+        _rawUiState.update { HotListeningRawUiState.Loading }
         runCatching {
             val items = hotListeningApi.getTopListings(period, sortMode)
             if (items == null) {
-                _uiState.update { HotListeningUiState.Error("请求失败") }
+                _rawUiState.update { HotListeningRawUiState.Error("请求失败") }
                 return
             }
             val entries = items.map { it.toEntry(sortMode) }
-            _uiState.update {
-                HotListeningUiState.Success(
+            _rawUiState.update {
+                HotListeningRawUiState.Success(
                     entries = entries,
                     period = period,
                     sortMode = sortMode
                 )
             }
         }.onFailure { error ->
-            _uiState.update {
-                HotListeningUiState.Error(error.message ?: "加载失败")
+            _rawUiState.update {
+                HotListeningRawUiState.Error(error.message ?: "加载失败")
             }
         }
     }
@@ -129,13 +135,29 @@ class HotListeningViewModel @Inject constructor(
                 cv = cv,
                 tags = tagList,
                 coverUrl = coverUrl,
-                rjCode = rj
+                rjCode = rj,
+                releaseDate = releaseDate.trim(),
+                ratingValue = ratingValue ?: rateAverage2dp,
+                ratingCount = (ratingCount ?: rateCount ?: reviewCount ?: 0).coerceAtLeast(0),
+                dlCount = dlCount.coerceAtLeast(0),
+                priceJpy = (priceJpy ?: price ?: 0).coerceAtLeast(0),
+                description = description.trim()
             ),
             playCount = playCount,
             listenDurationMs = listenDurationMs,
             sortMode = sortMode
         )
     }
+}
+
+private sealed class HotListeningRawUiState {
+    data object Loading : HotListeningRawUiState()
+    data class Success(
+        val entries: List<HotListeningEntry>,
+        val period: String,
+        val sortMode: HotListeningSortMode
+    ) : HotListeningRawUiState()
+    data class Error(val message: String) : HotListeningRawUiState()
 }
 
 data class HotListeningScrollPosition(
@@ -195,8 +217,71 @@ sealed class HotListeningUiState {
     data object Loading : HotListeningUiState()
     data class Success(
         val entries: List<HotListeningEntry>,
+        val blockedEntries: List<HotListeningEntry>,
         val period: String,
         val sortMode: HotListeningSortMode
     ) : HotListeningUiState()
     data class Error(val message: String) : HotListeningUiState()
+}
+
+internal data class HotListeningBlockedEntries(
+    val visibleEntries: List<HotListeningEntry>,
+    val blockedEntries: List<HotListeningEntry>
+)
+
+private fun HotListeningRawUiState.toUiState(blockedKeywords: List<String>): HotListeningUiState {
+    return when (this) {
+        HotListeningRawUiState.Loading -> HotListeningUiState.Loading
+        is HotListeningRawUiState.Error -> HotListeningUiState.Error(message)
+        is HotListeningRawUiState.Success -> {
+            val filtered = filterHotListeningEntries(entries, blockedKeywords)
+            HotListeningUiState.Success(
+                entries = filtered.visibleEntries,
+                blockedEntries = filtered.blockedEntries,
+                period = period,
+                sortMode = sortMode
+            )
+        }
+    }
+}
+
+internal fun filterHotListeningEntries(
+    entries: List<HotListeningEntry>,
+    blockedKeywords: List<String>
+): HotListeningBlockedEntries {
+    val normalizedKeywords = normalizeHotListeningBlockedKeywords(blockedKeywords)
+    if (normalizedKeywords.isEmpty()) {
+        return HotListeningBlockedEntries(
+            visibleEntries = entries,
+            blockedEntries = emptyList()
+        )
+    }
+    val (blockedEntries, visibleEntries) = entries.partition { entry ->
+        val searchableText = entry.album.toBlockedKeywordSearchText()
+        normalizedKeywords.any { keyword -> searchableText.contains(keyword) }
+    }
+    return HotListeningBlockedEntries(
+        visibleEntries = visibleEntries,
+        blockedEntries = blockedEntries
+    )
+}
+
+private fun normalizeHotListeningBlockedKeywords(keywords: List<String>): List<String> {
+    return keywords
+        .map { it.trim() }
+        .map { it.removePrefix("-").trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase(Locale.ROOT) }
+        .map { it.lowercase(Locale.ROOT) }
+}
+
+private fun Album.toBlockedKeywordSearchText(): String {
+    return buildString {
+        appendLine(title)
+        appendLine(circle)
+        appendLine(cv)
+        appendLine(rjCode)
+        appendLine(workId)
+        tags.forEach { appendLine(it) }
+    }.lowercase(Locale.ROOT)
 }

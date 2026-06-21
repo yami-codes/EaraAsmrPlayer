@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -79,9 +80,10 @@ fun AsmrAsyncImage(
         }
     val loadedSize: MutableState<IntSize?> = remember(normalizedModel) { mutableStateOf(null) }
     val crossfade = remember(normalizedModel) { Animatable(if (seededPainter != null) 1f else 0f) }
-    val sizedModifier = modifier.onSizeChanged { sz ->
+    val containerModifier = modifier.onSizeChanged { sz ->
         if (sz.width > 0 && sz.height > 0) measuredSize.value = IntSize(sz.width, sz.height)
     }
+    val contentModifier = Modifier.fillMaxSize()
 
     LaunchedEffect(normalizedModel, measuredSize.value) {
         val initialSize = measuredSize.value ?: return@LaunchedEffect
@@ -142,41 +144,38 @@ fun AsmrAsyncImage(
     }
 
     val p = painter.value
-    if (state.value == AsmrAsyncImageState.Error) {
-        placeholder(sizedModifier)
-        return
-    }
+    val currentState = state.value
     val progress = crossfade.value.coerceIn(0f, 1f)
-    Box {
-        // Keep a measurable anchor even when loading/empty UI intentionally renders nothing.
-        Box(
-            modifier = sizedModifier.graphicsLayer {
-                this.alpha = 0f
-                compositingStrategy = CompositingStrategy.ModulateAlpha
+    Box(modifier = containerModifier) {
+        when {
+            currentState == AsmrAsyncImageState.Error -> {
+                placeholder(contentModifier)
             }
-        )
-        if (state.value == AsmrAsyncImageState.Loading || (fadeIn && progress < 1f)) {
-            val loadingAlpha = if (state.value == AsmrAsyncImageState.Loading) 1f else (1f - progress)
-            val loadingModifier = if (loadingAlpha >= 0.999f) {
-                sizedModifier
-            } else {
-                sizedModifier.graphicsLayer {
-                    this.alpha = loadingAlpha
-                    compositingStrategy = CompositingStrategy.ModulateAlpha
+            else -> {
+                if (currentState == AsmrAsyncImageState.Loading || (fadeIn && progress < 1f)) {
+                    val loadingAlpha = if (currentState == AsmrAsyncImageState.Loading) 1f else (1f - progress)
+                    val loadingModifier = if (loadingAlpha >= 0.999f) {
+                        contentModifier
+                    } else {
+                        contentModifier.graphicsLayer {
+                            this.alpha = loadingAlpha
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
+                        }
+                    }
+                    loading(loadingModifier)
+                }
+                if (p != null) {
+                    Image(
+                        painter = p,
+                        contentDescription = contentDescription,
+                        modifier = contentModifier,
+                        contentScale = contentScale,
+                        alignment = alignment,
+                        alpha = if (fadeIn) alpha * progress else alpha,
+                        colorFilter = colorFilter
+                    )
                 }
             }
-            loading(loadingModifier)
-        }
-        if (p != null) {
-            Image(
-                painter = p,
-                contentDescription = contentDescription,
-                modifier = sizedModifier,
-                contentScale = contentScale,
-                alignment = alignment,
-                alpha = if (fadeIn) alpha * progress else alpha,
-                colorFilter = colorFilter
-            )
         }
     }
 }

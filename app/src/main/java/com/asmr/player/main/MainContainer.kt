@@ -2,6 +2,7 @@
 
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -10,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -126,6 +128,7 @@ import com.asmr.player.ui.drawer.SiteStatusType
 import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.ui.nav.AppNavigator
 import com.asmr.player.ui.nav.BottomChrome
+import com.asmr.player.ui.nav.BottomChromeNavItem
 import com.asmr.player.ui.nav.Routes
 import com.asmr.player.ui.nav.bottomChromeNavItems
 import com.asmr.player.ui.nav.bottomChromeOverlayHeight
@@ -206,6 +209,7 @@ import com.asmr.player.ui.common.AudioOutputRouteIcon
 import com.asmr.player.ui.common.DismissOutsideBoundsOverlay
 import com.asmr.player.service.AudioOutputRouteKind
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -344,6 +348,144 @@ private fun SecondaryPageBackground(
     }
 }
 
+private fun applyMainContainerSystemUi(
+    window: android.view.Window,
+    defaultSystemUi: DefaultSystemUiState?,
+    forceImmersive: Boolean,
+    hideStatusBarForImmersivePage: Boolean,
+    nowPlayingVisible: Boolean,
+    isDark: Boolean
+) {
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        window.isStatusBarContrastEnforced = false
+        window.isNavigationBarContrastEnforced = false
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = if (forceImmersive || hideStatusBarForImmersivePage || nowPlayingVisible) {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            } else {
+                defaultSystemUi?.layoutInDisplayCutoutMode
+                    ?: WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+            }
+        }
+    }
+
+    when {
+        forceImmersive -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
+        }
+        nowPlayingVisible -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+            controller.hide(WindowInsetsCompat.Type.navigationBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
+        }
+        hideStatusBarForImmersivePage -> {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+            controller.show(WindowInsetsCompat.Type.navigationBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = !isDark
+        }
+        else -> {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            controller.isAppearanceLightStatusBars = !isDark
+            controller.isAppearanceLightNavigationBars = !isDark
+        }
+    }
+}
+
+private fun restoreMainContainerSystemUi(
+    window: android.view.Window,
+    defaultSystemUi: DefaultSystemUiState?
+) {
+    val controller = WindowInsetsControllerCompat(window, window.decorView)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    controller.show(WindowInsetsCompat.Type.systemBars())
+    defaultSystemUi?.let { ui ->
+        window.statusBarColor = ui.statusBarColor
+        window.navigationBarColor = ui.navigationBarColor
+        controller.isAppearanceLightStatusBars = ui.lightStatusBars
+        controller.isAppearanceLightNavigationBars = ui.lightNavigationBars
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ui.statusBarContrastEnforced?.let { window.isStatusBarContrastEnforced = it }
+            ui.navigationBarContrastEnforced?.let { window.isNavigationBarContrastEnforced = it }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ui.layoutInDisplayCutoutMode?.let { mode ->
+                window.attributes = window.attributes.apply {
+                    layoutInDisplayCutoutMode = mode
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun PrimaryBottomChrome(
+    activeRoute: String,
+    pagerState: PagerState,
+    pagerRoutes: List<String>,
+    fallbackRoute: String,
+    lockedRoute: String?,
+    miniPlayerVisible: Boolean,
+    miniPlayerDisplayMode: MiniPlayerDisplayMode,
+    onMiniPlayerDisplayModeChange: (MiniPlayerDisplayMode) -> Unit,
+    onOpenNowPlaying: () -> Unit,
+    onOpenQueue: () -> Unit,
+    onNavigate: (String) -> Unit,
+    largeLayout: Boolean = false,
+    modifier: Modifier = Modifier,
+    navItems: List<BottomChromeNavItem> = bottomChromeNavItems()
+) {
+    val selectionProgresses by remember(
+        pagerState,
+        pagerRoutes,
+        fallbackRoute,
+        lockedRoute
+    ) {
+        derivedStateOf {
+            computePrimaryNavSelectionProgresses(
+                pagerRoutes = pagerRoutes,
+                currentPage = pagerState.currentPage,
+                currentPageOffsetFraction = pagerState.currentPageOffsetFraction,
+                fallbackRoute = fallbackRoute,
+                lockedRoute = lockedRoute
+            )
+        }
+    }
+
+    BottomChrome(
+        activeRoute = activeRoute,
+        selectionProgresses = selectionProgresses,
+        miniPlayerVisible = miniPlayerVisible,
+        miniPlayerDisplayMode = miniPlayerDisplayMode,
+        onMiniPlayerDisplayModeChange = onMiniPlayerDisplayModeChange,
+        onOpenNowPlaying = onOpenNowPlaying,
+        onOpenQueue = onOpenQueue,
+        onNavigate = onNavigate,
+        largeLayout = largeLayout,
+        modifier = modifier,
+        navItems = navItems
+    )
+}
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -396,6 +538,9 @@ fun MainContainer(
     )
     var miniPlayerDisplayMode by rememberSaveable { mutableStateOf(MiniPlayerDisplayMode.CoverOnly) }
     val primaryPagerRoutes = remember(bottomNavItems) { bottomNavItems.map { it.route } }
+    val primaryPagerBeyondBoundsPageCount = remember(primaryPagerRoutes) {
+        resolvePrimaryPagerBeyondBoundsPageCount(primaryPagerRoutes.size)
+    }
     val initialPrimaryPage = remember(initialDestination, primaryPagerRoutes) {
         primaryPagerRoutes.indexOf(initialDestination).takeIf { it >= 0 } ?: 0
     }
@@ -414,22 +559,6 @@ fun MainContainer(
             pendingRoute = pendingPrimaryNavigationRoute,
             pagerRoutes = primaryPagerRoutes
         )
-    }
-    val primaryNavSelectionProgresses by remember(
-        primaryPagerState,
-        primaryPagerRoutes,
-        activePrimaryRoute,
-        pendingPrimaryNavigationRoute
-    ) {
-        derivedStateOf {
-            computePrimaryNavSelectionProgresses(
-                pagerRoutes = primaryPagerRoutes,
-                currentPage = primaryPagerState.currentPage,
-                currentPageOffsetFraction = primaryPagerState.currentPageOffsetFraction,
-                fallbackRoute = activePrimaryRoute,
-                lockedRoute = pendingPrimaryNavigationRoute
-            )
-        }
     }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -481,7 +610,15 @@ fun MainContainer(
             .map { it.currentMediaItem != null }
             .distinctUntilChanged()
     }.collectAsState(initial = false)
-    val sharedPlayerPlayback by playerViewModel.playback.collectAsState()
+    val sharedPlayerItem by remember(playerViewModel) {
+        playerViewModel.playback
+            .map { it.currentMediaItem }
+            .distinctUntilChanged { old, new ->
+                old?.mediaId == new?.mediaId &&
+                    old?.localConfiguration?.uri == new?.localConfiguration?.uri &&
+                    old?.mediaMetadata?.artworkUri == new?.mediaMetadata?.artworkUri
+            }
+    }.collectAsState(initial = null)
     val drawerStatusViewModel: DrawerStatusViewModel = hiltViewModel()
     val statisticsViewModel: StatisticsViewModel = hiltViewModel()
     val bulkProgress by libraryViewModel.bulkProgress.collectAsState()
@@ -541,7 +678,10 @@ fun MainContainer(
     }
     var nowPlayingPlaylistPickerRequest by remember { mutableStateOf<PlaylistPickerRequest?>(null) }
     var albumBatchPlaylistPickerRequest by remember { mutableStateOf<BatchPlaylistPickerRequest?>(null) }
-    val playerImmersive = nowPlayingVisible
+    val hideStatusBarForImmersivePage = shouldHideStatusBarForImmersivePage(
+        currentRoute = currentRoute,
+        nowPlayingVisible = nowPlayingVisible
+    )
     val openNowPlaying = openNowPlaying@{
         if (nowPlayingVisible) return@openNowPlaying
         nowPlayingBackdropActive = true
@@ -555,7 +695,6 @@ fun MainContainer(
         nowPlayingVisible = false
     }
     val playerBackdropVisible = nowPlayingVisible
-    val sharedPlayerItem = sharedPlayerPlayback.currentMediaItem
     val sharedPlayerUriText = sharedPlayerItem?.localConfiguration?.uri?.toString().orEmpty()
     val sharedPlayerMimeType = sharedPlayerItem?.localConfiguration?.mimeType.orEmpty()
     val sharedPlayerExt = sharedPlayerUriText
@@ -611,17 +750,48 @@ fun MainContainer(
         label = "nowPlayingBackdropAlpha"
     )
     val currentPrimaryRouteState = rememberUpdatedState(currentPrimaryRoute)
+    val pendingPrimaryNavigationRouteState = rememberUpdatedState(pendingPrimaryNavigationRoute)
+    var primaryNavigationJob by remember { mutableStateOf<Job?>(null) }
+    var primaryNavigationRequestId by remember { mutableLongStateOf(0L) }
+    DisposableEffect(Unit) {
+        onDispose {
+            primaryNavigationJob?.cancel()
+        }
+    }
+
     fun openPrimaryRoute(route: String, pagerRoutes: List<String> = primaryPagerRoutes) {
         val targetPage = pagerRoutes.indexOf(route)
+        primaryNavigationJob?.cancel()
+        primaryNavigationRequestId += 1L
+        val requestId = primaryNavigationRequestId
         if (targetPage >= 0 && currentPrimaryRoute != null) {
-            scope.launch {
-                pendingPrimaryNavigationRoute = route
-                primaryPagerState.animateScrollToPage(targetPage)
-                if (currentPrimaryRouteState.value != route) {
-                    navController.navigatePrimaryRoute(route)
+            pendingPrimaryNavigationRoute = route
+            primaryNavigationJob = scope.launch {
+                var completed = false
+                try {
+                    val currentPage = primaryPagerState.currentPage
+                    resolvePrimaryPagerApproachPage(
+                        currentPage = currentPage,
+                        targetPage = targetPage
+                    )?.let { approachPage ->
+                        primaryPagerState.scrollToPage(approachPage)
+                    }
+                    primaryPagerState.animateScrollToPage(targetPage)
+                    if (currentPrimaryRouteState.value != route) {
+                        navController.navigatePrimaryRoute(route)
+                    }
+                    completed = true
+                } finally {
+                    if (primaryNavigationRequestId == requestId) {
+                        primaryNavigationJob = null
+                        if (!completed && pendingPrimaryNavigationRouteState.value == route) {
+                            pendingPrimaryNavigationRoute = null
+                        }
+                    }
                 }
             }
         } else {
+            primaryNavigationJob = null
             pendingPrimaryNavigationRoute = null
             navController.navigatePrimaryRoute(route)
         }
@@ -737,16 +907,18 @@ fun MainContainer(
         }
     }
 
-    LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute) {
+    LaunchedEffect(currentPrimaryRoute, primaryPagerRoutes, pendingPrimaryNavigationRoute, primaryNavigationJob) {
         val route = currentPrimaryRoute ?: return@LaunchedEffect
         val pendingRoute = pendingPrimaryNavigationRoute
-        if (pendingRoute != null && route != pendingRoute) return@LaunchedEffect
+        if (pendingRoute != null) {
+            if (route == pendingRoute && primaryNavigationJob == null) {
+                pendingPrimaryNavigationRoute = null
+            }
+            return@LaunchedEffect
+        }
         val targetPage = primaryPagerRoutes.indexOf(route)
         if (targetPage >= 0 && primaryPagerState.currentPage != targetPage) {
             primaryPagerState.scrollToPage(targetPage)
-        }
-        if (pendingRoute == route) {
-            pendingPrimaryNavigationRoute = null
         }
     }
 
@@ -758,6 +930,7 @@ fun MainContainer(
                     keyboardController?.hide()
                     return@collect
                 }
+                if (pendingPrimaryNavigationRouteState.value != null) return@collect
                 val page = primaryPagerState.currentPage
                 val currentPrimary = currentPrimaryRouteState.value ?: return@collect
                 val targetRoute = primaryPagerRoutes.getOrNull(page) ?: return@collect
@@ -859,61 +1032,33 @@ fun MainContainer(
                     act.window.isNavigationBarContrastEnforced
                 } else {
                     null
+                },
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    act.window.attributes.layoutInDisplayCutoutMode
+                } else {
+                    null
                 }
             )
         }
     }
 
-    DisposableEffect(activity, forceImmersive, playerImmersive, colorScheme.isDark) {
+    DisposableEffect(activity) {
         val act = activity ?: return@DisposableEffect onDispose { }
-        val window = act.window
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        // 始终由应用控制系统栏区域绘制，避免 fitsSystemWindows 切换导致的布局跳动
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
-
-        if (forceImmersive) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = false
-        } else if (playerImmersive) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.show(WindowInsetsCompat.Type.statusBars())
-            controller.hide(WindowInsetsCompat.Type.navigationBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = false
-            controller.isAppearanceLightNavigationBars = false
-        } else {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-            window.statusBarColor = android.graphics.Color.TRANSPARENT
-            window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            controller.isAppearanceLightStatusBars = !colorScheme.isDark
-            controller.isAppearanceLightNavigationBars = !colorScheme.isDark
-        }
         onDispose {
-            val window2 = act.window
-            val controller2 = WindowInsetsControllerCompat(window2, window2.decorView)
-            // 退出时保持 false，交给 Compose 处理 padding
-            WindowCompat.setDecorFitsSystemWindows(window2, false)
-            controller2.show(WindowInsetsCompat.Type.systemBars())
-            defaultSystemUi?.let { ui ->
-                window2.statusBarColor = ui.statusBarColor
-                window2.navigationBarColor = ui.navigationBarColor
-                controller2.isAppearanceLightStatusBars = ui.lightStatusBars
-                controller2.isAppearanceLightNavigationBars = ui.lightNavigationBars
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ui.statusBarContrastEnforced?.let { window2.isStatusBarContrastEnforced = it }
-                    ui.navigationBarContrastEnforced?.let { window2.isNavigationBarContrastEnforced = it }
-                }
-            }
+            restoreMainContainerSystemUi(act.window, defaultSystemUi)
         }
+    }
+
+    SideEffect {
+        val act = activity ?: return@SideEffect
+        applyMainContainerSystemUi(
+            window = act.window,
+            defaultSystemUi = defaultSystemUi,
+            forceImmersive = forceImmersive,
+            hideStatusBarForImmersivePage = hideStatusBarForImmersivePage,
+            nowPlayingVisible = nowPlayingVisible,
+            isDark = colorScheme.isDark
+        )
     }
 
     // 屏幕旋转管理逻辑
@@ -1489,6 +1634,7 @@ fun MainContainer(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(top = pagerTopContentPadding),
+                                    beyondBoundsPageCount = primaryPagerBeyondBoundsPageCount,
                                     userScrollEnabled = !primaryPagerScrollLocked && !hasOverlayRoute,
                                     key = { primaryPagerRoutes[it] }
                                 ) { page ->
@@ -1505,6 +1651,7 @@ fun MainContainer(
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
+                                                        cv = album.cv,
                                                         coverUrl = album.coverUrl
                                                     )
                                                     navigator.openAlbumDetail(
@@ -1547,13 +1694,23 @@ fun MainContainer(
                                                     searchAssistInitialRequest = request
                                                     navController.navigateSingleTop(Routes.searchAssist(request.keyword))
                                                 },
-                                                onAlbumClick = { album, fromPurchasedOnly ->
+                                                onAlbumClick = { album, fromPurchasedOnly, hasResolvedDetail ->
                                                     AlbumCoverHintStore.record(
                                                         albumId = album.id,
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
-                                                        coverUrl = album.coverUrl
+                                                        cv = album.cv,
+                                                        coverUrl = album.coverUrl,
+                                                        tags = album.tags,
+                                                        ratingValue = album.ratingValue,
+                                                        ratingCount = album.ratingCount,
+                                                        releaseDate = album.releaseDate,
+                                                        dlCount = album.dlCount,
+                                                        priceJpy = album.priceJpy,
+                                                        hasAsmrOne = album.hasAsmrOne,
+                                                        description = album.description,
+                                                        hasResolvedDlsiteInfo = hasResolvedDetail && !fromPurchasedOnly
                                                     )
                                                     openAlbumDetailFromSearch(
                                                         albumId = album.id,
@@ -1575,7 +1732,17 @@ fun MainContainer(
                                                         rjCode = album.rjCode.ifBlank { album.workId },
                                                         title = album.title,
                                                         circle = album.circle,
-                                                        coverUrl = album.coverUrl
+                                                        cv = album.cv,
+                                                        coverUrl = album.coverUrl,
+                                                        tags = album.tags,
+                                                        ratingValue = album.ratingValue,
+                                                        ratingCount = album.ratingCount,
+                                                        releaseDate = album.releaseDate,
+                                                        dlCount = album.dlCount,
+                                                        priceJpy = album.priceJpy,
+                                                        hasAsmrOne = album.hasAsmrOne,
+                                                        description = album.description,
+                                                        hasResolvedDlsiteInfo = true
                                                     )
                                                     navigator.openAlbumDetailByRj(album.rjCode.ifBlank { album.workId })
                                                 },
@@ -2123,9 +2290,12 @@ fun MainContainer(
                         .padding(start = bottomChromeHorizontalPadding, bottom = 24.dp)
                         .width(chromeWidth)
                 ) {
-                    BottomChrome(
+                    PrimaryBottomChrome(
                         activeRoute = visualPrimaryRoute,
-                        selectionProgresses = primaryNavSelectionProgresses,
+                        pagerState = primaryPagerState,
+                        pagerRoutes = primaryPagerRoutes,
+                        fallbackRoute = activePrimaryRoute,
+                        lockedRoute = pendingPrimaryNavigationRoute,
                         miniPlayerVisible = miniPlayerVisible,
                         miniPlayerDisplayMode = miniPlayerDisplayMode,
                         largeLayout = useLargeBottomChrome,
@@ -2141,13 +2311,13 @@ fun MainContainer(
                         },
                         onOpenQueue = onShowQueue,
                         onNavigate = { route ->
-                            if (shouldScrollPrimaryRouteToTop(
+                            if (pendingPrimaryNavigationRoute == null && shouldScrollPrimaryRouteToTop(
                                     requestedRoute = route,
                                     activePrimaryRoute = activePrimaryRoute,
                                     currentPrimaryRoute = currentPrimaryRoute
                                 )) {
                                 triggerPrimaryRouteScrollToTop(route)
-                                return@BottomChrome
+                                return@PrimaryBottomChrome
                             }
                             openPrimaryRoute(route)
                         }
@@ -2189,7 +2359,7 @@ fun MainContainer(
                         .graphicsLayer { alpha = nowPlayingBackdropAlpha }
                 ) {
                     PlayerSharedBackdrop(
-                        playback = sharedPlayerPlayback,
+                        mediaItem = sharedPlayerItem,
                         enabled = coverBackgroundEnabled,
                         clarity = coverBackgroundClarity,
                         artworkAlignment = sharedPlayerBackdropAlignment

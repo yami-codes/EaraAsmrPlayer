@@ -251,6 +251,18 @@ internal fun resolvePrimaryNavVisualRoute(
     return pendingRoute?.takeIf { it in pagerRoutes } ?: activeRoute
 }
 
+internal fun resolvePrimaryPagerApproachPage(
+    currentPage: Int,
+    targetPage: Int
+): Int? {
+    if (kotlin.math.abs(targetPage - currentPage) <= 1) return null
+    return targetPage + if (targetPage > currentPage) -1 else 1
+}
+
+internal fun resolvePrimaryPagerBeyondBoundsPageCount(pageCount: Int): Int {
+    return (pageCount - 1).coerceAtLeast(0)
+}
+
 internal fun resolveCurrentPrimaryDestinationRoute(
     currentRoute: String?,
     playlistSystemType: String? = null
@@ -266,6 +278,14 @@ internal fun resolveCurrentPrimaryDestinationRoute(
         currentRoute == "playlist_system/{type}" && playlistSystemType == "favorites" -> "playlist_system/favorites"
         else -> null
     }
+}
+
+internal fun shouldHideStatusBarForImmersivePage(
+    currentRoute: String?,
+    nowPlayingVisible: Boolean
+): Boolean {
+    if (nowPlayingVisible) return true
+    return currentRoute?.startsWith("album_detail") == true
 }
 
 internal fun NavHostController.navigateSingleTop(route: String, popUpToRoute: String? = null) {
@@ -365,7 +385,8 @@ internal data class DefaultSystemUiState(
     val lightStatusBars: Boolean,
     val lightNavigationBars: Boolean,
     val statusBarContrastEnforced: Boolean? = null,
-    val navigationBarContrastEnforced: Boolean? = null
+    val navigationBarContrastEnforced: Boolean? = null,
+    val layoutInDisplayCutoutMode: Int? = null
 )
 
 internal data class ThemeMediaSource(

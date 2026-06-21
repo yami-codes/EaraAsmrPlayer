@@ -8,10 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -146,20 +146,25 @@ import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
 
+private val DlsiteGalleryThumbWidth = 140.dp
+private val DlsiteGalleryThumbHeight = 100.dp
+private val DlsiteGalleryThumbGap = 10.dp
+private const val DlsiteGalleryThumbCornerRadius = 12
+
 @Composable
 private fun DlsiteGalleryLoadingRow() {
     val placeholders = remember { listOf(0, 1, 2, 3) }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = AlbumDetailHorizontalPadding),
+        horizontalArrangement = Arrangement.spacedBy(DlsiteGalleryThumbGap),
         contentPadding = PaddingValues(vertical = 10.dp)
     ) {
         items(placeholders, key = { it }, contentType = { "galleryLoadingThumb" }) {
             AsmrShimmerPlaceholder(
-                modifier = Modifier.size(width = 140.dp, height = 100.dp),
-                cornerRadius = 12
+                modifier = Modifier.size(width = DlsiteGalleryThumbWidth, height = DlsiteGalleryThumbHeight),
+                cornerRadius = DlsiteGalleryThumbCornerRadius
             )
         }
     }
@@ -666,9 +671,9 @@ private fun DlsiteRecommendationsLoadingBlocks() {
     }
 }
 
-private val DlsiteSectionPlacementSpring = spring<IntOffset>(
-    dampingRatio = Spring.DampingRatioLowBouncy,
-    stiffness = Spring.StiffnessLow
+private val DlsiteSectionPlacementTweenSpec = tween<IntOffset>(
+    durationMillis = 280,
+    easing = FastOutSlowInEasing
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -677,22 +682,33 @@ private fun LazyItemScope.dlsiteAnimatedSectionModifier(
     animateIntro: Boolean = true
 ): Modifier {
     if (!animateIntro) return modifier
-    return dlsiteElasticItemModifier(
-        modifier = modifier.animateItemPlacement(animationSpec = DlsiteSectionPlacementSpring),
+    return dlsiteSectionRevealModifier(
+        modifier = modifier.animateItemPlacement(animationSpec = DlsiteSectionPlacementTweenSpec),
         enabled = true
     )
+}
+
+internal fun shouldShowAsmrOneDirectoryLoading(
+    isAwaitingAsmrOneLoad: Boolean,
+    isLoadingAsmrOne: Boolean,
+    hasAsmrOneTree: Boolean,
+    hasDirectoryBrowser: Boolean
+): Boolean {
+    return isAwaitingAsmrOneLoad ||
+        isLoadingAsmrOne ||
+        (hasAsmrOneTree && !hasDirectoryBrowser)
 }
 
 @Composable
 internal fun AlbumDlsiteInfoBreadcrumbTabV2(
     album: Album,
     header: @Composable () -> Unit,
-    dlsiteInfo: Album?,
     galleryUrls: List<String>,
     trialTracks: List<Track>,
     trialDownloadEnabled: Boolean,
     isLoading: Boolean,
     isAwaitingInitialLoad: Boolean,
+    isAwaitingAsmrOneLoad: Boolean,
     asmrOneTree: List<AsmrOneTrackNodeResponse>,
     isLoadingAsmrOne: Boolean,
     isLoadingTrial: Boolean,
@@ -754,16 +770,25 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             .distinctUntilChanged()
             .collect { (idx, off) -> onPersistScroll(idx, off) }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, treeStateKey) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(currentPath, treeStateKey) {
         onPersistCurrentPath(currentPath)
     }
-    val isInitialDlsiteLoading = dlsiteInfo == null && (isLoading || isAwaitingInitialLoad)
-    val isAsmrOnePending = isAwaitingInitialLoad || isLoadingAsmrOne
+    val isInitialDlsiteLoading = isLoading || isAwaitingInitialLoad
+    val isAsmrOnePending = shouldShowAsmrOneDirectoryLoading(
+        isAwaitingAsmrOneLoad = isAwaitingAsmrOneLoad,
+        isLoadingAsmrOne = isLoadingAsmrOne,
+        hasAsmrOneTree = asmrOneTree.isNotEmpty(),
+        hasDirectoryBrowser = browser != null
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -774,64 +799,6 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         contentPadding = PaddingValues(top = topContentPadding, bottom = LocalBottomOverlayPadding.current)
     ) {
         item(key = "dlsite-header") { header() }
-        if (isInitialDlsiteLoading) {
-            item(key = "dlsite-gallery-section") {
-                Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    Text(
-                        text = "Gallery",
-                        modifier = Modifier.padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    DlsiteGalleryLoadingRow()
-                }
-            }
-            item(key = "dlsite-one-header") {
-                Row(
-                    modifier = dlsiteAnimatedSectionModifier(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                        animateIntro = animateIntro
-                    ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "ONE",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            item(key = "dlsite-one-content") {
-                Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    DlsiteDirectoryLoadingPanel()
-                }
-            }
-            item(key = "dlsite-trial-loading") {
-                Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                Row(
-                    modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "试听 / 试看",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                DlsiteTrialLoadingList()
-                }
-            }
-            item(key = "dlsite-recommendations") {
-                Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    DlsiteRecommendationsLoadingBlocks()
-                }
-            }
-            return@LazyColumn
-        }
         item(key = "dlsite-gallery-section") {
             Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
             Text(
@@ -851,7 +818,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             } else {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = AlbumDetailHorizontalPadding),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DlsiteGalleryThumbGap),
                     contentPadding = PaddingValues(vertical = 10.dp)
                 ) {
                     items(items = galleryUrls, key = { it }, contentType = { "galleryThumb" }) { url ->
@@ -860,7 +827,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                             if (headers.isEmpty()) url else CacheImageModel(data = url, headers = headers, keyTag = "dlsite")
                         }
                         Card(
-                            modifier = Modifier.size(width = 140.dp, height = 100.dp).clickable {
+                            modifier = Modifier.size(width = DlsiteGalleryThumbWidth, height = DlsiteGalleryThumbHeight).clickable {
                                 buildGalleryImagePreviewRequest(
                                     galleryUrls = galleryUrls,
                                     clickedUrl = url,
@@ -886,7 +853,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                                 model = model,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                placeholderCornerRadius = 12,
+                                placeholderCornerRadius = DlsiteGalleryThumbCornerRadius,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -1032,7 +999,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                     )
                 }
             }
-        } else if (isAsmrOnePending || (asmrOneTree.isNotEmpty() && browser == null)) {
+        } else if (isAsmrOnePending) {
             item(key = "dlsite-one-content") {
                 Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
                     DlsiteDirectoryLoadingPanel()
@@ -1071,7 +1038,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         }
         if (trialTracks.isEmpty()) {
             item(key = "dlsite-trial-content") {
-                if (isLoadingTrial) {
+                if (isInitialDlsiteLoading || isLoadingTrial) {
                     Box(
                         modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro),
                         contentAlignment = Alignment.Center
@@ -1132,10 +1099,14 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         }
         item(key = "dlsite-recommendations") {
             Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                DlsiteRecommendationsBlocks(
-                    recommendations = dlsiteRecommendations,
-                    onOpenAlbumByRj = onOpenAlbumByRj
-                )
+                if (isInitialDlsiteLoading) {
+                    DlsiteRecommendationsLoadingBlocks()
+                } else {
+                    DlsiteRecommendationsBlocks(
+                        recommendations = dlsiteRecommendations,
+                        onOpenAlbumByRj = onOpenAlbumByRj
+                    )
+                }
             }
         }
     }
@@ -1215,10 +1186,14 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                 onPersistScroll(persistedIndex, off)
             }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            chromeState.expand()
+    LaunchedEffect(listState, treeStateKey) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
 
     val rj = rjCode.trim().uppercase()

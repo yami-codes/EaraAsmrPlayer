@@ -18,6 +18,7 @@ private const val SearchNetworkLoadWaitMs = 3_500L
 private const val SearchRefreshWaitMs = 2_500L
 private const val AlbumDetailDlLoadWaitMs = 6_500L
 private const val SceneSettleWaitMs = 600L
+private const val PrimaryNavigationSettleWaitMs = 850L
 private const val BaselineProfileMaxIterations = 3
 private const val BaselineProfileStableIterations = 1
 internal const val AlbumDetailDlExampleRj = "RJ01554925"
@@ -29,11 +30,13 @@ internal object BenchmarkScenarioValue {
     const val FavoritesDetail = "favorites_detail"
     const val PlaylistsList = "playlists_list"
     const val PlaylistDetail = "playlist_detail"
+    const val DownloadsList = "downloads_list"
     const val PlaylistPicker = "playlist_picker"
     const val GroupsList = "groups_list"
     const val GroupDetail = "group_detail"
     const val GroupPicker = "group_picker"
     const val Queue = "queue"
+    const val Settings = "settings"
 }
 
 internal fun BaselineProfileRule.collectStartupProfile(
@@ -63,9 +66,12 @@ internal fun BaselineProfileRule.collectBaselineProfile(
 }
 
 internal fun MacrobenchmarkScope.startMainActivity(
-    startRoute: String? = null
+    startRoute: String? = null,
+    clearData: Boolean = true
 ) {
-    clearTargetAppData()
+    if (clearData) {
+        clearTargetAppData()
+    }
     device.pressHome()
     val intent = Intent(Intent.ACTION_MAIN).apply {
         setClassName(PackageName, MainActivityName)
@@ -153,6 +159,121 @@ internal fun UiDevice.performLongListScrollProfile() {
     waitForIdle()
 }
 
+internal fun UiDevice.performPrimaryNavigationProfile() {
+    navigateBottomBarToSlot(1)
+    waitForPrimaryNavigation()
+    performLongListScrollProfile()
+    repeatBottomBarSlot(1)
+
+    navigateBottomBarToSlot(2)
+    waitForPrimaryNavigation()
+    performLongListScrollProfile()
+    repeatBottomBarSlot(2)
+
+    navigateBottomBarToSlot(0)
+    waitForPrimaryNavigation()
+    performLongListScrollProfile()
+    repeatBottomBarSlot(0)
+
+    dragPrimaryPagerForward()
+    waitForPrimaryNavigation()
+    dragPrimaryPagerBackward()
+    waitForPrimaryNavigation()
+}
+
+internal fun UiDevice.performSecondaryNavigationTransitionsProfile() {
+    openFirstLibraryAlbum()
+    performLongListScrollProfile()
+    pressBack()
+    waitForBenchmarkAlbum()
+
+    openDownloadManager()
+    expandFirstVisibleDownloadTask()
+    performLongListScrollProfile()
+    pressBack()
+    waitForBenchmarkAlbum()
+}
+
+private fun UiDevice.openFirstLibraryAlbum() {
+    val albumTitle = waitForBenchmarkAlbum()
+    val titleBounds = albumTitle.visibleBounds
+    click((displayWidth * 0.13f).toInt(), titleBounds.centerY() + 92)
+    waitForAlbumDetailLocalContent()
+}
+
+private fun UiDevice.openDownloadManager() {
+    val downloadButton = wait(
+        Until.findObject(By.desc("下载管理")),
+        BenchmarkWaitTimeoutMs
+    ) ?: error("Download manager action was not visible")
+    downloadButton.click()
+    waitForBenchmarkText("下载管理")
+}
+
+private fun UiDevice.waitForBenchmarkText(text: String): androidx.test.uiautomator.UiObject2 {
+    return wait(
+        Until.findObject(By.text(text)),
+        BenchmarkWaitTimeoutMs
+    ) ?: error("Expected text was not visible: $text")
+}
+
+private fun UiDevice.waitForBenchmarkAlbum(): androidx.test.uiautomator.UiObject2 {
+    return wait(
+        Until.findObject(By.textContains("Benchmark Album")),
+        BenchmarkWaitTimeoutMs
+    ) ?: error("Expected a benchmark album was not visible")
+}
+
+private fun UiDevice.waitForAlbumDetailLocalContent(): androidx.test.uiautomator.UiObject2 {
+    return wait(
+        Until.findObject(By.text("根目录")),
+        BenchmarkWaitTimeoutMs
+    ) ?: error("Expected album detail local content was not visible")
+}
+
+private fun UiDevice.navigateBottomBarToSlot(slot: Int) {
+    click(bottomBarSlotX(slot), bottomBarCenterY())
+}
+
+private fun UiDevice.repeatBottomBarSlot(slot: Int) {
+    click(bottomBarSlotX(slot), bottomBarCenterY())
+    waitForPrimaryNavigation()
+}
+
+private fun UiDevice.dragPrimaryPagerForward() {
+    swipe(
+        (displayWidth * 0.78f).toInt(),
+        (displayHeight * 0.48f).toInt(),
+        (displayWidth * 0.22f).toInt(),
+        (displayHeight * 0.48f).toInt(),
+        20
+    )
+}
+
+private fun UiDevice.dragPrimaryPagerBackward() {
+    swipe(
+        (displayWidth * 0.22f).toInt(),
+        (displayHeight * 0.48f).toInt(),
+        (displayWidth * 0.78f).toInt(),
+        (displayHeight * 0.48f).toInt(),
+        20
+    )
+}
+
+private fun UiDevice.bottomBarSlotX(slot: Int): Int {
+    val center = displayWidth / 2f
+    val slotSpacing = (displayWidth * 0.14f).coerceIn(72f, 112f)
+    return (center + ((slot - 1) * slotSpacing)).toInt()
+}
+
+private fun UiDevice.bottomBarCenterY(): Int {
+    return (displayHeight * 0.925f).toInt()
+}
+
+private fun waitForPrimaryNavigation() {
+    SystemClock.sleep(PrimaryNavigationSettleWaitMs)
+}
+
 internal fun UiDevice.performSlowDragAndFling() {
     val centerX = displayWidth / 2
     val startY = (displayHeight * 0.84f).toInt()
@@ -172,6 +293,12 @@ internal fun UiDevice.pullToRefreshSearch() {
     val bottomY = (displayHeight * 0.74f).toInt()
     swipe(centerX, topY, centerX, bottomY, 36)
     waitForIdle()
+}
+
+internal fun UiDevice.expandFirstVisibleDownloadTask() {
+    click(displayWidth / 2, (displayHeight * 0.28f).toInt())
+    waitForIdle()
+    SystemClock.sleep(300)
 }
 
 internal fun defaultFrameTimingStartupMode(): StartupMode = StartupMode.WARM

@@ -19,17 +19,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -40,13 +44,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +76,7 @@ import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
 import com.asmr.player.ui.update.launchDownloadedApkInstall
@@ -103,6 +111,7 @@ fun SettingsScreen(
     val pauseFadeOutMs by viewModel.pauseFadeOutMs.collectAsState()
     val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsState()
     val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsState()
+    val searchBlockedKeywords by viewModel.searchBlockedKeywords.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsState()
     val scanRoots by libraryViewModel.scanRoots.collectAsState()
@@ -122,6 +131,7 @@ fun SettingsScreen(
     
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var activeTipKey by remember { mutableStateOf<String?>(null) }
+    var searchBlockedKeywordInput by rememberSaveable { mutableStateOf("") }
     DisposableEffect(onHorizontalControlInteractionChanged) {
         onDispose { onHorizontalControlInteractionChanged(false) }
     }
@@ -155,7 +165,7 @@ fun SettingsScreen(
     ) { padding ->
         LaunchedEffect(scrollToTopSignal) {
             if (scrollToTopSignal == 0L) return@LaunchedEffect
-            runCatching { listState.animateScrollToItem(0) }
+            listState.smoothScrollToTop()
         }
         Box(
             modifier = Modifier
@@ -310,152 +320,202 @@ fun SettingsScreen(
             }
         }
 
-                item(key = "group:appearance") {
-                    SettingsGroup(title = "外观") {
-                Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    ThemeModeChip(
-                        label = "系统",
-                        selected = themeMode == "system",
-                        onClick = { viewModel.setThemeMode("system") }
-                    )
-                    ThemeModeChip(
-                        label = "浅色",
-                        selected = themeMode == "light",
-                        onClick = { viewModel.setThemeMode("light") }
-                    )
-                    ThemeModeChip(
-                        label = "深色",
-                        selected = themeMode == "dark",
-                        onClick = { viewModel.setThemeMode("dark") }
-                    )
-                    ThemeModeChip(
-                        label = "柔和深色",
-                        selected = themeMode == "soft_dark",
-                        onClick = { viewModel.setThemeMode("soft_dark") }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val currentHueArgb = if (themeMode == "light") staticHueArgbLight else staticHueArgbDark
-                    ThemeColorDot(
-                        color = null,
-                        selected = currentHueArgb == null,
-                        onClick = { viewModel.setStaticHueArgb(null) }
-                    )
-                    ThemeMonochromeDot(
-                        selected = currentHueArgb == MONOCHROME_THEME_SENTINEL,
-                        onClick = { viewModel.setStaticHueArgb(MONOCHROME_THEME_SENTINEL) }
-                    )
-                // 浅色主题用深色调（深红、深蓝、墨綠等），深色/柔和深色主题用高饱和亮色
-                val presets = if (themeMode == "light") {
-                    listOf(
-                        Color(0xFF0B3D2E), // 墨綠
-                        Color(0xFF0D47A1), // 深蓝
-                        Color(0xFF880E4F), // 深玫红
-                        Color(0xFF4A148C), // 深紫
-                        Color(0xFF7B1A1A), // 深砖红
-                        Color(0xFF004D40)  // 深青綠
-                    )
-                } else {
-                    // dark / soft_dark：饱和度稍高的亮色，在暗背景上清晰醒目
-                    listOf(
-                        Color(0xFF29B6F6), // 亮天蓝
-                        Color(0xFF26C17A), // 亮翠綠
-                        Color(0xFF7C4DFF), // 亮紫罗兰
-                        Color(0xFFFF5252), // 亮珊瑚红
-                        Color(0xFFFFCA28), // 亮琥珀黄
-                        Color(0xFF26C7C7)  // 亮青色
-                    )
-                }
-                presets.forEach { c ->
-                        ThemeColorDot(
-                            color = c,
-                            selected = currentHueArgb == c.toArgb(),
-                            onClick = { viewModel.setStaticHueArgb(c.toArgb()) }
-                        )
-                    }
-                }
-
-                SettingsToggleRow(
-                    text = "封面动态主题（全局）",
-                    checked = dynamicPlayerHueEnabled,
-                    onCheckedChange = viewModel::setDynamicPlayerHueEnabled
-                )
-
-                SettingsToggleRow(
-                    text = "播放页/歌词页封面背景",
-                    checked = coverBackgroundEnabled,
-                    onCheckedChange = viewModel::setCoverBackgroundEnabled
-                )
-                /*
-                SettingsToggleRow(
-                    text = "封面随手机转动查看完整图片",
-                    checked = coverMotionEnabled,
-                    onCheckedChange = viewModel::setCoverMotionEnabled
-                )
-                */
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
-                    PreviewModeInfoTip(
-                        active = activeTipKey == "cover_preview_mode",
-                        onToggle = {
-                            activeTipKey = if (activeTipKey == "cover_preview_mode") null else "cover_preview_mode"
-                        }
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    SingleChoiceSegmentedButtonRow {
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Disabled,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Disabled) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("关闭") }
-                        )
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Drag,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Drag) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("滑动") }
-                        )
-                        SegmentedButton(
-                            selected = coverPreviewMode == CoverPreviewMode.Motion,
-                            onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Motion) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                            colors = segmentedButtonColors,
-                            icon = {},
-                            label = { Text("转动") }
-                        )
-                    }
-                }
-                if (coverBackgroundEnabled) {
-                    key("cover_background_clarity_slider") {
-                        DeferredCommitSettingsSliderRow(
-                            committedValue = coverBackgroundClarity,
-                            range = 0f..1f,
-                            stepSize = 0.05f,
-                            textForValue = { value ->
-                                "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
+                item(key = "group:block_words") {
+                    SettingsGroup(title = "屏蔽词") {
+                        SearchBlockedKeywordsSection(
+                            input = searchBlockedKeywordInput,
+                            keywords = searchBlockedKeywords,
+                            onInputChange = { searchBlockedKeywordInput = it },
+                            onAddKeyword = {
+                                val keyword = searchBlockedKeywordInput.trim()
+                                if (keyword.isNotBlank()) {
+                                    viewModel.addSearchBlockedKeyword(keyword)
+                                    searchBlockedKeywordInput = ""
+                                }
                             },
-                            onValueCommitted = viewModel::setCoverBackgroundClarity,
-                            onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+                            onRemoveKeyword = viewModel::removeSearchBlockedKeyword
                         )
                     }
                 }
-            }
 
+                item(key = "group:appearance") {
+                    SettingsGroup(
+                        title = "外观",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                ThemeModeChip(
+                                    label = "系统",
+                                    selected = themeMode == "system",
+                                    onClick = { viewModel.setThemeMode("system") }
+                                )
+                                ThemeModeChip(
+                                    label = "浅色",
+                                    selected = themeMode == "light",
+                                    onClick = { viewModel.setThemeMode("light") }
+                                )
+                                ThemeModeChip(
+                                    label = "深色",
+                                    selected = themeMode == "dark",
+                                    onClick = { viewModel.setThemeMode("dark") }
+                                )
+                                ThemeModeChip(
+                                    label = "柔和深色",
+                                    selected = themeMode == "soft_dark",
+                                    onClick = { viewModel.setThemeMode("soft_dark") }
+                                )
+                            }
+
+                            Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val currentHueArgb = if (themeMode == "light") staticHueArgbLight else staticHueArgbDark
+                                ThemeColorDot(
+                                    color = null,
+                                    selected = currentHueArgb == null,
+                                    onClick = { viewModel.setStaticHueArgb(null) }
+                                )
+                                ThemeMonochromeDot(
+                                    selected = currentHueArgb == MONOCHROME_THEME_SENTINEL,
+                                    onClick = { viewModel.setStaticHueArgb(MONOCHROME_THEME_SENTINEL) }
+                                )
+                                // 浅色主题用深色调（深红、深蓝、墨綠等），深色/柔和深色主题用高饱和亮色
+                                val presets = if (themeMode == "light") {
+                                    listOf(
+                                        Color(0xFF0B3D2E), // 墨綠
+                                        Color(0xFF0D47A1), // 深蓝
+                                        Color(0xFF880E4F), // 深玫红
+                                        Color(0xFF4A148C), // 深紫
+                                        Color(0xFF7B1A1A), // 深砖红
+                                        Color(0xFF004D40)  // 深青綠
+                                    )
+                                } else {
+                                    // dark / soft_dark：饱和度稍高的亮色，在暗背景上清晰醒目
+                                    listOf(
+                                        Color(0xFF29B6F6), // 亮天蓝
+                                        Color(0xFF26C17A), // 亮翠綠
+                                        Color(0xFF7C4DFF), // 亮紫罗兰
+                                        Color(0xFFFF5252), // 亮珊瑚红
+                                        Color(0xFFFFCA28), // 亮琥珀黄
+                                        Color(0xFF26C7C7)  // 亮青色
+                                    )
+                                }
+                                presets.forEach { c ->
+                                    ThemeColorDot(
+                                        color = c,
+                                        selected = currentHueArgb == c.toArgb(),
+                                        onClick = { viewModel.setStaticHueArgb(c.toArgb()) }
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        SettingsToggleRow(
+                            text = "封面动态主题（全局）",
+                            checked = dynamicPlayerHueEnabled,
+                            onCheckedChange = viewModel::setDynamicPlayerHueEnabled
+                        )
+
+                        SettingsToggleRow(
+                            text = "播放页/歌词页封面背景",
+                            checked = coverBackgroundEnabled,
+                            onCheckedChange = viewModel::setCoverBackgroundEnabled
+                        )
+                        /*
+                        SettingsToggleRow(
+                            text = "封面随手机转动查看完整图片",
+                            checked = coverMotionEnabled,
+                            onCheckedChange = viewModel::setCoverMotionEnabled
+                        )
+                        */
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
+                            PreviewModeInfoTip(
+                                active = activeTipKey == "cover_preview_mode",
+                                onToggle = {
+                                    activeTipKey = if (activeTipKey == "cover_preview_mode") null else "cover_preview_mode"
+                                }
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            SingleChoiceSegmentedButtonRow {
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Disabled,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Disabled) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("关闭") }
+                                )
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Drag,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Drag) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("滑动") }
+                                )
+                                SegmentedButton(
+                                    selected = coverPreviewMode == CoverPreviewMode.Motion,
+                                    onClick = { viewModel.setCoverPreviewMode(CoverPreviewMode.Motion) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                                    colors = segmentedButtonColors,
+                                    icon = {},
+                                    label = { Text("转动") }
+                                )
+                            }
+                        }
+                        if (coverBackgroundEnabled) {
+                            key("cover_background_clarity_slider") {
+                                DeferredCommitSettingsSliderRow(
+                                    committedValue = coverBackgroundClarity,
+                                    range = 0f..1f,
+                                    stepSize = 0.05f,
+                                    textForValue = { value ->
+                                        "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
+                                    },
+                                    onValueCommitted = viewModel::setCoverBackgroundClarity,
+                                    onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item(key = "group:playback") {
-                    SettingsGroup(title = "播放设置") {
+                    SettingsGroup(
+                        title = "播放设置",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            SettingsToggleRow(
+                                text = "迷你播放栏开关",
+                                checked = showMiniPlayerBar,
+                                onCheckedChange = viewModel::setShowMiniPlayerBar,
+                                infoKey = "show_mini_player_bar",
+                                infoTitle = "迷你播放栏",
+                                infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+                                activeTipKey = activeTipKey,
+                                onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                            )
+                            SettingsToggleRow(
+                                text = "SFW开关",
+                                checked = sfwHideSystemControls,
+                                onCheckedChange = viewModel::setSfwHideSystemControls,
+                                infoKey = "sfw_hide_system_controls",
+                                infoTitle = "SFW",
+                                infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
+                                activeTipKey = activeTipKey,
+                                onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                            )
+                        }
+                    ) {
                         SettingsToggleRow(
                             text = "断开扬声器、有线/蓝牙耳机或蓝牙关闭时立刻暂停播放",
                             checked = pauseOnOutputDisconnect,
@@ -473,16 +533,6 @@ fun SettingsScreen(
                             infoKey = "resume_on_output_connect",
                             infoTitle = "输出接入自动恢复",
                             infoText = "检测到耳机、蓝牙耳机、USB 音频、HDMI 或 AUX 等外接输出接入时，如果播放器当前处于暂停，会自动尝试恢复播放；手机扬声器不触发。",
-                            activeTipKey = activeTipKey,
-                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
-                        )
-                        SettingsToggleRow(
-                            text = "其他应用播放音/视频时暂停",
-                            checked = pauseOnOtherAudio,
-                            onCheckedChange = viewModel::setPauseOnOtherAudio,
-                            infoKey = "pause_on_other_audio",
-                            infoTitle = "音频焦点暂停",
-                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -513,22 +563,12 @@ fun SettingsScreen(
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
                         )
                         SettingsToggleRow(
-                            text = "SFW开关",
-                            checked = sfwHideSystemControls,
-                            onCheckedChange = viewModel::setSfwHideSystemControls,
-                            infoKey = "sfw_hide_system_controls",
-                            infoTitle = "SFW",
-                            infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
-                            activeTipKey = activeTipKey,
-                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
-                        )
-                        SettingsToggleRow(
-                            text = "迷你播放栏开关",
-                            checked = showMiniPlayerBar,
-                            onCheckedChange = viewModel::setShowMiniPlayerBar,
-                            infoKey = "show_mini_player_bar",
-                            infoTitle = "迷你播放栏",
-                            infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+                            text = "其他应用播放音/视频时暂停",
+                            checked = pauseOnOtherAudio,
+                            onCheckedChange = viewModel::setPauseOnOtherAudio,
+                            infoKey = "pause_on_other_audio",
+                            infoTitle = "音频焦点暂停",
+                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -537,7 +577,18 @@ fun SettingsScreen(
 
                 // 悬浮歌词
                 item(key = "group:lyrics") {
-                    SettingsGroup(title = "歌词") {
+                    SettingsGroup(
+                        title = "歌词",
+                        collapsible = true,
+                        initiallyExpanded = false,
+                        collapsedContent = {
+                            SettingsToggleRow(
+                                text = "开启悬浮歌词",
+                                checked = floatingLyricsEnabled,
+                                onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
+                            )
+                        }
+                    ) {
                         LyricsPageSettingsSection(
                             settings = lyricsPageSettings,
                             segmentedButtonColors = segmentedButtonColors,
@@ -546,13 +597,7 @@ fun SettingsScreen(
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-
-                        Text("悬浮歌词", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        SettingsToggleRow(
-                            text = "开启悬浮歌词",
-                            checked = floatingLyricsEnabled,
-                            onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
-                        )
+                        Text("悬浮歌词细节", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
                         if (!overlayGranted && floatingLyricsEnabled) {
                             OutlinedButton(
@@ -935,16 +980,356 @@ private fun formatTreeRootLabel(uriString: String): String {
 }
 
 @Composable
-private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SearchBlockedKeywordsSection(
+    input: String,
+    keywords: List<String>,
+    onInputChange: (String) -> Unit,
+    onAddKeyword: () -> Unit,
+    onRemoveKeyword: (String) -> Unit
+) {
     val colorScheme = AsmrTheme.colorScheme
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
+    val isDark = colorScheme.isDark
+    val addButtonColors = ButtonDefaults.filledTonalButtonColors(
+        containerColor = colorScheme.primarySoft,
+        contentColor = if (isDark) colorScheme.onPrimaryContainer else colorScheme.primaryStrong
+    )
+    var showHelp by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "屏蔽关键词",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.textPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = { showHelp = true },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = "搜索高级用法",
+                    tint = colorScheme.textSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SearchBlockedKeywordInputField(
+                value = input,
+                onValueChange = onInputChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+            )
+            FilledTonalButton(
+                onClick = onAddKeyword,
+                enabled = input.isNotBlank(),
+                colors = addButtonColors,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+            ) {
+                Text("添加")
+            }
+        }
+
+        if (keywords.isEmpty()) {
+            Text(
+                text = "暂无屏蔽关键词",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.textSecondary
+            )
+        } else {
+            SearchBlockedKeywordsChips(
+                keywords = keywords,
+                onRemoveKeyword = onRemoveKeyword
+            )
+        }
+    }
+    if (showHelp) {
+        SearchBlockedKeywordsHelpDialog(onDismissRequest = { showHelp = false })
+    }
+}
+
+@Composable
+private fun SearchBlockedKeywordsHelpDialog(
+    onDismissRequest: () -> Unit
+) {
+    FlatActionDialog(
+        message = "搜索高级用法",
+        onDismissRequest = onDismissRequest,
+        actions = listOf(
+            FlatDialogAction(
+                text = "知道了",
+                tone = FlatDialogActionTone.Primary,
+                onClick = onDismissRequest
+            )
         )
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SearchHelpText("和 搜索(空格分割)：「学校 制服」，表示同时包含指定关键词")
+            SearchHelpText("或 搜索(英文竖线分割)：「学校|制服」，表示包含一个或多个指定关键词均可")
+            SearchHelpText("排除 搜索(空格与减号)：「学校 -制服」，表示排除指定关键词")
+            SearchHelpText("完整 搜索(英文双引号包裹)：「\"【简体中文】 舔耳\"」，表示将多个词当做完整词组搜索")
+        }
+    }
+}
+
+@Composable
+private fun SearchHelpText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = AsmrTheme.colorScheme.textSecondary
+    )
+}
+
+@Composable
+private fun SearchBlockedKeywordsChips(
+    keywords: List<String>,
+    onRemoveKeyword: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val horizontalSpacing = 8.dp
+    val verticalSpacing = 4.dp
+    SubcomposeLayout(modifier = modifier.fillMaxWidth()) { constraints ->
+        val itemSpacingPx = horizontalSpacing.roundToPx()
+        val lineSpacingPx = verticalSpacing.roundToPx()
+        val looseConstraints = Constraints()
+
+        val keywordPlaceables = keywords.mapIndexed { index, keyword ->
+            subcompose("keyword:$index:$keyword") {
+                SearchBlockedKeywordChip(
+                    keyword = keyword,
+                    onRemoveKeyword = onRemoveKeyword
+                )
+            }.first().measure(looseConstraints)
+        }
+
+        val naturalSingleLineWidth = keywordPlaceables.sumOf { it.width } +
+            itemSpacingPx * (keywordPlaceables.size - 1).coerceAtLeast(0)
+
+        val contentFitsSingleLine = naturalSingleLineWidth <= constraints.maxWidth
+        if (contentFitsSingleLine) {
+            val rowHeight = keywordPlaceables.maxOfOrNull { it.height } ?: 0
+            return@SubcomposeLayout layout(constraints.maxWidth, rowHeight) {
+                var x = 0
+                keywordPlaceables.forEachIndexed { index, placeable ->
+                    placeable.placeRelative(
+                        x,
+                        (rowHeight - placeable.height) / 2
+                    )
+                    x += placeable.width
+                    if (index < keywordPlaceables.lastIndex) {
+                        x += itemSpacingPx
+                    }
+                }
+            }
+        }
+        val lines = mutableListOf<MutableList<Int>>()
+        val lineHeights = mutableListOf<Int>()
+        var currentLine = mutableListOf<Int>()
+        var currentWidth = 0
+        var currentHeight = 0
+
+        fun commitLine() {
+            if (currentLine.isEmpty()) return
+            lines += currentLine
+            lineHeights += currentHeight
+            currentLine = mutableListOf()
+            currentWidth = 0
+            currentHeight = 0
+        }
+
+        keywordPlaceables.forEachIndexed { index, placeable ->
+            val nextWidth = if (currentLine.isEmpty()) {
+                placeable.width
+            } else {
+                currentWidth + itemSpacingPx + placeable.width
+            }
+            if (currentLine.isNotEmpty() && nextWidth > constraints.maxWidth) {
+                commitLine()
+            }
+            currentWidth = if (currentLine.isEmpty()) {
+                placeable.width
+            } else {
+                currentWidth + itemSpacingPx + placeable.width
+            }
+            currentHeight = maxOf(currentHeight, placeable.height)
+            currentLine += index
+        }
+        commitLine()
+
+        val layoutHeight = lineHeights.sum() +
+            lineSpacingPx * (lineHeights.size - 1).coerceAtLeast(0)
+
+        layout(constraints.maxWidth, layoutHeight) {
+            var y = 0
+            lines.forEachIndexed { lineIndex, line ->
+                val lineHeight = lineHeights[lineIndex]
+                var x = 0
+                line.forEachIndexed { itemIndex, placeableIndex ->
+                    val placeable = keywordPlaceables[placeableIndex]
+                    placeable.placeRelative(
+                        x,
+                        y + (lineHeight - placeable.height) / 2
+                    )
+                    x += placeable.width
+                    if (itemIndex < line.lastIndex) {
+                        x += itemSpacingPx
+                    }
+                }
+                y += lineHeight + lineSpacingPx
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBlockedKeywordInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val shape = RoundedCornerShape(12.dp)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colorScheme.textPrimary),
+        cursorBrush = SolidColor(colorScheme.primary),
+        decorationBox = { innerTextField ->
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = shape,
+                color = colorScheme.surface.copy(alpha = 0.38f),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.VisibilityOff,
+                        contentDescription = null,
+                        tint = colorScheme.textSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = "屏蔽关键词，例如：NTR",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorScheme.textTertiary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SearchBlockedKeywordChip(
+    keyword: String,
+    onRemoveKeyword: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+        InputChip(
+            selected = false,
+            onClick = { onRemoveKeyword(keyword) },
+            modifier = modifier,
+            label = {
+                Text(
+                    text = keyword,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "删除 $keyword",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun SettingsGroup(
+    title: String,
+    collapsible: Boolean = false,
+    initiallyExpanded: Boolean = true,
+    collapsedContent: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (collapsible) {
+                        Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { expanded = !expanded }
+                            .padding(start = 2.dp, end = 4.dp, bottom = 6.dp)
+                    } else {
+                        Modifier.padding(bottom = 6.dp)
+                    }
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            if (collapsible) {
+                Text(
+                    text = if (expanded) "收起" else "展开",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.textSecondary
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (expanded) "收起$title" else "展开$title",
+                    tint = colorScheme.textSecondary
+                )
+            }
+        }
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = colorScheme.surface.copy(alpha = 0.5f),
@@ -952,10 +1337,20 @@ private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> 
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                content()
+                if (collapsible) {
+                    collapsedContent?.invoke(this)
+                    if (expanded) {
+                        if (collapsedContent != null) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                        }
+                        content()
+                    }
+                } else {
+                    content()
+                }
             }
         }
     }

@@ -158,6 +158,9 @@ data class AlbumDetailModel(
     val dlsiteEditions: List<DlsiteLanguageEdition>,
     val dlsiteSelectedLang: String,
     val hasResolvedInitialDlsiteTarget: Boolean,
+    val hasLoadedInitialDlsiteContent: Boolean,
+    val hasResolvedAsmrOneContent: Boolean,
+    val preserveHeaderAlbumMetadata: Boolean,
     val isDlsiteLanguageUserSelected: Boolean,
     val asmrOneWorkId: String?,
     val asmrOneSite: Int?,
@@ -168,6 +171,65 @@ data class AlbumDetailModel(
     val isLoadingAsmrOne: Boolean,
     val isLoadingDlsitePlay: Boolean
 )
+
+internal fun buildDisplayAlbum(
+    rjCode: String,
+    localAlbum: Album?,
+    dlsiteInfo: Album?,
+    asmrOneWorkId: String?,
+    fallbackCv: String = "",
+    fallbackCoverUrl: String = ""
+): Album {
+    val base = dlsiteInfo ?: localAlbum ?: Album(title = rjCode.ifBlank { "专辑" }, path = "")
+    return base.copy(
+        workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: base.workId,
+        rjCode = rjCode.ifBlank { base.rjCode.ifBlank { base.workId } },
+        cv = base.cv.ifBlank { fallbackCv },
+        // 网络解析尚未返回封面时，保留列表种入/上一帧的 coverUrl，避免 hero 先空白再加载。
+        coverUrl = base.coverUrl.ifBlank { fallbackCoverUrl }
+    )
+}
+
+internal fun Album.withResolvedWorkIdentity(
+    rjCode: String,
+    asmrOneWorkId: String?
+): Album {
+    return copy(
+        workId = asmrOneWorkId?.takeIf { it.isNotBlank() } ?: workId,
+        rjCode = rjCode.ifBlank { this.rjCode.ifBlank { workId } }
+    )
+}
+
+internal fun mergeDetailHeaderAlbum(
+    currentDisplayAlbum: Album,
+    localAlbum: Album?,
+    fetchedDlsiteInfo: Album?,
+    rjCode: String,
+    asmrOneWorkId: String?,
+    preserveHeaderAlbumMetadata: Boolean
+): Album {
+    if (preserveHeaderAlbumMetadata) {
+        return currentDisplayAlbum.withResolvedWorkIdentity(
+            rjCode = rjCode,
+            asmrOneWorkId = asmrOneWorkId
+        )
+    }
+    return if (fetchedDlsiteInfo != null) {
+        buildDisplayAlbum(
+            rjCode = rjCode,
+            localAlbum = localAlbum,
+            dlsiteInfo = fetchedDlsiteInfo,
+            asmrOneWorkId = asmrOneWorkId,
+            fallbackCv = currentDisplayAlbum.cv,
+            fallbackCoverUrl = currentDisplayAlbum.coverUrl
+        )
+    } else {
+        currentDisplayAlbum.withResolvedWorkIdentity(
+            rjCode = rjCode,
+            asmrOneWorkId = asmrOneWorkId
+        )
+    }
+}
 
 internal enum class DlsiteChinesePreference {
     None,
@@ -306,6 +368,26 @@ internal fun buildDlsiteTrialDownloadTree(trialTracks: List<Track>): List<AsmrOn
             mediaDownloadUrl = url
         )
     }
+}
+
+internal suspend fun fetchAsmrOneTracksBackendFirst(
+    backendRjs: List<String>,
+    fetchBackend: suspend (String) -> Pair<String, List<AsmrOneTrackNodeResponse>>?,
+    fetchFallback: suspend () -> Triple<String?, Int?, List<AsmrOneTrackNodeResponse>>
+): Triple<String?, Int?, List<AsmrOneTrackNodeResponse>> {
+    backendRjs
+        .asSequence()
+        .map { it.trim().uppercase() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .forEach { rj ->
+            val backendResult = runCatching { fetchBackend(rj) }.getOrNull()
+            val tree = backendResult?.second.orEmpty()
+            if (backendResult != null && tree.isNotEmpty()) {
+                return Triple(backendResult.first.takeIf { it.isNotBlank() }, null, tree)
+            }
+        }
+    return fetchFallback()
 }
 
 private fun inferDlsiteTrialMediaType(title: String, url: String): TreeFileType? {

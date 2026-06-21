@@ -53,7 +53,7 @@ class PlayerDynamicHueTest {
     }
 
     @Test
-    fun playerThemeColors_fallsBackToThemeAccent_whenCoverBackgroundDisabled() {
+    fun playerThemeColors_fallsBackToThemeAccentAndTintedVideoBackdrop_whenCoverBackgroundDisabled() {
         val dynamicHue = com.asmr.player.ui.theme.HuePalette(
             primary = Color(0xFF3A6EA5),
             primarySoft = Color(0xFFD7E3F4),
@@ -83,7 +83,58 @@ class PlayerDynamicHueTest {
         assertEquals(colorScheme.primary, result.accentColor)
         assertEquals(colorScheme.onPrimary, result.onAccentColor)
         assertEquals(colorScheme.background, result.backdropTintColor)
-        assertEquals(colorScheme.background, result.videoBackdropColor)
+        assertEquals(
+            derivePlayerBackdropTintColor(
+                primary = colorScheme.primary,
+                primarySoft = colorScheme.primarySoft,
+                background = colorScheme.background,
+                mode = colorScheme.mode
+            ),
+            result.videoBackdropColor
+        )
+    }
+
+    @Test
+    fun playerThemeColors_keepsDynamicAccentForVideoWhenArtworkBackdropDisabled() {
+        val dynamicHue = com.asmr.player.ui.theme.HuePalette(
+            primary = Color(0xFFB8576A),
+            primarySoft = Color(0xFFF6D4DB),
+            primaryStrong = Color(0xFF8D3044),
+            onPrimary = Color.White,
+            secondary = Color(0xFFB07182),
+            onPrimaryContainer = Color(0xFF351019),
+            onSecondary = Color.White,
+            background = Color(0xFFFFF7F8),
+            onBackground = Color(0xFF24191B),
+            surface = Color.White,
+            onSurface = Color(0xFF24191B),
+            surfaceVariant = Color(0xFFF3E4E7),
+            onSurfaceVariant = Color(0xFF6C5960),
+            textPrimary = Color(0xFF24191B),
+            textSecondary = Color(0xFF6C5960),
+            textTertiary = Color(0xFF917D84)
+        )
+        val colorScheme = testColorScheme()
+
+        val result = resolvePlayerThemeColors(
+            dynamicHue = dynamicHue,
+            colorScheme = colorScheme,
+            coverBackgroundEnabled = true,
+            artworkBackdropEnabled = false
+        )
+
+        assertEquals(dynamicHue.primaryStrong, result.accentColor)
+        assertEquals(dynamicHue.onPrimary, result.onAccentColor)
+        assertEquals(colorScheme.background, result.backdropTintColor)
+        assertEquals(
+            derivePlayerBackdropTintColor(
+                primary = dynamicHue.primary,
+                primarySoft = dynamicHue.primarySoft,
+                background = colorScheme.background,
+                mode = colorScheme.mode
+            ),
+            result.videoBackdropColor
+        )
     }
 
     @Test

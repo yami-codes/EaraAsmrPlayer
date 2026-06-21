@@ -24,12 +24,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.media3.common.MediaItem
 import com.asmr.player.data.repository.AlbumGroupRepository
 import com.asmr.player.data.repository.PlaylistRepository
-import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.ui.groups.AlbumGroupDetailContent
 import com.asmr.player.ui.groups.AlbumGroupPickerScreen
 import com.asmr.player.ui.groups.AlbumGroupsScreen
+import com.asmr.player.ui.downloads.DownloadsScreen
 import com.asmr.player.ui.library.LibraryScreen
 import com.asmr.player.ui.player.PlayerViewModel
 import com.asmr.player.ui.player.QueueSheetContent
@@ -37,6 +38,7 @@ import com.asmr.player.ui.playlists.PlaylistDetailContent
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.playlists.PlaylistsScreen
 import com.asmr.player.ui.search.SearchScreen
+import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -155,7 +157,7 @@ private fun BenchmarkScenarioScreen(
         BenchmarkScenario.SearchNetwork -> {
             SearchScreen(
                 windowSizeClass = windowSizeClass,
-                onAlbumClick = { _, _ -> }
+                onAlbumClick = { _, _, _ -> }
             )
         }
 
@@ -198,6 +200,29 @@ private fun BenchmarkScenarioScreen(
             )
         }
 
+        BenchmarkScenario.PlaylistPicker -> {
+            PlaylistPickerScreen(
+                windowSizeClass = windowSizeClass,
+                items = listOf(
+                    MediaItem.Builder()
+                        .setMediaId(seedSummary.sampleMediaId)
+                        .setUri(seedSummary.sampleUri)
+                        .setMediaMetadata(
+                            androidx.media3.common.MediaMetadata.Builder()
+                                .setTitle(seedSummary.sampleTitle)
+                                .setArtist(seedSummary.sampleArtist)
+                                .build()
+                        )
+                        .build()
+                ),
+                onBack = {}
+            )
+        }
+
+        BenchmarkScenario.DownloadsList -> {
+            DownloadsScreen(windowSizeClass = windowSizeClass)
+        }
+
         BenchmarkScenario.GroupsList -> {
             AlbumGroupsScreen(
                 windowSizeClass = windowSizeClass,
@@ -236,6 +261,10 @@ private fun BenchmarkScenarioScreen(
                 viewModel = playerViewModel,
                 onDismiss = {}
             )
+        }
+
+        BenchmarkScenario.Settings -> {
+            SettingsScreen(windowSizeClass = windowSizeClass)
         }
     }
 }

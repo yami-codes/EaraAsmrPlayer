@@ -57,6 +57,20 @@ class MainNavigationSupportTest {
     }
 
     @Test
+    fun resolvePrimaryPagerApproachPage_onlySkipsLongProgrammaticJumps() {
+        assertEquals(null, resolvePrimaryPagerApproachPage(currentPage = 1, targetPage = 2))
+        assertEquals(2, resolvePrimaryPagerApproachPage(currentPage = 0, targetPage = 3))
+        assertEquals(1, resolvePrimaryPagerApproachPage(currentPage = 4, targetPage = 0))
+    }
+
+    @Test
+    fun resolvePrimaryPagerBeyondBoundsPageCount_keepsAllPrimaryPagesComposed() {
+        assertEquals(0, resolvePrimaryPagerBeyondBoundsPageCount(0))
+        assertEquals(0, resolvePrimaryPagerBeyondBoundsPageCount(1))
+        assertEquals(7, resolvePrimaryPagerBeyondBoundsPageCount(8))
+    }
+
+    @Test
     fun resolveCurrentPrimaryDestinationRoute_handlesFavoritesSystemPlaylist() {
         assertEquals(
             "playlist_system/favorites",
@@ -80,6 +94,27 @@ class MainNavigationSupportTest {
         assertEquals(true, shouldScrollPrimaryRouteToTop("playlists", "playlists", "playlists"))
         assertEquals(false, shouldScrollPrimaryRouteToTop("playlists", "playlists", null))
         assertEquals(false, shouldScrollPrimaryRouteToTop("groups", "playlists", "playlists"))
+    }
+
+    @Test
+    fun shouldHideStatusBarForImmersivePage_hidesAlbumDetailRoutes() {
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail/{albumId}?rjCode={rjCode}", false))
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail_rj/{rj}?initialTab={initialTab}", false))
+        assertEquals(true, shouldHideStatusBarForImmersivePage("album_detail_online/{rj}", false))
+    }
+
+    @Test
+    fun shouldHideStatusBarForImmersivePage_hidesNowPlayingAndLyricsOverlay() {
+        assertEquals(true, shouldHideStatusBarForImmersivePage("library", true))
+        assertEquals(true, shouldHideStatusBarForImmersivePage(null, true))
+    }
+
+    @Test
+    fun shouldHideStatusBarForImmersivePage_keepsRegularRoutesVisible() {
+        assertEquals(false, shouldHideStatusBarForImmersivePage("library", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage("search", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage("settings", false))
+        assertEquals(false, shouldHideStatusBarForImmersivePage(null, false))
     }
 
     @Test

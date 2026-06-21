@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +38,7 @@ import org.jsoup.HttpStatusException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -336,6 +338,7 @@ class SearchViewModel @Inject constructor(
                     visitedPages = buildVisitedPages(previousSuccess, requestKind, page),
                     isEnriching = false,
                     enrichingRjCodes = emptySet(),
+                    enrichedDetailRjCodes = pageResult.resolvedDetailRjCodes,
                     isAsmrOneChecking = false,
                     asmrOneChecked = 0,
                     asmrOneTotal = 0
@@ -430,20 +433,33 @@ class SearchViewModel @Inject constructor(
             val resp = dlsitePlayLibraryClient.searchPurchased(keyword, page, pageSize)
             return SearchPageResult(items = resp.items, canGoNext = resp.canGoNext)
         }
+        val keywordWithBlockedTerms = appendBlockedKeywordsForOnlineSearch(
+            keyword = keyword,
+            blockedKeywords = settingsRepository.searchBlockedKeywords.first()
+        )
         if (collectedOnly) {
             val offset = (page.coerceAtLeast(1) - 1) * pageSize
-            val resp = asmrOneAvailabilityApi.search(keyword, pageSize, offset, collectedSort.backendSort)
+            val resp = asmrOneAvailabilityApi.search(keywordWithBlockedTerms, pageSize, offset, collectedSort.backendSort)
             val items = resp.items.orEmpty().map { it.toCollectedAlbum() }
             val total = resp.total.coerceAtLeast(0)
             val responseOffset = resp.offset.coerceAtLeast(offset)
             return SearchPageResult(
                 items = items,
-                canGoNext = responseOffset + items.size < total
+                canGoNext = responseOffset + items.size < total,
+                resolvedDetailRjCodes = items
+                    .mapNotNull { it.rjCode.ifBlank { it.workId }.trim().uppercase().takeIf(String::isNotBlank) }
+                    .toSet()
             )
         }
         val normalizedKeyword = keyword.trim()
         val normalizedRj = normalizedKeyword.uppercase()
-        if (!presaleOnly && !chineseTranslatedOnly && page == 1 && Regex("""RJ\d{6,}""").matches(normalizedRj)) {
+        if (
+            keywordWithBlockedTerms == normalizedKeyword &&
+            !presaleOnly &&
+            !chineseTranslatedOnly &&
+            page == 1 &&
+            Regex("""RJ\d{6,}""").matches(normalizedRj)
+        ) {
             val preferred = currentLocale
             val info = when {
                 !preferred.isNullOrBlank() -> {
@@ -461,11 +477,15 @@ class SearchViewModel @Inject constructor(
             }
             if (info != null) {
                 val album = info.album.copy(workId = normalizedRj, rjCode = normalizedRj)
-                return SearchPageResult(items = listOf(album), canGoNext = false)
+                return SearchPageResult(
+                    items = listOf(album),
+                    canGoNext = false,
+                    resolvedDetailRjCodes = setOf(normalizedRj)
+                )
             }
         }
         val result = dlsiteScraper.search(
-            keyword = keyword,
+            keyword = keywordWithBlockedTerms,
             page = page,
             order = order.dlsiteOrder,
             locale = currentLocale,
@@ -520,11 +540,16 @@ class SearchViewModel @Inject constructor(
                     if (cur.keyword != keyword || cur.page != page || cur.purchasedOnly || cur.collectedOnly) return@forEach
                     val list = cur.results.toMutableList()
                     if (detail != null && idx in list.indices) {
-                        list[idx] = mergeAlbum(list[idx], detail)
+                        list[idx] = mergeSearchAlbumDetail(list[idx], detail)
                     }
                     _uiState.value = cur.copy(
                         results = list,
-                        enrichingRjCodes = cur.enrichingRjCodes - rj
+                        enrichingRjCodes = cur.enrichingRjCodes - rj,
+                        enrichedDetailRjCodes = if (detail != null) {
+                            cur.enrichedDetailRjCodes + rj
+                        } else {
+                            cur.enrichedDetailRjCodes
+                        }
                     )
                     if (detail != null) scheduleCacheWrite()
                 }
@@ -590,6 +615,13 @@ class SearchViewModel @Inject constructor(
             visitedPages = listOf(page),
             isEnriching = false,
             enrichingRjCodes = emptySet(),
+            enrichedDetailRjCodes = if (filters.collectedOnly && !filters.purchasedOnly) {
+                cached.results
+                    .mapNotNull { it.rjCode.ifBlank { it.workId }.trim().uppercase().takeIf(String::isNotBlank) }
+                    .toSet()
+            } else {
+                emptySet()
+            },
             isAsmrOneChecking = false,
             asmrOneChecked = 0,
             asmrOneTotal = 0
@@ -651,21 +683,6 @@ class SearchViewModel @Inject constructor(
 
             else -> "搜索失败，请稍后重试"
         }
-    }
-
-    private fun mergeAlbum(base: Album, detail: Album): Album {
-        return base.copy(
-            title = base.title.ifBlank { detail.title },
-            circle = base.circle.ifBlank { detail.circle },
-            cv = base.cv.ifBlank { detail.cv },
-            tags = if (base.tags.isEmpty()) detail.tags else base.tags,
-            coverUrl = base.coverUrl.ifBlank { detail.coverUrl },
-            ratingValue = detail.ratingValue ?: base.ratingValue,
-            ratingCount = maxOf(base.ratingCount, detail.ratingCount),
-            releaseDate = base.releaseDate.ifBlank { detail.releaseDate },
-            dlCount = maxOf(base.dlCount, detail.dlCount),
-            priceJpy = if (base.priceJpy > 0) base.priceJpy else detail.priceJpy
-        )
     }
 
     private fun AsmrOneCollectedSearchItem.toCollectedAlbum(): Album {
@@ -837,8 +854,45 @@ private data class SearchFilterFlags(
 
 private data class SearchPageResult(
     val items: List<Album>,
-    val canGoNext: Boolean
+    val canGoNext: Boolean,
+    val resolvedDetailRjCodes: Set<String> = emptySet()
 )
+
+internal fun mergeSearchAlbumDetail(base: Album, detail: Album): Album {
+    return base.copy(
+        title = base.title.ifBlank { detail.title },
+        circle = base.circle.ifBlank { detail.circle },
+        cv = detail.cv.ifBlank { base.cv },
+        tags = if (base.tags.isEmpty()) detail.tags else base.tags,
+        coverUrl = base.coverUrl.ifBlank { detail.coverUrl },
+        ratingValue = detail.ratingValue ?: base.ratingValue,
+        ratingCount = maxOf(base.ratingCount, detail.ratingCount),
+        releaseDate = base.releaseDate.ifBlank { detail.releaseDate },
+        dlCount = maxOf(base.dlCount, detail.dlCount),
+        priceJpy = if (base.priceJpy > 0) base.priceJpy else detail.priceJpy
+    )
+}
+
+internal fun appendBlockedKeywordsForOnlineSearch(
+    keyword: String,
+    blockedKeywords: List<String>
+): String {
+    val base = keyword.trim()
+    val exclusions = blockedKeywords
+        .map { it.trim() }
+        .map { it.removePrefix("-").trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase(Locale.ROOT) }
+    if (exclusions.isEmpty()) return base
+    return buildString {
+        if (base.isNotBlank()) append(base)
+        exclusions.forEach { blocked ->
+            if (isNotEmpty()) append(' ')
+            append('-')
+            append(blocked)
+        }
+    }
+}
 
 sealed class SearchUiState {
     object Idle : SearchUiState()
@@ -861,6 +915,7 @@ sealed class SearchUiState {
         val visitedPages: List<Int> = listOf(page),
         val isEnriching: Boolean = false,
         val enrichingRjCodes: Set<String> = emptySet(),
+        val enrichedDetailRjCodes: Set<String> = emptySet(),
         val isAsmrOneChecking: Boolean = false,
         val asmrOneChecked: Int = 0,
         val asmrOneTotal: Int = 0

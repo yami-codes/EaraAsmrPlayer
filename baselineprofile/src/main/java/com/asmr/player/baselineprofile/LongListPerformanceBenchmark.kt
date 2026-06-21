@@ -31,6 +31,35 @@ class LongListPerformanceBenchmark {
     }
 
     @Test
+    fun primaryNavigationPagerFrameTiming() {
+        benchmarkRule.measureRepeated(
+            packageName = PackageName,
+            metrics = listOf(FrameTimingMetric()),
+            compilationMode = CompilationMode.Partial(BaselineProfileMode.Require),
+            startupMode = defaultFrameTimingStartupMode(),
+            iterations = 1
+        ) {
+            startMainActivity()
+            device.performPrimaryNavigationProfile()
+        }
+    }
+
+    @Test
+    fun secondaryNavigationTransitionsFrameTiming() {
+        benchmarkRule.measureRepeated(
+            packageName = PackageName,
+            metrics = listOf(FrameTimingMetric()),
+            compilationMode = CompilationMode.Partial(BaselineProfileMode.Require),
+            startupMode = defaultFrameTimingStartupMode(),
+            iterations = 1
+        ) {
+            startHarnessScenario(BenchmarkScenarioValue.LibraryAlbums)
+            startMainActivity(clearData = false)
+            device.performSecondaryNavigationTransitionsProfile()
+        }
+    }
+
+    @Test
     fun libraryAlbumsFrameTiming() = measureScenarioFrameTiming(BenchmarkScenarioValue.LibraryAlbums)
 
     @Test
@@ -44,6 +73,25 @@ class LongListPerformanceBenchmark {
 
     @Test
     fun playlistDetailFrameTiming() = measureScenarioFrameTiming(BenchmarkScenarioValue.PlaylistDetail)
+
+    @Test
+    fun downloadsListFrameTiming() {
+        benchmarkRule.measureRepeated(
+            packageName = PackageName,
+            metrics = listOf(FrameTimingMetric()),
+            compilationMode = CompilationMode.Partial(BaselineProfileMode.Require),
+            startupMode = defaultFrameTimingStartupMode(),
+            iterations = 1
+        ) {
+            device.pressHome()
+            startHarnessScenario(BenchmarkScenarioValue.DownloadsList)
+            device.expandFirstVisibleDownloadTask()
+            device.performSlowDragAndFling()
+        }
+    }
+
+    @Test
+    fun settingsFrameTiming() = measureScenarioFrameTiming(BenchmarkScenarioValue.Settings)
 
     @Test
     fun groupsListFrameTiming() = measureScenarioFrameTiming(BenchmarkScenarioValue.GroupsList)

@@ -131,6 +131,34 @@ data class DlsiteSearchResult(
     val canGoNext: Boolean
 )
 
+internal fun parseCvNames(doc: Document): List<String> {
+    val outline = doc.selectFirst("#work_outline") ?: return emptyList()
+    return outline.select("tr")
+        .filter { row ->
+            val th = row.selectFirst("th")?.text()?.trim().orEmpty()
+            th.contains("声优") ||
+                th.contains("声優") ||
+                th.contains("聲優") ||
+                th.contains("CV", ignoreCase = true)
+        }
+        .flatMap { row ->
+            val anchors = row.select("td a")
+                .map { it.text().trim() }
+                .filter { it.isNotBlank() }
+            if (anchors.isNotEmpty()) {
+                anchors
+            } else {
+                row.selectFirst("td")
+                    ?.text()
+                    .orEmpty()
+                    .split("/", "／", ",", "，", "、")
+                    .map { it.trim() }
+            }
+        }
+        .filter { it.isNotBlank() }
+        .distinct()
+}
+
 @Singleton
 class DLSiteScraper @Inject constructor(
     @ApplicationContext context: Context
@@ -459,16 +487,39 @@ class DLSiteScraper @Inject constructor(
     }
 
     suspend fun getWorkInfo(workId: String, locale: String? = null): DlsiteWorkInfo? = withContext(Dispatchers.IO) {
-        val doc = fetchWorkDocument(workId, locale = locale) ?: return@withContext null
-        parseWorkInfo(workId, doc)
+        val clean = workId.trim().uppercase()
+        val doc = fetchWorkDocument(clean, locale = locale) ?: return@withContext null
+        val parsed = parseWorkInfo(clean, doc) ?: return@withContext null
+        withJapaneseCvFallback(clean, locale, parsed)
+    }
+
+    private suspend fun withJapaneseCvFallback(
+        workId: String,
+        locale: String?,
+        parsed: DlsiteWorkInfo
+    ): DlsiteWorkInfo {
+        if (parsed.album.cv.isNotBlank() || locale?.startsWith("ja", ignoreCase = true) == true) {
+            return parsed
+        }
+
+        val japaneseCv = fetchWorkDocument(workId, locale = "ja_JP")
+            ?.let { japaneseDoc -> parseCvNames(japaneseDoc).joinToString(", ") }
+            .orEmpty()
+        return if (japaneseCv.isBlank()) {
+            parsed
+        } else {
+            parsed.copy(album = parsed.album.copy(cv = japaneseCv))
+        }
     }
 
     suspend fun getInitialWorkDetail(workId: String, locale: String? = null): DlsiteWorkInitialDetail = withContext(Dispatchers.IO) {
         val clean = workId.trim().uppercase()
         if (clean.isBlank()) return@withContext DlsiteWorkInitialDetail(workInfo = null)
         val doc = fetchWorkDocument(clean, locale = locale) ?: return@withContext DlsiteWorkInitialDetail(workInfo = null)
+        val workInfo = parseWorkInfo(clean, doc)
+            ?.let { withJapaneseCvFallback(clean, locale, it) }
         DlsiteWorkInitialDetail(
-            workInfo = parseWorkInfo(clean, doc),
+            workInfo = workInfo,
             trialTracks = parseTracksFromWorkDocument(clean, locale, doc, allowFallback = true)
         )
     }
@@ -477,14 +528,11 @@ class DLSiteScraper @Inject constructor(
         val title = doc.selectFirst("#work_name")?.text()?.trim() ?: return null
         val circle = doc.selectFirst(".maker_name a")?.text()?.trim() ?: ""
         
-        val cvNames = mutableListOf<String>()
+        val cvNames = parseCvNames(doc)
         val outline = doc.selectFirst("#work_outline")
         var releaseDate = ""
         outline?.select("tr")?.forEach { row ->
             val th = row.selectFirst("th")?.text() ?: ""
-            if (th.contains("声优") || th.contains("声優") || th.contains("CV")) {
-                cvNames.addAll(row.select("td a").map { it.text().trim() })
-            }
             if (releaseDate.isBlank() && (th.contains("販売日") || th.contains("発売日") || th.contains("发售日") || th.contains("發售日"))) {
                 val txt = row.selectFirst("td")?.text()?.trim().orEmpty()
                 val m = Regex("""(\d{4})\D+(\d{1,2})\D+(\d{1,2})""").find(txt)

@@ -65,6 +65,7 @@ import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.rememberAudioMeta
 import com.asmr.player.ui.common.rememberAudioMetaText
 import com.asmr.player.ui.common.rememberTrackMetaLine
+import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.withAddedBottomPadding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
@@ -130,6 +131,7 @@ import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.cache.ImageCacheEntryPoint
 import com.asmr.player.cache.LazyListPreloader
+import com.asmr.player.cache.CacheImageModel
 import dagger.hilt.android.EntryPointAccessors
 
 import androidx.compose.foundation.combinedClickable
@@ -154,6 +156,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.asmr.player.ui.theme.dynamicPageContainerColor
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.graphicsLayer
@@ -168,6 +171,7 @@ import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.playback.MediaItemFactory
+import com.asmr.player.util.DlsiteAntiHotlink
 
 internal const val LIBRARY_CHROME_TAG = "library_chrome"
 internal const val LIBRARY_SEARCH_INPUT_TAG = "library_search_input"
@@ -185,6 +189,34 @@ private val LibraryAlbumGridInfoVerticalPadding = 8.dp
 private fun Album.withUserTags(userTags: List<String>): Album {
     if (userTags.isEmpty()) return this
     return copy(tags = (tags + userTags).distinct())
+}
+
+private fun albumCoverData(
+    coverThumbPath: String,
+    coverPath: String,
+    coverUrl: String
+): String? {
+    return coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
+        ?: coverPath.takeIf { it.isNotBlank() }
+        ?: coverUrl.takeIf { it.isNotBlank() }
+}
+
+private fun albumCoverImageModel(
+    coverThumbPath: String,
+    coverPath: String,
+    coverUrl: String
+): Any? {
+    val data = albumCoverData(
+        coverThumbPath = coverThumbPath,
+        coverPath = coverPath,
+        coverUrl = coverUrl
+    ) ?: return null
+    val headers = if (data.startsWith("http", ignoreCase = true)) {
+        DlsiteAntiHotlink.headersForImageUrl(data)
+    } else {
+        emptyMap()
+    }
+    return if (headers.isEmpty()) data else CacheImageModel(data = data, headers = headers, keyTag = "dlsite")
 }
 
 @Composable
@@ -316,27 +348,31 @@ fun LibraryScreen(
             lastChromeResetMode = mode
         }
     }
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, mode) {
-        if ((mode == 0 || mode == 2) &&
-            listState.firstVisibleItemIndex == 0 &&
-            listState.firstVisibleItemScrollOffset == 0
-        ) {
-            chromeState.expand()
+    LaunchedEffect(listState, mode) {
+        if (mode != 0 && mode != 2) return@LaunchedEffect
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
-    LaunchedEffect(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset, mode) {
-        if (mode == 1 &&
-            gridState.firstVisibleItemIndex == 0 &&
-            gridState.firstVisibleItemScrollOffset == 0
-        ) {
-            chromeState.expand()
+    LaunchedEffect(gridState, mode) {
+        if (mode != 1) return@LaunchedEffect
+        snapshotFlow {
+            gridState.firstVisibleItemIndex == 0 && gridState.firstVisibleItemScrollOffset == 0
         }
+            .distinctUntilChanged()
+            .collect { atTop ->
+                if (atTop) chromeState.expand()
+            }
     }
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         when (mode) {
-            1 -> runCatching { gridState.animateScrollToItem(0) }
-            else -> runCatching { listState.animateScrollToItem(0) }
+            1 -> gridState.smoothScrollToTop()
+            else -> listState.smoothScrollToTop()
         }
         chromeState.expand()
     }
@@ -590,8 +626,11 @@ fun LibraryScreen(
                                                         totalDurationSeconds = header.totalDuration,
                                                         totalSizeBytes = header.totalSizeBytes.takeIf { it > 0L }
                                                             ?: rememberAlbumTrackListTotalSizeBytes(rows),
-                                                        coverModel = header.coverPath.takeIf { it.isNotBlank() }.takeIf { it != "null" }
-                                                            ?: header.coverUrl.takeIf { it.isNotBlank() },
+                                                        coverModel = albumCoverImageModel(
+                                                            coverThumbPath = "",
+                                                            coverPath = header.coverPath.takeIf { it != "null" }.orEmpty(),
+                                                            coverUrl = header.coverUrl
+                                                        ),
                                                         expanded = expanded,
                                                         isFirstInList = isFirstAlbumHeader,
                                                         isLastInList = isLastAlbumHeader,
@@ -760,9 +799,11 @@ fun LibraryScreen(
                                             if (a == null) {
                                                 null
                                             } else {
-                                                a.coverThumbPath.takeIf { it.isNotBlank() && it.contains("_v2") }
-                                                    ?: a.coverPath.takeIf { it.isNotBlank() }
-                                                    ?: a.coverUrl.takeIf { it.isNotBlank() }
+                                                albumCoverImageModel(
+                                                    coverThumbPath = a.coverThumbPath,
+                                                    coverPath = a.coverPath,
+                                                    coverUrl = a.coverUrl
+                                                )
                                             }
                                         }
                                     )
@@ -1356,15 +1397,17 @@ private fun AlbumGridItem(
     ) {
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
             val coverModel = remember(album.coverThumbPath, album.coverPath, album.coverUrl) {
-                val thumb = album.coverThumbPath.trim().takeIf { it.isNotBlank() && it.contains("_v2") }.orEmpty()
-                thumb.ifBlank { album.coverPath }.ifBlank { album.coverUrl }.trim().ifBlank { null }
+                albumCoverImageModel(
+                    coverThumbPath = album.coverThumbPath,
+                    coverPath = album.coverPath,
+                    coverUrl = album.coverUrl
+                )
             }
             AsmrAsyncImage(
                 model = coverModel,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 placeholderCornerRadius = 0,
-                loadAtOriginalSize = coverModel?.startsWith("http", ignoreCase = true) == true,
                 modifier = Modifier.fillMaxSize().clip(coverShape),
             )
             
@@ -1544,15 +1587,17 @@ private fun AlbumItem(
                         .fillMaxSize()
                 ) {
                     val coverModel = remember(album.coverThumbPath, album.coverPath, album.coverUrl) {
-                        val thumb = album.coverThumbPath.trim().takeIf { it.isNotBlank() && it.contains("_v2") }.orEmpty()
-                        thumb.ifBlank { album.coverPath }.ifBlank { album.coverUrl }.trim().ifBlank { null }
+                        albumCoverImageModel(
+                            coverThumbPath = album.coverThumbPath,
+                            coverPath = album.coverPath,
+                            coverUrl = album.coverUrl
+                        )
                     }
                     AsmrAsyncImage(
                         model = coverModel,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         placeholderCornerRadius = 0,
-                        loadAtOriginalSize = coverModel?.startsWith("http", ignoreCase = true) == true,
                         modifier = Modifier.fillMaxSize().clip(coverShape),
                     )
                     

@@ -132,6 +132,9 @@ class SettingsViewModel @Inject constructor(
     val showMiniPlayerBar: StateFlow<Boolean> = settingsRepository.showMiniPlayerBar
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val searchBlockedKeywords: StateFlow<List<String>> = settingsRepository.searchBlockedKeywords
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val updateClient = GitHubUpdateClient(okHttpClient)
     private val _updateState = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
     val updateState = _updateState.asStateFlow()
@@ -200,6 +203,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowMiniPlayerBar(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowMiniPlayerBar(enabled) }
+    }
+
+    fun addSearchBlockedKeyword(keyword: String) {
+        viewModelScope.launch { settingsRepository.addSearchBlockedKeyword(keyword) }
+    }
+
+    fun removeSearchBlockedKeyword(keyword: String) {
+        viewModelScope.launch { settingsRepository.removeSearchBlockedKeyword(keyword) }
     }
 
     fun setAutoUpdateCheckEnabled(enabled: Boolean) {
