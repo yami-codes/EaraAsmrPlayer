@@ -566,7 +566,8 @@ fun AlbumDetailScreen(
 
                         val headerContent: @Composable (Int) -> Unit = { tab ->
                             val isLocalTab = tab == 0
-                            val canSaveOnlineForTab = tab == 1 && asmrOneTree.isNotEmpty()
+                            val resolvedInitialTarget = model.hasResolvedInitialDlsiteTarget
+                            val canSaveOnlineForTab = tab == 1 && resolvedInitialTarget && asmrOneTree.isNotEmpty()
                             val headerAlbum = headerAlbumForTab(tab)
                             val headerDlsiteEditions = if (isLocalTab) {
                                 emptyList()
@@ -598,7 +599,7 @@ fun AlbumDetailScreen(
                                     }
                                     showAsmrDownloadDialog = true
                                 },
-                                showDlsitePlayLossless = tab == 2,
+                                showDlsitePlayLossless = tab == 2 && resolvedInitialTarget,
                                 onLosslessDownloadClick = {
                                     viewModel.downloadDlsitePlayLosslessArchive()
                                 },
@@ -606,11 +607,11 @@ fun AlbumDetailScreen(
                                     showOnlineSaveDialog = true
                                 },
                                 downloadEnabled = when (tab) {
-                                    1 -> asmrOneTree.isNotEmpty()
-                                    2 -> model.dlsitePlayTree.isNotEmpty()
+                                    1 -> resolvedInitialTarget && asmrOneTree.isNotEmpty()
+                                    2 -> resolvedInitialTarget && model.dlsitePlayTree.isNotEmpty()
                                     else -> false
                                 },
-                                losslessDownloadEnabled = tab == 2 && model.dlsitePlayTree.isNotEmpty(),
+                                losslessDownloadEnabled = tab == 2 && resolvedInitialTarget && model.dlsitePlayTree.isNotEmpty(),
                                 saveEnabled = canSaveOnlineForTab,
                                 showGroupButton = isLocalTab && model.localAlbum != null,
                                 onOpenGroupPicker = onOpenGroupPicker,
@@ -654,15 +655,21 @@ fun AlbumDetailScreen(
                             LaunchedEffect(
                                 selectedTab,
                                 model.rjCode,
-                                model.dlsiteWorkno
+                                model.dlsiteWorkno,
+                                model.hasResolvedInitialDlsiteTarget
                             ) {
                                 when (selectedTab) {
                                     1 -> {
                                         viewModel.ensureDlsiteLoaded()
-                                        viewModel.ensureAsmrOneLoaded()
+                                        if (model.hasResolvedInitialDlsiteTarget) {
+                                            viewModel.ensureAsmrOneLoaded()
+                                        }
                                     }
                                     2 -> {
                                         viewModel.ensureDlsiteLoaded()
+                                        if (model.hasResolvedInitialDlsiteTarget) {
+                                            viewModel.ensureDlsitePlayLoaded()
+                                        }
                                     }
                                 }
                             }
@@ -819,7 +826,7 @@ fun AlbumDetailScreen(
                                         rjCode = model.rjCode,
                                         tree = model.dlsitePlayTree,
                                         isLoading = model.isLoadingDlsitePlay,
-                                        shouldAutoLoad = selectedTab == 2,
+                                        shouldAutoLoad = selectedTab == 2 && model.hasResolvedInitialDlsiteTarget,
                                         onOpenLogin = onOpenDlsiteLogin,
                                         onEnsureLoaded = { viewModel.ensureDlsitePlayLoaded() },
                                         onPlayMediaItems = onPlayMediaItems,
@@ -855,7 +862,7 @@ fun AlbumDetailScreen(
                     }
                 }
 
-                val canSaveOnline = selectedTab == 1 && asmrOneTree.isNotEmpty()
+                val canSaveOnline = selectedTab == 1 && model.hasResolvedInitialDlsiteTarget && asmrOneTree.isNotEmpty()
                 if (showAsmrDownloadDialog) {
                     val downloadTree = when (downloadSource) {
                         OnlineDownloadSource.AsmrOne -> asmrOneTree
