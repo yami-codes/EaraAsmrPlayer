@@ -216,9 +216,9 @@ private val AlbumHeaderExpandTweenSpec = tween<IntSize>(
     easing = FastOutLinearInEasing
 )
 
-private val AlbumHeaderActionMorphSpec = spring<Float>(
-    dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMediumLow
+private val AlbumHeaderActionMorphSpec = tween<Float>(
+    durationMillis = 280,
+    easing = FastOutSlowInEasing
 )
 
 private val DlsiteSectionResizeTweenSpec = tween<IntSize>(
@@ -1443,7 +1443,7 @@ private fun AlbumHeader(
     }
 
     // 记录“首帧时各信息块是否已存在”：本地库专辑进入时 cv/tags 已就绪，应直接淡入不撑开（消除下沉抖动）；
-    // 在线专辑即使从列表 hint 拿到了 cv，也仍按延迟元信息处理，保留平移撑开的进入节奏。
+    // 在线专辑即使从列表 hint 拿到了 cv，也仍按延迟元信息处理，保留延迟淡入/展开的进入节奏。
     val cvPresentInitially = remember(headerAnimationScopeKey) { album.cv.isNotBlank() }
     val tagsPresentInitially = remember(headerAnimationScopeKey) { album.tags.isNotEmpty() }
     val cvExpandLayout = shouldExpandAlbumHeaderMetaReveal(deferMetaRevealExpected, cvPresentInitially)
@@ -1989,20 +1989,12 @@ private fun AlbumHeaderInfoReveal(
         animationSpec = AlbumHeaderEnterTweenSpec,
         label = "albumHeaderInfoAlpha"
     )
-    val offsetYProgress by animateFloatAsState(
-        targetValue = if (visible) 0f else 1f,
-        animationSpec = AlbumHeaderEnterTweenSpec,
-        label = "albumHeaderInfoOffsetY"
-    )
-    val density = LocalDensity.current
-    val offsetYPx = with(density) { 14.dp.toPx() } * offsetYProgress
     if (!expandLayout) {
-        // 进入时就已存在的内容（本地库 cv/tags、按钮行）：只做淡入 + 轻微上移，
-        // 不改变布局高度，避免从 0 高度展开把下方列表先推下再回弹（“下沉”抖动）。
+        // 进入时就已存在的内容（RJ、cv/tags、按钮行）：只做淡入，不做纵向平移，
+        // 避免先超过最终位置再回到目标位置。
         Box(
             modifier = Modifier.graphicsLayer {
                 this.alpha = alpha
-                translationY = offsetYPx
             }
         ) {
             content()
@@ -2025,7 +2017,6 @@ private fun AlbumHeaderInfoReveal(
         Box(
             modifier = Modifier.graphicsLayer {
                 this.alpha = alpha
-                translationY = offsetYPx
             }
         ) {
             content()
