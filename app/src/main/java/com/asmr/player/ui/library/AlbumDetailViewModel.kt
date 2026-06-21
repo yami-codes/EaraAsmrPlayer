@@ -19,6 +19,7 @@ import com.asmr.player.data.local.db.entities.TagSource
 import com.asmr.player.data.local.db.entities.TrackTagEntity
 import com.asmr.player.data.remote.api.AsmrOneOtherLanguageEditionInDb
 import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
+import com.asmr.player.data.remote.api.AsmrOneAvailabilityApi
 import com.asmr.player.data.remote.crawler.AsmrOneCrawler
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncCandidate
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncResolveResult
@@ -105,6 +106,7 @@ class AlbumDetailViewModel @Inject constructor(
     private val albumDao: AlbumDao,
     private val trackDao: TrackDao,
     private val asmrOneCrawler: AsmrOneCrawler,
+    private val asmrOneAvailabilityApi: AsmrOneAvailabilityApi,
     private val dlsiteScraper: DLSiteScraper,
     private val dlsiteProductInfoClient: DlsiteProductInfoClient,
     private val dlsitePlayWorkClient: DlsitePlayWorkClient,
@@ -300,6 +302,17 @@ class AlbumDetailViewModel @Inject constructor(
             if (firstKey != null) asmrOneTracksCache.remove(firstKey)
         }
         return tree
+    }
+
+    private suspend fun fetchBackendAsmrOneTracksByRj(rj: String): Pair<String, List<AsmrOneTrackNodeResponse>>? {
+        val normalizedRj = rj.trim().uppercase()
+        if (!RJ_CODE_REGEX.matches(normalizedRj)) return null
+        val result = runCatching { asmrOneAvailabilityApi.getTrackTreeByRj(normalizedRj) }.getOrNull()
+            ?: return null
+        val tree = result.trackTree.orEmpty()
+        if (tree.isEmpty()) return null
+        val workId = result.workId.takeIf { it > 0 }?.toString().orEmpty()
+        return workId to tree
     }
 
     fun getTreeExpanded(stateKey: String): List<String> {
@@ -1104,6 +1117,13 @@ class AlbumDetailViewModel @Inject constructor(
                     val resolvedTarget = resolveInitialDlsiteLoadTarget(loadModel)
                     val latestResolved = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                     if (token != dlsiteLoadToken) return@launch
+                    val targetWorkno = resolvedTarget.workno.trim().uppercase()
+                    val targetChanged = targetWorkno.isNotBlank() &&
+                        !targetWorkno.equals(latestResolved.rjCode.trim().uppercase(), ignoreCase = true)
+                    if (targetChanged) {
+                        asmrOneLoadToken++
+                        asmrOneAttemptedRj.clear()
+                    }
                     loadModel = latestResolved.copy(
                         rjCode = resolvedTarget.workno,
                         displayAlbum = mergeDetailHeaderAlbum(
@@ -1111,14 +1131,19 @@ class AlbumDetailViewModel @Inject constructor(
                             localAlbum = latestResolved.localAlbum,
                             fetchedDlsiteInfo = latestResolved.dlsiteInfo,
                             rjCode = resolvedTarget.workno,
-                            asmrOneWorkId = latestResolved.asmrOneWorkId,
+                            asmrOneWorkId = if (targetChanged) null else latestResolved.asmrOneWorkId,
                             preserveHeaderAlbumMetadata = latestResolved.preserveHeaderAlbumMetadata
                         ),
                         dlsiteWorkno = resolvedTarget.workno,
                         dlsiteEditions = resolvedTarget.editions,
                         dlsiteSelectedLang = resolvedTarget.selectedLang,
                         hasResolvedInitialDlsiteTarget = true,
+                        hasResolvedAsmrOneContent = if (targetChanged) false else latestResolved.hasResolvedAsmrOneContent,
+                        asmrOneWorkId = if (targetChanged) null else latestResolved.asmrOneWorkId,
+                        asmrOneSite = if (targetChanged) null else latestResolved.asmrOneSite,
+                        asmrOneTree = if (targetChanged) emptyList() else latestResolved.asmrOneTree,
                         isLoadingDlsite = true,
+                        isLoadingAsmrOne = if (targetChanged) false else latestResolved.isLoadingAsmrOne,
                         isLoadingDlsiteTrial = false
                     )
                     _uiState.value = AlbumDetailUiState.Success(model = loadModel)
@@ -1352,6 +1377,22 @@ class AlbumDetailViewModel @Inject constructor(
         ensureAsmrOneLoaded()
     }
 
+    private fun finishAsmrOneLoad(keyRj: String, resolved: Boolean, showFailureMessage: Boolean = false) {
+        val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return
+        val updatedKey = updated.rjCode.trim().uppercase()
+        if (updatedKey.equals(keyRj, ignoreCase = true)) {
+            if (showFailureMessage && updated.asmrOneTree.isEmpty()) {
+                messageManager.showError("在线资源加载失败，请稍后重试")
+            }
+            _uiState.value = AlbumDetailUiState.Success(
+                model = updated.copy(
+                    isLoadingAsmrOne = false,
+                    hasResolvedAsmrOneContent = if (resolved) true else updated.hasResolvedAsmrOneContent
+                )
+            )
+        }
+    }
+
     fun refreshDlsiteTrialSection() {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         val workno = current.model.dlsiteWorkno.trim().uppercase().ifBlank { current.model.rjCode.trim().uppercase() }
@@ -1399,7 +1440,6 @@ class AlbumDetailViewModel @Inject constructor(
         }
         if (
             keyRj.isBlank() ||
-            !current.model.hasResolvedInitialDlsiteTarget ||
             current.model.hasResolvedAsmrOneContent ||
             current.model.isLoadingAsmrOne ||
             asmrOneAttemptedRj.contains(keyRj)
@@ -1411,6 +1451,7 @@ class AlbumDetailViewModel @Inject constructor(
             val latestKey = latestBefore.model.rjCode.trim().uppercase()
             if (!latestKey.equals(keyRj, ignoreCase = true)) {
                 asmrOneAttemptedRj.remove(keyRj)
+                finishAsmrOneLoad(keyRj, resolved = false)
                 return@launch
             }
             _uiState.value = AlbumDetailUiState.Success(
@@ -1429,6 +1470,43 @@ class AlbumDetailViewModel @Inject constructor(
                     ?.uppercase()
                     .orEmpty()
                 val originalRj = jpnWorkno.ifBlank { latestBase.ifBlank { keyRj } }
+                val backendRjs = listOf(keyRj, originalRj, latest.dlsiteWorkno, latestBase)
+                    .map { it.trim().uppercase() }
+                    .filter { RJ_CODE_REGEX.matches(it) }
+                    .distinct()
+                val backendFirst = fetchAsmrOneTracksBackendFirst(
+                    backendRjs = backendRjs,
+                    fetchBackend = { fetchBackendAsmrOneTracksByRj(it) },
+                    fetchFallback = { Triple(null, null, emptyList()) }
+                )
+                if (backendFirst.third.isNotEmpty()) {
+                    val backendWorkId = backendFirst.first.orEmpty()
+                    val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
+                    if (token != asmrOneLoadToken) {
+                        asmrOneAttemptedRj.remove(keyRj)
+                        finishAsmrOneLoad(keyRj, resolved = false)
+                        return@launch
+                    }
+                    val displayAlbum = mergeDetailHeaderAlbum(
+                        currentDisplayAlbum = updated.displayAlbum,
+                        localAlbum = updated.localAlbum,
+                        fetchedDlsiteInfo = updated.dlsiteInfo,
+                        rjCode = updated.rjCode,
+                        asmrOneWorkId = backendWorkId.ifBlank { updated.asmrOneWorkId },
+                        preserveHeaderAlbumMetadata = updated.preserveHeaderAlbumMetadata
+                    )
+                    _uiState.value = AlbumDetailUiState.Success(
+                        model = updated.copy(
+                            displayAlbum = displayAlbum,
+                            asmrOneWorkId = backendWorkId.ifBlank { updated.asmrOneWorkId },
+                            asmrOneSite = null,
+                            asmrOneTree = backendFirst.third,
+                            hasResolvedAsmrOneContent = true,
+                            isLoadingAsmrOne = false
+                        )
+                    )
+                    return@launch
+                }
 
                 val collected = isAsmrOneCollected(originalRj, timeoutMs = 1_200L)
                 if (collected == false) {
@@ -1469,32 +1547,19 @@ class AlbumDetailViewModel @Inject constructor(
                         selectDlsiteLanguageInternal(fallbackLang, isUserSelection = false)
                         return@launch
                     }
-                    val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                    val updatedKey = updated.rjCode.trim().uppercase()
-                    if (updatedKey.equals(keyRj, ignoreCase = true) && updated.isLoadingAsmrOne) {
-                        _uiState.value = AlbumDetailUiState.Success(
-                            model = updated.copy(
-                                isLoadingAsmrOne = false,
-                                hasResolvedAsmrOneContent = true
-                            )
-                        )
-                    }
+                    asmrOneAttemptedRj.remove(keyRj)
+                    finishAsmrOneLoad(keyRj, resolved = true)
                     return@launch
                 }
 
                 val resolvedOriginal = resolveAsmrOneWork(originalRj)
                     ?: resolveAsmrOneWork(keyRj)
                     ?: run {
-                        val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                        if (token != asmrOneLoadToken) return@launch
                         asmrOneAttemptedRj.remove(keyRj)
-                        if (updated.rjCode.trim().uppercase().equals(keyRj, ignoreCase = true) && updated.isLoadingAsmrOne) {
-                            _uiState.value = AlbumDetailUiState.Success(
-                                model = updated.copy(
-                                    isLoadingAsmrOne = false,
-                                    hasResolvedAsmrOneContent = true
-                                )
-                            )
+                        if (token != asmrOneLoadToken) {
+                            finishAsmrOneLoad(keyRj, resolved = false)
+                        } else {
+                            finishAsmrOneLoad(keyRj, resolved = true)
                         }
                         return@launch
                     }
@@ -1525,23 +1590,12 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (token != asmrOneLoadToken) {
                     asmrOneAttemptedRj.remove(keyRj)
-                    val updatedKey = updated.rjCode.trim().uppercase()
-                    if (updatedKey.equals(keyRj, ignoreCase = true) && updated.isLoadingAsmrOne) {
-                        _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingAsmrOne = false))
-                    }
+                    finishAsmrOneLoad(keyRj, resolved = false)
                     return@launch
                 }
                 if (workId.isBlank()) {
                     asmrOneAttemptedRj.remove(keyRj)
-                    val updatedKey = updated.rjCode.trim().uppercase()
-                    if (updatedKey.equals(keyRj, ignoreCase = true) && updated.isLoadingAsmrOne) {
-                        _uiState.value = AlbumDetailUiState.Success(
-                            model = updated.copy(
-                                isLoadingAsmrOne = false,
-                                hasResolvedAsmrOneContent = true
-                            )
-                        )
-                    }
+                    finishAsmrOneLoad(keyRj, resolved = true)
                     return@launch
                 }
                 val displayAlbum = mergeDetailHeaderAlbum(
@@ -1564,30 +1618,10 @@ class AlbumDetailViewModel @Inject constructor(
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {
                 asmrOneAttemptedRj.remove(keyRj)
-                val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                val updatedKey = updated.rjCode.trim().uppercase()
-                if (updatedKey.equals(keyRj, ignoreCase = true) && updated.isLoadingAsmrOne) {
-                    _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingAsmrOne = false))
-                }
+                finishAsmrOneLoad(keyRj, resolved = false)
             } catch (e: Exception) {
                 asmrOneAttemptedRj.remove(keyRj)
-                val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                val updatedKey = updated.rjCode.trim().uppercase()
-                if (updatedKey.equals(keyRj, ignoreCase = true)) {
-                    if (updated.asmrOneTree.isEmpty()) {
-                        messageManager.showError("在线资源加载失败，请稍后重试")
-                    }
-                    if (updated.isLoadingAsmrOne) {
-                        _uiState.value = AlbumDetailUiState.Success(
-                            model = updated.copy(
-                                isLoadingAsmrOne = false,
-                                hasResolvedAsmrOneContent = true
-                            )
-                        )
-                    }
-                } else if (updated.isLoadingAsmrOne) {
-                    _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingAsmrOne = false))
-                }
+                finishAsmrOneLoad(keyRj, resolved = true, showFailureMessage = true)
             }
         }
     }
@@ -2680,6 +2714,7 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     private companion object {
+        val RJ_CODE_REGEX = Regex("""RJ\d{6,}""")
         const val MAX_RECOMMENDATION_ASMR_ONE_ENRICH = 12
         const val RECOMMENDATION_ASMR_ONE_ENRICH_CONCURRENCY = 4
     }

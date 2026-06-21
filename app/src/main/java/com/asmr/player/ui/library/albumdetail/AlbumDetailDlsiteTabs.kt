@@ -794,64 +794,6 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         contentPadding = PaddingValues(top = topContentPadding, bottom = LocalBottomOverlayPadding.current)
     ) {
         item(key = "dlsite-header") { header() }
-        if (isInitialDlsiteLoading) {
-            item(key = "dlsite-gallery-section") {
-                Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    Text(
-                        text = "Gallery",
-                        modifier = Modifier.padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    DlsiteGalleryLoadingRow()
-                }
-            }
-            item(key = "dlsite-one-header") {
-                Row(
-                    modifier = dlsiteAnimatedSectionModifier(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                        animateIntro = animateIntro
-                    ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "ONE",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            item(key = "dlsite-one-content") {
-                Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    DlsiteDirectoryLoadingPanel()
-                }
-            }
-            item(key = "dlsite-trial-loading") {
-                Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                Row(
-                    modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = AlbumDetailHorizontalPadding, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "试听 / 试看",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                DlsiteTrialLoadingList()
-                }
-            }
-            item(key = "dlsite-recommendations") {
-                Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                    DlsiteRecommendationsLoadingBlocks()
-                }
-            }
-            return@LazyColumn
-        }
         item(key = "dlsite-gallery-section") {
             Column(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
             Text(
@@ -1091,7 +1033,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         }
         if (trialTracks.isEmpty()) {
             item(key = "dlsite-trial-content") {
-                if (isLoadingTrial) {
+                if (isInitialDlsiteLoading || isLoadingTrial) {
                     Box(
                         modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro),
                         contentAlignment = Alignment.Center
@@ -1152,10 +1094,14 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         }
         item(key = "dlsite-recommendations") {
             Box(modifier = dlsiteAnimatedSectionModifier(Modifier.fillMaxWidth(), animateIntro)) {
-                DlsiteRecommendationsBlocks(
-                    recommendations = dlsiteRecommendations,
-                    onOpenAlbumByRj = onOpenAlbumByRj
-                )
+                if (isInitialDlsiteLoading) {
+                    DlsiteRecommendationsLoadingBlocks()
+                } else {
+                    DlsiteRecommendationsBlocks(
+                        recommendations = dlsiteRecommendations,
+                        onOpenAlbumByRj = onOpenAlbumByRj
+                    )
+                }
             }
         }
     }
