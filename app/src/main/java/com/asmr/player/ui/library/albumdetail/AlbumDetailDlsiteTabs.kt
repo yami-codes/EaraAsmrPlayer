@@ -146,20 +146,25 @@ import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
 
+private val DlsiteGalleryThumbWidth = 140.dp
+private val DlsiteGalleryThumbHeight = 100.dp
+private val DlsiteGalleryThumbGap = 10.dp
+private const val DlsiteGalleryThumbCornerRadius = 12
+
 @Composable
 private fun DlsiteGalleryLoadingRow() {
     val placeholders = remember { listOf(0, 1, 2, 3) }
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = AlbumDetailHorizontalPadding),
+        horizontalArrangement = Arrangement.spacedBy(DlsiteGalleryThumbGap),
         contentPadding = PaddingValues(vertical = 10.dp)
     ) {
         items(placeholders, key = { it }, contentType = { "galleryLoadingThumb" }) {
             AsmrShimmerPlaceholder(
-                modifier = Modifier.size(width = 140.dp, height = 100.dp),
-                cornerRadius = 12
+                modifier = Modifier.size(width = DlsiteGalleryThumbWidth, height = DlsiteGalleryThumbHeight),
+                cornerRadius = DlsiteGalleryThumbCornerRadius
             )
         }
     }
@@ -813,7 +818,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             } else {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = AlbumDetailHorizontalPadding),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DlsiteGalleryThumbGap),
                     contentPadding = PaddingValues(vertical = 10.dp)
                 ) {
                     items(items = galleryUrls, key = { it }, contentType = { "galleryThumb" }) { url ->
@@ -822,7 +827,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                             if (headers.isEmpty()) url else CacheImageModel(data = url, headers = headers, keyTag = "dlsite")
                         }
                         Card(
-                            modifier = Modifier.size(width = 140.dp, height = 100.dp).clickable {
+                            modifier = Modifier.size(width = DlsiteGalleryThumbWidth, height = DlsiteGalleryThumbHeight).clickable {
                                 buildGalleryImagePreviewRequest(
                                     galleryUrls = galleryUrls,
                                     clickedUrl = url,
@@ -848,7 +853,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                                 model = model,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                placeholderCornerRadius = 12,
+                                placeholderCornerRadius = DlsiteGalleryThumbCornerRadius,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
