@@ -206,7 +206,7 @@ private fun PlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.str_58a42f85),
+                    text = stringResource(R.string.str_58a42f85, playlist.itemCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -241,7 +241,7 @@ private fun PlaylistRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.str_e0788e07),
+            message = stringResource(R.string.str_e0788e07, playlist.name),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(

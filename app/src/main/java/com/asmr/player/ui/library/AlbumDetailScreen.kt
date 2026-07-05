@@ -1313,7 +1313,10 @@ private fun AlbumHeroIdentityOverlay(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = stringResource(R.string.str_deba8810),
+                                    text = stringResource(
+                                        R.string.str_deba8810,
+                                        listenTogetherRjListenerCount.coerceAtLeast(0)
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = listenerContent,
                                     maxLines = 1,

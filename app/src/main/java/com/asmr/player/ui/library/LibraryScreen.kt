@@ -473,7 +473,7 @@ fun LibraryScreen(
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
-                                text = stringResource(R.string.str_596e927a),
+                                text = stringResource(R.string.str_596e927a, progress.current, progress.total),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colorScheme.textSecondary
                             )
@@ -490,7 +490,7 @@ fun LibraryScreen(
                             if (progress.currentFile.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = stringResource(R.string.str_8395660e),
+                                    text = stringResource(R.string.str_8395660e, progress.currentFile),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -1257,7 +1257,7 @@ private fun TrackAlbumHeader(
 
             val footerSegments = buildList {
                 if (rjCode.isNotBlank()) add(rjCode)
-                add(stringResource(R.string.str_020a5f34))
+                add(stringResource(R.string.str_020a5f34, trackCount))
                 Formatting.formatTrackSeconds(totalDurationSeconds).takeIf { it.isNotBlank() }?.let(::add)
                 totalSizeBytes?.takeIf { it > 0L }?.let(Formatting::formatFileSize)?.let(::add)
             }

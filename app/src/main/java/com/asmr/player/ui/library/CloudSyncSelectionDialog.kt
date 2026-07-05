@@ -158,7 +158,7 @@ internal fun CloudSyncSelectionDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.str_033daf88),
+                            text = stringResource(R.string.str_033daf88, state.candidates.size),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = 16.sp

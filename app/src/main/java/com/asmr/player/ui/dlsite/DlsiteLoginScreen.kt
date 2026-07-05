@@ -187,7 +187,7 @@ private fun CredentialBlock(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            Text(stringResource(R.string.str_f7acfd00), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.str_f7acfd00, expiresText), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

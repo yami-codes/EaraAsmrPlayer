@@ -254,7 +254,12 @@ fun SettingsScreen(
                                     Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                     if (progress.currentAlbumTitle.isNotBlank()) {
                                         Text(
-                                            text = stringResource(R.string.str_17212956),
+                                            text = stringResource(
+                                                R.string.str_17212956,
+                                                progress.current,
+                                                progress.total,
+                                                progress.currentAlbumTitle
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary,
                                             maxLines = 1,
@@ -262,7 +267,7 @@ fun SettingsScreen(
                                         )
                                     } else {
                                         Text(
-                                            text = stringResource(R.string.str_596e927a),
+                                            text = stringResource(R.string.str_596e927a, progress.current, progress.total),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary
                                         )
@@ -280,7 +285,7 @@ fun SettingsScreen(
                             }
                             if (progress.currentFile.isNotBlank()) {
                                 Text(
-                                    text = stringResource(R.string.str_8395660e),
+                                    text = stringResource(R.string.str_8395660e, progress.currentFile),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -651,7 +656,7 @@ fun SettingsScreen(
 
                         if (floatingLyricsEnabled && overlayGranted) {
                             SettingsSliderRow(
-                                text = stringResource(R.string.str_1882f8d9),
+                                text = stringResource(R.string.str_1882f8d9, floatingSettings.size.toInt()),
                                 value = floatingSettings.size,
                                 range = 12f..32f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(size = it)) },
@@ -659,7 +664,10 @@ fun SettingsScreen(
                             )
 
                             SettingsSliderRow(
-                                text = stringResource(R.string.str_03b99129),
+                                text = stringResource(
+                                    R.string.str_03b99129,
+                                    (floatingSettings.opacity * 100).toInt()
+                                ),
                                 value = floatingSettings.opacity,
                                 range = 0f..1f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(opacity = it)) },
@@ -755,7 +763,11 @@ fun SettingsScreen(
                         )
 
                         Text(
-                            text = stringResource(R.string.str_ec893572),
+                            text = stringResource(
+                                R.string.str_ec893572,
+                                com.asmr.player.BuildConfig.VERSION_NAME,
+                                com.asmr.player.BuildConfig.VERSION_CODE
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -785,14 +797,14 @@ fun SettingsScreen(
                         when (val s = updateState) {
                             is AppUpdateState.UpToDate -> {
                                 Text(
-                                    text = stringResource(R.string.str_826d6f41),
+                                    text = stringResource(R.string.str_826d6f41, s.latestVersionName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
                             }
                             is AppUpdateState.UpdateAvailable -> {
                                 Text(
-                                    text = stringResource(R.string.str_2d6c530c),
+                                    text = stringResource(R.string.str_2d6c530c, s.release.tagName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -811,7 +823,7 @@ fun SettingsScreen(
                                 val progress = if (total > 0L) (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) else null
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = stringResource(R.string.str_f7bce717),
+                                        text = stringResource(R.string.str_f7bce717, s.release.apkName),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.textSecondary,
                                         maxLines = 1,
@@ -826,7 +838,7 @@ fun SettingsScreen(
                             }
                             is AppUpdateState.ReadyToInstall -> {
                                 Text(
-                                    text = stringResource(R.string.str_9e86f38e),
+                                    text = stringResource(R.string.str_9e86f38e, s.release.apkName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -906,7 +918,7 @@ private fun LyricsPageSettingsSection(
 ) {
     Text(stringResource(R.string.str_64f79450), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     SettingsSliderRow(
-        text = stringResource(R.string.str_b1bd0bc5),
+        text = stringResource(R.string.str_b1bd0bc5, settings.fontSizeSp.toInt()),
         value = settings.fontSizeSp,
         range = 18f..36f,
         stepSize = 1f,
@@ -1309,7 +1321,7 @@ private fun SearchBlockedKeywordChip(
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.str_bdec61dd),
+                    contentDescription = stringResource(R.string.str_bdec61dd, keyword),
                     modifier = Modifier.size(16.dp)
                 )
             }

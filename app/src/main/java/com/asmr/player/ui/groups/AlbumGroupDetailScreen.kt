@@ -334,7 +334,7 @@ internal fun AlbumGroupDetailContent(
     pendingRemoveAlbum?.let { album ->
         FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            message = stringResource(R.string.str_a02b7d62),
+            message = stringResource(R.string.str_a02b7d62, album.second, title),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
@@ -369,7 +369,7 @@ private fun AlbumSectionHeader(
                 .takeIf { it > 0L }
         }
     }
-    val tracksLabel = stringResource(R.string.str_6bdee1ed)
+    val tracksLabel = stringResource(R.string.str_6bdee1ed, tracks.size)
     val footerSegments = remember(rjCode, tracks, totalSizeBytes, tracksLabel) {
         buildList {
             if (rjCode.isNotBlank()) add(rjCode)

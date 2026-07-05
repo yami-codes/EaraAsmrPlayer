@@ -421,7 +421,7 @@ private fun BlockedHotListeningFooter(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.str_bd5c6e45),
+            text = stringResource(R.string.str_bd5c6e45, blockedCount),
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = colorScheme.textSecondary
         )

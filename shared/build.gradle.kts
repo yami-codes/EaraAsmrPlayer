@@ -20,8 +20,11 @@ kotlin {
         }
     }
 
-    // iOS targets compile on macOS hosts. Source sets are kept under src/iosMain for future Xcode integration.
-    if (System.getProperty("os.name").contains("Mac", ignoreCase = true)) {
+    // iOS targets are optional local-only stubs. Skip on CI to avoid Kotlin/Native downloads.
+    val enableIosTargets =
+        System.getProperty("os.name").contains("Mac", ignoreCase = true) &&
+            System.getenv("ENABLE_IOS_TARGETS") == "true"
+    if (enableIosTargets) {
         iosX64()
         iosArm64()
         iosSimulatorArm64()
@@ -35,7 +38,7 @@ kotlin {
         }
         val androidMain by getting
         val desktopMain by getting
-        if (System.getProperty("os.name").contains("Mac", ignoreCase = true)) {
+        if (enableIosTargets) {
             val iosX64Main by getting
             val iosArm64Main by getting
             val iosSimulatorArm64Main by getting

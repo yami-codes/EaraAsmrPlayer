@@ -1348,28 +1348,28 @@ fun MainContainer(
                                             } else ""
                                             val appName = stringResource(R.string.app_name)
                                             val titleText = when {
-                                                resolvedTitleRoute == "library" -> "本地库"
-                                                resolvedTitleRoute == "library_filter" -> "筛选"
-                                                resolvedTitleRoute == "search" -> "在线搜索"
-                                                resolvedTitleRoute == Routes.SearchAssist -> "在线搜索"
-                                                resolvedTitleRoute == Routes.SearchAssistPattern -> "在线搜索"
-                                                resolvedTitleRoute == Routes.HotListening -> "热门收听"
-                                                resolvedTitleRoute == "playlists" -> "我的列表"
+                                                resolvedTitleRoute == "library" -> stringResource(R.string.nav_library)
+                                                resolvedTitleRoute == "library_filter" -> stringResource(R.string.str_c2fe6253)
+                                                resolvedTitleRoute == "search" -> stringResource(R.string.nav_search)
+                                                resolvedTitleRoute == Routes.SearchAssist -> stringResource(R.string.nav_search)
+                                                resolvedTitleRoute == Routes.SearchAssistPattern -> stringResource(R.string.nav_search)
+                                                resolvedTitleRoute == Routes.HotListening -> stringResource(R.string.nav_hot_listening)
+                                                resolvedTitleRoute == "playlists" -> stringResource(R.string.nav_playlists)
                                                 resolvedTitleRoute == "playlist/{playlistId}/{playlistName}" ->
-                                                    playlistName.ifBlank { "我的列表" }
-                                                resolvedTitleRoute == "playlist_system/favorites" -> "我的收藏"
+                                                    playlistName.ifBlank { stringResource(R.string.nav_playlists) }
+                                                resolvedTitleRoute == "playlist_system/favorites" -> stringResource(R.string.nav_favorites)
                                                 resolvedTitleRoute == "playlist_system/{type}" -> when (systemPlaylistType) {
-                                                    "favorites" -> "我的收藏"
-                                                    else -> "我的收藏"
+                                                    "favorites" -> stringResource(R.string.nav_favorites)
+                                                    else -> stringResource(R.string.nav_favorites)
                                                 }
-                                                resolvedTitleRoute == "groups" -> "我的分组"
+                                                resolvedTitleRoute == "groups" -> stringResource(R.string.nav_groups)
                                                 resolvedTitleRoute == "group/{groupId}/{groupName}" ->
-                                                    groupName.ifBlank { "我的分组" }
-                                                resolvedTitleRoute == "settings" -> "设置"
-                                                resolvedTitleRoute == "downloads" -> "下载管理"
-                                                resolvedTitleRoute == "dlsite_login" -> "DLsite 登录"
-                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> "添加到我的列表"
-                                                resolvedTitleRoute?.startsWith("album_detail") == true -> "专辑详情"
+                                                    groupName.ifBlank { stringResource(R.string.nav_groups) }
+                                                resolvedTitleRoute == "settings" -> stringResource(R.string.nav_settings)
+                                                resolvedTitleRoute == "downloads" -> stringResource(R.string.str_0d3b071f)
+                                                resolvedTitleRoute == "dlsite_login" -> stringResource(R.string.nav_dlsite_login)
+                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> stringResource(R.string.str_4c6ecbab)
+                                                resolvedTitleRoute?.startsWith("album_detail") == true -> stringResource(R.string.str_cc96ff11)
                                                 else -> appName
                                             }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -2542,7 +2542,7 @@ fun MainContainer(
         automaticUpdateAvailable?.let { available ->
             val release = available.release
             FlatActionDialog(
-                message = stringResource(R.string.str_8b2adc69),
+                message = stringResource(R.string.str_8b2adc69, release.tagName),
                 onDismissRequest = { automaticUpdateDialogDismissed = true },
                 actions = listOf(
                     FlatDialogAction(
@@ -2584,7 +2584,7 @@ fun MainContainer(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = stringResource(R.string.str_3df598c2),
+                        text = stringResource(R.string.str_3df598c2, com.asmr.player.BuildConfig.VERSION_NAME),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.textSecondary
                     )
@@ -2599,7 +2599,7 @@ fun MainContainer(
                     }
                     if (release.apkName.isNotBlank()) {
                         Text(
-                            text = stringResource(R.string.str_4f8deb8f),
+                            text = stringResource(R.string.str_4f8deb8f, release.apkName),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary,
                             maxLines = 1,

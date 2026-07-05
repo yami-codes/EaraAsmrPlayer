@@ -120,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          MSI_PATH="$(find desktopApp/build/compose/binaries/main/msi -type f -name '*.msi' | head -n 1)"
+          MSI_PATH="$(find desktopApp/build/compose/binaries -type f -name '*.msi' | head -n 1)"
           if [ -z "$MSI_PATH" ]; then
             echo "Windows MSI not found"
             find desktopApp/build -type f -name '*.msi' -print || true
@@ -144,6 +144,8 @@ jobs:
           distribution: temurin
           java-version: 17
           cache: gradle
+      - name: Install Linux packaging tools
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
       - name: Enable Gradle Wrapper
         shell: bash
         run: |
@@ -161,7 +163,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          DEB_PATH="$(find desktopApp/build/compose/binaries/main/deb -type f -name '*.deb' | head -n 1)"
+          DEB_PATH="$(find desktopApp/build/compose/binaries -type f -name '*.deb' | head -n 1)"
           if [ -z "$DEB_PATH" ]; then
             echo "Linux DEB not found"
             find desktopApp/build -type f -name '*.deb' -print || true
@@ -197,7 +199,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          DMG_PATH="$(find desktopApp/build/compose/binaries/main/dmg -type f -name '*.dmg' | head -n 1)"
+          DMG_PATH="$(find desktopApp/build/compose/binaries -type f -name '*.dmg' | head -n 1)"
           if [ -z "$DMG_PATH" ]; then
             echo "macOS DMG not found"
             find desktopApp/build -type f -name '*.dmg' -print || true

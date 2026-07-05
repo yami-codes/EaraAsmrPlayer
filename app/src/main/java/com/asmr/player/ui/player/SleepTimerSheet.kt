@@ -123,7 +123,7 @@ fun SleepTimerSheetContent(
                                 viewModel.setSleepTimerMinutes(min)
                                 onDismiss()
                             },
-                        headlineContent = { Text(stringResource(R.string.str_031b44ec)) },
+                        headlineContent = { Text(stringResource(R.string.str_031b44ec, min)) },
                         colors = ListItemDefaults.colors(
                             containerColor = Color.Transparent,
                             headlineColor = colorScheme.textPrimary,

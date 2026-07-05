@@ -1527,7 +1527,7 @@ internal fun SearchPaginationHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = stringResource(R.string.str_cd712071),
+                        text = stringResource(R.string.str_cd712071, page.coerceAtLeast(1)),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isDark) colorScheme.textPrimary else Color.Black
                     )

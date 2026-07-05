@@ -539,7 +539,10 @@ private fun RecentAlbumRow(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         Text(
-                            text = stringResource(R.string.str_939111ca),
+                            text = stringResource(
+                                R.string.str_939111ca,
+                                formatRecentProgressPosition(resume.positionMs)
+                            ),
                             color = subColor,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1

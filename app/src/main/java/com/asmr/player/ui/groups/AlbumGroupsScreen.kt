@@ -207,7 +207,7 @@ private fun AlbumGroupRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.str_92fabc79),
+                    text = stringResource(R.string.str_92fabc79, group.albumCount, group.itemCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -234,7 +234,7 @@ private fun AlbumGroupRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.str_de997108),
+            message = stringResource(R.string.str_de997108, group.name),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(

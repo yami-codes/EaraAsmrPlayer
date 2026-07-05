@@ -104,7 +104,7 @@ fun PlaylistPickerScreen(
                 )
                 if (pickerItems.size > 1) {
                     Text(
-                        text = stringResource(R.string.str_2294bede),
+                        text = stringResource(R.string.str_2294bede, pickerItems.size),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.textSecondary
                     )
