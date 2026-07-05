@@ -36,7 +36,7 @@ compose.desktop {
             packageVersion =
                 (project.findProperty("packageVersion") as? String)
                     ?: System.getenv("PACKAGE_VERSION")
-                    ?: "1.1.4"
+                    ?: "1.1.6"
             description = "Eara ASMR Player - cross-platform desktop companion"
             vendor = "eValDoll"
 
