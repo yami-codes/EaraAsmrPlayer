@@ -194,7 +194,7 @@ class SearchViewModel @Inject constructor(
             collectedOnly = collectedOnly
         )
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning(R.string.str_c5e497ea)
+            messageManager.showWarning(R.string.log_dlsite_before_using_purchased_search)
             return false
         }
         val normalizedKeyword = keyword.trim()
@@ -245,7 +245,7 @@ class SearchViewModel @Inject constructor(
         val current = _uiState.value as? SearchUiState.Success ?: return false
         if (current.isBusy) return false
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning(R.string.str_c5e497ea)
+            messageManager.showWarning(R.string.log_dlsite_before_using_purchased_search)
             return false
         }
         if (
@@ -373,7 +373,7 @@ class SearchViewModel @Inject constructor(
                 if (e is CancellationException) throw e
                 Log.e("SearchViewModel", "Search paging failed", e)
                 val msg = if (e is IllegalStateException) {
-                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = context.getString(R.string.str_5764ab7d))
+                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = context.getString(R.string.search_failed_try_again_later))
                 } else {
                     toUserMessage(e)
                 }
@@ -663,29 +663,29 @@ class SearchViewModel @Inject constructor(
 
     private fun toUserMessage(e: Throwable): String {
         val raw = e.message.orEmpty()
-        if (raw.contains("已购")) return context.getString(R.string.str_c5e497ea)
+        if (raw.contains("已购")) return context.getString(R.string.log_dlsite_before_using_purchased_search)
         return when (e) {
-            is SocketTimeoutException -> context.getString(R.string.str_5764ab7d)
+            is SocketTimeoutException -> context.getString(R.string.search_failed_try_again_later)
             is IOException -> context.getString(R.string.error_operation_failed)
             is HttpException -> {
                 val code = e.code()
                 when {
-                    code == 401 -> context.getString(R.string.str_d3ab821c)
-                    code == 403 -> context.getString(R.string.str_b88d3d76)
-                    code in 500..599 -> context.getString(R.string.str_effe0263)
-                    else -> context.getString(R.string.str_d5dd7d65)
+                    code == 401 -> context.getString(R.string.login_expired_log_again)
+                    code == 403 -> context.getString(R.string.access_restricted_try_again_later)
+                    code in 500..599 -> context.getString(R.string.server_taking_break_try_again_later)
+                    else -> context.getString(R.string.request_failed_try_again_later)
                 }
             }
 
             is HttpStatusException -> {
                 when (e.statusCode) {
-                    403, 429 -> context.getString(R.string.str_544ba34c)
-                    in 500..599 -> context.getString(R.string.str_effe0263)
-                    else -> context.getString(R.string.str_d5dd7d65)
+                    403, 429 -> context.getString(R.string.access_restricted_risk_control_was_triggered)
+                    in 500..599 -> context.getString(R.string.server_taking_break_try_again_later)
+                    else -> context.getString(R.string.request_failed_try_again_later)
                 }
             }
 
-            else -> context.getString(R.string.str_5764ab7d)
+            else -> context.getString(R.string.search_failed_try_again_later)
         }
     }
 
@@ -693,7 +693,7 @@ class SearchViewModel @Inject constructor(
         val normalizedRj = rj.trim().uppercase()
             .ifBlank { originalWorkno.trim().uppercase() }
         return Album(
-            title = title.trim().ifBlank { normalizedRj.ifBlank { context.getString(R.string.str_3f3241b7) } },
+            title = title.trim().ifBlank { normalizedRj.ifBlank { context.getString(R.string.indexed_works) } },
             path = "",
             workId = normalizedRj,
             rjCode = normalizedRj,

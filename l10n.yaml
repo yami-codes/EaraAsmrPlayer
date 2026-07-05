@@ -1,0 +1,14 @@
+# Eara i18n — same workflow idea as LizuNemuri (Flutter ARB + codegen).
+# Edit JSON locale files under l10n/, then run:
+#   python3 tools/regenerate_l10n.py
+arb-dir: l10n
+template-locale: en
+locales:
+  - en
+  - th
+  - zh-CN
+android-output:
+  en: app/src/main/res/values/strings.xml
+  th: app/src/main/res/values-th/strings.xml
+  zh-CN: app/src/main/res/values-zh-rCN/strings.xml
+kotlin-facade: app/src/main/java/com/asmr/player/i18n/Strings.kt

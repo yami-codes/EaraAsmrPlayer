@@ -100,7 +100,7 @@ fun TagAssignDialog(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    TextButton(onClick = { onApplyUserTags(dedupeByNormalized(workingUserTags)) }) { Text(stringResource(R.string.str_be5fbbe3)) }
+                    TextButton(onClick = { onApplyUserTags(dedupeByNormalized(workingUserTags)) }) { Text(stringResource(R.string.save)) }
                 }
 
                 Column(
@@ -113,7 +113,7 @@ fun TagAssignDialog(
                 ) {
                     if (inheritedTags.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(text = stringResource(R.string.str_c2bc0879), color = colorScheme.textTertiary)
+                            Text(text = stringResource(R.string.existing_tags), color = colorScheme.textTertiary)
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -126,13 +126,13 @@ fun TagAssignDialog(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = stringResource(R.string.str_03c33ba4), color = colorScheme.textTertiary)
+                        Text(text = stringResource(R.string.user_tags), color = colorScheme.textTertiary)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (workingUserTags.isEmpty()) {
-                                Text(text = stringResource(R.string.str_31060b9b), color = colorScheme.textSecondary)
+                                Text(text = stringResource(R.string.not_added), color = colorScheme.textSecondary)
                             } else {
                                 workingUserTags.forEach { t ->
                                     TagBadge(
@@ -148,7 +148,7 @@ fun TagAssignDialog(
                             }
                         }
                         if (workingUserTags.isNotEmpty()) {
-                            Text(text = stringResource(R.string.str_47700256), color = colorScheme.textSecondary)
+                            Text(text = stringResource(R.string.tap_user_tag_remove), color = colorScheme.textSecondary)
                         }
                     }
 
@@ -165,7 +165,7 @@ fun TagAssignDialog(
                                 }
                             }
                         },
-                        placeholder = { Text(stringResource(R.string.str_f26558d2)) }
+                        placeholder = { Text(stringResource(R.string.search_existing_tags)) }
                     )
 
                     FlowRow(
@@ -191,7 +191,7 @@ fun TagAssignDialog(
                             onValueChange = { customInput = it },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            placeholder = { Text(stringResource(R.string.str_af3bb7e6)) }
+                            placeholder = { Text(stringResource(R.string.add_custom_tag)) }
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         IconButton(
@@ -209,7 +209,7 @@ fun TagAssignDialog(
                         }
                         if (onOpenTagManager != null) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            TextButton(onClick = { onOpenTagManager() }) { Text(stringResource(R.string.str_91fa80d6)) }
+                            TextButton(onClick = { onOpenTagManager() }) { Text(stringResource(R.string.custom_tag_management)) }
                         }
                     }
                     Spacer(modifier = Modifier.height(2.dp))

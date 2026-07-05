@@ -33,7 +33,7 @@ fun launchDownloadedApkInstall(context: Context, apkPath: String): AppUpdateInst
             context.startActivity(intent)
             AppUpdateInstallResult.PermissionRequired
         }.getOrElse { e ->
-            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_c1fe2fa5) })
+            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.unable_open_install_permission_page) })
         }
     }
 
@@ -51,7 +51,7 @@ fun launchDownloadedApkInstall(context: Context, apkPath: String): AppUpdateInst
         context.startActivity(intent)
         AppUpdateInstallResult.Started
     }.getOrElse { e ->
-        AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_d439a0ff) })
+        AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.unable_open_system_installer) })
     }
 }
 

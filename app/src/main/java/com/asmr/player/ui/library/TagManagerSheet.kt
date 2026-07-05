@@ -70,8 +70,8 @@ fun TagManagerSheet(
             IconButton(onClick = onClose) {
                 Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
             }
-            Text(text = stringResource(R.string.str_2ec512a4), modifier = Modifier.weight(1f))
-            TextButton(onClick = onClose) { Text(stringResource(R.string.str_769d88e4)) }
+            Text(text = stringResource(R.string.tag_management), modifier = Modifier.weight(1f))
+            TextButton(onClick = onClose) { Text(stringResource(R.string.done)) }
         }
 
         OutlinedTextField(
@@ -79,7 +79,7 @@ fun TagManagerSheet(
             onValueChange = { filter = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.str_2f37a9e2)) }
+            placeholder = { Text(stringResource(R.string.search_tags)) }
         )
 
         LazyColumn(
@@ -103,15 +103,15 @@ fun TagManagerSheet(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (tag.albumCount == 0L) {
-                                    TagManagerMetricBadge(label = stringResource(R.string.str_869ec83e))
+                                    TagManagerMetricBadge(label = stringResource(R.string.unused))
                                 } else {
                                     TagManagerMetricBadge(
-                                        label = stringResource(R.string.str_b6fd576f),
+                                        label = stringResource(R.string.user_annotations),
                                         value = tag.userAlbumCount.toString(),
                                         highlighted = true
                                     )
                                     TagManagerMetricBadge(
-                                        label = stringResource(R.string.str_599b5a32),
+                                        label = stringResource(R.string.total),
                                         value = tag.albumCount.toString()
                                     )
                                 }
@@ -120,7 +120,7 @@ fun TagManagerSheet(
                     },
                     supportingContent = {
                         Text(
-                            text = stringResource(R.string.str_a7d7efd8),
+                            text = stringResource(R.string.tap_rename_delete),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textTertiary
                         )
@@ -143,19 +143,19 @@ fun TagManagerSheet(
         if (tag != null) {
             FlatActionDialog(
                 onDismissRequest = { showRenameDialog = false },
-                message = stringResource(R.string.str_ed74dfaf),
+                message = stringResource(R.string.rename_tag_delete_user_tag),
                 actions = listOf(
                     FlatDialogAction(
-                        text = stringResource(R.string.str_2f4aaddd),
+                        text = stringResource(R.string.delete),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showRenameDialog = false
                             showDeleteDialog = true
                         }
                     ),
-                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showRenameDialog = false }),
+                    FlatDialogAction(stringResource(R.string.cancel), onClick = { showRenameDialog = false }),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_be5fbbe3),
+                        text = stringResource(R.string.save),
                         tone = FlatDialogActionTone.Primary,
                         enabled = renameText.trim().isNotBlank(),
                         onClick = {
@@ -180,11 +180,11 @@ fun TagManagerSheet(
         if (tag != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                message = stringResource(R.string.str_beca1d1c),
+                message = stringResource(R.string.tag_will_removed_all_user_annotations),
                 actions = listOf(
-                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteDialog = false }),
+                    FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteDialog = false }),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_2f4aaddd),
+                        text = stringResource(R.string.delete),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             onDelete(tag.id)

@@ -116,13 +116,13 @@ fun RecentAlbumsPanel(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(R.string.str_27c23ddd),
+                    text = stringResource(R.string.recently_listened),
                     color = colorScheme.textPrimary,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = stringResource(R.string.str_f1579e89),
+                    text = stringResource(R.string.recent_play),
                     color = colorScheme.textTertiary,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -185,7 +185,7 @@ internal fun RecentAlbumsList(
     BoxWithConstraints(modifier = modifier) {
         if (items.isEmpty()) {
             Text(
-                text = stringResource(R.string.str_21efd88b),
+                text = stringResource(R.string.no_data_yet),
                 color = AsmrTheme.colorScheme.textSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -524,7 +524,7 @@ private fun RecentAlbumRow(
                         horizontalArrangement = Arrangement.Start
                     ) {
                         Text(
-                            text = stringResource(R.string.str_17746288),
+                            text = stringResource(R.string.last_listened),
                             color = subColor,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1
@@ -540,7 +540,7 @@ private fun RecentAlbumRow(
                         )
                         Text(
                             text = stringResource(
-                                R.string.str_939111ca,
+                                R.string.text,
                                 formatRecentProgressPosition(resume.positionMs)
                             ),
                             color = subColor,

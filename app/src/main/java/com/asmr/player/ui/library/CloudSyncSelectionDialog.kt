@@ -116,7 +116,7 @@ internal fun CloudSyncSelectionDialog(
     val currentPosition = state.currentPosition ?: 0
     val totalCount = state.totalCount ?: 0
     val progressLabel = if (currentPosition > 0 && totalCount > 0) {
-        stringResource(R.string.str_bf070baf, currentPosition, totalCount)
+        stringResource(R.string.pending_confirmation, currentPosition, totalCount)
     } else {
         null
     }
@@ -158,7 +158,7 @@ internal fun CloudSyncSelectionDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.str_033daf88, state.candidates.size),
+                            text = stringResource(R.string.cloud_sync_candidates_possible_matches_tap, state.candidates.size),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = 16.sp
@@ -168,7 +168,7 @@ internal fun CloudSyncSelectionDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = state.albumTitle.ifBlank { stringResource(R.string.str_b668ec29) },
+                            text = state.albumTitle.ifBlank { stringResource(R.string.current_album) },
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = 20.sp
@@ -228,7 +228,7 @@ internal fun CloudSyncSelectionDialog(
                                     contentColor = colorScheme.textSecondary
                                 )
                             ) {
-                                Text(stringResource(R.string.str_e35640b4))
+                                Text(stringResource(R.string.ignore_all))
                             }
                         }
                     }
@@ -258,9 +258,9 @@ internal fun CloudSyncSelectionDialog(
                         ) {
                             Text(
                                 if (onIgnoreAll != null) {
-                                    stringResource(R.string.str_6770b3c2)
+                                    stringResource(R.string.cancel_current)
                                 } else {
-                                    stringResource(R.string.str_625fb26b)
+                                    stringResource(R.string.cancel)
                                 }
                             )
                         }

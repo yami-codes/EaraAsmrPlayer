@@ -772,20 +772,20 @@ internal fun SliceTimeEditDialog(
                             selectedMs = if (safeDuration > 0L) v.coerceAtMost(safeDuration) else v
                             if (safeDuration > 0L) fraction = (selectedMs.toDouble() / safeDuration.toDouble()).toFloat().coerceIn(0f, 1f)
                         }
-                    ) { Text(stringResource(R.string.str_6b7f7569)) }
+                    ) { Text(stringResource(R.string.set_as_current)) }
                     TextButton(
                         onClick = {
                             selectedMs = 0L
                             fraction = 0f
                         }
-                    ) { Text(stringResource(R.string.str_73363e98)) }
+                    ) { Text(stringResource(R.string.set)) }
                     if (safeDuration > 0L) {
                         TextButton(
                             onClick = {
                                 selectedMs = safeDuration
                                 fraction = 1f
                             }
-                        ) { Text(stringResource(R.string.str_687211d5)) }
+                        ) { Text(stringResource(R.string.set_as_end)) }
                     }
                 }
             }
@@ -795,8 +795,8 @@ internal fun SliceTimeEditDialog(
                 onClick = {
                     onConfirm(selectedMs)
                 }
-            ) { Text(stringResource(R.string.str_38cf16f2)) }
+            ) { Text(stringResource(R.string.dialog_confirm)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.str_625fb26b)) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
 }

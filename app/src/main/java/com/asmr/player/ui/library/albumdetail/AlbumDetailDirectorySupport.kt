@@ -1487,21 +1487,21 @@ internal fun flattenAsmrOneTreeForUi(
 
 @Composable
 internal fun fileTypeLabel(fileType: TreeFileType): String = when (fileType) {
-    TreeFileType.Audio -> stringResource(R.string.str_726dd5df)
-    TreeFileType.Video -> stringResource(R.string.str_7fcf42ed)
-    TreeFileType.Image -> stringResource(R.string.str_20def794)
-    TreeFileType.Subtitle -> stringResource(R.string.str_a8c3cc44)
-    TreeFileType.Text -> stringResource(R.string.str_97d07614)
+    TreeFileType.Audio -> stringResource(R.string.audio)
+    TreeFileType.Video -> stringResource(R.string.video)
+    TreeFileType.Image -> stringResource(R.string.image)
+    TreeFileType.Subtitle -> stringResource(R.string.subtitle_chip)
+    TreeFileType.Text -> stringResource(R.string.text_2)
     TreeFileType.Pdf -> "PDF"
-    TreeFileType.Archive -> stringResource(R.string.str_c806d0fa)
-    TreeFileType.Document -> stringResource(R.string.str_32536950)
-    TreeFileType.Spreadsheet -> stringResource(R.string.str_b339aa87)
-    TreeFileType.Presentation -> stringResource(R.string.str_93090486)
-    TreeFileType.Code -> stringResource(R.string.str_06e41c19)
-    TreeFileType.Ebook -> stringResource(R.string.str_709f7c56)
-    TreeFileType.Font -> stringResource(R.string.str_8456bc40)
-    TreeFileType.AppPackage -> stringResource(R.string.str_03070d08)
-    TreeFileType.Other -> stringResource(R.string.str_2a0c4740)
+    TreeFileType.Archive -> stringResource(R.string.archive)
+    TreeFileType.Document -> stringResource(R.string.document)
+    TreeFileType.Spreadsheet -> stringResource(R.string.table)
+    TreeFileType.Presentation -> stringResource(R.string.presentation)
+    TreeFileType.Code -> stringResource(R.string.loudness_leveling_pulls_overall_loudness_toward)
+    TreeFileType.Ebook -> stringResource(R.string.e_book)
+    TreeFileType.Font -> stringResource(R.string.font)
+    TreeFileType.AppPackage -> stringResource(R.string.installer)
+    TreeFileType.Other -> stringResource(R.string.file)
 }
 
 internal fun treeFileTypeIcon(fileType: TreeFileType): ImageVector = when (fileType) {
@@ -1588,7 +1588,7 @@ internal fun DirectoryBreadcrumbBar(
             FilterChip(
                 selected = currentPath.isBlank(),
                 onClick = { onNavigate("") },
-                label = { Text(stringResource(R.string.str_c2b9f4b9)) },
+                label = { Text(stringResource(R.string.root_directory)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Rounded.Home,
@@ -1651,7 +1651,7 @@ internal fun CompactDirectoryBreadcrumbBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             CompactBreadcrumbNode(
-                text = stringResource(R.string.str_c2b9f4b9),
+                text = stringResource(R.string.root_directory),
                 selected = currentPath.isBlank(),
                 icon = Icons.Rounded.Home,
                 onClick = { onNavigate("") }
@@ -1745,7 +1745,7 @@ internal fun CompactDirectoryBreadcrumbContent(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         CompactBreadcrumbNode(
-            text = stringResource(R.string.str_c2b9f4b9),
+            text = stringResource(R.string.root_directory),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -1797,7 +1797,7 @@ internal fun DirectoryBrowserPanel(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -1811,9 +1811,9 @@ internal fun DirectoryBrowserPanel(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.str_67033521, selectedPaths.size)
+        stringResource(R.string.selected_3, selectedPaths.size)
     } else {
-        stringResource(R.string.str_f2c5706a, batchTargets.size)
+        stringResource(R.string.media_items, batchTargets.size)
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -1959,7 +1959,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.Rounded.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.str_ae336cd0), style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.action_favorite), style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onOpenBatchPlaylistPicker(mediaItems) },
@@ -1969,7 +1969,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.str_3712972d), style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.list), style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onAddMediaItemsToQueue(mediaItems) },
@@ -1979,7 +1979,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.str_0796f7f8), style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.queue), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -2010,7 +2010,7 @@ internal fun CompactDirectoryBreadcrumbContentV2(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         CompactBreadcrumbNode(
-            text = stringResource(R.string.str_c2b9f4b9),
+            text = stringResource(R.string.root_directory),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -2139,7 +2139,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_ae336cd0),
+                    text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
@@ -2150,7 +2150,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                     thickness = 0.5.dp
                 )
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_3712972d),
+                    text = stringResource(R.string.list),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
@@ -2161,7 +2161,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                     thickness = 0.5.dp
                 )
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_0796f7f8),
+                    text = stringResource(R.string.queue),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2194,7 +2194,7 @@ internal fun DirectoryBrowserPanelV2(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel-v2:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2208,14 +2208,14 @@ internal fun DirectoryBrowserPanelV2(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.str_67033521, selectedPaths.size)
+        stringResource(R.string.selected_3, selectedPaths.size)
     } else {
-        stringResource(R.string.str_f2c5706a, batchTargets.size)
+        stringResource(R.string.media_items, batchTargets.size)
     }
     val batchHintText = if (selectionMode) {
-        stringResource(R.string.str_7a1add9b)
+        stringResource(R.string.tap_files_add_remove_them_selection)
     } else {
-        stringResource(R.string.str_e5c8fbd3)
+        stringResource(R.string.long_press_batch_actions)
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -2396,7 +2396,7 @@ internal fun CompactDirectoryBreadcrumbContentV3(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         CompactBreadcrumbNode(
-            text = stringResource(R.string.str_c2b9f4b9),
+            text = stringResource(R.string.root_directory),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -2507,21 +2507,21 @@ internal fun DirectoryBatchBarEmbeddedV4(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_ae336cd0),
+                    text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_3712972d),
+                    text = stringResource(R.string.list),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_0796f7f8),
+                    text = stringResource(R.string.queue),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2573,14 +2573,14 @@ internal fun DirectoryBatchBarEmbeddedV5(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_ae336cd0),
+                    text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_3712972d),
+                    text = stringResource(R.string.list),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = {
@@ -2591,7 +2591,7 @@ internal fun DirectoryBatchBarEmbeddedV5(
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = stringResource(R.string.str_0796f7f8),
+                    text = stringResource(R.string.queue),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2628,7 +2628,7 @@ internal fun DirectoryBrowserPanelV4(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel-v4:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2672,14 +2672,14 @@ internal fun DirectoryBrowserPanelV4(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.str_67033521, selectedPaths.size)
+        stringResource(R.string.selected_3, selectedPaths.size)
     } else {
-        stringResource(R.string.str_f2c5706a, batchTargets.size)
+        stringResource(R.string.media_items, batchTargets.size)
     }
     val batchHintText = if (selectionMode) {
-        stringResource(R.string.str_7a1add9b)
+        stringResource(R.string.tap_files_add_remove_them_selection)
     } else {
-        stringResource(R.string.str_e5c8fbd3)
+        stringResource(R.string.long_press_batch_actions)
     }
     LaunchedEffect(preferredPath) {
         preferredPathState = preferredPath.trim().trim('/')
@@ -2777,7 +2777,7 @@ internal fun DirectoryBrowserPanelV4(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = stringResource(R.string.str_b5107106),
+                            text = stringResource(R.string.open_by_default),
                             style = MaterialTheme.typography.labelMedium,
                             color = preferredTextColor
                         )
@@ -2987,7 +2987,7 @@ internal fun DirectoryFileRow(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Photo,
-                                    contentDescription = stringResource(R.string.str_137f3c79),
+                                    contentDescription = stringResource(R.string.set_as_cover),
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -3002,7 +3002,7 @@ internal fun DirectoryFileRow(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = stringResource(R.string.str_fff96ede),
+                                        contentDescription = stringResource(R.string.more_actions),
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -3020,7 +3020,7 @@ internal fun DirectoryFileRow(
                                     ) {
                                         if (showPrimaryAction) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_b85270cd)) },
+                                                text = { Text(stringResource(R.string.playback)) },
                                                 onClick = {
                                                     onPrimary()
                                                     showMenuExpanded = false
@@ -3032,7 +3032,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onDownload != null) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_f26ef914)) },
+                                                text = { Text(stringResource(R.string.download_confirm)) },
                                                 onClick = {
                                                     onDownload()
                                                     showMenuExpanded = false
@@ -3044,7 +3044,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onAddToQueue != null) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_58a8759e)) },
+                                                text = { Text(stringResource(R.string.add_play_queue)) },
                                                 onClick = {
                                                     onAddToQueue()
                                                     showMenuExpanded = false
@@ -3056,7 +3056,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onAddToPlaylist != null) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
+                                                text = { Text(stringResource(R.string.add_my_list)) },
                                                 onClick = {
                                                     onAddToPlaylist()
                                                     showMenuExpanded = false
@@ -3068,7 +3068,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onManageTags != null) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_2ec512a4)) },
+                                                text = { Text(stringResource(R.string.tag_management)) },
                                                 onClick = {
                                                     onManageTags()
                                                     showMenuExpanded = false
@@ -3080,7 +3080,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onRemoveFromAlbum != null) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_9a9dd2e0)) },
+                                                text = { Text(stringResource(R.string.remove_album)) },
                                                 onClick = {
                                                     onRemoveFromAlbum()
                                                     showMenuExpanded = false
@@ -3227,7 +3227,7 @@ internal fun TreeFileRow(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Photo,
-                                    contentDescription = stringResource(R.string.str_137f3c79),
+                                    contentDescription = stringResource(R.string.set_as_cover),
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -3242,7 +3242,7 @@ internal fun TreeFileRow(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = stringResource(R.string.str_fff96ede),
+                                        contentDescription = stringResource(R.string.more_actions),
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -3275,7 +3275,7 @@ internal fun TreeFileRow(
                                         if (showPrimaryAction) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_b85270cd)) },
+                                                text = { Text(stringResource(R.string.playback)) },
                                                 onClick = {
                                                     onPrimary()
                                                     showMenuExpanded = false
@@ -3292,7 +3292,7 @@ internal fun TreeFileRow(
                                         if (onDownload != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_f26ef914)) },
+                                                text = { Text(stringResource(R.string.download_confirm)) },
                                                 onClick = {
                                                     onDownload.invoke()
                                                     showMenuExpanded = false
@@ -3309,7 +3309,7 @@ internal fun TreeFileRow(
                                         if (onAddToQueue != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_58a8759e)) },
+                                                text = { Text(stringResource(R.string.add_play_queue)) },
                                                 onClick = {
                                                     onAddToQueue.invoke()
                                                     showMenuExpanded = false
@@ -3326,7 +3326,7 @@ internal fun TreeFileRow(
                                         if (onAddToPlaylist != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
+                                                text = { Text(stringResource(R.string.add_my_list)) },
                                                 onClick = {
                                                     onAddToPlaylist.invoke()
                                                     showMenuExpanded = false
@@ -3343,7 +3343,7 @@ internal fun TreeFileRow(
                                         if (onManageTags != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_2ec512a4)) },
+                                                text = { Text(stringResource(R.string.tag_management)) },
                                                 onClick = {
                                                     onManageTags.invoke()
                                                     showMenuExpanded = false
@@ -3360,7 +3360,7 @@ internal fun TreeFileRow(
                                         if (onRemoveFromAlbum != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.str_9a9dd2e0)) },
+                                                text = { Text(stringResource(R.string.remove_album)) },
                                                 onClick = {
                                                     onRemoveFromAlbum.invoke()
                                                     showMenuExpanded = false

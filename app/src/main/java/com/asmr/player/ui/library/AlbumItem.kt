@@ -702,7 +702,7 @@ private fun CollectedStamp(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = stringResource(R.string.str_1ed3c154),
+            text = stringResource(R.string.indexed),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = Color.White

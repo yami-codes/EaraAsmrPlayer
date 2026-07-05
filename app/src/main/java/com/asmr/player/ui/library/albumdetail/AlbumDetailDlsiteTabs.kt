@@ -315,12 +315,12 @@ private fun DlsiteTrialAudioItem(
     val colorScheme = AsmrTheme.colorScheme
     val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
     val durationText = remember(track.duration) { Formatting.formatTrackSeconds(track.duration) }
-    val onlineOnlyLabel = stringResource(R.string.str_68905cf3)
+    val onlineOnlyLabel = stringResource(R.string.online_2)
     val subtitleText = when {
-        isOnline && durationText.isNotBlank() -> stringResource(R.string.str_1f5a4249, durationText)
+        isOnline && durationText.isNotBlank() -> stringResource(R.string.online, durationText)
         isOnline -> onlineOnlyLabel
         durationText.isNotBlank() -> durationText
-        else -> stringResource(R.string.str_8a463bf5)
+        else -> stringResource(R.string.online_playback)
     }
 
     Row(
@@ -812,7 +812,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 DlsiteGalleryLoadingRow()
             } else if (galleryUrls.isEmpty()) {
                 DlsiteSectionEmptyState(
-                    text = stringResource(R.string.str_84cde6f2),
+                    text = stringResource(R.string.no_sample_images_yet),
                     artworkKind = DlsiteEmptyArtworkKind.Gallery,
                     modifier = Modifier.then(dlsiteAnimatedSectionModifier(Modifier, animateIntro))
                 )
@@ -873,7 +873,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
             ) {
                 Text(
                     text = if (asmrOneTree.isNotEmpty()) {
-                        stringResource(R.string.str_8904c43b)
+                        stringResource(R.string.one_included)
                     } else {
                         "ONE"
                     },
@@ -882,7 +882,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshAsmrOne, enabled = !isLoadingAsmrOne) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.str_694fc5ef))
+                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.refresh))
                 }
             }
         }
@@ -1013,7 +1013,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         } else {
             item(key = "dlsite-one-content") {
                 DlsiteSectionEmptyState(
-                    text = stringResource(R.string.str_2916d2fa),
+                    text = stringResource(R.string.one_not_indexed_yet),
                     artworkKind = DlsiteEmptyArtworkKind.One,
                     modifier = dlsiteAnimatedSectionModifier(Modifier, animateIntro)
                 )
@@ -1028,16 +1028,16 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.str_36704e77),
+                    text = stringResource(R.string.sample_preview),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshTrial, enabled = !isLoading && !isLoadingTrial) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.str_694fc5ef))
+                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.refresh))
                 }
                 IconButton(onClick = onDownloadTrial, enabled = trialDownloadEnabled) {
-                    Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.str_f26ef914))
+                    Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.download_confirm))
                 }
             }
         }
@@ -1052,7 +1052,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                     }
                 } else {
                     DlsiteSectionEmptyState(
-                        text = stringResource(R.string.str_05bb9a1d),
+                        text = stringResource(R.string.no_sample_preview_yet),
                         artworkKind = DlsiteEmptyArtworkKind.Trial,
                         modifier = dlsiteAnimatedSectionModifier(Modifier, animateIntro)
                     )
@@ -1166,9 +1166,9 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
     if (!loggedIn) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.str_b74eb8ba))
+                Text(stringResource(R.string.you_need_log_dlsite_first_use))
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onOpenLogin) { Text(stringResource(R.string.str_b4b851b1)) }
+                Button(onClick = onOpenLogin) { Text(stringResource(R.string.go_login)) }
             }
         }
         return
@@ -1243,19 +1243,19 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.str_b085f24f),
+                    text = stringResource(R.string.purchased_content),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onOpenLogin) { Text(stringResource(R.string.str_a59ecc4e)) }
+                OutlinedButton(onClick = onOpenLogin) { Text(stringResource(R.string.log_switch_account)) }
             }
         }
 
         if (rj.isBlank()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.str_75fc2edc))
+                    Text(stringResource(R.string.missing_rj_code_unable_load))
                 }
             }
             return@LazyColumn
@@ -1267,7 +1267,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                     if (isLoading) {
                         EaraLogoLoadingIndicator(tint = AsmrTheme.colorScheme.primary)
                     } else {
-                        Text(stringResource(R.string.str_148a3a96))
+                        Text(stringResource(R.string.no_playable_sources_available))
                     }
                 }
             }

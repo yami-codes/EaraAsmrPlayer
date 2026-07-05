@@ -382,7 +382,7 @@ fun EqualizerPanel(
                         onCheckedChange = onEnabledChange,
                         modifier = Modifier.scale(0.85f)
                     )
-                    TextButton(onClick = onReset, enabled = resetEnabled) { Text(stringResource(R.string.str_4b9c3271)) }
+                    TextButton(onClick = onReset, enabled = resetEnabled) { Text(stringResource(R.string.reset)) }
                     IconButton(onClick = { onExpandedChange(!expanded) }, modifier = Modifier.size(28.dp)) {
                         Icon(
                             imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -407,7 +407,7 @@ fun EqualizerPanel(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Text(stringResource(R.string.str_f47919b6), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.audio_effects), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
         val vtEnabled = settings.volumeThresholdEnabled
         val vtMode = settings.volumeThresholdMode
@@ -416,7 +416,7 @@ fun EqualizerPanel(
         val defaultVtMaxDb = -6f
         val defaultVtTargetDb = -18f
         ModuleCard(
-            title = stringResource(R.string.str_579cea82),
+            title = stringResource(R.string.volume_threshold),
             enabled = vtEnabled,
             onEnabledChange = { updateVolumeThreshold(enabled = it) },
             expanded = settings.volumeThresholdExpanded,
@@ -429,12 +429,12 @@ fun EqualizerPanel(
                 settings.volumeLoudnessTargetDb != defaultVtTargetDb
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.str_f0789e79), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.mode), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "vt_mode",
-                    title = stringResource(R.string.str_f0789e79),
-                    text = stringResource(R.string.str_06e41c19)
+                    title = stringResource(R.string.mode),
+                    text = stringResource(R.string.loudness_leveling_pulls_overall_loudness_toward)
                 )
             }
             val modeChipColors = FilterChipDefaults.filterChipColors(
@@ -443,7 +443,7 @@ fun EqualizerPanel(
                 selectedLeadingIconColor = colorScheme.primary
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1 to stringResource(R.string.str_30ff681a), 0 to stringResource(R.string.str_e0de1c9a)).forEach { (m, label) ->
+                listOf(1 to stringResource(R.string.loudness_leveling), 0 to stringResource(R.string.threshold)).forEach { (m, label) ->
                     FilterChip(
                         selected = vtMode == m,
                         onClick = { updateVolumeThreshold(mode = m) },
@@ -463,12 +463,12 @@ fun EqualizerPanel(
             if (vtMode == 1) {
                 Column {
                     Row {
-                        Text(stringResource(R.string.str_13678214), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.target_loudness), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_target",
-                            title = stringResource(R.string.str_13678214),
-                            text = stringResource(R.string.str_9be46da3)
+                            title = stringResource(R.string.target_loudness),
+                            text = stringResource(R.string.gradually_adjust_playback_loudness_toward_target)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeLoudnessTargetDb), style = MaterialTheme.typography.labelSmall)
@@ -484,12 +484,12 @@ fun EqualizerPanel(
             } else {
                 Column {
                     Row {
-                        Text(stringResource(R.string.str_1e4b5981), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.minimum_threshold), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_min",
-                            title = stringResource(R.string.str_1e4b5981),
-                            text = stringResource(R.string.str_519ef472)
+                            title = stringResource(R.string.minimum_threshold),
+                            text = stringResource(R.string.when_volume_falls_below_value_will)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMinDb), style = MaterialTheme.typography.labelSmall)
@@ -505,12 +505,12 @@ fun EqualizerPanel(
 
                 Column {
                     Row {
-                        Text(stringResource(R.string.str_3bef7820), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.maximum_threshold), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_max",
-                            title = stringResource(R.string.str_3bef7820),
-                            text = stringResource(R.string.str_140aa4c4)
+                            title = stringResource(R.string.maximum_threshold),
+                            text = stringResource(R.string.when_volume_exceeds_value_will_reduced)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMaxDb), style = MaterialTheme.typography.labelSmall)
@@ -531,7 +531,7 @@ fun EqualizerPanel(
             SceneEffectPresets.resolve(settings.sceneEffectPresetId)
         }
         ModuleCard(
-            title = stringResource(R.string.str_6588591f),
+            title = stringResource(R.string.scene_effects),
             enabled = sceneEnabled,
             onEnabledChange = { updateSceneEffect(enabled = it) },
             expanded = settings.sceneEffectExpanded,
@@ -549,12 +549,12 @@ fun EqualizerPanel(
             var sceneExpanded by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.str_4f95b545), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.scene_presets), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "scene_preset",
-                        title = stringResource(R.string.str_6588591f),
-                        text = stringResource(R.string.str_55e525ca)
+                        title = stringResource(R.string.scene_effects),
+                        text = stringResource(R.string.simulates_common_spaces_transmission_media_throu)
                     )
                 }
                 ExposedDropdownMenuBox(
@@ -563,7 +563,7 @@ fun EqualizerPanel(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = stringResource(R.string.str_9cdfce42),
+                        text = stringResource(R.string.preset),
                         style = MaterialTheme.typography.labelSmall,
                         color = materialColorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
@@ -674,12 +674,12 @@ fun EqualizerPanel(
                 }
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.str_e66f71dd), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.effect_intensity), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "scene_amount",
-                            title = stringResource(R.string.str_e66f71dd),
-                            text = stringResource(R.string.str_f9a8f001)
+                            title = stringResource(R.string.effect_intensity),
+                            text = stringResource(R.string.higher_intensity_more_pronounced_scene_character)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text("${settings.sceneEffectAmount}%", style = MaterialTheme.typography.labelSmall)
@@ -702,7 +702,7 @@ fun EqualizerPanel(
         ) {
             val speedPitchEnabled = settings.speedPitchEnabled
             ModuleCard(
-                title = stringResource(R.string.str_c5650b1b),
+                title = stringResource(R.string.speed_pitch),
                 enabled = speedPitchEnabled,
                 onEnabledChange = { enabled ->
                     onSettingsChanged(settings.copy(speedPitchEnabled = enabled))
@@ -719,12 +719,12 @@ fun EqualizerPanel(
             ) {
                 Column {
                     Row {
-                        Text(stringResource(R.string.str_c16eed0e), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.player_speed), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "playback_speed",
-                            title = stringResource(R.string.str_c16eed0e),
-                            text = stringResource(R.string.str_3504474d)
+                            title = stringResource(R.string.player_speed),
+                            text = stringResource(R.string.higher_values_play_faster_affects_tempo)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackSpeed), style = MaterialTheme.typography.labelSmall)
@@ -740,12 +740,12 @@ fun EqualizerPanel(
 
                 Column {
                     Row {
-                        Text(stringResource(R.string.str_e3ed175f), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.pitch), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "playback_pitch",
-                            title = stringResource(R.string.str_e3ed175f),
-                            text = stringResource(R.string.str_6a464976)
+                            title = stringResource(R.string.pitch),
+                            text = stringResource(R.string.higher_values_raise_pitch_lower_values)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackPitch), style = MaterialTheme.typography.labelSmall)
@@ -763,7 +763,7 @@ fun EqualizerPanel(
 
         val stereoEnabled = settings.stereoEnabled
         ModuleCard(
-            title = stringResource(R.string.str_87c33fb4),
+            title = stringResource(R.string.stereo),
             enabled = stereoEnabled,
             onEnabledChange = { onSettingsChanged(settings.copy(stereoEnabled = it)) },
             expanded = settings.stereoExpanded,
@@ -785,12 +785,12 @@ fun EqualizerPanel(
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.str_85996dec), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.sound_source_distance), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_distance",
-                        title = stringResource(R.string.str_85996dec),
-                        text = stringResource(R.string.str_527c97e4)
+                        title = stringResource(R.string.sound_source_distance),
+                        text = stringResource(R.string.farther_distance_softer_slightly_more_attenuated)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.1f", settings.orbitDistance), style = MaterialTheme.typography.labelSmall)
@@ -806,12 +806,12 @@ fun EqualizerPanel(
 
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.str_a1574db9), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.sound_source_direction), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_azimuth",
-                        title = stringResource(R.string.str_a1574db9),
-                        text = stringResource(R.string.str_950ad70a)
+                        title = stringResource(R.string.sound_source_direction),
+                        text = stringResource(R.string.centered_right_left)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.0f°", settings.orbitAzimuthDeg), style = MaterialTheme.typography.labelSmall)
@@ -836,12 +836,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.str_85d7ab52), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.auto_surround_sound_source), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "st_orbit",
-                    title = stringResource(R.string.str_85d7ab52),
-                    text = stringResource(R.string.str_6bf41f64)
+                    title = stringResource(R.string.auto_surround_sound_source),
+                    text = stringResource(R.string.when_enabled_stereo_image_moves_automatically)
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
@@ -854,12 +854,12 @@ fun EqualizerPanel(
 
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.str_d21778dd), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.surround_speed), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_speed",
-                        title = stringResource(R.string.str_d21778dd),
-                        text = stringResource(R.string.str_925a58c8)
+                        title = stringResource(R.string.surround_speed),
+                        text = stringResource(R.string.higher_speed_faster_stereo_image_moves)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.0f°/s", settings.orbitSpeed), style = MaterialTheme.typography.labelSmall)
@@ -876,18 +876,18 @@ fun EqualizerPanel(
             val panActive = settings.orbitEnabled || settings.orbitAzimuthDeg != 0f
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.str_a713d152), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.left_right_balance), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "ch_balance",
-                        title = stringResource(R.string.str_a713d152),
-                        text = stringResource(R.string.str_bc87c9b8)
+                        title = stringResource(R.string.left_right_balance),
+                        text = stringResource(R.string.shift_overall_sound_toward_left_right)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     val balText = when {
-                        settings.balance < -0.05f -> stringResource(R.string.str_061e0de8, (settings.balance * -100).toInt())
-                        settings.balance > 0.05f -> stringResource(R.string.str_87b472b9, (settings.balance * 100).toInt())
-                        else -> stringResource(R.string.str_0bbc2ea4)
+                        settings.balance < -0.05f -> stringResource(R.string.left, (settings.balance * -100).toInt())
+                        settings.balance > 0.05f -> stringResource(R.string.right, (settings.balance * 100).toInt())
+                        else -> stringResource(R.string.center)
                     }
                     Text(balText, style = MaterialTheme.typography.labelSmall)
                 }
@@ -901,12 +901,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.str_a60d2c0a), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.channel_mode), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "ch_mode",
-                    title = stringResource(R.string.str_a60d2c0a),
-                    text = stringResource(R.string.str_07b5142d)
+                    title = stringResource(R.string.channel_mode),
+                    text = stringResource(R.string.invert_swaps_left_right_channels_clone)
                 )
             }
             val channelModeChipColors = FilterChipDefaults.filterChipColors(
@@ -916,10 +916,10 @@ fun EqualizerPanel(
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    0 to stringResource(R.string.str_fd6e80f1),
-                    1 to stringResource(R.string.str_4977b458),
-                    2 to stringResource(R.string.str_d948b7d9),
-                    3 to stringResource(R.string.str_f58ea2c2)
+                    0 to stringResource(R.string.normal),
+                    1 to stringResource(R.string.invert),
+                    2 to stringResource(R.string.clone_l_r),
+                    3 to stringResource(R.string.clone_r_l)
                 ).forEach { (mode, label) ->
                     FilterChip(
                         selected = settings.channelMode == mode,
@@ -940,7 +940,7 @@ fun EqualizerPanel(
 
         val eqEnabled = settings.enabled
         ModuleCard(
-            title = stringResource(R.string.str_d85f9094),
+            title = stringResource(R.string.equalizer_title),
             enabled = eqEnabled,
             onEnabledChange = { onSettingsChanged(settings.copy(enabled = it, presetName = "custom")) },
             expanded = settings.equalizerExpanded,
@@ -963,7 +963,7 @@ fun EqualizerPanel(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(R.string.str_9cdfce42),
+                    text = stringResource(R.string.preset),
                     style = MaterialTheme.typography.labelSmall,
                     color = materialColorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
@@ -1063,12 +1063,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.str_b02e27c2), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.band_adjustment), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "eq_bands",
-                    title = stringResource(R.string.str_b02e27c2),
-                    text = stringResource(R.string.str_0c778628)
+                    title = stringResource(R.string.band_adjustment),
+                    text = stringResource(R.string.each_slider_corresponds_center_frequency_band)
                 )
             }
             // val levels = normalizedLevels()  // 不再使用，改用 currentLevels
@@ -1165,7 +1165,7 @@ fun EqualizerPanel(
             ) {
                 Icon(Icons.Rounded.Save, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.str_c45327d4))
+                Text(stringResource(R.string.save_as_custom_preset))
             }
         }
     }
@@ -1173,11 +1173,11 @@ fun EqualizerPanel(
     if (showSaveDialog) {
         FlatTextFieldDialog(
             onDismissRequest = { showSaveDialog = false },
-            message = stringResource(R.string.str_c7530619),
+            message = stringResource(R.string.enter_custom_preset_name),
             value = newPresetName,
             onValueChange = { newPresetName = it },
-            placeholder = stringResource(R.string.str_8ed52abe),
-            confirmText = stringResource(R.string.str_be5fbbe3),
+            placeholder = stringResource(R.string.preset_name),
+            confirmText = stringResource(R.string.save),
             confirmEnabled = newPresetName.trim().isNotBlank(),
             onConfirm = {
                 if (newPresetName.isNotBlank()) {

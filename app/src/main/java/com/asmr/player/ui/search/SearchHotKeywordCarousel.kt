@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import kotlinx.coroutines.delay
 
-internal val DefaultSearchPlaceholderRes = R.string.str_bb9f1e81
+internal val DefaultSearchPlaceholderRes = R.string.search_albums_circles_cv
 private const val SearchPlaceholderCarouselIntervalMs = 5_000L
 private const val SearchHotKeywordCarouselLimit = 24
 

@@ -92,7 +92,7 @@ fun AlbumGroupPickerScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.str_3e8c9c54),
+                    text = stringResource(R.string.select_group),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
@@ -104,7 +104,7 @@ fun AlbumGroupPickerScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !isAdding,
                         singleLine = true,
-                        placeholder = { Text(stringResource(R.string.str_1c02e687)) }
+                        placeholder = { Text(stringResource(R.string.new_group_name)) }
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     TextButton(
@@ -117,7 +117,7 @@ fun AlbumGroupPickerScreen(
                         enabled = canCreate && !isAdding,
                         colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                     ) {
-                        Text(stringResource(R.string.str_d9ac9228))
+                        Text(stringResource(R.string.create))
                     }
                 }
             }
@@ -128,7 +128,7 @@ fun AlbumGroupPickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text(stringResource(R.string.str_1b667e41), color = colorScheme.textSecondary)
+                    Text(stringResource(R.string.no_groups_available), color = colorScheme.textSecondary)
                 }
             } else {
                 LazyColumn(

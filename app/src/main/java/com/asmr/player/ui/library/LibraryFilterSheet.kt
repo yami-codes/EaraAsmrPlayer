@@ -87,14 +87,14 @@ fun LibraryFilterScreen(
             IconButton(onClick = { showTagManager = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ManageSearch,
-                    contentDescription = stringResource(R.string.str_a107e6e1),
+                    contentDescription = stringResource(R.string.manage_tags),
                     tint = colorScheme.primary
                 )
             }
             IconButton(onClick = { viewModel.clearFilters() }) {
                 Icon(
                     imageVector = Icons.Rounded.Restore,
-                    contentDescription = stringResource(R.string.str_0f47025e),
+                    contentDescription = stringResource(R.string.reset_filters),
                     tint = colorScheme.primary
                 )
             }
@@ -180,7 +180,7 @@ fun LibraryFilterSheet(
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Rounded.FilterList, contentDescription = null, tint = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = stringResource(R.string.str_c2fe6253), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.filter), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = onOpenTagManager) {
                     Icon(imageVector = Icons.AutoMirrored.Rounded.ManageSearch, contentDescription = null)
@@ -202,16 +202,16 @@ fun LibraryFilterSheet(
         ) {
             item { Spacer(modifier = Modifier.height(2.dp)) }
             item {
-                SectionCard(title = stringResource(R.string.str_26ca20b1)) {
+                SectionCard(title = stringResource(R.string.source)) {
                     SourceChips(current = querySpec.source, onSetSource = onSetSource)
                 }
             }
 
             item {
                 SectionCard(
-                    title = stringResource(R.string.str_14d34236),
+                    title = stringResource(R.string.tags),
                     subtitle = if (querySpec.includeTagIds.isNotEmpty()) {
-                        stringResource(R.string.str_119eaa8b, querySpec.includeTagIds.size)
+                        stringResource(R.string.selected, querySpec.includeTagIds.size)
                     } else {
                         null
                     }
@@ -225,7 +225,7 @@ fun LibraryFilterSheet(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
-                        placeholder = { Text(stringResource(R.string.str_2f37a9e2), style = MaterialTheme.typography.bodySmall) }
+                        placeholder = { Text(stringResource(R.string.search_tags), style = MaterialTheme.typography.bodySmall) }
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -281,9 +281,9 @@ fun LibraryFilterSheet(
 
             item {
                 SectionCard(
-                    title = stringResource(R.string.str_5e71ef43),
+                    title = stringResource(R.string.circles),
                     subtitle = if (querySpec.circles.isNotEmpty()) {
-                        stringResource(R.string.str_119eaa8b, querySpec.circles.size)
+                        stringResource(R.string.selected, querySpec.circles.size)
                     } else {
                         null
                     }
@@ -300,7 +300,7 @@ fun LibraryFilterSheet(
                 SectionCard(
                     title = "CV",
                     subtitle = if (querySpec.cvs.isNotEmpty()) {
-                        stringResource(R.string.str_119eaa8b, querySpec.cvs.size)
+                        stringResource(R.string.selected, querySpec.cvs.size)
                     } else {
                         null
                     }
@@ -323,9 +323,9 @@ fun LibraryFilterSheet(
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         Icon(imageVector = Icons.Rounded.Bookmark, contentDescription = null, tint = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = stringResource(R.string.str_9cdfce42))
+                        Text(text = stringResource(R.string.preset))
                     }
-                    TextButton(onClick = { showSavePreset = true }) { Text(stringResource(R.string.str_7170bb3d)) }
+                    TextButton(onClick = { showSavePreset = true }) { Text(stringResource(R.string.save_current)) }
                 }
             }
             items(presets, key = { it.id }) { preset ->
@@ -357,11 +357,11 @@ fun LibraryFilterSheet(
     if (showSavePreset) {
         FlatTextFieldDialog(
             onDismissRequest = { showSavePreset = false },
-            message = stringResource(R.string.str_b9d917e5),
+            message = stringResource(R.string.enter_filter_preset_name),
             value = presetName,
             onValueChange = { presetName = it },
-            placeholder = stringResource(R.string.str_a94dc02c),
-            confirmText = stringResource(R.string.str_be5fbbe3),
+            placeholder = stringResource(R.string.enter_preset_name),
+            confirmText = stringResource(R.string.save),
             confirmEnabled = presetName.trim().isNotBlank(),
             onConfirm = {
                 val name = presetName.trim()
@@ -424,25 +424,25 @@ private fun SourceChips(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SourceChip(
-            label = stringResource(R.string.str_8441b348),
+            label = stringResource(R.string.no_limit),
             selected = normalized == null,
             onClick = { onSetSource(null) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = stringResource(R.string.str_f0f8f9da),
+            label = stringResource(R.string.local_only),
             selected = normalized == LibrarySourceFilter.LocalOnly,
             onClick = { onSetSource(LibrarySourceFilter.LocalOnly) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = stringResource(R.string.str_068a9cb2),
+            label = stringResource(R.string.download_only),
             selected = normalized == LibrarySourceFilter.DownloadOnly,
             onClick = { onSetSource(LibrarySourceFilter.DownloadOnly) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = stringResource(R.string.str_f9293473),
+            label = stringResource(R.string.local_downloads),
             selected = normalized == LibrarySourceFilter.LocalAndDownload,
             onClick = { onSetSource(LibrarySourceFilter.LocalAndDownload) },
             colorScheme = colorScheme
@@ -571,16 +571,16 @@ private fun ValueChipGrid(
 private fun buildPresetSummary(spec: LibraryQuerySpec): String {
     val parts = ArrayList<String>(5)
     val source = when (spec.source) {
-        LibrarySourceFilter.LocalOnly -> stringResource(R.string.str_f0f8f9da)
-        LibrarySourceFilter.DownloadOnly -> stringResource(R.string.str_068a9cb2)
-        LibrarySourceFilter.LocalAndDownload -> stringResource(R.string.str_f9293473)
-        LibrarySourceFilter.Both -> stringResource(R.string.str_5721183b)
-        null -> stringResource(R.string.str_5721183b)
+        LibrarySourceFilter.LocalOnly -> stringResource(R.string.local_only)
+        LibrarySourceFilter.DownloadOnly -> stringResource(R.string.download_only)
+        LibrarySourceFilter.LocalAndDownload -> stringResource(R.string.local_downloads)
+        LibrarySourceFilter.Both -> stringResource(R.string.any_source)
+        null -> stringResource(R.string.any_source)
     }
     parts.add(source)
-    if (!spec.textQuery.isNullOrBlank()) parts.add(stringResource(R.string.str_e5f71fc3))
-    if (spec.includeTagIds.isNotEmpty()) parts.add(stringResource(R.string.str_dca7dc6f, spec.includeTagIds.size))
-    if (spec.circles.isNotEmpty()) parts.add(stringResource(R.string.str_d565736b, spec.circles.size))
+    if (!spec.textQuery.isNullOrBlank()) parts.add(stringResource(R.string.search))
+    if (spec.includeTagIds.isNotEmpty()) parts.add(stringResource(R.string.tags_2, spec.includeTagIds.size))
+    if (spec.circles.isNotEmpty()) parts.add(stringResource(R.string.circles_2, spec.circles.size))
     if (spec.cvs.isNotEmpty()) parts.add("CV ${spec.cvs.size}")
     return parts.joinToString(" · ")
 }

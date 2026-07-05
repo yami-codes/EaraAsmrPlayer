@@ -46,7 +46,7 @@ class AlbumGroupDetailViewModel @Inject constructor(
         if (id <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             groupRepository.removeTrackFromGroup(id, mediaId)
-            messageManager.showInfo(R.string.str_9e3a8e1d)
+            messageManager.showInfo(R.string.removed_group)
         }
     }
 
@@ -55,7 +55,7 @@ class AlbumGroupDetailViewModel @Inject constructor(
         if (id <= 0L || albumId <= 0L) return
         viewModelScope.launch {
             groupRepository.removeAlbumFromGroup(id, albumId)
-            messageManager.showInfo(R.string.str_9e3a8e1d)
+            messageManager.showInfo(R.string.removed_group)
         }
     }
 
@@ -64,7 +64,7 @@ class AlbumGroupDetailViewModel @Inject constructor(
         if (id <= 0L || albumId <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             if (groupRepository.moveTrackToTop(id, albumId, mediaId)) {
-                messageManager.showInfo(R.string.str_000c611c)
+                messageManager.showInfo(R.string.moved_top)
             }
         }
     }
@@ -74,7 +74,7 @@ class AlbumGroupDetailViewModel @Inject constructor(
         if (id <= 0L || albumId <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             if (groupRepository.moveTrackToBottom(id, albumId, mediaId)) {
-                messageManager.showInfo(R.string.str_c7c00c16)
+                messageManager.showInfo(R.string.moved_bottom)
             }
         }
     }

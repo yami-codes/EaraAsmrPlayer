@@ -979,12 +979,12 @@ class PlaybackService : MediaSessionService() {
         if (existing != null) return
         val channel = NotificationChannel(
             LYRICS_CHANNEL_ID,
-            getString(R.string.str_72a1c1c1),
+            getString(R.string.playback_controls),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             setShowBadge(false)
             setSound(null, null)
-            description = getString(R.string.str_46935535)
+            description = getString(R.string.used_background_playback_controls_lock_screen)
         }
         manager.createNotificationChannel(channel)
     }
@@ -1024,7 +1024,7 @@ class PlaybackService : MediaSessionService() {
         val lyrics = currentLyrics
         if (lyrics.isEmpty()) {
             withContext(Dispatchers.Main.immediate) {
-                if (overlayNeeded) overlay?.updateLine(getString(R.string.str_c24962a6))
+                if (overlayNeeded) overlay?.updateLine(getString(R.string.no_lyrics_yet))
             }
             return 2_000L
         }

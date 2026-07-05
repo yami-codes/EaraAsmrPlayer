@@ -118,7 +118,7 @@ internal fun PlayerSurfaceHeader(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val notPlayingLabel = stringResource(R.string.str_4740234f)
+    val notPlayingLabel = stringResource(R.string.not_played)
     val headerShadow = if (colorScheme.isDark) {
         Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 2f), blurRadius = 4f)
     } else {
@@ -159,7 +159,7 @@ internal fun PlayerSurfaceHeader(
                 IconButton(onClick = onManualBindLyrics) {
                     Icon(
                         painter = painterResource(R.drawable.ic_manual_subtitle_import),
-                        contentDescription = stringResource(R.string.str_e46dba16),
+                        contentDescription = stringResource(R.string.bind_lyrics_manually),
                         modifier = Modifier.size(if (isLandscape) 20.dp else 22.dp),
                         tint = colorScheme.onSurface
                     )
@@ -214,14 +214,14 @@ internal fun NowPlayingLyricsSurface(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.str_c24962a6),
+                    text = stringResource(R.string.no_lyrics_yet),
                     style = MaterialTheme.typography.titleMedium,
                     color = AsmrTheme.colorScheme.textSecondary
                 )
                 if (onAddLyrics != null) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Button(onClick = onAddLyrics) {
-                        Text(stringResource(R.string.str_32502968))
+                        Text(stringResource(R.string.add_lyrics))
                     }
                 }
             }
@@ -403,9 +403,9 @@ private fun NowPlayingVideoPlayer(
             Icon(
                 imageVector = if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
                 contentDescription = if (fullscreen) {
-                    stringResource(R.string.str_49041f24)
+                    stringResource(R.string.exit_full_screen)
                 } else {
-                    stringResource(R.string.str_185926bf)
+                    stringResource(R.string.full_screen)
                 },
                 tint = Color.White
             )

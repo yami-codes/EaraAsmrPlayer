@@ -51,7 +51,7 @@ class NowPlayingTagViewModel @Inject constructor(
             val inherited = parseTagsCsv(listOf(albumTagsCsv, userAlbumTagsCsv).filter { it.isNotBlank() }.joinToString(","))
             val userCsv = database.trackTagDao().getTrackTagsCsvOnce(track.id, TagSource.USER).orEmpty()
             val user = parseTagsCsv(userCsv)
-            val title = track.title.ifBlank { fallbackTitle.ifBlank { appContext.getString(R.string.str_5c04ff2f) } }
+            val title = track.title.ifBlank { fallbackTitle.ifBlank { appContext.getString(R.string.track) } }
             _dialogState.value = DialogState(trackId = track.id, title = title, inheritedTags = inherited, userTags = user)
         }
     }

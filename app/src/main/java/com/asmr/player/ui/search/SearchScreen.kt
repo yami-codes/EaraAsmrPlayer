@@ -268,8 +268,8 @@ fun SearchScreen(
     val gridState = rememberSaveable(currentPageKey, saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
-    val circleLabel = stringResource(R.string.str_5e71ef43)
-    val tagLabel = stringResource(R.string.str_14d34236)
+    val circleLabel = stringResource(R.string.circles)
+    val tagLabel = stringResource(R.string.tags)
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -725,9 +725,9 @@ fun SearchScreen(
                                     EaraBrandedEmptyState(
                                         sectionTitle = stringResource(R.string.nav_search),
                                         headline = if (state.keyword.isBlank()) {
-                                            stringResource(R.string.str_037de0b2)
+                                            stringResource(R.string.no_search_results_yet)
                                         } else {
-                                            stringResource(R.string.str_ca2e24da)
+                                            stringResource(R.string.no_matching_results_found)
                                         },
                                         sectionIcon = Icons.Rounded.Search,
                                         modifier = Modifier.fillMaxSize(),
@@ -813,7 +813,7 @@ fun SearchScreen(
 
                             is SearchUiState.Error -> EaraBrandedEmptyState(
                                 sectionTitle = stringResource(R.string.nav_search),
-                                headline = stringResource(R.string.str_96d3c4e7),
+                                headline = stringResource(R.string.there_was_network_connection_problem),
                                 sectionIcon = Icons.Rounded.WifiOff,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
@@ -828,7 +828,7 @@ fun SearchScreen(
                                             contentColor = colorScheme.onPrimaryContainer
                                         )
                                     ) {
-                                        Text(stringResource(R.string.str_132c5cdc))
+                                        Text(stringResource(R.string.retry))
                                     }
                                 }
                             )
@@ -1082,15 +1082,15 @@ private fun SearchPullNextPageIndicator(
                 modifier = Modifier.size(22.dp)
             )
             Text(
-                text = stringResource(R.string.str_b4e1b508),
+                text = stringResource(R.string.next_page),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (armed) colorScheme.primary else colorScheme.textPrimary
             )
             Text(
                 text = if (armed) {
-                    stringResource(R.string.str_6bf46726)
+                    stringResource(R.string.release_turn_page)
                 } else {
-                    stringResource(R.string.str_4f6b921a)
+                    stringResource(R.string.pull_up_continue)
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = if (armed) colorScheme.primary else colorScheme.textSecondary
@@ -1519,14 +1519,14 @@ internal fun SearchPaginationHeader(
                             onClick = onFirstPage,
                             enabled = canGoFirst && !controlsLocked,
                             imageVector = Icons.Rounded.SkipPrevious,
-                            contentDescription = stringResource(R.string.str_0bb32f76),
+                            contentDescription = stringResource(R.string.back_first_page),
                             modifier = Modifier.testTag(SEARCH_FIRST_PAGE_BUTTON_TAG)
                         )
                         SearchPaginationIconButton(
                             onClick = onPrev,
                             enabled = canGoPrev && !controlsLocked,
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(R.string.str_f4f85316),
+                            contentDescription = stringResource(R.string.previous_page),
                             modifier = Modifier.testTag(SEARCH_PREV_BUTTON_TAG)
                         )
                     }
@@ -1537,7 +1537,7 @@ internal fun SearchPaginationHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = stringResource(R.string.str_cd712071, page.coerceAtLeast(1)),
+                        text = stringResource(R.string.page, page.coerceAtLeast(1)),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isDark) colorScheme.textPrimary else Color.Black
                     )
@@ -1551,7 +1551,7 @@ internal fun SearchPaginationHeader(
                         onClick = onNext,
                         enabled = canGoNext && !controlsLocked,
                         imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = stringResource(R.string.str_b4e1b508),
+                        contentDescription = stringResource(R.string.next_page),
                         modifier = Modifier.testTag(SEARCH_NEXT_BUTTON_TAG)
                     )
                 }

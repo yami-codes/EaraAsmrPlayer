@@ -579,7 +579,7 @@ fun AlbumDetailScreen(
                                         DlsiteLanguageEdition(
                                             workno = model.baseRjCode.ifBlank { model.rjCode },
                                             lang = "JPN",
-                                            label = stringResource(R.string.str_00110af8),
+                                            label = stringResource(R.string.japanese),
                                             displayOrder = 1
                                         )
                                     )
@@ -729,7 +729,7 @@ fun AlbumDetailScreen(
                                                 onTogglePreferredCurrentPath = { path, enabled ->
                                                     if (enabled) {
                                                         viewModel.persistPreferredTreeCurrentPath(localTreeStateKey, path)
-                                                        viewModel.messageManager.showSuccess(R.string.str_b4885315)
+                                                        viewModel.messageManager.showSuccess(R.string.set_as_default_open_directory)
                                                     } else {
                                                         viewModel.clearPreferredTreeCurrentPath(localTreeStateKey)
                                                     }
@@ -760,7 +760,7 @@ fun AlbumDetailScreen(
                                                 if (albumId != null && albumId > 0) {
                                                     EaraLogoLoadingIndicator(tint = AsmrTheme.colorScheme.primary)
                                                 } else {
-                                                    Text(stringResource(R.string.str_1205be59))
+                                                    Text(stringResource(R.string.not_downloaded_locally))
                                                 }
                                             }
                                         }
@@ -1222,8 +1222,8 @@ private fun AlbumHeroIdentityOverlay(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
-    val titleLabel = stringResource(R.string.str_32c65d8d)
-    val circleLabel = stringResource(R.string.str_5e71ef43)
+    val titleLabel = stringResource(R.string.title)
+    val circleLabel = stringResource(R.string.circles)
     val identity = rememberStableAlbumHeroIdentity(album, introSessionKey)
     val rj = identity.rj
     val circle = identity.circle
@@ -1316,7 +1316,7 @@ private fun AlbumHeroIdentityOverlay(
                                 )
                                 Text(
                                     text = stringResource(
-                                        R.string.str_deba8810,
+                                        R.string.listening,
                                         listenTogetherRjListenerCount.coerceAtLeast(0)
                                     ),
                                     style = MaterialTheme.typography.labelSmall,
@@ -1341,7 +1341,7 @@ private data class StableAlbumHeroIdentity(
 
 @Composable
 private fun rememberStableAlbumHeroIdentity(album: Album, identitySessionKey: String): StableAlbumHeroIdentity {
-    val albumFallback = stringResource(R.string.str_22054661)
+    val albumFallback = stringResource(R.string.album_2)
     val current = StableAlbumHeroIdentity(
         title = album.title.trim().ifBlank { albumFallback },
         rj = album.rjCode.ifBlank { album.workId }.trim(),
@@ -1444,7 +1444,7 @@ private fun AlbumHeader(
     val context = LocalContext.current
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
-    val tagsLabel = stringResource(R.string.str_14d34236)
+    val tagsLabel = stringResource(R.string.tags)
 
     val headerAnimationScopeKey = remember(introSessionKey) { "albumHeader:$introSessionKey" }
     var headerIntroPlayed by rememberSaveable(headerAnimationScopeKey) { mutableStateOf(false) }
@@ -1629,7 +1629,7 @@ private fun AlbumHeader(
                                         modifier = Modifier.size(primaryIconSize)
                                     )
                                     Spacer(modifier = Modifier.width(primaryIconGap))
-                                    Text(stringResource(R.string.str_829abe5a), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
+                                    Text(stringResource(R.string.group), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
                                 }
                             }
 
@@ -1910,7 +1910,7 @@ private fun AlbumHeaderDownloadAction(
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(iconSize))
             Spacer(modifier = Modifier.width(iconGap))
-            Text(stringResource(R.string.str_f26ef914), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            Text(stringResource(R.string.download_confirm), style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
         Box(
             modifier = Modifier
@@ -1936,7 +1936,7 @@ private fun AlbumHeaderDownloadAction(
                 ) {
                     Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(iconSize))
                     Spacer(modifier = Modifier.width(iconGap))
-                    Text(stringResource(R.string.str_be5fbbe3), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(stringResource(R.string.save), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
 
                 AlbumHeaderButtonGroupState.Lossless -> Button(
@@ -1956,7 +1956,7 @@ private fun AlbumHeaderDownloadAction(
                 ) {
                     Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(iconSize))
                     Spacer(modifier = Modifier.width(iconGap))
-                    Text(stringResource(R.string.str_216efe05), style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(stringResource(R.string.lossless_download), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
 
                 AlbumHeaderButtonGroupState.DownloadOnly -> Unit

@@ -135,7 +135,7 @@ class PlayerConnection @Inject constructor(
                     if (!meteredWarnedMediaIds.add(mediaId)) return@collect
 
                     lastMeteredWarnAtMs = now
-                    messageManager.showWarning(R.string.str_a4b0f852)
+                    messageManager.showWarning(R.string.playing_over_mobile_data)
                 }
         }
         scope.launch {
@@ -275,9 +275,9 @@ class PlayerConnection @Inject constructor(
                         val item = controller?.currentMediaItem
                         val uri = item?.localConfiguration?.uri?.toString().orEmpty()
                         val msg = if (uri.contains(".m3u8", ignoreCase = true)) {
-                            context.getString(R.string.str_d8ab712e)
+                            context.getString(R.string.m3u8_streaming_not_currently_supported_download)
                         } else {
-                            context.getString(R.string.str_ffb9ee0c, error.errorCodeName)
+                            context.getString(R.string.playback_failed, error.errorCodeName)
                         }
                         messageManager.showError(msg)
                         android.util.Log.e(

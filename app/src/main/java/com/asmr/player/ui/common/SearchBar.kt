@@ -188,10 +188,10 @@ private fun SearchBarSelectionToolbarPopup(
         toolbar.hide()
     }
 
-    val copyLabel = stringResource(R.string.str_79d3abe9)
-    val pasteLabel = stringResource(R.string.str_eafbece1)
-    val cutLabel = stringResource(R.string.str_43fc7788)
-    val selectAllLabel = stringResource(R.string.str_66eeacd9)
+    val copyLabel = stringResource(R.string.copy)
+    val pasteLabel = stringResource(R.string.paste)
+    val cutLabel = stringResource(R.string.cut)
+    val selectAllLabel = stringResource(R.string.batch_translate_select_all)
 
     val actions = buildList {
         menuState.onCopyRequested?.let { add(copyLabel to it) }

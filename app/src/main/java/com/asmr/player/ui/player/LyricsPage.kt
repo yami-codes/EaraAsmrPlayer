@@ -131,7 +131,7 @@ internal fun LyricsPage(
                 }
 
                 Text(
-                    text = uiState.title.ifBlank { stringResource(R.string.str_5676764e) },
+                    text = uiState.title.ifBlank { stringResource(R.string.lyrics) },
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontSize = if (isLandscape) 14.sp else 16.sp,
                         shadow = headerShadow

@@ -211,7 +211,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Rounded.Refresh, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.str_ca2290b7))
+                        Text(stringResource(R.string.refresh_local))
                     }
                     FilledTonalButton(
                         onClick = { libraryViewModel.syncMetadata() },
@@ -221,7 +221,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Rounded.CloudSync, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.str_d99f6553))
+                        Text(stringResource(R.string.cloud_sync))
                     }
                 }
 
@@ -232,13 +232,13 @@ fun SettingsScreen(
                 ) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = buttonColors.contentColor)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.str_8eff8036))
+                    Text(stringResource(R.string.add_directory))
                 }
 
                 bulkProgress?.let { progress ->
                     val title = when (progress.phase) {
-                        BulkPhase.ScanningLocal -> stringResource(R.string.str_4a3184e1)
-                        BulkPhase.SyncingCloud -> stringResource(R.string.str_00c008ea)
+                        BulkPhase.ScanningLocal -> stringResource(R.string.scanning_local_library)
+                        BulkPhase.SyncingCloud -> stringResource(R.string.syncing_cloud)
                     }
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -255,7 +255,7 @@ fun SettingsScreen(
                                     if (progress.currentAlbumTitle.isNotBlank()) {
                                         Text(
                                             text = stringResource(
-                                                R.string.str_17212956,
+                                                R.string.album,
                                                 progress.current,
                                                 progress.total,
                                                 progress.currentAlbumTitle
@@ -267,13 +267,13 @@ fun SettingsScreen(
                                         )
                                     } else {
                                         Text(
-                                            text = stringResource(R.string.str_596e927a, progress.current, progress.total),
+                                            text = stringResource(R.string.progress, progress.current, progress.total),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary
                                         )
                                     }
                                 }
-                                TextButton(onClick = { libraryViewModel.cancelBulkTask() }) { Text(stringResource(R.string.str_625fb26b)) }
+                                TextButton(onClick = { libraryViewModel.cancelBulkTask() }) { Text(stringResource(R.string.cancel)) }
                             }
                             if (progress.total > 0) {
                                 LinearProgressIndicator(
@@ -285,7 +285,7 @@ fun SettingsScreen(
                             }
                             if (progress.currentFile.isNotBlank()) {
                                 Text(
-                                    text = stringResource(R.string.str_8395660e, progress.currentFile),
+                                    text = stringResource(R.string.scanning, progress.currentFile),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -297,9 +297,9 @@ fun SettingsScreen(
                 }
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(stringResource(R.string.str_d5a4dec6), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.directory_added), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     if (scanRoots.isEmpty()) {
-                        Text(stringResource(R.string.str_f61f4cf6), style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
+                        Text(stringResource(R.string.none), style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
                     } else {
                         scanRoots.forEach { root ->
                             val label = remember(root) { formatTreeRootLabel(root) }
@@ -328,7 +328,7 @@ fun SettingsScreen(
         }
 
                 item(key = "group:block_words") {
-                    SettingsGroup(title = stringResource(R.string.str_f99496c0)) {
+                    SettingsGroup(title = stringResource(R.string.blocked_keywords_2)) {
                         SearchBlockedKeywordsSection(
                             input = searchBlockedKeywordInput,
                             keywords = searchBlockedKeywords,
@@ -379,35 +379,35 @@ fun SettingsScreen(
 
                 item(key = "group:appearance") {
                     SettingsGroup(
-                        title = stringResource(R.string.str_afcde261),
+                        title = stringResource(R.string.appearance),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
-                            Text(stringResource(R.string.str_b0bb0f81), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.theme_mode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                 ThemeModeChip(
-                                    label = stringResource(R.string.str_8a8b895f),
+                                    label = stringResource(R.string.drawer_section_system),
                                     selected = themeMode == "system",
                                     onClick = { viewModel.setThemeMode("system") }
                                 )
                                 ThemeModeChip(
-                                    label = stringResource(R.string.str_48d0a09b),
+                                    label = stringResource(R.string.theme_mode_light),
                                     selected = themeMode == "light",
                                     onClick = { viewModel.setThemeMode("light") }
                                 )
                                 ThemeModeChip(
-                                    label = stringResource(R.string.str_41e8e8b9),
+                                    label = stringResource(R.string.theme_mode_dark),
                                     selected = themeMode == "dark",
                                     onClick = { viewModel.setThemeMode("dark") }
                                 )
                                 ThemeModeChip(
-                                    label = stringResource(R.string.str_4a2c2e30),
+                                    label = stringResource(R.string.soft_dark),
                                     selected = themeMode == "soft_dark",
                                     onClick = { viewModel.setThemeMode("soft_dark") }
                                 )
                             }
 
-                            Text(stringResource(R.string.str_b47707f0), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.theme_color), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -454,19 +454,19 @@ fun SettingsScreen(
                         }
                     ) {
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_4cd6894d),
+                            text = stringResource(R.string.dynamic_cover_theme_global),
                             checked = dynamicPlayerHueEnabled,
                             onCheckedChange = viewModel::setDynamicPlayerHueEnabled
                         )
 
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_4c83b811),
+                            text = stringResource(R.string.player_lyrics_page_cover_background),
                             checked = coverBackgroundEnabled,
                             onCheckedChange = viewModel::setCoverBackgroundEnabled
                         )
                         /*
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_f013b565),
+                            text = stringResource(R.string.rotate_your_phone_view_full_cover),
                             checked = coverMotionEnabled,
                             onCheckedChange = viewModel::setCoverMotionEnabled
                         )
@@ -475,7 +475,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(stringResource(R.string.str_b276b42d), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.background_cover_preview_mode), style = MaterialTheme.typography.bodyMedium)
                             PreviewModeInfoTip(
                                 active = activeTipKey == "cover_preview_mode",
                                 onToggle = {
@@ -490,7 +490,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text(stringResource(R.string.str_b15d9127)) }
+                                    label = { Text(stringResource(R.string.sleep_timer_off)) }
                                 )
                                 SegmentedButton(
                                     selected = coverPreviewMode == CoverPreviewMode.Drag,
@@ -498,7 +498,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text(stringResource(R.string.str_367f6ba4)) }
+                                    label = { Text(stringResource(R.string.swipe)) }
                                 )
                                 SegmentedButton(
                                     selected = coverPreviewMode == CoverPreviewMode.Motion,
@@ -506,7 +506,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text(stringResource(R.string.str_0db17075)) }
+                                    label = { Text(stringResource(R.string.rotate)) }
                                 )
                             }
                         }
@@ -518,7 +518,7 @@ fun SettingsScreen(
                                     stepSize = 0.05f,
                                     textForValue = { value ->
                                         context.getString(
-                                            R.string.str_39ae4981,
+                                            R.string.cover_background_clarity,
                                             (value.coerceIn(0f, 1f) * 100).toInt()
                                         )
                                     },
@@ -532,49 +532,49 @@ fun SettingsScreen(
 
                 item(key = "group:playback") {
                     SettingsGroup(
-                        title = stringResource(R.string.str_28e6b9ff),
+                        title = stringResource(R.string.playback_settings),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
                             SettingsToggleRow(
-                                text = stringResource(R.string.str_e90d534f),
+                                text = stringResource(R.string.mini_player_bar_toggle),
                                 checked = showMiniPlayerBar,
                                 onCheckedChange = viewModel::setShowMiniPlayerBar,
                                 infoKey = "show_mini_player_bar",
-                                infoTitle = stringResource(R.string.str_d2c48391),
-                                infoText = stringResource(R.string.str_af9aa94f),
+                                infoTitle = stringResource(R.string.mini_player_bar),
+                                infoText = stringResource(R.string.when_off_mini_player_bar_bottom),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
                             SettingsToggleRow(
-                                text = stringResource(R.string.str_69b2ad6d),
+                                text = stringResource(R.string.sfw_toggle),
                                 checked = sfwHideSystemControls,
                                 onCheckedChange = viewModel::setSfwHideSystemControls,
                                 infoKey = "sfw_hide_system_controls",
                                 infoTitle = "SFW",
-                                infoText = stringResource(R.string.str_dd48a009),
+                                infoText = stringResource(R.string.when_enabled_media_control_buttons_system),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
                         }
                     ) {
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_7c68a655),
+                            text = stringResource(R.string.pause_playback_immediately_when_speaker_wired),
                             checked = pauseOnOutputDisconnect,
                             onCheckedChange = viewModel::setPauseOnOutputDisconnect,
                             infoKey = "pause_on_output_disconnect",
-                            infoTitle = stringResource(R.string.str_c515aaff),
-                            infoText = stringResource(R.string.str_006a01bb),
+                            infoTitle = stringResource(R.string.auto_pause_when_output_disconnects),
+                            infoText = stringResource(R.string.speaker_headphones_bluetooth_output_disconnected),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_6869710f),
+                            text = stringResource(R.string.continue_playback_when_wired_bluetooth_headphone),
                             checked = resumeOnOutputConnect,
                             onCheckedChange = viewModel::setResumeOnOutputConnect,
                             infoKey = "resume_on_output_connect",
-                            infoTitle = stringResource(R.string.str_d935677a),
-                            infoText = stringResource(R.string.str_fb656200),
+                            infoTitle = stringResource(R.string.auto_resume_output_connection),
+                            infoText = stringResource(R.string.when_headphones_bluetooth_headphones_usb_audio),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -582,11 +582,11 @@ fun SettingsScreen(
                             committedValue = playFadeInMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> context.getString(R.string.str_fdef6cf5, value.toInt()) },
+                            textForValue = { value -> context.getString(R.string.fade_volume_play_ms, value.toInt()) },
                             onValueCommitted = { viewModel.setPlayFadeInMs(it.toInt()) },
                             infoKey = "play_fade_in",
-                            infoTitle = stringResource(R.string.str_441c490a),
-                            infoText = stringResource(R.string.str_601c253e),
+                            infoTitle = stringResource(R.string.play_fade_in),
+                            infoText = stringResource(R.string.when_you_tap_play_volume_will),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -595,22 +595,22 @@ fun SettingsScreen(
                             committedValue = pauseFadeOutMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> context.getString(R.string.str_ad976fa0, value.toInt()) },
+                            textForValue = { value -> context.getString(R.string.fade_out_pause_ms, value.toInt()) },
                             onValueCommitted = { viewModel.setPauseFadeOutMs(it.toInt()) },
                             infoKey = "pause_fade_out",
-                            infoTitle = stringResource(R.string.str_54bb3e71),
-                            infoText = stringResource(R.string.str_a8230446),
+                            infoTitle = stringResource(R.string.pause_fade_out),
+                            infoText = stringResource(R.string.when_pause_tapped_volume_will_gradually),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
                         )
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_d051ca82),
+                            text = stringResource(R.string.pause_when_other_apps_play_audio),
                             checked = pauseOnOtherAudio,
                             onCheckedChange = viewModel::setPauseOnOtherAudio,
                             infoKey = "pause_on_other_audio",
-                            infoTitle = stringResource(R.string.str_dfad5bb2),
-                            infoText = stringResource(R.string.str_37e39bb6),
+                            infoTitle = stringResource(R.string.pause_audio_focus_loss),
+                            infoText = stringResource(R.string.pause_playback_when_another_music_video),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -620,12 +620,12 @@ fun SettingsScreen(
                 // 悬浮歌词
                 item(key = "group:lyrics") {
                     SettingsGroup(
-                        title = stringResource(R.string.str_5676764e),
+                        title = stringResource(R.string.lyrics),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
                             SettingsToggleRow(
-                                text = stringResource(R.string.str_ee5b947d),
+                                text = stringResource(R.string.lyric_overlay_perm_title),
                                 checked = floatingLyricsEnabled,
                                 onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
                             )
@@ -639,7 +639,7 @@ fun SettingsScreen(
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                        Text(stringResource(R.string.str_b1288dea), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.floating_lyrics_details), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
                         if (!overlayGranted && floatingLyricsEnabled) {
                             OutlinedButton(
@@ -653,13 +653,13 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.outlinedButtonColors()
                             ) {
-                                Text(stringResource(R.string.str_686c2b78))
+                                Text(stringResource(R.string.grant_overlay_permission))
                             }
                         }
 
                         if (floatingLyricsEnabled && overlayGranted) {
                             SettingsSliderRow(
-                                text = stringResource(R.string.str_1882f8d9, floatingSettings.size.toInt()),
+                                text = stringResource(R.string.font_size, floatingSettings.size.toInt()),
                                 value = floatingSettings.size,
                                 range = 12f..32f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(size = it)) },
@@ -668,7 +668,7 @@ fun SettingsScreen(
 
                             SettingsSliderRow(
                                 text = stringResource(
-                                    R.string.str_03b99129,
+                                    R.string.background_opacity,
                                     (floatingSettings.opacity * 100).toInt()
                                 ),
                                 value = floatingSettings.opacity,
@@ -678,7 +678,7 @@ fun SettingsScreen(
                             )
 
                             SettingsSliderRow(
-                                text = stringResource(R.string.str_0bf14860),
+                                text = stringResource(R.string.vertical_position_y_axis),
                                 value = floatingSettings.yOffset.toFloat(),
                                 range = 0f..2000f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(yOffset = it.toInt())) },
@@ -689,7 +689,7 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(stringResource(R.string.str_d5bc3536), style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.alignment), style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.weight(1f))
                                 SingleChoiceSegmentedButtonRow {
                                     SegmentedButton(
@@ -729,7 +729,7 @@ fun SettingsScreen(
                                 )
                             }
                             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(stringResource(R.string.str_786fa2a1), style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.lyrics_color), style = MaterialTheme.typography.bodyMedium)
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                     presetColors.forEach { c ->
                                         val selected = floatingSettings.color == c
@@ -750,7 +750,7 @@ fun SettingsScreen(
                             }
 
                             SettingsToggleRow(
-                                text = stringResource(R.string.str_f61221ee),
+                                text = stringResource(R.string.click_through_lock_position),
                                 checked = !floatingSettings.touchable,
                                 onCheckedChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(touchable = !it)) }
                             )
@@ -758,7 +758,7 @@ fun SettingsScreen(
                     }
                 }
                 item(key = "group:about_update") {
-                    SettingsGroup(title = stringResource(R.string.str_81d9f505)) {
+                    SettingsGroup(title = stringResource(R.string.about)) {
                         val isDark = AsmrTheme.colorScheme.isDark
                         val buttonColors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = colorScheme.primarySoft,
@@ -767,7 +767,7 @@ fun SettingsScreen(
 
                         Text(
                             text = stringResource(
-                                R.string.str_ec893572,
+                                R.string.current_version_2,
                                 com.asmr.player.BuildConfig.VERSION_NAME,
                                 com.asmr.player.BuildConfig.VERSION_CODE
                             ),
@@ -776,7 +776,7 @@ fun SettingsScreen(
                         )
 
                         SettingsToggleRow(
-                            text = stringResource(R.string.str_a2f7c6d7),
+                            text = stringResource(R.string.automatically_check_updates_startup),
                             checked = autoUpdateCheckEnabled,
                             onCheckedChange = viewModel::setAutoUpdateCheckEnabled
                         )
@@ -791,23 +791,23 @@ fun SettingsScreen(
                             if (updateState is AppUpdateState.Checking) {
                                 EaraLogoLoadingIndicator(size = 18.dp)
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text(stringResource(R.string.str_d6a22312))
+                                Text(stringResource(R.string.checking))
                             } else {
-                                Text(stringResource(R.string.str_4ff13370))
+                                Text(stringResource(R.string.check_for_updates))
                             }
                         }
 
                         when (val s = updateState) {
                             is AppUpdateState.UpToDate -> {
                                 Text(
-                                    text = stringResource(R.string.str_826d6f41, s.latestVersionName),
+                                    text = stringResource(R.string.already_up_date, s.latestVersionName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
                             }
                             is AppUpdateState.UpdateAvailable -> {
                                 Text(
-                                    text = stringResource(R.string.str_2d6c530c, s.release.tagName),
+                                    text = stringResource(R.string.new_version_available, s.release.tagName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -817,7 +817,7 @@ fun SettingsScreen(
                                     colors = buttonColors,
                                     enabled = !busy
                                 ) {
-                                    Text(stringResource(R.string.str_229d360a))
+                                    Text(stringResource(R.string.download_install))
                                 }
                             }
                             is AppUpdateState.Downloading -> {
@@ -826,7 +826,7 @@ fun SettingsScreen(
                                 val progress = if (total > 0L) (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) else null
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = stringResource(R.string.str_f7bce717, s.release.apkName),
+                                        text = stringResource(R.string.downloading_2, s.release.apkName),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.textSecondary,
                                         maxLines = 1,
@@ -841,7 +841,7 @@ fun SettingsScreen(
                             }
                             is AppUpdateState.ReadyToInstall -> {
                                 Text(
-                                    text = stringResource(R.string.str_9e86f38e, s.release.apkName),
+                                    text = stringResource(R.string.download_complete, s.release.apkName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -852,7 +852,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = buttonColors
                                 ) {
-                                    Text(stringResource(R.string.str_9fad6a62))
+                                    Text(stringResource(R.string.install_update))
                                 }
                             }
                             is AppUpdateState.Failed -> {
@@ -865,7 +865,7 @@ fun SettingsScreen(
                                     onClick = { viewModel.resetUpdateState() },
                                     modifier = Modifier.align(Alignment.End)
                                 ) {
-                                    Text(stringResource(R.string.str_b15d9127))
+                                    Text(stringResource(R.string.sleep_timer_off))
                                 }
                             }
                             else -> {}
@@ -874,7 +874,7 @@ fun SettingsScreen(
                 }
 
                 item(key = "group:support_status") {
-                    SettingsGroup(title = stringResource(R.string.str_b0b4b042)) {
+                    SettingsGroup(title = stringResource(R.string.support_status)) {
                         AppSupportStatusSection()
                     }
                 }
@@ -890,11 +890,11 @@ fun SettingsScreen(
     if (removeRoot != null) {
         FlatActionDialog(
             onDismissRequest = { pendingRemoveRoot = null },
-            message = stringResource(R.string.str_10a8c4f8),
+            message = stringResource(R.string.directory_will_removed_list_will_no),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveRoot = null }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveRoot = null }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_86048b4f),
+                    text = stringResource(R.string.log_action_remove),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         val uri = runCatching { Uri.parse(removeRoot) }.getOrNull()
@@ -919,9 +919,9 @@ private fun LyricsPageSettingsSection(
     onSettingsChange: (LyricsPageSettings) -> Unit,
     onHorizontalControlInteractionChanged: (Boolean) -> Unit = {}
 ) {
-    Text(stringResource(R.string.str_64f79450), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text(stringResource(R.string.lyrics_page), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     SettingsSliderRow(
-        text = stringResource(R.string.str_b1bd0bc5, settings.fontSizeSp.toInt()),
+        text = stringResource(R.string.font_size_sp, settings.fontSizeSp.toInt()),
         value = settings.fontSizeSp,
         range = 18f..36f,
         stepSize = 1f,
@@ -929,7 +929,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "${stringResource(R.string.str_9a641afa)}${"%.1f".format(settings.strokeWidthSp)}sp",
+        text = "${stringResource(R.string.text_shadow)}${"%.1f".format(settings.strokeWidthSp)}sp",
         value = settings.strokeWidthSp,
         range = 0f..3f,
         stepSize = 0.1f,
@@ -937,7 +937,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "${stringResource(R.string.str_3dd4f6bb)}${"%.2f".format(settings.lineHeightMultiplier)}x",
+        text = "${stringResource(R.string.line_spacing)}${"%.2f".format(settings.lineHeightMultiplier)}x",
         value = settings.lineHeightMultiplier,
         range = 0.1f..3.0f,
         stepSize = 0.1f,
@@ -948,7 +948,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.str_a8b3a2a6), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.display_area), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -957,7 +957,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text(stringResource(R.string.str_185926bf)) }
+                label = { Text(stringResource(R.string.full_screen)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 1,
@@ -965,7 +965,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text(stringResource(R.string.str_a81ff5c2)) }
+                label = { Text(stringResource(R.string.upper)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 2,
@@ -973,7 +973,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text(stringResource(R.string.str_a8fb2437)) }
+                label = { Text(stringResource(R.string.middle)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 3,
@@ -981,7 +981,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 3, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text(stringResource(R.string.str_fd22f00f)) }
+                label = { Text(stringResource(R.string.bottom)) }
             )
         }
     }
@@ -989,7 +989,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.str_d5bc3536), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.alignment), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -1052,7 +1052,7 @@ private fun SearchBlockedKeywordsSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.str_45b206c6),
+                text = stringResource(R.string.blocked_keywords),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = colorScheme.textPrimary,
@@ -1064,7 +1064,7 @@ private fun SearchBlockedKeywordsSection(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Info,
-                    contentDescription = stringResource(R.string.str_c1fd18de),
+                    contentDescription = stringResource(R.string.advanced_search_usage),
                     tint = colorScheme.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1089,13 +1089,13 @@ private fun SearchBlockedKeywordsSection(
                 shape = RoundedCornerShape(10.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
-                Text(stringResource(R.string.str_b58c7549))
+                Text(stringResource(R.string.log_action_add))
             }
         }
 
         if (keywords.isEmpty()) {
             Text(
-                text = stringResource(R.string.str_5fbf18e4),
+                text = stringResource(R.string.no_blocked_keywords_yet),
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.textSecondary
             )
@@ -1116,21 +1116,21 @@ private fun SearchBlockedKeywordsHelpDialog(
     onDismissRequest: () -> Unit
 ) {
     FlatActionDialog(
-        message = stringResource(R.string.str_c1fd18de),
+        message = stringResource(R.string.advanced_search_usage),
         onDismissRequest = onDismissRequest,
         actions = listOf(
             FlatDialogAction(
-                text = stringResource(R.string.str_ce26955a),
+                text = stringResource(R.string.got),
                 tone = FlatDialogActionTone.Primary,
                 onClick = onDismissRequest
             )
         )
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchHelpText(stringResource(R.string.str_2439320a))
-            SearchHelpText(stringResource(R.string.str_82f01423))
-            SearchHelpText(stringResource(R.string.str_ebec5b02))
-            SearchHelpText(stringResource(R.string.str_32e03fa3))
+            SearchHelpText(stringResource(R.string.search_space_separated_school_uniform_means_all))
+            SearchHelpText(stringResource(R.string.search_separated_by_english_vertical_bars))
+            SearchHelpText(stringResource(R.string.exclude_search_space_minus_school_uniform))
+            SearchHelpText(stringResource(R.string.exact_phrase_search_wrapped_english_double))
         }
     }
 }
@@ -1287,7 +1287,7 @@ private fun SearchBlockedKeywordInputField(
                     ) {
                         if (value.isEmpty()) {
                             Text(
-                                text = stringResource(R.string.str_692c3b3c),
+                                text = stringResource(R.string.blocked_keywords_e_g_ntr),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colorScheme.textTertiary,
                                 maxLines = 1,
@@ -1324,7 +1324,7 @@ private fun SearchBlockedKeywordChip(
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.str_bdec61dd, keyword),
+                    contentDescription = stringResource(R.string.delete_2, keyword),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1367,7 +1367,7 @@ private fun SettingsGroup(
             )
             if (collapsible) {
                 Text(
-                    text = if (expanded) stringResource(R.string.str_def9e98b) else stringResource(R.string.str_e2edde5a),
+                    text = if (expanded) stringResource(R.string.collapse_2) else stringResource(R.string.log_expand),
                     style = MaterialTheme.typography.labelMedium,
                     color = colorScheme.textSecondary
                 )
@@ -1375,9 +1375,9 @@ private fun SettingsGroup(
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = if (expanded) {
-                        stringResource(R.string.str_9bc0e76a, title)
+                        stringResource(R.string.collapse, title)
                     } else {
-                        stringResource(R.string.str_364d726e, title)
+                        stringResource(R.string.expand, title)
                     },
                     tint = colorScheme.textSecondary
                 )
@@ -1425,11 +1425,11 @@ internal fun BackgroundEffectTypeSelectorRow(
     )
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = if (!backgroundEffectEnabled) {
-        stringResource(R.string.str_b15d9127)
+        stringResource(R.string.sleep_timer_off)
     } else {
         when (selectedType) {
-            BackgroundEffectType.Flow -> stringResource(R.string.str_fa68c99e)
-            BackgroundEffectType.Ripple -> stringResource(R.string.str_b52a783c)
+            BackgroundEffectType.Flow -> stringResource(R.string.light_dots)
+            BackgroundEffectType.Ripple -> stringResource(R.string.breathing_ripple)
         }
     }
 
@@ -1439,7 +1439,7 @@ internal fun BackgroundEffectTypeSelectorRow(
             .testTag(BACKGROUND_EFFECT_TYPE_ROW_TAG),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.str_98dc7955), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.background_effects), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         Box(
             modifier = Modifier.wrapContentSize(Alignment.TopEnd)
@@ -1485,7 +1485,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                     modifier = Modifier.background(dynamicContainerColor)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_b15d9127)) },
+                        text = { Text(stringResource(R.string.sleep_timer_off)) },
                         onClick = {
                             expanded = false
                             onBackgroundEffectEnabledChange(false)
@@ -1497,7 +1497,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_fa68c99e)) },
+                        text = { Text(stringResource(R.string.light_dots)) },
                         onClick = {
                             expanded = false
                             onSelected(BackgroundEffectType.Flow)
@@ -1505,7 +1505,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_b52a783c)) },
+                        text = { Text(stringResource(R.string.breathing_ripple)) },
                         onClick = {
                             expanded = false
                             onSelected(BackgroundEffectType.Ripple)
@@ -1811,20 +1811,20 @@ private fun PreviewModeInfoTip(active: Boolean, onToggle: () -> Unit) {
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.str_b276b42d),
+                                text = stringResource(R.string.background_cover_preview_mode),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = stringResource(R.string.str_60337f85),
+                                text = stringResource(R.string.off_background_cover_stay_centered_static),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = stringResource(R.string.str_43967475),
+                                text = stringResource(R.string.swipe_use_two_fingers_drag_preview),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = stringResource(R.string.str_dcab0ce3),
+                                text = stringResource(R.string.rotate_rotate_your_phone_preview_other),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

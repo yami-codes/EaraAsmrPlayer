@@ -145,7 +145,7 @@ fun FlatTextFieldDialog(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         actions = listOf(
-            FlatDialogAction(stringResource(com.asmr.player.R.string.str_625fb26b), onDismissRequest),
+            FlatDialogAction(stringResource(com.asmr.player.R.string.cancel), onDismissRequest),
             FlatDialogAction(
                 text = confirmText,
                 onClick = onConfirm,

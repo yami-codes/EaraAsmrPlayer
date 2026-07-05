@@ -98,13 +98,13 @@ fun PlaylistPickerScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.str_cbe45515),
+                    text = stringResource(R.string.select_list),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
                 if (pickerItems.size > 1) {
                     Text(
-                        text = stringResource(R.string.str_2294bede, pickerItems.size),
+                        text = stringResource(R.string.items_will_added, pickerItems.size),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.textSecondary
                     )
@@ -120,7 +120,7 @@ fun PlaylistPickerScreen(
                             enabled = !isAdding,
                             colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                         ) {
-                            Text(stringResource(R.string.str_b15d9127))
+                            Text(stringResource(R.string.sleep_timer_off))
                         }
                     }
                 }
@@ -132,7 +132,7 @@ fun PlaylistPickerScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !isAdding,
                         singleLine = true,
-                        placeholder = { Text(stringResource(R.string.str_539edec4)) }
+                        placeholder = { Text(stringResource(R.string.new_list_name)) }
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     TextButton(
@@ -145,7 +145,7 @@ fun PlaylistPickerScreen(
                         enabled = canCreate && !isAdding,
                         colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                     ) {
-                        Text(stringResource(R.string.str_d9ac9228))
+                        Text(stringResource(R.string.create))
                     }
                 }
             }
@@ -156,7 +156,7 @@ fun PlaylistPickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text(stringResource(R.string.str_43397019), color = colorScheme.textSecondary)
+                    Text(stringResource(R.string.no_lists_available), color = colorScheme.textSecondary)
                 }
             } else {
                 LazyColumn(

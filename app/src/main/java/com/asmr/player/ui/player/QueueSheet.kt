@@ -58,12 +58,12 @@ fun QueueSheetContent(
 
     val currentId = playback.currentMediaItem?.mediaId.orEmpty()
     val currentIndex = remember(queue, currentId) { queue.indexOfFirst { it.mediaId == currentId } }
-    val onlineLabel = stringResource(R.string.str_68905cf3)
-    val localLabel = stringResource(R.string.str_8e7eca1f)
+    val onlineLabel = stringResource(R.string.online_2)
+    val localLabel = stringResource(R.string.library_segment_local)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = stringResource(R.string.str_bf7b0d9f),
+            text = stringResource(R.string.current_queue),
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             color = colorScheme.textSecondary
@@ -128,7 +128,7 @@ fun QueueSheetContent(
                         IconButton(onClick = { viewModel.removeFromQueue(index) }) {
                             Icon(
                                 imageVector = Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.str_86048b4f),
+                                contentDescription = stringResource(R.string.log_action_remove),
                                 tint = colorScheme.textSecondary,
                                 modifier = Modifier.size(20.dp)
                             )

@@ -47,14 +47,14 @@ class DlsiteLoginViewModel @Inject constructor(
 
     fun clear() {
         authStore.clear()
-        _uiState.value = snapshot(message = appContext.getString(R.string.str_4113d391))
+        _uiState.value = snapshot(message = appContext.getString(R.string.signed_out))
     }
 
     fun login(loginId: String, password: String) {
         viewModelScope.launch {
             _uiState.value = snapshot(isLoading = true)
             val result = runCatching { loginClient.login(loginId, password) }.getOrElse { e ->
-                _uiState.value = snapshot(message = e.message.orEmpty().ifBlank { appContext.getString(R.string.str_b6076a05) })
+                _uiState.value = snapshot(message = e.message.orEmpty().ifBlank { appContext.getString(R.string.log_login_failed) })
                 return@launch
             }
             if (result.dlsiteCookie.isNotBlank()) {
@@ -63,7 +63,7 @@ class DlsiteLoginViewModel @Inject constructor(
             if (result.playCookie.isNotBlank()) {
                 authStore.savePlayCookie(result.playCookie, expiresAtMs = result.playExpiresAtMs)
             }
-            _uiState.value = snapshot(message = appContext.getString(R.string.str_71fa3bd0))
+            _uiState.value = snapshot(message = appContext.getString(R.string.login_successful))
         }
     }
 }

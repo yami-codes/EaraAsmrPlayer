@@ -63,9 +63,9 @@ fun SleepTimerSheetContent(
 
     val isActive = remainingMs > 0L
     val remainingText = if (isActive) {
-        stringResource(R.string.str_45741efd, formatSleepTimerRemaining(remainingMs))
+        stringResource(R.string.remaining, formatSleepTimerRemaining(remainingMs))
     } else {
-        stringResource(R.string.str_dedbed00)
+        stringResource(R.string.sleep_timer_not_set)
     }
 
     var showCustomDialog by remember { mutableStateOf(false) }
@@ -86,13 +86,13 @@ fun SleepTimerSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.str_47cab5ae),
+                text = stringResource(R.string.sleep_timer),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textSecondary
             )
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.str_769d88e4))
+                Text(stringResource(R.string.done))
             }
         }
 
@@ -123,7 +123,7 @@ fun SleepTimerSheetContent(
                                 viewModel.setSleepTimerMinutes(min)
                                 onDismiss()
                             },
-                        headlineContent = { Text(stringResource(R.string.str_031b44ec, min)) },
+                        headlineContent = { Text(stringResource(R.string.min, min)) },
                         colors = ListItemDefaults.colors(
                             containerColor = Color.Transparent,
                             headlineColor = colorScheme.textPrimary,
@@ -147,8 +147,8 @@ fun SleepTimerSheetContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showCustomDialog = true },
-                    headlineContent = { Text(stringResource(R.string.str_f1d4ff50)) },
-                    supportingContent = { Text(stringResource(R.string.str_04b71807)) },
+                    headlineContent = { Text(stringResource(R.string.custom)) },
+                    supportingContent = { Text(stringResource(R.string.enter_minutes)) },
                     colors = ListItemDefaults.colors(
                         containerColor = Color.Transparent,
                         headlineColor = colorScheme.textPrimary,
@@ -168,7 +168,7 @@ fun SleepTimerSheetContent(
                                 viewModel.cancelSleepTimer()
                                 onDismiss()
                             },
-                        headlineContent = { Text(stringResource(R.string.str_c155f17a)) },
+                        headlineContent = { Text(stringResource(R.string.cancel_timer)) },
                         colors = ListItemDefaults.colors(
                             containerColor = Color.Transparent,
                             headlineColor = colorScheme.textPrimary,
@@ -183,11 +183,11 @@ fun SleepTimerSheetContent(
     if (showCustomDialog) {
         FlatTextFieldDialog(
             onDismissRequest = { showCustomDialog = false },
-            message = stringResource(R.string.str_f8070b95),
+            message = stringResource(R.string.enter_number_minutes_sleep_timer),
             value = customMinutesText,
             onValueChange = { customMinutesText = it.filter { ch -> ch.isDigit() }.take(4) },
-            placeholder = stringResource(R.string.str_04b71807),
-            confirmText = stringResource(R.string.str_38cf16f2),
+            placeholder = stringResource(R.string.enter_minutes),
+            confirmText = stringResource(R.string.dialog_confirm),
             confirmEnabled = (customMinutesText.toIntOrNull() ?: 0) > 0,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             onConfirm = {
