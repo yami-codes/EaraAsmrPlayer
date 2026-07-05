@@ -1,5 +1,7 @@
 package com.asmr.player.ui.search
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -291,7 +293,7 @@ internal fun SearchAssistContent(
         ) {
             item(contentType = "history") {
                 SearchAssistSection(
-                    title = "搜索历史",
+                    title = stringResource(R.string.str_e9c38f88),
                     trailing = {
                         if (uiState.history.isNotEmpty()) {
                             Row(
@@ -300,7 +302,7 @@ internal fun SearchAssistContent(
                             ) {
                                 HeaderIconButton(
                                     icon = Icons.Rounded.Delete,
-                                    contentDescription = "清空搜索历史",
+                                    contentDescription = stringResource(R.string.str_1aaedfdf),
                                     onClick = { showClearHistoryDialog = true },
                                     modifier = Modifier.testTag(SEARCH_ASSIST_HISTORY_CLEAR_TAG)
                                 )
@@ -313,7 +315,7 @@ internal fun SearchAssistContent(
                     }
                 ) {
                     if (uiState.history.isEmpty()) {
-                        AssistMutedText("还没有搜索记录")
+                        AssistMutedText(stringResource(R.string.str_968064c5))
                     } else {
                         SearchAssistHistoryChips(
                             history = uiState.history,
@@ -326,21 +328,21 @@ internal fun SearchAssistContent(
 
             if (uiState.isLoadingSuggestions) {
                 item(contentType = "hotCvsLoading") {
-                    SearchAssistTermSectionSkeleton(title = "热门声优")
+                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.str_e2901cbe))
                 }
                 item(contentType = "hotTagsLoading") {
-                    SearchAssistTermSectionSkeleton(title = "热门标签")
+                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.str_ad5516e3))
                 }
                 item(contentType = "hotWorksLoading") {
                     SearchAssistWorkSectionSkeleton(
-                        title = "热门作品",
+                        title = stringResource(R.string.str_3e943286),
                         compact = isCompact
                     )
                 }
             } else if (uiState.suggestions.hotCvs.isNotEmpty()) {
                 item(contentType = "hotCvs") {
                     SearchAssistTermSection(
-                        title = "热门声优",
+                        title = stringResource(R.string.str_e2901cbe),
                         terms = uiState.suggestions.hotCvs,
                         expanded = hotCvsExpanded,
                         onExpandedChange = { hotCvsExpanded = it },
@@ -352,7 +354,7 @@ internal fun SearchAssistContent(
             if (uiState.suggestions.hotTags.isNotEmpty()) {
                 item(contentType = "hotTags") {
                     SearchAssistTermSection(
-                        title = "热门标签",
+                        title = stringResource(R.string.str_ad5516e3),
                         terms = uiState.suggestions.hotTags,
                         expanded = hotTagsExpanded,
                         onExpandedChange = { hotTagsExpanded = it },
@@ -364,7 +366,7 @@ internal fun SearchAssistContent(
             if (uiState.suggestions.hotWorks.isNotEmpty()) {
                 item(contentType = "hotWorks") {
                     SearchAssistSection(
-                        title = "热门作品",
+                        title = stringResource(R.string.str_3e943286),
                         trailing = {
                             TextButton(
                                 onClick = onOpenFullRanking,
@@ -375,7 +377,7 @@ internal fun SearchAssistContent(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Text("查看完整榜单")
+                                Text(stringResource(R.string.str_28858be8))
                             }
                         }
                     ) {
@@ -445,11 +447,11 @@ internal fun SearchAssistContent(
         if (showClearHistoryDialog) {
             FlatActionDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                message = "是否清空历史搜索记录？",
+                message = stringResource(R.string.str_6a51c612),
                 actions = listOf(
                     FlatDialogAction("取消", onClick = { showClearHistoryDialog = false }),
                     FlatDialogAction(
-                        text = "清空",
+                        text = stringResource(R.string.str_288f0c40),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showClearHistoryDialog = false

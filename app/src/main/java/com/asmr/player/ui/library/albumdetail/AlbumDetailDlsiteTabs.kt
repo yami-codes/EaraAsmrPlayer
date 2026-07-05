@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -811,7 +813,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 DlsiteGalleryLoadingRow()
             } else if (galleryUrls.isEmpty()) {
                 DlsiteSectionEmptyState(
-                    text = "暂无样图",
+                    text = stringResource(R.string.str_84cde6f2),
                     artworkKind = DlsiteEmptyArtworkKind.Gallery,
                     modifier = Modifier.then(dlsiteAnimatedSectionModifier(Modifier, animateIntro))
                 )
@@ -877,7 +879,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshAsmrOne, enabled = !isLoadingAsmrOne) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
+                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.str_694fc5ef))
                 }
             }
         }
@@ -1008,7 +1010,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
         } else {
             item(key = "dlsite-one-content") {
                 DlsiteSectionEmptyState(
-                    text = "ONE 暂未收录",
+                    text = stringResource(R.string.str_2916d2fa),
                     artworkKind = DlsiteEmptyArtworkKind.One,
                     modifier = dlsiteAnimatedSectionModifier(Modifier, animateIntro)
                 )
@@ -1023,16 +1025,16 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "试听 / 试看",
+                    text = stringResource(R.string.str_36704e77),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefreshTrial, enabled = !isLoading && !isLoadingTrial) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
+                    Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.str_694fc5ef))
                 }
                 IconButton(onClick = onDownloadTrial, enabled = trialDownloadEnabled) {
-                    Icon(Icons.Rounded.Download, contentDescription = "下载")
+                    Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.str_f26ef914))
                 }
             }
         }
@@ -1047,7 +1049,7 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                     }
                 } else {
                     DlsiteSectionEmptyState(
-                        text = "暂无试听 / 试看",
+                        text = stringResource(R.string.str_05bb9a1d),
                         artworkKind = DlsiteEmptyArtworkKind.Trial,
                         modifier = dlsiteAnimatedSectionModifier(Modifier, animateIntro)
                     )
@@ -1161,9 +1163,9 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
     if (!loggedIn) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("需要先登录 DLsite 才能使用已购播放/下载")
+                Text(stringResource(R.string.str_b74eb8ba))
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onOpenLogin) { Text("去登录") }
+                Button(onClick = onOpenLogin) { Text(stringResource(R.string.str_b4b851b1)) }
             }
         }
         return
@@ -1238,19 +1240,19 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "已购内容",
+                    text = stringResource(R.string.str_b085f24f),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onOpenLogin) { Text("登录 / 切换账号") }
+                OutlinedButton(onClick = onOpenLogin) { Text(stringResource(R.string.str_a59ecc4e)) }
             }
         }
 
         if (rj.isBlank()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) {
-                    Text("缺少 RJ 编号，无法加载")
+                    Text(stringResource(R.string.str_75fc2edc))
                 }
             }
             return@LazyColumn
@@ -1262,7 +1264,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                     if (isLoading) {
                         EaraLogoLoadingIndicator(tint = AsmrTheme.colorScheme.primary)
                     } else {
-                        Text("暂无可播放资源")
+                        Text(stringResource(R.string.str_148a3a96))
                     }
                 }
             }

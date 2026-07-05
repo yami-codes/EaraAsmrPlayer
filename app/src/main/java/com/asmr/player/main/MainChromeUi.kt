@@ -1,5 +1,6 @@
 ﻿package com.asmr.player
 
+import com.asmr.player.R
 import android.os.Bundle
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -528,7 +529,7 @@ private fun DrawerSiteRow(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(text = "测试", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                Text(text = stringResource(R.string.str_db06c78d), style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
             if (trailing != null) {
                 Box(modifier = Modifier.height(32.dp)) {
@@ -572,8 +573,7 @@ internal fun DailyStatisticsFooter(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                "今日收听统计",
+            Text(stringResource(R.string.str_55c77e58),
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.textSecondary,
                 modifier = Modifier.padding(start = 4.dp)
@@ -585,17 +585,17 @@ internal fun DailyStatisticsFooter(
             ) {
                 StatItem(
                     icon = Icons.Rounded.AccessTime,
-                    label = "时长",
+                    label = stringResource(R.string.str_5bdfd7ee),
                     value = formatStatsDuration(stats?.listeningDurationMs ?: 0L)
                 )
                 StatItem(
                     icon = Icons.Rounded.Audiotrack,
-                    label = "音轨",
+                    label = stringResource(R.string.str_5c04ff2f),
                     value = "${stats?.trackCount ?: 0}"
                 )
                 StatItem(
                     icon = Icons.Rounded.CloudDownload,
-                    label = "流量",
+                    label = stringResource(R.string.str_c6e3373a),
                     value = formatStatsTraffic(stats?.networkTrafficBytes ?: 0L)
                 )
             }

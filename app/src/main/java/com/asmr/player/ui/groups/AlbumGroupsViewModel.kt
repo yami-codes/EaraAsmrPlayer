@@ -1,5 +1,6 @@
 package com.asmr.player.ui.groups
 
+import com.asmr.player.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asmr.player.data.local.db.dao.AlbumGroupStatsRow
@@ -29,9 +30,9 @@ class AlbumGroupsViewModel @Inject constructor(
         viewModelScope.launch {
             val id = groupRepository.createGroup(trimmed)
             if (id != null) {
-                messageManager.showSuccess("已创建分组：$trimmed")
+                messageManager.showSuccess(R.string.str_945ee611)
             } else {
-                messageManager.showError("分组名称已存在：$trimmed")
+                messageManager.showError(R.string.str_27ac29f2)
             }
         }
     }
@@ -39,7 +40,7 @@ class AlbumGroupsViewModel @Inject constructor(
     fun deleteGroup(group: AlbumGroupEntity) {
         viewModelScope.launch {
             groupRepository.deleteGroup(group)
-            messageManager.showInfo("已删除分组：${group.name}")
+            messageManager.showInfo(R.string.str_eb4aff77)
         }
     }
 
@@ -47,10 +48,10 @@ class AlbumGroupsViewModel @Inject constructor(
         val trimmed = newName.trim()
         viewModelScope.launch {
             when (groupRepository.renameGroup(groupId, trimmed)) {
-                RenameAlbumGroupResult.RENAMED -> messageManager.showSuccess("已重命名为：$trimmed")
-                RenameAlbumGroupResult.DUPLICATE -> messageManager.showError("分组名称已存在：$trimmed")
-                RenameAlbumGroupResult.INVALID -> messageManager.showError("分组名称不能为空")
-                RenameAlbumGroupResult.NOT_FOUND -> messageManager.showError("分组不存在")
+                RenameAlbumGroupResult.RENAMED -> messageManager.showSuccess(R.string.str_e6f61e54)
+                RenameAlbumGroupResult.DUPLICATE -> messageManager.showError(R.string.str_27ac29f2)
+                RenameAlbumGroupResult.INVALID -> messageManager.showError(R.string.str_fb7cf353)
+                RenameAlbumGroupResult.NOT_FOUND -> messageManager.showError(R.string.str_c52a40c6)
             }
         }
     }
@@ -67,7 +68,7 @@ class AlbumGroupsViewModel @Inject constructor(
                 onComplete()
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError("添加到分组失败，请重试")
+                messageManager.showError(R.string.str_32911c8a)
                 onFailure(t)
             }
         }
@@ -78,6 +79,6 @@ class AlbumGroupsViewModel @Inject constructor(
         groupRepository.addAlbumToGroup(groupId, albumId)
         val group = groupRepository.getGroupById(groupId)
         val name = group?.name.orEmpty()
-        messageManager.showSuccess("已添加到分组：$name")
+        messageManager.showSuccess(R.string.str_20bb9cd8)
     }
 }

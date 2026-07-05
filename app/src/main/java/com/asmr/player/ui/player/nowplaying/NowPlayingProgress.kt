@@ -1,5 +1,6 @@
 ﻿package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -771,20 +772,20 @@ internal fun SliceTimeEditDialog(
                             selectedMs = if (safeDuration > 0L) v.coerceAtMost(safeDuration) else v
                             if (safeDuration > 0L) fraction = (selectedMs.toDouble() / safeDuration.toDouble()).toFloat().coerceIn(0f, 1f)
                         }
-                    ) { Text("设为当前") }
+                    ) { Text(stringResource(R.string.str_6b7f7569)) }
                     TextButton(
                         onClick = {
                             selectedMs = 0L
                             fraction = 0f
                         }
-                    ) { Text("设为 0") }
+                    ) { Text(stringResource(R.string.str_73363e98)) }
                     if (safeDuration > 0L) {
                         TextButton(
                             onClick = {
                                 selectedMs = safeDuration
                                 fraction = 1f
                             }
-                        ) { Text("设为末尾") }
+                        ) { Text(stringResource(R.string.str_687211d5)) }
                     }
                 }
             }
@@ -794,8 +795,8 @@ internal fun SliceTimeEditDialog(
                 onClick = {
                     onConfirm(selectedMs)
                 }
-            ) { Text("确定") }
+            ) { Text(stringResource(R.string.str_38cf16f2)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.str_625fb26b)) } }
     )
 }

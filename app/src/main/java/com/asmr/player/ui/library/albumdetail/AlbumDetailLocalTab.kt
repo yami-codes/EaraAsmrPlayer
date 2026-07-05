@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -249,7 +251,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                         .height(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("当前目录暂无文件")
+                    Text(stringResource(R.string.str_8e3f24e3))
                 }
             }
         } else {

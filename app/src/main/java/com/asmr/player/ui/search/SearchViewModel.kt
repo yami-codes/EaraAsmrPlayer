@@ -1,5 +1,6 @@
 package com.asmr.player.ui.search
 
+import com.asmr.player.R
 import android.os.SystemClock
 import android.util.Log
 import com.asmr.player.BuildConfig
@@ -17,6 +18,8 @@ import com.asmr.player.util.MessageManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,6 +58,7 @@ data class SearchPendingRequest(
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val dlsiteScraper: DLSiteScraper,
     private val dlsitePlayLibraryClient: DlsitePlayLibraryClient,
     private val asmrOneAvailabilityApi: AsmrOneAvailabilityApi,
@@ -190,7 +194,7 @@ class SearchViewModel @Inject constructor(
             collectedOnly = collectedOnly
         )
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning("请先登录 DLsite 后再使用\"已购\"搜索")
+            messageManager.showWarning(R.string.str_c5e497ea)
             return false
         }
         val normalizedKeyword = keyword.trim()
@@ -241,7 +245,7 @@ class SearchViewModel @Inject constructor(
         val current = _uiState.value as? SearchUiState.Success ?: return false
         if (current.isBusy) return false
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning("请先登录 DLsite 后再使用\"已购\"搜索")
+            messageManager.showWarning(R.string.str_c5e497ea)
             return false
         }
         if (
@@ -369,7 +373,7 @@ class SearchViewModel @Inject constructor(
                 if (e is CancellationException) throw e
                 Log.e("SearchViewModel", "Search paging failed", e)
                 val msg = if (e is IllegalStateException) {
-                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = "搜索失败，请稍后重试")
+                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = context.getString(R.string.str_5764ab7d))
                 } else {
                     toUserMessage(e)
                 }
@@ -659,10 +663,10 @@ class SearchViewModel @Inject constructor(
 
     private fun toUserMessage(e: Throwable): String {
         val raw = e.message.orEmpty()
-        if (raw.contains("请先登录")) return "请先登录后再使用\"已购\"搜索"
+        if (raw.contains("已购")) return context.getString(R.string.str_c5e497ea)
         return when (e) {
-            is SocketTimeoutException -> "连接超时，请稍后重试"
-            is IOException -> "网络连接失败，请检查网络后重试"
+            is SocketTimeoutException -> context.getString(R.string.str_5764ab7d)
+            is IOException -> context.getString(R.string.error_operation_failed)
             is HttpException -> {
                 val code = e.code()
                 when {

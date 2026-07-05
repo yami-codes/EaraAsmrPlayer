@@ -1,5 +1,6 @@
 package com.asmr.player.ui.downloads
 
+import com.asmr.player.R
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -385,7 +386,7 @@ class DownloadsViewModel @Inject constructor(
             downloadDao.deleteItemsForTask(taskId)
             downloadDao.deleteTaskById(taskId)
             DownloadQueueCoordinator.requestSchedule(context)
-            messageManager.showInfo("已删除任务：${task.title}")
+            messageManager.showInfo(R.string.str_2b9701e2)
         }
     }
 
@@ -427,7 +428,7 @@ class DownloadsViewModel @Inject constructor(
                 downloadDao.deleteTaskById(item.taskId)
             }
             DownloadQueueCoordinator.requestSchedule(context)
-            messageManager.showInfo("已删除文件：${item.fileName}")
+            messageManager.showInfo(R.string.str_d303b1d4)
         }
     }
 

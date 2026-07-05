@@ -82,4 +82,5 @@ object SettingsKeys {
     val PAUSE_FADE_OUT_MS = intPreferencesKey("pause_fade_out_ms")
     val SFW_HIDE_SYSTEM_CONTROLS = booleanPreferencesKey("sfw_hide_system_controls")
     val SHOW_MINI_PLAYER_BAR = booleanPreferencesKey("show_mini_player_bar")
+    val APP_LANGUAGE = stringPreferencesKey("app_language")
 }

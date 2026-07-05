@@ -1,5 +1,6 @@
 package com.asmr.player.ui.playlists
 
+import com.asmr.player.R
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -45,7 +46,7 @@ class PlaylistDetailViewModel @Inject constructor(
         if (id <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             playlistRepository.removeItemFromPlaylist(id, mediaId)
-            messageManager.showInfo("已从我的列表移除")
+            messageManager.showInfo(R.string.str_9e1749cc)
         }
     }
 
@@ -54,7 +55,7 @@ class PlaylistDetailViewModel @Inject constructor(
         if (id <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             if (playlistRepository.movePlaylistItemToTop(id, mediaId)) {
-                messageManager.showInfo("已移至顶部")
+                messageManager.showInfo(R.string.str_000c611c)
             }
         }
     }
@@ -64,7 +65,7 @@ class PlaylistDetailViewModel @Inject constructor(
         if (id <= 0L || mediaId.isBlank()) return
         viewModelScope.launch {
             if (playlistRepository.movePlaylistItemToBottom(id, mediaId)) {
-                messageManager.showInfo("已移至末尾")
+                messageManager.showInfo(R.string.str_c7c00c16)
             }
         }
     }

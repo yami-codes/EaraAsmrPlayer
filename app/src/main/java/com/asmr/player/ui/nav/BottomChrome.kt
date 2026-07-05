@@ -1,5 +1,6 @@
 ﻿package com.asmr.player.ui.nav
 
+import com.asmr.player.R
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Spring
@@ -78,6 +79,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.asmr.player.ui.common.consumeTapThrough
 import com.asmr.player.ui.player.MiniPlayer
@@ -144,7 +147,7 @@ private const val BottomNavOverflowOutlineCollapseTailFraction = 0.18f
 
 data class BottomChromeNavItem(
     val icon: ImageVector,
-    val label: String,
+    @StringRes val labelRes: Int,
     val route: String
 )
 
@@ -256,14 +259,14 @@ private fun bottomChromeMetrics(largeLayout: Boolean): BottomChromeMetrics =
     }
 
 fun bottomChromeNavItems(): List<BottomChromeNavItem> = listOf(
-    BottomChromeNavItem(Icons.Rounded.Home, "本地库", Routes.Library),
-    BottomChromeNavItem(Icons.Rounded.Search, "在线搜索", Routes.Search),
-    BottomChromeNavItem(Icons.Rounded.Whatshot, "热门收听", Routes.HotListening),
-    BottomChromeNavItem(Icons.Rounded.Favorite, "我的收藏", "playlist_system/favorites"),
-    BottomChromeNavItem(Icons.AutoMirrored.Rounded.QueueMusic, "我的列表", "playlists"),
-    BottomChromeNavItem(Icons.Rounded.Folder, "我的分组", "groups"),
-    BottomChromeNavItem(Icons.Rounded.Settings, "设置", "settings"),
-    BottomChromeNavItem(Icons.Rounded.Person, "DLsite 登录", "dlsite_login")
+    BottomChromeNavItem(Icons.Rounded.Home, R.string.nav_library, Routes.Library),
+    BottomChromeNavItem(Icons.Rounded.Search, R.string.nav_search, Routes.Search),
+    BottomChromeNavItem(Icons.Rounded.Whatshot, R.string.nav_hot_listening, Routes.HotListening),
+    BottomChromeNavItem(Icons.Rounded.Favorite, R.string.nav_favorites, "playlist_system/favorites"),
+    BottomChromeNavItem(Icons.AutoMirrored.Rounded.QueueMusic, R.string.nav_playlists, "playlists"),
+    BottomChromeNavItem(Icons.Rounded.Folder, R.string.nav_groups, "groups"),
+    BottomChromeNavItem(Icons.Rounded.Settings, R.string.nav_settings, "settings"),
+    BottomChromeNavItem(Icons.Rounded.Person, R.string.nav_dlsite_login, "dlsite_login")
 )
 
 fun isPrimaryRoute(route: String?): Boolean {
@@ -468,7 +471,7 @@ private fun buildBottomNavRailEntries(
 
     if (layout.showsOverflow) {
         entries += BottomNavRailEntry(
-            item = BottomChromeNavItem(Icons.Rounded.SwapHoriz, "切换", BottomNavOverflowTag),
+            item = BottomChromeNavItem(Icons.Rounded.SwapHoriz, R.string.nav_switch, BottomNavOverflowTag),
             width = metrics.itemSlotWidth,
             isOverflow = true
         )
@@ -1352,7 +1355,7 @@ private fun BottomNavItemChip(
             ) { targetItem ->
                 Icon(
                     imageVector = targetItem.icon,
-                    contentDescription = targetItem.label,
+                    contentDescription = stringResource(targetItem.labelRes),
                     modifier = Modifier
                         .size(metrics.iconSize)
                         .graphicsLayer {

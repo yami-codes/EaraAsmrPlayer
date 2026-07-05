@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -98,7 +100,7 @@ fun TagAssignDialog(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    TextButton(onClick = { onApplyUserTags(dedupeByNormalized(workingUserTags)) }) { Text("保存") }
+                    TextButton(onClick = { onApplyUserTags(dedupeByNormalized(workingUserTags)) }) { Text(stringResource(R.string.str_be5fbbe3)) }
                 }
 
                 Column(
@@ -111,7 +113,7 @@ fun TagAssignDialog(
                 ) {
                     if (inheritedTags.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(text = "已有标签", color = colorScheme.textTertiary)
+                            Text(text = stringResource(R.string.str_c2bc0879), color = colorScheme.textTertiary)
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -124,13 +126,13 @@ fun TagAssignDialog(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "用户标签", color = colorScheme.textTertiary)
+                        Text(text = stringResource(R.string.str_03c33ba4), color = colorScheme.textTertiary)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (workingUserTags.isEmpty()) {
-                                Text(text = "未添加", color = colorScheme.textSecondary)
+                                Text(text = stringResource(R.string.str_31060b9b), color = colorScheme.textSecondary)
                             } else {
                                 workingUserTags.forEach { t ->
                                     TagBadge(
@@ -146,7 +148,7 @@ fun TagAssignDialog(
                             }
                         }
                         if (workingUserTags.isNotEmpty()) {
-                            Text(text = "点击用户标签可移除", color = colorScheme.textSecondary)
+                            Text(text = stringResource(R.string.str_47700256), color = colorScheme.textSecondary)
                         }
                     }
 
@@ -163,7 +165,7 @@ fun TagAssignDialog(
                                 }
                             }
                         },
-                        placeholder = { Text("搜索已有标签") }
+                        placeholder = { Text(stringResource(R.string.str_f26558d2)) }
                     )
 
                     FlowRow(
@@ -189,7 +191,7 @@ fun TagAssignDialog(
                             onValueChange = { customInput = it },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            placeholder = { Text("添加自定义标签") }
+                            placeholder = { Text(stringResource(R.string.str_af3bb7e6)) }
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         IconButton(
@@ -207,7 +209,7 @@ fun TagAssignDialog(
                         }
                         if (onOpenTagManager != null) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            TextButton(onClick = { onOpenTagManager() }) { Text("自定义标签管理") }
+                            TextButton(onClick = { onOpenTagManager() }) { Text(stringResource(R.string.str_91fa80d6)) }
                         }
                     }
                     Spacer(modifier = Modifier.height(2.dp))

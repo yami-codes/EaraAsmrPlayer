@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.sidepanel
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -114,13 +116,13 @@ fun RecentAlbumsPanel(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "最近听过",
+                    text = stringResource(R.string.str_27c23ddd),
                     color = colorScheme.textPrimary,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "最近播放",
+                    text = stringResource(R.string.str_f1579e89),
                     color = colorScheme.textTertiary,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -183,7 +185,7 @@ internal fun RecentAlbumsList(
     BoxWithConstraints(modifier = modifier) {
         if (items.isEmpty()) {
             Text(
-                text = "暂无数据",
+                text = stringResource(R.string.str_21efd88b),
                 color = AsmrTheme.colorScheme.textSecondary,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -522,7 +524,7 @@ private fun RecentAlbumRow(
                         horizontalArrangement = Arrangement.Start
                     ) {
                         Text(
-                            text = "上次听到",
+                            text = stringResource(R.string.str_17746288),
                             color = subColor,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1
@@ -537,7 +539,7 @@ private fun RecentAlbumRow(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         Text(
-                            text = "，${formatRecentProgressPosition(resume.positionMs)}处",
+                            text = stringResource(R.string.str_939111ca),
                             color = subColor,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1

@@ -1,5 +1,6 @@
 package com.asmr.player.ui.playlists
 
+import com.asmr.player.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -37,9 +38,9 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch {
             val id = playlistRepository.createUserPlaylist(trimmed)
             if (id != null) {
-                messageManager.showSuccess("已创建播放列表：$trimmed")
+                messageManager.showSuccess(R.string.str_1cf66abb)
             } else {
-                messageManager.showError("列表名称已存在：$trimmed")
+                messageManager.showError(R.string.str_6e1bdee8)
             }
         }
     }
@@ -47,7 +48,7 @@ class PlaylistsViewModel @Inject constructor(
     fun deletePlaylist(playlist: PlaylistEntity) {
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlist)
-            messageManager.showInfo("已删除播放列表：${playlist.name}")
+            messageManager.showInfo(R.string.str_d1c6154e)
         }
     }
 
@@ -55,10 +56,10 @@ class PlaylistsViewModel @Inject constructor(
         val trimmed = newName.trim()
         viewModelScope.launch {
             when (playlistRepository.renamePlaylist(playlistId, trimmed)) {
-                RenamePlaylistResult.RENAMED -> messageManager.showSuccess("已重命名为：$trimmed")
-                RenamePlaylistResult.DUPLICATE -> messageManager.showError("列表名称已存在：$trimmed")
-                RenamePlaylistResult.INVALID -> messageManager.showError("列表名称不能为空")
-                RenamePlaylistResult.NOT_FOUND -> messageManager.showError("列表不存在")
+                RenamePlaylistResult.RENAMED -> messageManager.showSuccess(R.string.str_e6f61e54)
+                RenamePlaylistResult.DUPLICATE -> messageManager.showError(R.string.str_6e1bdee8)
+                RenamePlaylistResult.INVALID -> messageManager.showError(R.string.str_16ec0511)
+                RenamePlaylistResult.NOT_FOUND -> messageManager.showError(R.string.str_ca72ca5e)
             }
         }
     }
@@ -73,7 +74,7 @@ class PlaylistsViewModel @Inject constructor(
                 addItemsToFavorites(items)
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError("添加到收藏失败，请重试")
+                messageManager.showError(R.string.str_a17fe9f2)
             }
         }
     }
@@ -90,7 +91,7 @@ class PlaylistsViewModel @Inject constructor(
                 onComplete()
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError("添加到列表失败，请重试")
+                messageManager.showError(R.string.str_94ebd9da)
                 onFailure(t)
             }
         }
@@ -113,11 +114,11 @@ class PlaylistsViewModel @Inject constructor(
     private fun showAddSummary(playlistName: String, summary: PlaylistAddSummary) {
         when {
             summary.addedCount > 0 && summary.skippedCount > 0 ->
-                messageManager.showSuccess("已添加 ${summary.addedCount} 项到$playlistName，跳过 ${summary.skippedCount} 项")
+                messageManager.showSuccess(R.string.str_26abe922)
             summary.addedCount > 0 ->
-                messageManager.showSuccess("已添加 ${summary.addedCount} 项到$playlistName")
+                messageManager.showSuccess(R.string.str_69b6fdea)
             summary.totalCount > 0 ->
-                messageManager.showInfo("所选项目已在$playlistName")
+                messageManager.showInfo(R.string.str_b71144cb)
             else -> Unit
         }
     }

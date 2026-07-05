@@ -1,5 +1,6 @@
 ﻿package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -164,7 +165,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "喜欢",
+                        contentDescription = stringResource(R.string.str_3d6c396c),
                         tint = if (isFavorite) Color.Red else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -173,7 +174,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = onShowPlaylistPicker) {
                     Icon(
                         Icons.AutoMirrored.Outlined.PlaylistAdd,
-                        contentDescription = "添加到播放列表",
+                        contentDescription = stringResource(R.string.str_1c7e42b8),
                         tint = colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -183,7 +184,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleFloatingLyrics() }) {
                     Icon(
                         imageVector = Icons.Rounded.Subtitles,
-                        contentDescription = "悬浮歌词",
+                        contentDescription = stringResource(R.string.str_21c6786d),
                         tint = if (floatingEnabled) primaryColor else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -197,7 +198,7 @@ internal fun PlaybackControls(
                 ) {
                     Icon(
                         imageVector = if (isOnlineMedia) Icons.AutoMirrored.Outlined.LabelOff else Icons.AutoMirrored.Rounded.Label,
-                        contentDescription = "标签管理",
+                        contentDescription = stringResource(R.string.str_2ec512a4),
                         tint = colorScheme.onSurface.copy(alpha = if (isOnlineMedia) 0.38f else 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -206,7 +207,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = onShowEqualizer) {
                     Icon(
                         imageVector = Icons.Rounded.Tune,
-                        contentDescription = "均衡器",
+                        contentDescription = stringResource(R.string.str_d85f9094),
                         tint = colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -222,7 +223,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleSliceMode() }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_segment),
-                        contentDescription = "切片播放",
+                        contentDescription = stringResource(R.string.str_c50b12bb),
                         tint = tint,
                         modifier = Modifier.size(24.dp)
                     )
@@ -252,7 +253,7 @@ internal fun PlaybackControls(
                 }
                 Icon(
                     icon,
-                    contentDescription = "播放模式",
+                    contentDescription = stringResource(R.string.str_de28b9b1),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
@@ -261,7 +262,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.previous() }) {
                 Icon(
                     Icons.Rounded.SkipPrevious,
-                    contentDescription = "上一首",
+                    contentDescription = stringResource(R.string.str_579321cc),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
                 )
@@ -301,7 +302,7 @@ internal fun PlaybackControls(
                     ) { playing ->
                         Icon(
                             imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = "播放/暂停",
+                            contentDescription = stringResource(R.string.str_81351ac4),
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -311,7 +312,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.next() }) {
                 Icon(
                     Icons.Rounded.SkipNext,
-                    contentDescription = "下一首",
+                    contentDescription = stringResource(R.string.str_cfd9609d),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
                 )
@@ -320,7 +321,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.seekForward10s() }) {
                 Icon(
                     Icons.Rounded.FastForward,
-                    contentDescription = "快进10秒",
+                    contentDescription = stringResource(R.string.str_cdb86a39),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
@@ -635,7 +636,7 @@ internal fun VolumeControl(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "长按调整音量",
+                    text = stringResource(R.string.str_e72050f1),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -672,7 +673,7 @@ internal fun VolumeControl(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "音量",
+                        text = stringResource(R.string.str_09b095d8),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.textTertiary
                     )

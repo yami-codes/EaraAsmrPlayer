@@ -71,7 +71,7 @@ internal fun rememberAlbumMetaCopyAction(
                 Unit
             } else {
                 clipboard.setText(AnnotatedString(normalizedValue))
-                messageManager.showSuccess("$label 已复制")
+                messageManager.showSuccess(R.string.str_eb2ee57c)
             }
         }
     }

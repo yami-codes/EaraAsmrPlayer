@@ -3,6 +3,7 @@ package com.asmr.player.data.settings
 import android.content.Context
 import com.asmr.player.playback.AppVolume
 import com.asmr.player.hotlistening.HotListeningSortMode
+import com.asmr.player.i18n.AppLanguage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -83,10 +84,10 @@ class SettingsRepository @Inject constructor(
         val levels = (0 until 10).map { idx -> prefs[SettingsKeys.eqBandLevel(idx)] ?: 0 }
         val virt = prefs[SettingsKeys.EQ_VIRTUALIZER_STRENGTH] ?: 0
         val bal = prefs[SettingsKeys.EQ_BALANCE] ?: 0f
-        val preset = prefs[SettingsKeys.EQ_PRESET_NAME] ?: "默认"
+        val preset = prefs[SettingsKeys.EQ_PRESET_NAME] ?: "default"
         val gain = prefs[SettingsKeys.FX_ORIGINAL_GAIN] ?: 1f
         val reverbEnabled = prefs[SettingsKeys.FX_REVERB_ENABLED] ?: false
-        val reverbPreset = prefs[SettingsKeys.FX_REVERB_PRESET] ?: "无"
+        val reverbPreset = prefs[SettingsKeys.FX_REVERB_PRESET] ?: "none"
         val reverbWet = prefs[SettingsKeys.FX_REVERB_WET] ?: 0
         val orbitEnabled = prefs[SettingsKeys.FX_ORBIT_ENABLED] ?: false
         val orbitSpeed = prefs[SettingsKeys.FX_ORBIT_SPEED] ?: 25f
@@ -185,6 +186,10 @@ class SettingsRepository @Inject constructor(
         prefs[SettingsKeys.SHOW_MINI_PLAYER_BAR] ?: true
     }
 
+    val appLanguage: Flow<AppLanguage> = context.settingsDataStore.data.map { prefs ->
+        AppLanguage.fromWireValue(prefs[SettingsKeys.APP_LANGUAGE])
+    }
+
     suspend fun loadPlaybackRuntimeSettings(): PlaybackRuntimeSettings {
         return withContext(Dispatchers.IO) {
             val prefs = context.settingsDataStore.data.first()
@@ -255,6 +260,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setShowMiniPlayerBar(enabled: Boolean) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.SHOW_MINI_PLAYER_BAR] = enabled }
+        }
+    }
+
+    suspend fun setAppLanguage(language: AppLanguage) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.APP_LANGUAGE] = language.wireValue }
         }
     }
 

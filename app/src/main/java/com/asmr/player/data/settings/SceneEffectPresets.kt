@@ -1,5 +1,8 @@
 package com.asmr.player.data.settings
 
+import androidx.annotation.StringRes
+import com.asmr.player.R
+
 data class SceneDelayTap(
     val delayMs: Int,
     val gain: Float,
@@ -24,8 +27,8 @@ data class SceneEffectProfile(
 
 data class SceneEffectPreset(
     val id: String,
-    val label: String,
-    val description: String,
+    @StringRes val labelRes: Int,
+    @StringRes val descriptionRes: Int,
     val profile: SceneEffectProfile
 )
 
@@ -36,8 +39,8 @@ object SceneEffectPresets {
     val All = listOf(
         SceneEffectPreset(
             id = DefaultPresetId,
-            label = "浴室回声",
-            description = "瓷砖短回声",
+            labelRes = R.string.str_550eea74,
+            descriptionRes = R.string.str_f2da191b,
             profile = SceneEffectProfile(
                 dryMix = 0.58f,
                 directMix = 0.30f,
@@ -61,8 +64,8 @@ object SceneEffectPresets {
         ),
         SceneEffectPreset(
             id = "through_wall",
-            label = "被窝闷声",
-            description = "闷声包裹感",
+            labelRes = R.string.str_0999034a,
+            descriptionRes = R.string.str_207ad2c8,
             profile = SceneEffectProfile(
                 dryMix = 0.03f,
                 directMix = 1.02f,
@@ -84,8 +87,8 @@ object SceneEffectPresets {
         ),
         SceneEffectPreset(
             id = "telephone",
-            label = "电话音",
-            description = "窄带通话感",
+            labelRes = R.string.str_d36467ba,
+            descriptionRes = R.string.str_f1772644,
             profile = SceneEffectProfile(
                 dryMix = 0f,
                 directMix = 1.08f,

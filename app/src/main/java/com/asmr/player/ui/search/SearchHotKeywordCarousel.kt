@@ -1,5 +1,7 @@
 package com.asmr.player.ui.search
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -9,7 +11,7 @@ import androidx.compose.runtime.setValue
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import kotlinx.coroutines.delay
 
-internal const val DefaultSearchPlaceholder = "搜索专辑、社团、CV..."
+internal val DefaultSearchPlaceholderRes = R.string.str_bb9f1e81
 private const val SearchPlaceholderCarouselIntervalMs = 5_000L
 private const val SearchHotKeywordCarouselLimit = 24
 
@@ -69,7 +71,7 @@ internal fun rememberSearchHotKeywordCarouselItem(
     val keyword = carouselState.current
     return when {
         keyword != null -> SearchHotKeywordCarouselItem(placeholder = keyword, keyword = keyword)
-        showFallback -> SearchHotKeywordCarouselItem(placeholder = DefaultSearchPlaceholder, keyword = null)
+        showFallback -> SearchHotKeywordCarouselItem(placeholder = stringResource(DefaultSearchPlaceholderRes), keyword = null)
         else -> SearchHotKeywordCarouselItem(placeholder = "", keyword = null)
     }
 }

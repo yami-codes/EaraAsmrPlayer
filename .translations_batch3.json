@@ -1,0 +1,1283 @@
+[
+  {
+    "key": "str_8a6d7241",
+    "attrs": "",
+    "zh": "扫描失败，请检查目录权限后重试",
+    "en": "Scan failed. Check directory permissions and try again",
+    "th": "สแกนล้มเหลว โปรดตรวจสอบสิทธิ์ของไดเรกทอรีแล้วลองอีกครั้ง"
+  },
+  {
+    "key": "str_8a8b895f",
+    "attrs": "",
+    "zh": "系统",
+    "en": "System",
+    "th": "ระบบ"
+  },
+  {
+    "key": "str_8b2adc69",
+    "attrs": "",
+    "zh": "发现新版本：${release.tagName}",
+    "en": "New version found: ${release.tagName}",
+    "th": "พบเวอร์ชันใหม่: ${release.tagName}"
+  },
+  {
+    "key": "str_8c5d893a",
+    "attrs": "",
+    "zh": "未找到可打开的应用",
+    "en": "No app found to open this",
+    "th": "ไม่พบแอปที่ใช้เปิดได้"
+  },
+  {
+    "key": "str_8cccae5e",
+    "attrs": "",
+    "zh": "将物理删除“${task.title}”目录下的文件，且不可恢复。",
+    "en": "This will permanently delete files in the “${task.title}” directory and cannot be undone.",
+    "th": "การดำเนินการนี้จะลบไฟล์ในไดเรกทอรี “${task.title}” อย่างถาวรและไม่สามารถกู้คืนได้"
+  },
+  {
+    "key": "str_8cdaa720",
+    "attrs": "",
+    "zh": "后端未配置",
+    "en": "Backend not configured",
+    "th": "ยังไม่ได้กำหนดค่าแบ็กเอนด์"
+  },
+  {
+    "key": "str_8d0b5276",
+    "attrs": "",
+    "zh": "按播放次数",
+    "en": "By play count",
+    "th": "ตามจำนวนครั้งที่เล่น"
+  },
+  {
+    "key": "str_8d24337b",
+    "attrs": "",
+    "zh": "请先登录",
+    "en": "Please log in first",
+    "th": "โปรดเข้าสู่ระบบก่อน"
+  },
+  {
+    "key": "str_8d63ef38",
+    "attrs": "",
+    "zh": "暂停",
+    "en": "Pause",
+    "th": "หยุดชั่วคราว"
+  },
+  {
+    "key": "str_8d863b73",
+    "attrs": "",
+    "zh": "预售",
+    "en": "Pre-order",
+    "th": "พรีออเดอร์"
+  },
+  {
+    "key": "str_8e3f24e3",
+    "attrs": "",
+    "zh": "当前目录暂无文件",
+    "en": "No files in the current directory",
+    "th": "ไม่มีไฟล์ในไดเรกทอรีปัจจุบัน"
+  },
+  {
+    "key": "str_8e7eca1f",
+    "attrs": "",
+    "zh": "本地",
+    "en": "Local",
+    "th": "ในเครื่อง"
+  },
+  {
+    "key": "str_8e9816f6",
+    "attrs": "",
+    "zh": "后台播放中",
+    "en": "Playing in background",
+    "th": "กำลังเล่นอยู่เบื้องหลัง"
+  },
+  {
+    "key": "str_8ed52abe",
+    "attrs": "",
+    "zh": "预设名称",
+    "en": "Preset name",
+    "th": "ชื่อพรีเซ็ต"
+  },
+  {
+    "key": "str_8ed85456",
+    "attrs": "",
+    "zh": "云同步（目录）",
+    "en": "Cloud sync (directory)",
+    "th": "ซิงก์คลาวด์ (ไดเรกทอรี)"
+  },
+  {
+    "key": "str_8eff8036",
+    "attrs": "",
+    "zh": "添加目录",
+    "en": "Add directory",
+    "th": "เพิ่มไดเรกทอรี"
+  },
+  {
+    "key": "str_8f676ee7",
+    "attrs": "",
+    "zh": "该目录包含了现有的扫描目录，请先移除子目录",
+    "en": "This directory contains an existing scan directory. Remove the subdirectory first.",
+    "th": "ไดเรกทอรีนี้มีไดเรกทอรีสแกนที่มีอยู่แล้ว โปรดลบไดเรกทอรีย่อยก่อน"
+  },
+  {
+    "key": "str_8fefe67a",
+    "attrs": "",
+    "zh": "请输入新分组名称。",
+    "en": "Please enter a new group name.",
+    "th": "โปรดป้อนชื่อกลุ่มใหม่"
+  },
+  {
+    "key": "str_902ef603",
+    "attrs": "",
+    "zh": "元数据同步成功：${selectedResult.details.title}",
+    "en": "Metadata sync successful: ${selectedResult.details.title}",
+    "th": "ซิงก์ข้อมูลเมตาสำเร็จ: ${selectedResult.details.title}"
+  },
+  {
+    "key": "str_9096a56d",
+    "attrs": "",
+    "zh": "已删除切片",
+    "en": "Slice deleted",
+    "th": "ลบคลิปแล้ว"
+  },
+  {
+    "key": "str_90b5a467",
+    "attrs": "",
+    "zh": "刷新目录",
+    "en": "Refresh directory",
+    "th": "รีเฟรชไดเรกทอรี"
+  },
+  {
+    "key": "str_91841acd",
+    "attrs": "",
+    "zh": "账号不能为空",
+    "en": "Account cannot be empty",
+    "th": "บัญชีต้องไม่ว่าง"
+  },
+  {
+    "key": "str_91fa80d6",
+    "attrs": "",
+    "zh": "自定义标签管理",
+    "en": "Custom tag management",
+    "th": "จัดการแท็กแบบกำหนดเอง"
+  },
+  {
+    "key": "str_925a58c8",
+    "attrs": "",
+    "zh": "速度越大，声像移动越快。",
+    "en": "The higher the speed, the faster the stereo image moves.",
+    "th": "ยิ่งความเร็วสูง ภาพเสียงก็จะเคลื่อนที่เร็วขึ้น"
+  },
+  {
+    "key": "str_925e0a3c",
+    "attrs": "",
+    "zh": "未找到相关内容，请检查后重试",
+    "en": "No relevant content found. Please check and try again.",
+    "th": "ไม่พบเนื้อหาที่เกี่ยวข้อง โปรดตรวจสอบแล้วลองอีกครั้ง"
+  },
+  {
+    "key": "str_92fabc79",
+    "attrs": "",
+    "zh": "共 ${group.albumCount} 张专辑 · ${group.itemCount} 首",
+    "en": "${group.albumCount} albums · ${group.itemCount} tracks",
+    "th": "${group.albumCount} อัลบั้ม · ${group.itemCount} แทร็ก"
+  },
+  {
+    "key": "str_93090486",
+    "attrs": "",
+    "zh": "演示文稿",
+    "en": "Presentation",
+    "th": "งานนำเสนอ"
+  },
+  {
+    "key": "str_9358d65a",
+    "attrs": "",
+    "zh": "韓",
+    "en": "Korean",
+    "th": "เกาหลี"
+  },
+  {
+    "key": "str_93732670",
+    "attrs": "",
+    "zh": "上一项",
+    "en": "Previous item",
+    "th": "รายการก่อนหน้า"
+  },
+  {
+    "key": "str_939111ca",
+    "attrs": "",
+    "zh": "，${formatRecentProgressPosition(resume.positionMs)}处",
+    "en": ", at ${formatRecentProgressPosition(resume.positionMs)}",
+    "th": " ที่ ${formatRecentProgressPosition(resume.positionMs)}"
+  },
+  {
+    "key": "str_945ee611",
+    "attrs": "",
+    "zh": "已创建分组：$trimmed",
+    "en": "Group created: $trimmed",
+    "th": "สร้างกลุ่มแล้ว: $trimmed"
+  },
+  {
+    "key": "str_94ebd9da",
+    "attrs": "",
+    "zh": "添加到列表失败，请重试",
+    "en": "Failed to add to list. Please try again.",
+    "th": "เพิ่มลงรายการไม่สำเร็จ โปรดลองอีกครั้ง"
+  },
+  {
+    "key": "str_950ad70a",
+    "attrs": "",
+    "zh": "0°为居中，90°偏右，270°偏左。",
+    "en": "0° is centered, 90° is right, and 270° is left.",
+    "th": "0° คือกึ่งกลาง, 90° คือขวา และ 270° คือซ้าย"
+  },
+  {
+    "key": "str_95a17365",
+    "attrs": "",
+    "zh": "已购库鉴权失败（401），请重新登录 DLsite",
+    "en": "Purchased library authentication failed (401). Please log in to DLsite again.",
+    "th": "การยืนยันตัวตนคลังที่ซื้อแล้วล้มเหลว (401) โปรดเข้าสู่ระบบ DLsite อีกครั้ง"
+  },
+  {
+    "key": "str_968064c5",
+    "attrs": "",
+    "zh": "还没有搜索记录",
+    "en": "No search history yet",
+    "th": "ยังไม่มีประวัติการค้นหา"
+  },
+  {
+    "key": "str_96d3c4e7",
+    "attrs": "",
+    "zh": "网络连接出了点问题",
+    "en": "There was a network connection problem",
+    "th": "การเชื่อมต่อเครือข่ายมีปัญหาเล็กน้อย"
+  },
+  {
+    "key": "str_9799eb55",
+    "attrs": "",
+    "zh": "播放失败，请稍后重试",
+    "en": "Playback failed. Please try again later.",
+    "th": "เล่นไม่สำเร็จ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_97d07614",
+    "attrs": "",
+    "zh": "文本",
+    "en": "Text",
+    "th": "ข้อความ"
+  },
+  {
+    "key": "str_98555c52",
+    "attrs": "",
+    "zh": "已设置封面",
+    "en": "Cover set",
+    "th": "ตั้งปกแล้ว"
+  },
+  {
+    "key": "str_986a5706",
+    "attrs": "",
+    "zh": "体验音频",
+    "en": "Sample audio",
+    "th": "ตัวอย่างเสียง"
+  },
+  {
+    "key": "str_989d0bfb",
+    "attrs": "",
+    "zh": "请允许 Eara 安装未知来源应用后继续安装",
+    "en": "Please allow Eara to install apps from unknown sources, then continue the installation",
+    "th": "โปรดอนุญาตให้ Eara ติดตั้งแอปจากแหล่งที่ไม่รู้จักก่อน แล้วจึงติดตั้งต่อ"
+  },
+  {
+    "key": "str_98dc7955",
+    "attrs": "",
+    "zh": "背景特效",
+    "en": "Background effects",
+    "th": "เอฟเฟกต์พื้นหลัง"
+  },
+  {
+    "key": "str_98fb00ce",
+    "attrs": "",
+    "zh": "将从本地库中移除该专辑，并尝试删除本地文件。",
+    "en": "This will remove the album from the local library and try to delete the local files.",
+    "th": "การดำเนินการนี้จะนำอัลบั้มออกจากคลังในเครื่อง และพยายามลบไฟล์ในเครื่อง"
+  },
+  {
+    "key": "str_9a641afa",
+    "attrs": "",
+    "zh": "字体阴影: ",
+    "en": "Text shadow: ",
+    "th": "เงาตัวอักษร: "
+  },
+  {
+    "key": "str_9a9dd2e0",
+    "attrs": "",
+    "zh": "从专辑移除",
+    "en": "Remove from album",
+    "th": "นำออกจากอัลบั้ม"
+  },
+  {
+    "key": "str_9af278ac",
+    "attrs": "",
+    "zh": "正在执行批量任务，请先取消后再$taskName",
+    "en": "A batch task is in progress. Cancel it before $taskName",
+    "th": "กำลังมีงานแบบกลุ่มทำงานอยู่ โปรดยกเลิกก่อนแล้วค่อย$taskName"
+  },
+  {
+    "key": "str_9baad8d4",
+    "attrs": "",
+    "zh": "已添加扫描目录",
+    "en": "Scan directory added",
+    "th": "เพิ่มไดเรกทอรีสแกนแล้ว"
+  },
+  {
+    "key": "str_9bc0e76a",
+    "attrs": "",
+    "zh": "收起$title",
+    "en": "Collapse $title",
+    "th": "ยุบ $title"
+  },
+  {
+    "key": "str_9be46da3",
+    "attrs": "",
+    "zh": "把播放响度逐步拉向该目标值（变化更平滑，更适合不同音频之间的统一）。建议范围：-24 到 -14。",
+    "en": "Gradually adjust playback loudness toward this target value (smoother changes, better for leveling across different audio). Recommended range: -24 to -14.",
+    "th": "ค่อยๆ ปรับความดังในการเล่นไปยังค่าเป้าหมายนี้ (เปลี่ยนแปลงนุ่มนวลกว่า และเหมาะกับการทำระดับเสียงให้สม่ำเสมอระหว่างไฟล์เสียงต่างๆ) ช่วงที่แนะนำ: -24 ถึง -14"
+  },
+  {
+    "key": "str_9cdfce42",
+    "attrs": "",
+    "zh": "预设",
+    "en": "Preset",
+    "th": "พรีเซ็ต"
+  },
+  {
+    "key": "str_9d032066",
+    "attrs": "",
+    "zh": "万",
+    "en": "10K",
+    "th": "หมื่น"
+  },
+  {
+    "key": "str_9e1749cc",
+    "attrs": "",
+    "zh": "已从我的列表移除",
+    "en": "Removed from My List",
+    "th": "นำออกจากรายการของฉันแล้ว"
+  },
+  {
+    "key": "str_9e1acb3b",
+    "attrs": "",
+    "zh": "检查更新失败",
+    "en": "Failed to check for updates",
+    "th": "ตรวจสอบอัปเดตไม่สำเร็จ"
+  },
+  {
+    "key": "str_9e3a8e1d",
+    "attrs": "",
+    "zh": "已从分组移除",
+    "en": "Removed from group",
+    "th": "นำออกจากกลุ่มแล้ว"
+  },
+  {
+    "key": "str_9e638090",
+    "attrs": "",
+    "zh": "目录刷新",
+    "en": "Directory refresh",
+    "th": "รีเฟรชไดเรกทอรี"
+  },
+  {
+    "key": "str_9e86f38e",
+    "attrs": "",
+    "zh": "下载完成：${s.release.tagName}",
+    "en": "Download complete: ${s.release.tagName}",
+    "th": "ดาวน์โหลดเสร็จสมบูรณ์: ${s.release.tagName}"
+  },
+  {
+    "key": "str_9ef083de",
+    "attrs": "",
+    "zh": "正在打开系统安装器",
+    "en": "Opening system installer",
+    "th": "กำลังเปิดตัวติดตั้งระบบ"
+  },
+  {
+    "key": "str_9f439e8c",
+    "attrs": "",
+    "zh": "未找到可播放的音轨",
+    "en": "No playable audio tracks found",
+    "th": "ไม่พบแทร็กเสียงที่เล่นได้"
+  },
+  {
+    "key": "str_9fad6a62",
+    "attrs": "",
+    "zh": "安装更新",
+    "en": "Install update",
+    "th": "ติดตั้งอัปเดต"
+  },
+  {
+    "key": "str_a02b7d62",
+    "attrs": "",
+    "zh": "确定从「$title」移除专辑“${album.second}”吗？",
+    "en": "Remove album “${album.second}” from \"$title\"?",
+    "th": "นำอัลบั้ม “${album.second}” ออกจาก \"$title\" หรือไม่?"
+  },
+  {
+    "key": "str_a04c9405",
+    "attrs": "",
+    "zh": "暂不支持预览该文件类型",
+    "en": "Preview of this file type is not supported yet",
+    "th": "ยังไม่รองรับการแสดงตัวอย่างไฟล์ประเภทนี้"
+  },
+  {
+    "key": "str_a107e6e1",
+    "attrs": "",
+    "zh": "管理标签",
+    "en": "Manage tags",
+    "th": "จัดการแท็ก"
+  },
+  {
+    "key": "str_a1574db9",
+    "attrs": "",
+    "zh": "声源方向",
+    "en": "Sound source direction",
+    "th": "ทิศทางแหล่งกำเนิดเสียง"
+  },
+  {
+    "key": "str_a17a5713",
+    "attrs": "",
+    "zh": "连接超时，请稍后重试",
+    "en": "Connection timed out. Please try again later.",
+    "th": "การเชื่อมต่อหมดเวลา โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_a17fe9f2",
+    "attrs": "",
+    "zh": "添加到收藏失败，请重试",
+    "en": "Failed to add to favorites. Please try again.",
+    "th": "เพิ่มไปยังรายการโปรดไม่สำเร็จ โปรดลองอีกครั้ง"
+  },
+  {
+    "key": "str_a2894ad7",
+    "attrs": "",
+    "zh": "将物理删除文件“${item.fileName}”，且不可恢复。",
+    "en": "This will permanently delete the file “${item.fileName}” and cannot be undone.",
+    "th": "การดำเนินการนี้จะลบไฟล์ “${item.fileName}” อย่างถาวรและไม่สามารถกู้คืนได้"
+  },
+  {
+    "key": "str_a2d930fd",
+    "attrs": "",
+    "zh": "已暂停",
+    "en": "Paused",
+    "th": "หยุดชั่วคราวแล้ว"
+  },
+  {
+    "key": "str_a2f7c6d7",
+    "attrs": "",
+    "zh": "启动时自动检查更新",
+    "en": "Automatically check for updates on startup",
+    "th": "ตรวจสอบอัปเดตอัตโนมัติเมื่อเริ่มต้น"
+  },
+  {
+    "key": "str_a385702c",
+    "attrs": "",
+    "zh": "已添加到我的收藏",
+    "en": "Added to My Favorites",
+    "th": "เพิ่มไปยังรายการโปรดของฉันแล้ว"
+  },
+  {
+    "key": "str_a4b0f852",
+    "attrs": "",
+    "zh": "正在使用流量播放",
+    "en": "Playing over mobile data",
+    "th": "กำลังเล่นผ่านข้อมูลมือถือ"
+  },
+  {
+    "key": "str_a59ecc4e",
+    "attrs": "",
+    "zh": "登录 / 切换账号",
+    "en": "Log in / Switch account",
+    "th": "เข้าสู่ระบบ / สลับบัญชี"
+  },
+  {
+    "key": "str_a60d2c0a",
+    "attrs": "",
+    "zh": "声道模式",
+    "en": "Channel mode",
+    "th": "โหมดช่องสัญญาณ"
+  },
+  {
+    "key": "str_a68f3a88",
+    "attrs": "",
+    "zh": "删除切片",
+    "en": "Delete slice",
+    "th": "ลบคลิป"
+  },
+  {
+    "key": "str_a713d152",
+    "attrs": "",
+    "zh": "左右平衡",
+    "en": "Left-right balance",
+    "th": "สมดุลซ้าย-ขวา"
+  },
+  {
+    "key": "str_a73fc712",
+    "attrs": "",
+    "zh": "修改起点",
+    "en": "Change start point",
+    "th": "เปลี่ยนจุดเริ่มต้น"
+  },
+  {
+    "key": "str_a7d7efd8",
+    "attrs": "",
+    "zh": "点击可重命名或删除",
+    "en": "Tap to rename or delete",
+    "th": "แตะเพื่อเปลี่ยนชื่อหรือลบ"
+  },
+  {
+    "key": "str_a808529d",
+    "attrs": "",
+    "zh": "下载文件无效，请重新下载",
+    "en": "Downloaded file is invalid. Please download it again.",
+    "th": "ไฟล์ที่ดาวน์โหลดไม่ถูกต้อง โปรดดาวน์โหลดอีกครั้ง"
+  },
+  {
+    "key": "str_a8105204",
+    "attrs": "",
+    "zh": "密码",
+    "en": "Password",
+    "th": "รหัสผ่าน"
+  },
+  {
+    "key": "str_a81ff5c2",
+    "attrs": "",
+    "zh": "上1/4",
+    "en": "Upper 1/4",
+    "th": "1/4 บน"
+  },
+  {
+    "key": "str_a8230446",
+    "attrs": "",
+    "zh": "点击暂停时，音量会在设定时长内逐渐降到 0，然后再真正暂停。",
+    "en": "When Pause is tapped, the volume will gradually fade to 0 over the set duration before actually pausing.",
+    "th": "เมื่อแตะหยุดชั่วคราว ระดับเสียงจะค่อยๆ ลดลงจนเป็น 0 ภายในเวลาที่ตั้งไว้ แล้วจึงหยุดจริง"
+  },
+  {
+    "key": "str_a8b3a2a6",
+    "attrs": "",
+    "zh": "显示区域",
+    "en": "Display area",
+    "th": "พื้นที่แสดงผล"
+  },
+  {
+    "key": "str_a8c3cc44",
+    "attrs": "",
+    "zh": "字幕",
+    "en": "Subtitles",
+    "th": "คำบรรยาย"
+  },
+  {
+    "key": "str_a8d1751c",
+    "attrs": "",
+    "zh": "仅支持本地库专辑手动绑定 RJ",
+    "en": "Only local library albums support manual RJ binding",
+    "th": "รองรับการผูก RJ ด้วยตนเองเฉพาะอัลบั้มในคลังท้องถิ่นเท่านั้น"
+  },
+  {
+    "key": "str_a8fb2437",
+    "attrs": "",
+    "zh": "中1/4",
+    "en": "Middle 1/4",
+    "th": "1/4 กลาง"
+  },
+  {
+    "key": "str_a940b3fc",
+    "attrs": "",
+    "zh": "已标记起点",
+    "en": "Start point marked",
+    "th": "ทำเครื่องหมายจุดเริ่มต้นแล้ว"
+  },
+  {
+    "key": "str_a94dc02c",
+    "attrs": "",
+    "zh": "请输入预设名称",
+    "en": "Please enter a preset name",
+    "th": "โปรดป้อนชื่อพรีเซ็ต"
+  },
+  {
+    "key": "str_a96b4ab1",
+    "attrs": "",
+    "zh": "悬浮歌词已关闭",
+    "en": "Floating lyrics are off",
+    "th": "ปิดเนื้อเพลงลอยแล้ว"
+  },
+  {
+    "key": "str_abebbe10",
+    "attrs": "",
+    "zh": "云同步失败：${e.message}",
+    "en": "Cloud sync failed: ${e.message}",
+    "th": "ซิงก์คลาวด์ล้มเหลว: ${e.message}"
+  },
+  {
+    "key": "str_abfb6157",
+    "attrs": "",
+    "zh": "试听刷新",
+    "en": "Refresh preview",
+    "th": "รีเฟรชตัวอย่าง"
+  },
+  {
+    "key": "str_ac7b1038",
+    "attrs": "",
+    "zh": "开始下载更新…",
+    "en": "Starting update download…",
+    "th": "กำลังเริ่มดาวน์โหลดอัปเดต…"
+  },
+  {
+    "key": "str_acd5cb84",
+    "attrs": "",
+    "zh": "失败",
+    "en": "Failed",
+    "th": "ล้มเหลว"
+  },
+  {
+    "key": "str_acf254fc",
+    "attrs": "",
+    "zh": "正在播放",
+    "en": "Playing",
+    "th": "กำลังเล่น"
+  },
+  {
+    "key": "str_ad5516e3",
+    "attrs": "",
+    "zh": "热门标签",
+    "en": "Popular tags",
+    "th": "แท็กยอดนิยม"
+  },
+  {
+    "key": "str_ad976fa0",
+    "attrs": "",
+    "zh": "暂停时逐渐降低音量: ${value.toInt()}ms",
+    "en": "Fade out on pause: ${value.toInt()}ms",
+    "th": "ค่อยๆ ลดเสียงเมื่อหยุดชั่วคราว: ${value.toInt()}ms"
+  },
+  {
+    "key": "str_ade3663e",
+    "attrs": "",
+    "zh": "请输入列表名称",
+    "en": "Please enter a list name",
+    "th": "โปรดป้อนชื่อรายการ"
+  },
+  {
+    "key": "str_ae336cd0",
+    "attrs": "",
+    "zh": "收藏",
+    "en": "Favorites",
+    "th": "รายการโปรด"
+  },
+  {
+    "key": "str_af0f065e",
+    "attrs": "",
+    "zh": "暂无排行数据",
+    "en": "No ranking data yet",
+    "th": "ยังไม่มีข้อมูลการจัดอันดับ"
+  },
+  {
+    "key": "str_af3bb7e6",
+    "attrs": "",
+    "zh": "添加自定义标签",
+    "en": "Add custom tag",
+    "th": "เพิ่มแท็กแบบกำหนดเอง"
+  },
+  {
+    "key": "str_af9aa94f",
+    "attrs": "",
+    "zh": "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+    "en": "When off, the mini player bar at the bottom of the app is hidden, and no extra space is reserved for it at the bottom of pages.",
+    "th": "เมื่อปิด แถบมินิเพลเยอร์ที่ด้านล่างของแอปจะถูกซ่อน และด้านล่างของหน้าจะไม่เว้นพื้นที่ว่างไว้ให้อีก"
+  },
+  {
+    "key": "str_afcde261",
+    "attrs": "",
+    "zh": "外观",
+    "en": "Appearance",
+    "th": "ลักษณะ"
+  },
+  {
+    "key": "str_aff32ec2",
+    "attrs": "",
+    "zh": "正在执行：$current，请等待完成或取消后再$nextAction",
+    "en": "In progress: $current. Wait for it to finish or cancel it before $nextAction",
+    "th": "กำลังดำเนินการ: $current โปรดรอให้เสร็จหรือยกเลิกก่อนแล้วค่อย$nextAction"
+  },
+  {
+    "key": "str_b02e27c2",
+    "attrs": "",
+    "zh": "频段调节",
+    "en": "Band adjustment",
+    "th": "ปรับย่านความถี่"
+  },
+  {
+    "key": "str_b085f24f",
+    "attrs": "",
+    "zh": "已购内容",
+    "en": "Purchased content",
+    "th": "เนื้อหาที่ซื้อแล้ว"
+  },
+  {
+    "key": "str_b0b4b042",
+    "attrs": "",
+    "zh": "支持与状态",
+    "en": "Support & status",
+    "th": "การรองรับและสถานะ"
+  },
+  {
+    "key": "str_b0bb0f81",
+    "attrs": "",
+    "zh": "主题模式",
+    "en": "Theme mode",
+    "th": "โหมดธีม"
+  },
+  {
+    "key": "str_b1288dea",
+    "attrs": "",
+    "zh": "悬浮歌词细节",
+    "en": "Floating lyrics details",
+    "th": "รายละเอียดเนื้อเพลงลอย"
+  },
+  {
+    "key": "str_b1395320",
+    "attrs": "",
+    "zh": "已从专辑移除",
+    "en": "Removed from album",
+    "th": "นำออกจากอัลบั้มแล้ว"
+  },
+  {
+    "key": "str_b1582796",
+    "attrs": "",
+    "zh": "再按一次返回退出应用",
+    "en": "Press Back again to exit the app",
+    "th": "กดกลับอีกครั้งเพื่อออกจากแอป"
+  },
+  {
+    "key": "str_b15d9127",
+    "attrs": "",
+    "zh": "关闭",
+    "en": "Close",
+    "th": "ปิด"
+  },
+  {
+    "key": "str_b1bd0bc5",
+    "attrs": "",
+    "zh": "字体大小: ${settings.fontSizeSp.toInt()}sp",
+    "en": "Font size: ${settings.fontSizeSp.toInt()}sp",
+    "th": "ขนาดตัวอักษร: ${settings.fontSizeSp.toInt()}sp"
+  },
+  {
+    "key": "str_b1d4a928",
+    "attrs": "",
+    "zh": "已保存到本地库（${insertedCount}项），跳过已存在（${skipped}项）",
+    "en": "Saved to local library (${insertedCount} items), skipped existing (${skipped} items)",
+    "th": "บันทึกไปยังคลังในเครื่องแล้ว (${insertedCount} รายการ) ข้ามรายการที่มีอยู่แล้ว (${skipped} รายการ)"
+  },
+  {
+    "key": "str_b20a4f74",
+    "attrs": "",
+    "zh": "已忽略本轮剩余待确认项",
+    "en": "Ignored the remaining pending items in this round",
+    "th": "ละเว้นรายการที่รอยืนยันที่เหลือในรอบนี้แล้ว"
+  },
+  {
+    "key": "str_b276b42d",
+    "attrs": "",
+    "zh": "背景封面预览方式",
+    "en": "Background cover preview mode",
+    "th": "โหมดแสดงตัวอย่างปกพื้นหลัง"
+  },
+  {
+    "key": "str_b31a206d",
+    "attrs": "",
+    "zh": "专辑标题",
+    "en": "Album title",
+    "th": "ชื่ออัลบั้ม"
+  },
+  {
+    "key": "str_b339aa87",
+    "attrs": "",
+    "zh": "表格",
+    "en": "Table",
+    "th": "ตาราง"
+  },
+  {
+    "key": "str_b3b754dc",
+    "attrs": "",
+    "zh": "请输入新的分组名称。",
+    "en": "Please enter a new group name.",
+    "th": "โปรดป้อนชื่อกลุ่มใหม่"
+  },
+  {
+    "key": "str_b3b83e12",
+    "attrs": "",
+    "zh": "图片加载失败",
+    "en": "Failed to load image",
+    "th": "โหลดรูปภาพไม่สำเร็จ"
+  },
+  {
+    "key": "str_b47707f0",
+    "attrs": "",
+    "zh": "主题色",
+    "en": "Theme color",
+    "th": "สีธีม"
+  },
+  {
+    "key": "str_b4885315",
+    "attrs": "",
+    "zh": "已设为默认打开目录",
+    "en": "Set as default open directory",
+    "th": "ตั้งเป็นไดเรกทอรีเปิดเริ่มต้นแล้ว"
+  },
+  {
+    "key": "str_b48a86b5",
+    "attrs": "",
+    "zh": "结束时间不能早于开始时间",
+    "en": "End time cannot be earlier than start time",
+    "th": "เวลาสิ้นสุดต้องไม่เร็วกว่าเวลาเริ่มต้น"
+  },
+  {
+    "key": "str_b4b851b1",
+    "attrs": "",
+    "zh": "去登录",
+    "en": "Go to log in",
+    "th": "ไปเข้าสู่ระบบ"
+  },
+  {
+    "key": "str_b4e1b508",
+    "attrs": "",
+    "zh": "下一页",
+    "en": "Next page",
+    "th": "หน้าถัดไป"
+  },
+  {
+    "key": "str_b4f74eba",
+    "attrs": "",
+    "zh": "已保存到本地库（${insertedCount}项）",
+    "en": "Saved to local library (${insertedCount} items)",
+    "th": "บันทึกไปยังคลังในเครื่องแล้ว (${insertedCount} รายการ)"
+  },
+  {
+    "key": "str_b5107106",
+    "attrs": "",
+    "zh": "默认打开",
+    "en": "Open by default",
+    "th": "เปิดโดยค่าเริ่มต้น"
+  },
+  {
+    "key": "str_b52a783c",
+    "attrs": "",
+    "zh": "呼吸波纹",
+    "en": "Breathing ripple",
+    "th": "ระลอกแบบหายใจ"
+  },
+  {
+    "key": "str_b5707dce",
+    "attrs": "",
+    "zh": "播放器未连接",
+    "en": "Player not connected",
+    "th": "เครื่องเล่นยังไม่เชื่อมต่อ"
+  },
+  {
+    "key": "str_b58c7549",
+    "attrs": "",
+    "zh": "添加",
+    "en": "Add",
+    "th": "เพิ่ม"
+  },
+  {
+    "key": "str_b6076a05",
+    "attrs": "",
+    "zh": "登录失败",
+    "en": "Login failed",
+    "th": "เข้าสู่ระบบไม่สำเร็จ"
+  },
+  {
+    "key": "str_b668ec29",
+    "attrs": "",
+    "zh": "当前专辑",
+    "en": "Current album",
+    "th": "อัลบั้มปัจจุบัน"
+  },
+  {
+    "key": "str_b6fd576f",
+    "attrs": "",
+    "zh": "用户标注",
+    "en": "User annotations",
+    "th": "คำกำกับของผู้ใช้"
+  },
+  {
+    "key": "str_b704028e",
+    "attrs": "",
+    "zh": "暂无可播放曲目",
+    "en": "No playable tracks yet",
+    "th": "ยังไม่มีแทร็กที่เล่นได้"
+  },
+  {
+    "key": "str_b71144cb",
+    "attrs": "",
+    "zh": "所选项目已在$playlistName",
+    "en": "Selected items are already in $playlistName",
+    "th": "รายการที่เลือกอยู่ใน $playlistName แล้ว"
+  },
+  {
+    "key": "str_b7158a42",
+    "attrs": "",
+    "zh": "认证",
+    "en": "Authentication",
+    "th": "การยืนยันตัวตน"
+  },
+  {
+    "key": "str_b74eb8ba",
+    "attrs": "",
+    "zh": "需要先登录 DLsite 才能使用已购播放/下载",
+    "en": "You need to log in to DLsite first to use purchased playback/download",
+    "th": "คุณต้องเข้าสู่ระบบ DLsite ก่อน จึงจะใช้การเล่น/ดาวน์โหลดที่ซื้อแล้วได้"
+  },
+  {
+    "key": "str_b811f9b1",
+    "attrs": "",
+    "zh": "已收录",
+    "en": "Included",
+    "th": "รวมแล้ว"
+  },
+  {
+    "key": "str_b85270cd",
+    "attrs": "",
+    "zh": "播放",
+    "en": "Play",
+    "th": "เล่น"
+  },
+  {
+    "key": "str_b88d3d76",
+    "attrs": "",
+    "zh": "访问受限，请稍后再试",
+    "en": "Access restricted. Please try again later.",
+    "th": "การเข้าถึงถูกจำกัด โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_b8eb8359",
+    "attrs": "",
+    "zh": "认证已过期，请重新登录",
+    "en": "Authentication expired. Please log in again.",
+    "th": "การยืนยันตัวตนหมดอายุ โปรดเข้าสู่ระบบอีกครั้ง"
+  },
+  {
+    "key": "str_b8efaca0",
+    "attrs": "",
+    "zh": "不再提醒",
+    "en": "Don't remind me again",
+    "th": "ไม่ต้องเตือนอีก"
+  },
+  {
+    "key": "str_b97ec9ac",
+    "attrs": "",
+    "zh": "正在加入下载队列：${album.title}",
+    "en": "Adding to download queue: ${album.title}",
+    "th": "กำลังเพิ่มไปยังคิวดาวน์โหลด: ${album.title}"
+  },
+  {
+    "key": "str_b9ac3889",
+    "attrs": "",
+    "zh": "PDF 文件暂不支持直接预览",
+    "en": "PDF files do not support direct preview yet",
+    "th": "ไฟล์ PDF ยังไม่รองรับการแสดงตัวอย่างโดยตรง"
+  },
+  {
+    "key": "str_b9bbf33f",
+    "attrs": "",
+    "zh": "设置封面",
+    "en": "Set cover",
+    "th": "ตั้งปก"
+  },
+  {
+    "key": "str_b9d917e5",
+    "attrs": "",
+    "zh": "请输入筛选预设名称。",
+    "en": "Please enter a filter preset name.",
+    "th": "โปรดป้อนชื่อพรีเซ็ตตัวกรอง"
+  },
+  {
+    "key": "str_ba5c6ac0",
+    "attrs": "",
+    "zh": "试听刷新失败，请稍后重试",
+    "en": "Preview refresh failed. Please try again later.",
+    "th": "รีเฟรชตัวอย่างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_bb9f1e81",
+    "attrs": "",
+    "zh": "搜索专辑、社团、CV...",
+    "en": "Search albums, circles, CV...",
+    "th": "ค้นหาอัลบั้ม วงการผลิต CV..."
+  },
+  {
+    "key": "str_bbede5f7",
+    "attrs": "",
+    "zh": "当前音频无法参与一起听",
+    "en": "This audio can't be used for Listen Together",
+    "th": "เสียงนี้ไม่สามารถใช้กับฟังพร้อมกันได้"
+  },
+  {
+    "key": "str_bc303c98",
+    "attrs": "",
+    "zh": "已移除扫描目录",
+    "en": "Scan directory removed",
+    "th": "ลบไดเรกทอรีสแกนแล้ว"
+  },
+  {
+    "key": "str_bc87c9b8",
+    "attrs": "",
+    "zh": "把整体声音偏向左或右声道。与“声源方向/自动环绕”互斥。",
+    "en": "Shift the overall sound toward the left or right channel. Mutually exclusive with \"Sound source direction/Auto surround\".",
+    "th": "เอนเสียงโดยรวมไปทางช่องซ้ายหรือขวา ใช้ร่วมกับ \"ทิศทางแหล่งกำเนิดเสียง/เซอร์ราวด์อัตโนมัติ\" ไม่ได้"
+  },
+  {
+    "key": "str_bcb30bdc",
+    "attrs": "",
+    "zh": "请输入有效 RJ 号",
+    "en": "Please enter a valid RJ number",
+    "th": "โปรดป้อนหมายเลข RJ ที่ถูกต้อง"
+  },
+  {
+    "key": "str_bcc54aef",
+    "attrs": "",
+    "zh": "重扫失败：${e.message}",
+    "en": "Rescan failed: ${e.message}",
+    "th": "สแกนใหม่ล้มเหลว: ${e.message}"
+  },
+  {
+    "key": "str_bd5c6e45",
+    "attrs": "",
+    "zh": "$blockedCount 个作品被屏蔽",
+    "en": "$blockedCount works blocked",
+    "th": "$blockedCount ผลงานถูกบล็อก"
+  },
+  {
+    "key": "str_bdbc84f5",
+    "attrs": "",
+    "zh": " }}”吗？",
+    "en": " }}\"?",
+    "th": " }}\" หรือไม่?"
+  },
+  {
+    "key": "str_bdec61dd",
+    "attrs": "",
+    "zh": "删除 $keyword",
+    "en": "Delete $keyword",
+    "th": "ลบ $keyword"
+  },
+  {
+    "key": "str_bded7b62",
+    "attrs": "",
+    "zh": "声优",
+    "en": "Voice actor",
+    "th": "นักพากย์"
+  },
+  {
+    "key": "str_be5fbbe3",
+    "attrs": "",
+    "zh": "保存",
+    "en": "Save",
+    "th": "บันทึก"
+  },
+  {
+    "key": "str_beca1d1c",
+    "attrs": "",
+    "zh": "将从所有用户标注中移除该标签。",
+    "en": "This tag will be removed from all user annotations.",
+    "th": "แท็กนี้จะถูกลบออกจากคำกำกับของผู้ใช้ทั้งหมด"
+  },
+  {
+    "key": "str_bf070baf",
+    "attrs": "",
+    "zh": "待确认 ${currentPosition} / ${totalCount}",
+    "en": "Pending confirmation ${currentPosition} / ${totalCount}",
+    "th": "รอยืนยัน ${currentPosition} / ${totalCount}"
+  },
+  {
+    "key": "str_bf1f0f50",
+    "attrs": "",
+    "zh": "已绑定 $resolvedWorkno 并完成云同步",
+    "en": "Bound to $resolvedWorkno and cloud sync completed",
+    "th": "ผูกกับ $resolvedWorkno และซิงก์คลาวด์เสร็จสมบูรณ์แล้ว"
+  },
+  {
+    "key": "str_bf7b0d9f",
+    "attrs": "",
+    "zh": "当前播放队列",
+    "en": "Current queue",
+    "th": "คิวที่กำลังเล่นอยู่"
+  },
+  {
+    "key": "str_bf9b0677",
+    "attrs": "",
+    "zh": "DLsite Play 加载失败，请稍后重试",
+    "en": "DLsite Play failed to load. Please try again later.",
+    "th": "DLsite Play โหลดไม่สำเร็จ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_c0744782",
+    "attrs": "",
+    "zh": "仅支持 LRC、SRT、VTT 歌词文件",
+    "en": "Only LRC, SRT, and VTT lyric files are supported",
+    "th": "รองรับเฉพาะไฟล์เนื้อเพลง LRC, SRT และ VTT เท่านั้น"
+  },
+  {
+    "key": "str_c142deaf",
+    "attrs": "",
+    "zh": "聲優",
+    "en": "Voice actor",
+    "th": "นักพากย์"
+  },
+  {
+    "key": "str_c155f17a",
+    "attrs": "",
+    "zh": "取消定时",
+    "en": "Cancel timer",
+    "th": "ยกเลิกตัวตั้งเวลา"
+  },
+  {
+    "key": "str_c16eed0e",
+    "attrs": "",
+    "zh": "播放速度",
+    "en": "Playback speed",
+    "th": "ความเร็วการเล่น"
+  },
+  {
+    "key": "str_c195df63",
+    "attrs": "",
+    "zh": "异常",
+    "en": "Exception",
+    "th": "ข้อยกเว้น"
+  },
+  {
+    "key": "str_c1fd18de",
+    "attrs": "",
+    "zh": "搜索高级用法",
+    "en": "Advanced search usage",
+    "th": "การใช้งานการค้นหาขั้นสูง"
+  },
+  {
+    "key": "str_c1fe2fa5",
+    "attrs": "",
+    "zh": "无法打开安装授权页面",
+    "en": "Unable to open the install permission page",
+    "th": "ไม่สามารถเปิดหน้าสิทธิ์การติดตั้งได้"
+  },
+  {
+    "key": "str_c24962a6",
+    "attrs": "",
+    "zh": "暂无歌词",
+    "en": "No lyrics yet",
+    "th": "ยังไม่มีเนื้อเพลง"
+  },
+  {
+    "key": "str_c2b9f4b9",
+    "attrs": "",
+    "zh": "根目录",
+    "en": "Root directory",
+    "th": "ไดเรกทอรีราก"
+  },
+  {
+    "key": "str_c2bc0879",
+    "attrs": "",
+    "zh": "已有标签",
+    "en": "Existing tags",
+    "th": "แท็กที่มีอยู่"
+  },
+  {
+    "key": "str_c2fe6253",
+    "attrs": "",
+    "zh": "筛选",
+    "en": "Filter",
+    "th": "กรอง"
+  },
+  {
+    "key": "str_c45327d4",
+    "attrs": "",
+    "zh": "保存为自定义预设",
+    "en": "Save as custom preset",
+    "th": "บันทึกเป็นพรีเซ็ตแบบกำหนดเอง"
+  },
+  {
+    "key": "str_c50b12bb",
+    "attrs": "",
+    "zh": "切片播放",
+    "en": "Slice playback",
+    "th": "เล่นคลิป"
+  },
+  {
+    "key": "str_c515aaff",
+    "attrs": "",
+    "zh": "输出断开自动暂停",
+    "en": "Auto-pause when output disconnects",
+    "th": "หยุดชั่วคราวอัตโนมัติเมื่อเอาต์พุตถูกตัดการเชื่อมต่อ"
+  },
+  {
+    "key": "str_c52a40c6",
+    "attrs": "",
+    "zh": "分组不存在",
+    "en": "Group does not exist",
+    "th": "ไม่พบกลุ่ม"
+  },
+  {
+    "key": "str_c5650b1b",
+    "attrs": "",
+    "zh": "变速变调",
+    "en": "Speed & pitch",
+    "th": "ความเร็วและระดับเสียง"
+  },
+  {
+    "key": "str_c5e497ea",
+    "attrs": "",
+    "zh": "请先登录 DLsite 后再使用\"已购\"搜索",
+    "en": "Please log in to DLsite before using \"Purchased\" search",
+    "th": "โปรดเข้าสู่ระบบ DLsite ก่อน แล้วจึงใช้การค้นหา \"ซื้อแล้ว\""
+  },
+  {
+    "key": "str_c6e3373a",
+    "attrs": "",
+    "zh": "流量",
+    "en": "Mobile data",
+    "th": "ข้อมูลมือถือ"
+  },
+  {
+    "key": "str_c734ab05",
+    "attrs": "",
+    "zh": "网络连接失败，请检查网络后重试",
+    "en": "Network connection failed. Check your network and try again.",
+    "th": "การเชื่อมต่อเครือข่ายล้มเหลว โปรดตรวจสอบเครือข่ายแล้วลองอีกครั้ง"
+  },
+  {
+    "key": "str_c743105c",
+    "attrs": "",
+    "zh": "请使用外部应用打开",
+    "en": "Please open with an external app",
+    "th": "โปรดเปิดด้วยแอปภายนอก"
+  },
+  {
+    "key": "str_c7530619",
+    "attrs": "",
+    "zh": "请输入自定义预设名称。",
+    "en": "Please enter a custom preset name.",
+    "th": "โปรดป้อนชื่อพรีเซ็ตแบบกำหนดเอง"
+  },
+  {
+    "key": "str_c7af1efa",
+    "attrs": "",
+    "zh": "孤独赏鉴中",
+    "en": "Enjoying alone",
+    "th": "กำลังรับฟังคนเดียว"
+  },
+  {
+    "key": "str_c7c00c16",
+    "attrs": "",
+    "zh": "已移至末尾",
+    "en": "Moved to bottom",
+    "th": "ย้ายไปท้ายสุดแล้ว"
+  }
+]

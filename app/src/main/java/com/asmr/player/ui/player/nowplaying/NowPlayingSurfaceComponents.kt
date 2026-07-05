@@ -1,5 +1,6 @@
 ﻿package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -157,7 +158,7 @@ internal fun PlayerSurfaceHeader(
                 IconButton(onClick = onManualBindLyrics) {
                     Icon(
                         painter = painterResource(R.drawable.ic_manual_subtitle_import),
-                        contentDescription = "手动绑定歌词",
+                        contentDescription = stringResource(R.string.str_e46dba16),
                         modifier = Modifier.size(if (isLandscape) 20.dp else 22.dp),
                         tint = colorScheme.onSurface
                     )
@@ -212,14 +213,14 @@ internal fun NowPlayingLyricsSurface(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "暂无歌词",
+                    text = stringResource(R.string.str_c24962a6),
                     style = MaterialTheme.typography.titleMedium,
                     color = AsmrTheme.colorScheme.textSecondary
                 )
                 if (onAddLyrics != null) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Button(onClick = onAddLyrics) {
-                        Text("添加歌词")
+                        Text(stringResource(R.string.str_32502968))
                     }
                 }
             }

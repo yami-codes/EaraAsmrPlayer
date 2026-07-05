@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -581,7 +583,7 @@ private fun OnlineTrackRow(
                         modifier = Modifier.background(dynamicContainerColor)
                     ) {
                         DropdownMenuItem(
-                            text = { Text("播放") },
+                            text = { Text(stringResource(R.string.str_b85270cd)) },
                             onClick = {
                                 onPlay()
                                 expanded = false
@@ -597,7 +599,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text("添加到播放队列") },
+                                text = { Text(stringResource(R.string.str_58a8759e)) },
                                 onClick = {
                                     onAddToQueue.invoke()
                                     expanded = false
@@ -614,7 +616,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text("添加到我的列表") },
+                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
                                 onClick = {
                                     onAddToPlaylist.invoke()
                                     expanded = false
@@ -631,7 +633,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text("标签管理") },
+                                text = { Text(stringResource(R.string.str_2ec512a4)) },
                                 onClick = {
                                     onManageTags.invoke()
                                     expanded = false

@@ -1,0 +1,1100 @@
+[
+  {
+    "key": "str_44efd179",
+    "attrs": "",
+    "en": "Log out",
+    "th": "ออกจากระบบ"
+  },
+  {
+    "key": "str_451d9b45",
+    "attrs": "",
+    "en": "Please enter a new list name.",
+    "th": "โปรดป้อนชื่อรายการใหม่"
+  },
+  {
+    "key": "str_45741efd",
+    "attrs": "",
+    "en": "Remaining ${formatSleepTimerRemaining(remainingMs)}",
+    "th": "เหลืออีก ${formatSleepTimerRemaining(remainingMs)}"
+  },
+  {
+    "key": "str_45b206c6",
+    "attrs": "",
+    "en": "Blocked keywords",
+    "th": "คำที่บล็อก"
+  },
+  {
+    "key": "str_46437fee",
+    "attrs": "",
+    "en": "Cloud sync (full)",
+    "th": "ซิงก์คลาวด์ (เต็มรูปแบบ)"
+  },
+  {
+    "key": "str_46935535",
+    "attrs": "",
+    "en": "Used for background playback controls and the lock screen media panel",
+    "th": "ใช้สำหรับการควบคุมการเล่นเบื้องหลังและแผงสื่อบนหน้าจอล็อก"
+  },
+  {
+    "key": "str_4740234f",
+    "attrs": "",
+    "en": "Not played",
+    "th": "ยังไม่ได้เล่น"
+  },
+  {
+    "key": "str_475aa056",
+    "attrs": "",
+    "en": "Vocal enhancement (Vocal)",
+    "th": "เสริมเสียงร้อง (Vocal)"
+  },
+  {
+    "key": "str_47700256",
+    "attrs": "",
+    "en": "Tap a user tag to remove it",
+    "th": "แตะแท็กผู้ใช้เพื่อลบ"
+  },
+  {
+    "key": "str_47cab5ae",
+    "attrs": "",
+    "en": "Sleep timer",
+    "th": "ตั้งเวลาปิด"
+  },
+  {
+    "key": "str_48d0a09b",
+    "attrs": "",
+    "en": "Light",
+    "th": "สว่าง"
+  },
+  {
+    "key": "str_49041f24",
+    "attrs": "",
+    "en": "Exit full screen",
+    "th": "ออกจากเต็มหน้าจอ"
+  },
+  {
+    "key": "str_4932ab02",
+    "attrs": "",
+    "en": "Failed to open login page (${resp.code})",
+    "th": "เปิดหน้าล็อกอินไม่สำเร็จ (${resp.code})"
+  },
+  {
+    "key": "str_4977b458",
+    "attrs": "",
+    "en": "Invert",
+    "th": "สลับ"
+  },
+  {
+    "key": "str_4a2c2e30",
+    "attrs": "",
+    "en": "Soft dark",
+    "th": "มืดนุ่มนวล"
+  },
+  {
+    "key": "str_4a3184e1",
+    "attrs": "",
+    "en": "Scanning local library",
+    "th": "กำลังสแกนคลังในเครื่อง"
+  },
+  {
+    "key": "str_4a4fef28",
+    "attrs": "",
+    "en": "No audio/video files to save",
+    "th": "ไม่มีไฟล์เสียง/วิดีโอให้บันทึก"
+  },
+  {
+    "key": "str_4b9c3271",
+    "attrs": "",
+    "en": "Reset",
+    "th": "รีเซ็ต"
+  },
+  {
+    "key": "str_4c6ecbab",
+    "attrs": "",
+    "en": "Add to My List",
+    "th": "เพิ่มไปยังรายการของฉัน"
+  },
+  {
+    "key": "str_4c83b811",
+    "attrs": "",
+    "en": "Player/Lyrics page cover background",
+    "th": "พื้นหลังปกของหน้าการเล่น/หน้าคำร้อง"
+  },
+  {
+    "key": "str_4cd6894d",
+    "attrs": "",
+    "en": "Dynamic cover theme (global)",
+    "th": "ธีมปกแบบไดนามิก (ทั้งแอป)"
+  },
+  {
+    "key": "str_4ceacf9e",
+    "attrs": "",
+    "en": "Album deleted",
+    "th": "ลบอัลบั้มแล้ว"
+  },
+  {
+    "key": "str_4d775d4c",
+    "attrs": "",
+    "en": "Show",
+    "th": "แสดง"
+  },
+  {
+    "key": "str_4dce7ca0",
+    "attrs": "",
+    "en": "Resume all",
+    "th": "ดำเนินการต่อทั้งหมด"
+  },
+  {
+    "key": "str_4ee931e5",
+    "attrs": "",
+    "en": "Recently added",
+    "th": "เพิ่มล่าสุด"
+  },
+  {
+    "key": "str_4f387715",
+    "attrs": "",
+    "en": "Account (email)",
+    "th": "บัญชี (อีเมล)"
+  },
+  {
+    "key": "str_4f6b921a",
+    "attrs": "",
+    "en": "Pull up to continue",
+    "th": "ดึงขึ้นต่อ"
+  },
+  {
+    "key": "str_4f8deb8f",
+    "attrs": "",
+    "en": "APK package: ${release.apkName}",
+    "th": "แพ็กเกจ APK: ${release.apkName}"
+  },
+  {
+    "key": "str_4f95b545",
+    "attrs": "",
+    "en": "Scene presets",
+    "th": "พรีเซ็ตฉาก"
+  },
+  {
+    "key": "str_4fda7ed5",
+    "attrs": "",
+    "en": "Traditional",
+    "th": "ตัวเต็ม"
+  },
+  {
+    "key": "str_4ff04453",
+    "attrs": "",
+    "en": "Play slices",
+    "th": "เล่นคลิป"
+  },
+  {
+    "key": "str_4ff13370",
+    "attrs": "",
+    "en": "Check for updates",
+    "th": "ตรวจสอบอัปเดต"
+  },
+  {
+    "key": "str_505d46cb",
+    "attrs": "",
+    "en": "Main process completed, ${pendingCount} items remain to be confirmed",
+    "th": "กระบวนการหลักเสร็จแล้ว เหลืออีก ${pendingCount} รายการรอยืนยัน"
+  },
+  {
+    "key": "str_519ef472",
+    "attrs": "",
+    "en": "When the volume falls below this value, it will be automatically boosted close to this threshold.",
+    "th": "เมื่อระดับเสียงต่ำกว่าค่านี้ ระบบจะขยายเสียงอัตโนมัติให้ใกล้เคียงเกณฑ์นี้"
+  },
+  {
+    "key": "str_51d26fb3",
+    "attrs": "",
+    "en": "RJ code (e.g. RJ123456)",
+    "th": "รหัส RJ (เช่น RJ123456)"
+  },
+  {
+    "key": "str_5271f8ec",
+    "attrs": "",
+    "en": "Long press and drag, then release to save immediately",
+    "th": "กดค้างแล้วลาก ปล่อยเพื่อบันทึกทันที"
+  },
+  {
+    "key": "str_527c97e4",
+    "attrs": "",
+    "en": "The farther the distance, the softer and slightly more attenuated the sound becomes.",
+    "th": "ยิ่งระยะห่างมาก เสียงจะยิ่งนุ่มลงและเบาลงเล็กน้อย"
+  },
+  {
+    "key": "str_53128531",
+    "attrs": "",
+    "en": "${compactHours} h",
+    "th": "${compactHours} ชม."
+  },
+  {
+    "key": "str_539edec4",
+    "attrs": "",
+    "en": "New list name",
+    "th": "ชื่อรายการใหม่"
+  },
+  {
+    "key": "str_53a241f2",
+    "attrs": "",
+    "en": "Past day",
+    "th": "1 วันที่ผ่านมา"
+  },
+  {
+    "key": "str_53ee58eb",
+    "attrs": "",
+    "en": "Online files do not support content preview yet. Please open them with an external app.",
+    "th": "ไฟล์ออนไลน์ยังไม่รองรับการแสดงตัวอย่างเนื้อหา โปรดเปิดด้วยแอปภายนอก"
+  },
+  {
+    "key": "str_544ba34c",
+    "attrs": "",
+    "en": "Access is restricted or risk control was triggered. Please try again later.",
+    "th": "การเข้าถึงถูกจำกัดหรือมีการทริกเกอร์การควบคุมความเสี่ยง โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_54bb3e71",
+    "attrs": "",
+    "en": "Pause fade-out",
+    "th": "ค่อยๆ ลดเสียงเมื่อหยุดชั่วคราว"
+  },
+  {
+    "key": "str_550eea74",
+    "attrs": "",
+    "en": "Bathroom reverb",
+    "th": "เสียงก้องในห้องน้ำ"
+  },
+  {
+    "key": "str_55c77e58",
+    "attrs": "",
+    "en": "Today's listening stats",
+    "th": "สถิติการฟังวันนี้"
+  },
+  {
+    "key": "str_55e525ca",
+    "attrs": "",
+    "en": "Simulates common spaces or transmission media through band limiting, soundstage narrowing, and delayed reflections. It is recommended to choose a preset first, then fine-tune the intensity.",
+    "th": "จำลองพื้นที่หรือสื่อส่งผ่านที่พบบ่อยด้วยการจำกัดย่านความถี่ การทำให้เวทีเสียงแคบลง และการสะท้อนแบบหน่วงเวลา แนะนำให้เลือกพรีเซ็ตก่อน แล้วค่อยปรับความแรงเพิ่มเติม"
+  },
+  {
+    "key": "str_56525d62",
+    "attrs": "",
+    "en": "Scan",
+    "th": "สแกน"
+  },
+  {
+    "key": "str_5676764e",
+    "attrs": "",
+    "en": "Lyrics",
+    "th": "เนื้อเพลง"
+  },
+  {
+    "key": "str_56dd917e",
+    "attrs": "",
+    "en": "Loading online resources",
+    "th": "กำลังโหลดทรัพยากรออนไลน์"
+  },
+  {
+    "key": "str_5721183b",
+    "attrs": "",
+    "en": "Any source",
+    "th": "ทุกแหล่งที่มา"
+  },
+  {
+    "key": "str_5764ab7d",
+    "attrs": "",
+    "en": "Search failed, please try again later",
+    "th": "การค้นหาล้มเหลว โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_5790b75d",
+    "attrs": "",
+    "en": "No tasks to cancel",
+    "th": "ไม่มีงานให้ยกเลิก"
+  },
+  {
+    "key": "str_579321cc",
+    "attrs": "",
+    "en": "Previous track",
+    "th": "แทร็กก่อนหน้า"
+  },
+  {
+    "key": "str_579cea82",
+    "attrs": "",
+    "en": "Volume threshold",
+    "th": "เกณฑ์ระดับเสียง"
+  },
+  {
+    "key": "str_57a2fcc1",
+    "attrs": "",
+    "en": "By listening time",
+    "th": "ตามเวลาการฟัง"
+  },
+  {
+    "key": "str_584cd195",
+    "attrs": "",
+    "en": "Expired",
+    "th": "หมดอายุ"
+  },
+  {
+    "key": "str_58a42f85",
+    "attrs": "",
+    "en": "${playlist.itemCount} tracks total",
+    "th": "ทั้งหมด ${playlist.itemCount} แทร็ก"
+  },
+  {
+    "key": "str_58a8759e",
+    "attrs": "",
+    "en": "Add to play queue",
+    "th": "เพิ่มไปยังคิวเล่น"
+  },
+  {
+    "key": "str_5915c42e",
+    "attrs": "",
+    "en": "This list is empty",
+    "th": "รายการนี้ยังไม่มีเนื้อหา"
+  },
+  {
+    "key": "str_596e927a",
+    "attrs": "",
+    "en": "Progress ${progress.current}/${progress.total}",
+    "th": "ความคืบหน้า ${progress.current}/${progress.total}"
+  },
+  {
+    "key": "str_599b5a32",
+    "attrs": "",
+    "en": "Total",
+    "th": "รวม"
+  },
+  {
+    "key": "str_5a1332c8",
+    "attrs": "",
+    "en": "Request timed out, please try again later",
+    "th": "คำขอหมดเวลา โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_5a27b609",
+    "attrs": "",
+    "en": "Added to playlist",
+    "th": "เพิ่มไปยังเพลย์ลิสต์แล้ว"
+  },
+  {
+    "key": "str_5a2960e1",
+    "attrs": "",
+    "en": "Traditional Chinese",
+    "th": "จีนตัวเต็ม"
+  },
+  {
+    "key": "str_5af67104",
+    "attrs": "",
+    "en": "Purchased",
+    "th": "ที่ซื้อแล้ว"
+  },
+  {
+    "key": "str_5bdfd7ee",
+    "attrs": "",
+    "en": "Duration",
+    "th": "ระยะเวลา"
+  },
+  {
+    "key": "str_5c04ff2f",
+    "attrs": "",
+    "en": "Track",
+    "th": "แทร็กเสียง"
+  },
+  {
+    "key": "str_5ccb34cf",
+    "attrs": "",
+    "en": "Simplified Chinese",
+    "th": "จีนตัวย่อ"
+  },
+  {
+    "key": "str_5d0169cb",
+    "attrs": "",
+    "en": "Sync error: ${e.message}",
+    "th": "การซิงก์ผิดพลาด: ${e.message}"
+  },
+  {
+    "key": "str_5de22177",
+    "attrs": "",
+    "en": "Please log in to DLsite first (requires the Cookie from play.dlsite.com)",
+    "th": "โปรดเข้าสู่ระบบ DLsite ก่อน (ต้องใช้ Cookie จาก play.dlsite.com)"
+  },
+  {
+    "key": "str_5e0e90f7",
+    "attrs": "",
+    "en": "The start point falls within an existing slice",
+    "th": "จุดเริ่มต้นอยู่ภายในคลิปที่มีอยู่แล้ว"
+  },
+  {
+    "key": "str_5e71ef43",
+    "attrs": "",
+    "en": "Circle",
+    "th": "วง/ค่าย"
+  },
+  {
+    "key": "str_5f37af77",
+    "attrs": "",
+    "en": "Rescan completed",
+    "th": "สแกนซ้ำเสร็จแล้ว"
+  },
+  {
+    "key": "str_5fbf18e4",
+    "attrs": "",
+    "en": "No blocked keywords yet",
+    "th": "ยังไม่มีคำที่บล็อก"
+  },
+  {
+    "key": "str_5ff217a6",
+    "attrs": "",
+    "en": "[（(]\\\\s*e\\\\.g\\\\.\\\\s*RJ\\\\d{6,}\\\\s*[)）]",
+    "th": "[（(]\\\\s*เช่น\\\\s*RJ\\\\d{6,}\\\\s*[)）]"
+  },
+  {
+    "key": "str_601c253e",
+    "attrs": "",
+    "en": "When you tap play, the volume will smoothly rise from low to normal over the set duration.",
+    "th": "เมื่อแตะเล่น ระดับเสียงจะค่อยๆ เพิ่มจากเบาไปเป็นปกติอย่างนุ่มนวลภายในระยะเวลาที่กำหนด"
+  },
+  {
+    "key": "str_60337f85",
+    "attrs": "",
+    "en": "Off: the background and cover stay centered and static",
+    "th": "ปิด: พื้นหลังและปกจะอยู่กึ่งกลางและไม่เคลื่อนไหว"
+  },
+  {
+    "key": "str_615385c4",
+    "attrs": "",
+    "en": "Failed to update slice",
+    "th": "อัปเดตคลิปไม่สำเร็จ"
+  },
+  {
+    "key": "str_625fb26b",
+    "attrs": "",
+    "en": "Cancel",
+    "th": "ยกเลิก"
+  },
+  {
+    "key": "str_6356783c",
+    "attrs": "",
+    "en": "Unable to open GitHub release page",
+    "th": "ไม่สามารถเปิดหน้ารุ่นเผยแพร่ GitHub ได้"
+  },
+  {
+    "key": "str_64f79450",
+    "attrs": "",
+    "en": "Lyrics page",
+    "th": "หน้าคำร้อง"
+  },
+  {
+    "key": "str_6588591f",
+    "attrs": "",
+    "en": "Scene effects",
+    "th": "เอฟเฟกต์ฉาก"
+  },
+  {
+    "key": "str_65a85106",
+    "attrs": "",
+    "en": "Unable to open: path is empty",
+    "th": "เปิดไม่ได้: พาธว่างเปล่า"
+  },
+  {
+    "key": "str_65dd9ef1",
+    "attrs": "",
+    "en": "Waiting",
+    "th": "กำลังรอ"
+  },
+  {
+    "key": "str_65f4cae6",
+    "attrs": "",
+    "en": "Exact RJ code search",
+    "th": "ค้นหารหัส RJ แบบตรงตัว"
+  },
+  {
+    "key": "str_6634e209",
+    "attrs": "",
+    "en": "Refresh failed, please try again later",
+    "th": "รีเฟรชไม่สำเร็จ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_6667e8c6",
+    "attrs": "",
+    "en": "Preview video",
+    "th": "วิดีโอตัวอย่าง"
+  },
+  {
+    "key": "str_66eeacd9",
+    "attrs": "",
+    "en": "Select all",
+    "th": "เลือกทั้งหมด"
+  },
+  {
+    "key": "str_67033521",
+    "attrs": "",
+    "en": "${selectedPaths.size} selected",
+    "th": "เลือกแล้ว ${selectedPaths.size} รายการ"
+  },
+  {
+    "key": "str_671c0d80",
+    "attrs": "",
+    "en": "Japanese",
+    "th": "ภาษาญี่ปุ่น"
+  },
+  {
+    "key": "str_6770b3c2",
+    "attrs": "",
+    "en": "Cancel current",
+    "th": "ยกเลิกปัจจุบัน"
+  },
+  {
+    "key": "str_67fe2331",
+    "attrs": "",
+    "en": "Drag",
+    "th": "ลาก"
+  },
+  {
+    "key": "str_68460ac1",
+    "attrs": "",
+    "en": "Set successfully, playback is expected to pause at ${endAtText}",
+    "th": "ตั้งค่าสำเร็จ คาดว่าจะหยุดเล่นที่ ${endAtText}"
+  },
+  {
+    "key": "str_6869710f",
+    "attrs": "",
+    "en": "Continue playback when wired/Bluetooth headphones or other external outputs are connected",
+    "th": "เล่นต่อเมื่อเชื่อมต่อหูฟังแบบมีสาย/บลูทูธหรือเอาต์พุตภายนอกอื่นๆ"
+  },
+  {
+    "key": "str_686c2b78",
+    "attrs": "",
+    "en": "Grant overlay permission",
+    "th": "อนุญาตสิทธิ์หน้าต่างลอย"
+  },
+  {
+    "key": "str_687211d5",
+    "attrs": "",
+    "en": "Set as end",
+    "th": "ตั้งเป็นจุดสิ้นสุด"
+  },
+  {
+    "key": "str_68905cf3",
+    "attrs": "",
+    "en": "Online",
+    "th": "ออนไลน์"
+  },
+  {
+    "key": "str_692c3b3c",
+    "attrs": "",
+    "en": "Blocked keywords, e.g.: NTR",
+    "th": "คำที่บล็อก เช่น: NTR"
+  },
+  {
+    "key": "str_694fc5ef",
+    "attrs": "",
+    "en": "Refresh",
+    "th": "รีเฟรช"
+  },
+  {
+    "key": "str_698421af",
+    "attrs": "",
+    "en": "Local library results",
+    "th": "ผลลัพธ์คลังในเครื่อง"
+  },
+  {
+    "key": "str_69b2ad6d",
+    "attrs": "",
+    "en": "SFW toggle",
+    "th": "สวิตช์ SFW"
+  },
+  {
+    "key": "str_69b6fdea",
+    "attrs": "",
+    "en": "Added ${summary.addedCount} items to $playlistName",
+    "th": "เพิ่ม ${summary.addedCount} รายการไปยัง $playlistName แล้ว"
+  },
+  {
+    "key": "str_69d002a0",
+    "attrs": "",
+    "en": "A sync task is in progress, please try again later",
+    "th": "กำลังดำเนินงานซิงก์ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_69e51be3",
+    "attrs": "",
+    "en": "Slice management",
+    "th": "จัดการคลิป"
+  },
+  {
+    "key": "str_6a0d4168",
+    "attrs": "",
+    "en": "Failed to fetch purchased list (${resp.code})",
+    "th": "ดึงรายการที่ซื้อแล้วไม่สำเร็จ (${resp.code})"
+  },
+  {
+    "key": "str_6a464976",
+    "attrs": "",
+    "en": "Higher values raise the pitch, lower values lower it (playback duration may not change).",
+    "th": "ค่ายิ่งมากระดับเสียงยิ่งสูง ค่ายิ่งน้อยระดับเสียงยิ่งต่ำ (ความยาวการเล่นอาจไม่เปลี่ยน)"
+  },
+  {
+    "key": "str_6a51c612",
+    "attrs": "",
+    "en": "Clear search history?",
+    "th": "ล้างประวัติการค้นหาหรือไม่?"
+  },
+  {
+    "key": "str_6a620e3c",
+    "attrs": "",
+    "en": "Sync",
+    "th": "ซิงก์"
+  },
+  {
+    "key": "str_6b57b1fa",
+    "attrs": "",
+    "en": "Deletion failed, please try again later",
+    "th": "ลบไม่สำเร็จ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_6b7f7569",
+    "attrs": "",
+    "en": "Set as current",
+    "th": "ตั้งเป็นปัจจุบัน"
+  },
+  {
+    "key": "str_6bdee1ed",
+    "attrs": "",
+    "en": "${tracks.size} audio tracks",
+    "th": "${tracks.size} ไฟล์เสียง"
+  },
+  {
+    "key": "str_6bf41f64",
+    "attrs": "",
+    "en": "When enabled, the stereo image moves automatically based on the speed.",
+    "th": "เมื่อเปิดใช้งาน ภาพเสียงจะเคลื่อนที่อัตโนมัติตามความเร็ว"
+  },
+  {
+    "key": "str_6bf46726",
+    "attrs": "",
+    "en": "Release to turn page",
+    "th": "ปล่อยเพื่อเปลี่ยนหน้า"
+  },
+  {
+    "key": "str_6c52c221",
+    "attrs": "",
+    "en": "Online resources",
+    "th": "ทรัพยากรออนไลน์"
+  },
+  {
+    "key": "str_6c990897",
+    "attrs": "",
+    "en": "Bind RJ and cloud sync",
+    "th": "ผูก RJ และซิงก์คลาวด์"
+  },
+  {
+    "key": "str_6cb0d682",
+    "attrs": "",
+    "en": "Slice overlaps with an existing slice",
+    "th": "คลิปซ้อนทับกับคลิปที่มีอยู่แล้ว"
+  },
+  {
+    "key": "str_6cfd8797",
+    "attrs": "",
+    "en": "Open file",
+    "th": "เปิดไฟล์"
+  },
+  {
+    "key": "str_6d34d246",
+    "attrs": "",
+    "en": "Local sync",
+    "th": "ซิงก์ในเครื่อง"
+  },
+  {
+    "key": "str_6d3d60c7",
+    "attrs": "",
+    "en": "Login failed, please check your account and password",
+    "th": "ล็อกอินไม่สำเร็จ โปรดตรวจสอบบัญชีและรหัสผ่าน"
+  },
+  {
+    "key": "str_6e1bdee8",
+    "attrs": "",
+    "en": "List name already exists: $trimmed",
+    "th": "ชื่อรายการมีอยู่แล้ว: $trimmed"
+  },
+  {
+    "key": "str_6f15060a",
+    "attrs": "",
+    "en": "\", meaning multiple words will be searched as an exact phrase",
+    "th": "\", หมายถึงจะค้นหาหลายคำเป็นวลีแบบตรงตัว"
+  },
+  {
+    "key": "str_6ff96d8c",
+    "attrs": "",
+    "en": "No matching local content",
+    "th": "ไม่มีเนื้อหาในเครื่องที่ตรงกัน"
+  },
+  {
+    "key": "str_700e986e",
+    "attrs": "",
+    "en": "List loop",
+    "th": "วนซ้ำรายการ"
+  },
+  {
+    "key": "str_709f7c56",
+    "attrs": "",
+    "en": "E-book",
+    "th": "อีบุ๊ก"
+  },
+  {
+    "key": "str_7170bb3d",
+    "attrs": "",
+    "en": "Save current",
+    "th": "บันทึกปัจจุบัน"
+  },
+  {
+    "key": "str_71fa3bd0",
+    "attrs": "",
+    "en": "Login successful",
+    "th": "ล็อกอินสำเร็จ"
+  },
+  {
+    "key": "str_726dd5df",
+    "attrs": "",
+    "en": "Audio",
+    "th": "เสียง"
+  },
+  {
+    "key": "str_72a1c1c1",
+    "attrs": "",
+    "en": "Playback controls",
+    "th": "ตัวควบคุมการเล่น"
+  },
+  {
+    "key": "str_732c58d0",
+    "attrs": "",
+    "en": "DLsite Play returned an empty signature",
+    "th": "DLsite Play ส่งลายเซ็นกลับมาเป็นค่าว่าง"
+  },
+  {
+    "key": "str_73363e98",
+    "attrs": "",
+    "en": "Set to 0",
+    "th": "ตั้งเป็น 0"
+  },
+  {
+    "key": "str_73eacf06",
+    "attrs": "",
+    "en": "Slices cleared",
+    "th": "ล้างคลิปแล้ว"
+  },
+  {
+    "key": "str_758d35a5",
+    "attrs": "",
+    "en": "Highest rated",
+    "th": "คะแนนสูงสุด"
+  },
+  {
+    "key": "str_75fc2edc",
+    "attrs": "",
+    "en": "Missing RJ code, unable to load",
+    "th": "ไม่มีรหัส RJ จึงไม่สามารถโหลดได้"
+  },
+  {
+    "key": "str_769d88e4",
+    "attrs": "",
+    "en": "Done",
+    "th": "เสร็จสิ้น"
+  },
+  {
+    "key": "str_786fa2a1",
+    "attrs": "",
+    "en": "Lyrics color",
+    "th": "สีเนื้อเพลง"
+  },
+  {
+    "key": "str_78efd9c5",
+    "attrs": "",
+    "en": "Favorited content will appear here",
+    "th": "เนื้อหาที่ชื่นชอบจะแสดงที่นี่"
+  },
+  {
+    "key": "str_79733e8c",
+    "attrs": "",
+    "en": "Unable to determine the DLsite Play work ID",
+    "th": "ไม่สามารถระบุรหัสผลงานของ DLsite Play ได้"
+  },
+  {
+    "key": "str_79d3abe9",
+    "attrs": "",
+    "en": "Copy",
+    "th": "คัดลอก"
+  },
+  {
+    "key": "str_79f029a1",
+    "attrs": "",
+    "en": "No local albums have been scanned yet",
+    "th": "ยังไม่มีการสแกนอัลบั้มในเครื่อง"
+  },
+  {
+    "key": "str_7a1add9b",
+    "attrs": "",
+    "en": "Tap files to add or remove them from the selection",
+    "th": "แตะไฟล์เพื่อเพิ่มหรือลดการเลือก"
+  },
+  {
+    "key": "str_7a416554",
+    "attrs": "",
+    "en": "Simplified",
+    "th": "ตัวย่อ"
+  },
+  {
+    "key": "str_7ad7aeb9",
+    "attrs": "",
+    "en": "Rescan failed",
+    "th": "สแกนซ้ำไม่สำเร็จ"
+  },
+  {
+    "key": "str_7b79f1a2",
+    "attrs": "",
+    "en": "Album cards",
+    "th": "การ์ดอัลบั้ม"
+  },
+  {
+    "key": "str_7c55961c",
+    "attrs": "",
+    "en": "Cloud sync canceled",
+    "th": "ยกเลิกการซิงก์คลาวด์แล้ว"
+  },
+  {
+    "key": "str_7c68a655",
+    "attrs": "",
+    "en": "Pause playback immediately when the speaker, wired/Bluetooth headphones are disconnected, or Bluetooth is turned off",
+    "th": "หยุดเล่นทันทีเมื่อถอดลำโพงหรือหูฟังแบบมีสาย/บลูทูธออก หรือเมื่อปิดบลูทูธ"
+  },
+  {
+    "key": "str_7cb68c1a",
+    "attrs": "",
+    "en": "Slice created",
+    "th": "สร้างคลิปแล้ว"
+  },
+  {
+    "key": "str_7d03e3f9",
+    "attrs": "",
+    "en": "Access is currently restricted. Please try again later.",
+    "th": "การเข้าถึงถูกจำกัดอยู่ในขณะนี้ โปรดลองอีกครั้งภายหลัง"
+  },
+  {
+    "key": "str_7d922213",
+    "attrs": "",
+    "en": "Simplified Chinese",
+    "th": "จีนตัวย่อ"
+  },
+  {
+    "key": "str_7ddbe15c",
+    "attrs": "",
+    "en": "Network",
+    "th": "เครือข่าย"
+  },
+  {
+    "key": "str_7e42a7d7",
+    "attrs": "",
+    "en": "Shuffle",
+    "th": "สุ่มเล่น"
+  },
+  {
+    "key": "str_7e91d9a0",
+    "attrs": "",
+    "en": "Repeat one",
+    "th": "เล่นซ้ำหนึ่งเพลง"
+  },
+  {
+    "key": "str_7ec7feb7",
+    "attrs": "",
+    "en": "Cancel sync",
+    "th": "ยกเลิกการซิงก์"
+  },
+  {
+    "key": "str_7f0425a8",
+    "attrs": "",
+    "en": "Untitled",
+    "th": "ไม่มีชื่อ"
+  },
+  {
+    "key": "str_7fcf42ed",
+    "attrs": "",
+    "en": "Video",
+    "th": "วิดีโอ"
+  },
+  {
+    "key": "str_812710eb",
+    "attrs": "",
+    "en": "Failed to add lyrics",
+    "th": "เพิ่มเนื้อเพลงไม่สำเร็จ"
+  },
+  {
+    "key": "str_81351ac4",
+    "attrs": "",
+    "en": "Play/Pause",
+    "th": "เล่น/หยุดชั่วคราว"
+  },
+  {
+    "key": "str_81d9f505",
+    "attrs": "",
+    "en": "About",
+    "th": "เกี่ยวกับ"
+  },
+  {
+    "key": "str_826d6f41",
+    "attrs": "",
+    "en": "Already up to date: ${s.latestVersionName}",
+    "th": "เป็นเวอร์ชันล่าสุดแล้ว: ${s.latestVersionName}"
+  },
+  {
+    "key": "str_829abe5a",
+    "attrs": "",
+    "en": "Group",
+    "th": "กลุ่ม"
+  },
+  {
+    "key": "str_82a50f47",
+    "attrs": "",
+    "en": "Failed to obtain login Cookie",
+    "th": "ไม่ได้รับ Cookie สำหรับการล็อกอิน"
+  },
+  {
+    "key": "str_82f01423",
+    "attrs": "",
+    "en": "OR search (separated by English vertical bars): \"school|uniform\", meaning one or more of the specified keywords may be included",
+    "th": "หรือค้นหา (คั่นด้วยเครื่องหมายขีดตั้งภาษาอังกฤษ): \"โรงเรียน|ชุดนักเรียน\" หมายถึงมีคำสำคัญที่ระบุอย่างน้อยหนึ่งคำก็ได้"
+  },
+  {
+    "key": "str_835a8142",
+    "attrs": "",
+    "en": "Online audio does not support tag management yet",
+    "th": "เสียงออนไลน์ยังไม่รองรับการจัดการแท็กในขณะนี้"
+  },
+  {
+    "key": "str_8395660e",
+    "attrs": "",
+    "en": "Scanning: ${progress.currentFile}",
+    "th": "กำลังสแกน: ${progress.currentFile}"
+  },
+  {
+    "key": "str_83ecf907",
+    "attrs": "",
+    "en": "No download tasks yet",
+    "th": "ยังไม่มีงานดาวน์โหลด"
+  },
+  {
+    "key": "str_8441b348",
+    "attrs": "",
+    "en": "No limit",
+    "th": "ไม่จำกัด"
+  },
+  {
+    "key": "str_8456bc40",
+    "attrs": "",
+    "en": "Font",
+    "th": "แบบอักษร"
+  },
+  {
+    "key": "str_84cde6f2",
+    "attrs": "",
+    "en": "No sample images yet",
+    "th": "ยังไม่มีภาพตัวอย่าง"
+  },
+  {
+    "key": "str_85996dec",
+    "attrs": "",
+    "en": "Sound source distance",
+    "th": "ระยะห่างของแหล่งเสียง"
+  },
+  {
+    "key": "str_85d7ab52",
+    "attrs": "",
+    "en": "Auto surround sound source",
+    "th": "แหล่งเสียงวนอัตโนมัติ"
+  },
+  {
+    "key": "str_86048b4f",
+    "attrs": "",
+    "en": "Remove",
+    "th": "นำออก"
+  },
+  {
+    "key": "str_863af597",
+    "attrs": "",
+    "en": "Floating lyrics enabled",
+    "th": "เปิดเนื้อเพลงลอยแล้ว"
+  },
+  {
+    "key": "str_866b795e",
+    "attrs": "",
+    "en": "Loading failed",
+    "th": "โหลดไม่สำเร็จ"
+  },
+  {
+    "key": "str_869ec83e",
+    "attrs": "",
+    "en": "Unused",
+    "th": "ยังไม่ได้ใช้"
+  },
+  {
+    "key": "str_87332dbd",
+    "attrs": "",
+    "en": "Sync error: ${error.message}",
+    "th": "การซิงก์ผิดพลาด: ${error.message}"
+  },
+  {
+    "key": "str_87b472b9",
+    "attrs": "formatted=\"false\"",
+    "en": "Right ${(settings.balance * 100).toInt()}%",
+    "th": "เอียงขวา ${(settings.balance * 100).toInt()}%"
+  },
+  {
+    "key": "str_87c33fb4",
+    "attrs": "",
+    "en": "Stereo",
+    "th": "สเตอริโอ"
+  },
+  {
+    "key": "str_87e06905",
+    "attrs": "",
+    "en": "Track list",
+    "th": "รายการแทร็ก"
+  },
+  {
+    "key": "str_88fd1adf",
+    "attrs": "",
+    "en": "No groups created yet",
+    "th": "ยังไม่ได้สร้างกลุ่ม"
+  },
+  {
+    "key": "str_8904c43b",
+    "attrs": "",
+    "en": "ONE (included)",
+    "th": "ONE (มีแล้ว)"
+  },
+  {
+    "key": "str_898a30d0",
+    "attrs": "",
+    "en": "No lists created yet",
+    "th": "ยังไม่ได้สร้างรายการ"
+  },
+  {
+    "key": "str_89b5d3d5",
+    "attrs": "",
+    "en": "Password cannot be empty",
+    "th": "รหัสผ่านห้ามว่าง"
+  },
+  {
+    "key": "str_89baa8d8",
+    "attrs": "",
+    "en": "Unable to open this image",
+    "th": "ไม่สามารถเปิดรูปภาพนี้ได้"
+  },
+  {
+    "key": "str_8a463bf5",
+    "attrs": "",
+    "en": "Online playback",
+    "th": "เล่นออนไลน์"
+  }
+]

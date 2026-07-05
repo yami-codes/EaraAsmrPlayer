@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,8 +70,8 @@ fun TagManagerSheet(
             IconButton(onClick = onClose) {
                 Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
             }
-            Text(text = "标签管理", modifier = Modifier.weight(1f))
-            TextButton(onClick = onClose) { Text("完成") }
+            Text(text = stringResource(R.string.str_2ec512a4), modifier = Modifier.weight(1f))
+            TextButton(onClick = onClose) { Text(stringResource(R.string.str_769d88e4)) }
         }
 
         OutlinedTextField(
@@ -77,7 +79,7 @@ fun TagManagerSheet(
             onValueChange = { filter = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             singleLine = true,
-            placeholder = { Text("搜索标签") }
+            placeholder = { Text(stringResource(R.string.str_2f37a9e2)) }
         )
 
         LazyColumn(
@@ -101,15 +103,15 @@ fun TagManagerSheet(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (tag.albumCount == 0L) {
-                                    TagManagerMetricBadge(label = "未使用")
+                                    TagManagerMetricBadge(label = stringResource(R.string.str_869ec83e))
                                 } else {
                                     TagManagerMetricBadge(
-                                        label = "用户标注",
+                                        label = stringResource(R.string.str_b6fd576f),
                                         value = tag.userAlbumCount.toString(),
                                         highlighted = true
                                     )
                                     TagManagerMetricBadge(
-                                        label = "总计",
+                                        label = stringResource(R.string.str_599b5a32),
                                         value = tag.albumCount.toString()
                                     )
                                 }
@@ -118,7 +120,7 @@ fun TagManagerSheet(
                     },
                     supportingContent = {
                         Text(
-                            text = "点击可重命名或删除",
+                            text = stringResource(R.string.str_a7d7efd8),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textTertiary
                         )
@@ -141,10 +143,10 @@ fun TagManagerSheet(
         if (tag != null) {
             FlatActionDialog(
                 onDismissRequest = { showRenameDialog = false },
-                message = "修改标签名称，或删除这个用户标签。",
+                message = stringResource(R.string.str_ed74dfaf),
                 actions = listOf(
                     FlatDialogAction(
-                        text = "删除",
+                        text = stringResource(R.string.str_2f4aaddd),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showRenameDialog = false
@@ -153,7 +155,7 @@ fun TagManagerSheet(
                     ),
                     FlatDialogAction("取消", onClick = { showRenameDialog = false }),
                     FlatDialogAction(
-                        text = "保存",
+                        text = stringResource(R.string.str_be5fbbe3),
                         tone = FlatDialogActionTone.Primary,
                         enabled = renameText.trim().isNotBlank(),
                         onClick = {
@@ -178,11 +180,11 @@ fun TagManagerSheet(
         if (tag != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                message = "将从所有用户标注中移除该标签。",
+                message = stringResource(R.string.str_beca1d1c),
                 actions = listOf(
                     FlatDialogAction("取消", onClick = { showDeleteDialog = false }),
                     FlatDialogAction(
-                        text = "删除",
+                        text = stringResource(R.string.str_2f4aaddd),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             onDelete(tag.id)

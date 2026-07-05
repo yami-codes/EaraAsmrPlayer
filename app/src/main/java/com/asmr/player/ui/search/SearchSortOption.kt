@@ -1,21 +1,24 @@
 package com.asmr.player.ui.search
 
+import androidx.annotation.StringRes
+import com.asmr.player.R
+
 enum class SearchSortOption(
-    val label: String,
+    @StringRes val labelRes: Int,
     val dlsiteOrder: String
 ) {
-    Trend("人气顺序", "trend"),
-    ReleaseNew("最新发售", "release_d"),
-    DLCount("销量最高", "dl_d"),
-    PriceHigh("价格最高", "price_d")
+    Trend(R.string.search_sort_trend, "trend"),
+    ReleaseNew(R.string.search_sort_release_new, "release_d"),
+    DLCount(R.string.search_sort_dl_count, "dl_d"),
+    PriceHigh(R.string.search_sort_price_high, "price_d")
 }
 
 enum class SearchCollectedSortOption(
-    val label: String,
+    @StringRes val labelRes: Int,
     val backendSort: String
 ) {
-    ReleaseNew("最新发售", "release"),
-    RatingHigh("评分最高", "rating");
+    ReleaseNew(R.string.search_sort_release_new, "release"),
+    RatingHigh(R.string.search_sort_rating_high, "rating");
 
     companion object {
         fun fromName(name: String?): SearchCollectedSortOption {

@@ -130,6 +130,7 @@ dependencies {
     val paging_version = "3.2.1"
 
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.7.0")
     implementation("androidx.savedstate:savedstate:1.2.1")
@@ -191,6 +192,7 @@ dependencies {
     // Coil (Image Loading)
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation(project(":shared"))
 
     // Unit Testing
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))

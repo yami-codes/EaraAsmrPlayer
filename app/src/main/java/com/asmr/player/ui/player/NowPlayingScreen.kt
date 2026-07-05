@@ -1,5 +1,6 @@
 ﻿package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -304,10 +305,11 @@ internal sealed interface ListenTogetherAudiencePresentation {
 }
 
 internal fun resolveListenTogetherAudiencePresentation(
-    state: ListenTogetherUiState
+    state: ListenTogetherUiState,
+    unsupportedLabel: String
 ): ListenTogetherAudiencePresentation? = when {
     !state.available && state.status == ListenTogetherStatus.Unsupported ->
-        ListenTogetherAudiencePresentation.Status("当前音频无法参与一起听")
+        ListenTogetherAudiencePresentation.Status(unsupportedLabel)
     state.listenerCount != null ->
         ListenTogetherAudiencePresentation.Audience(
             companionCount = (state.listenerCount - 1).coerceAtLeast(0)
@@ -405,7 +407,7 @@ private fun ListenTogetherAudienceCountText(
                     )
                 }
                 Text(
-                    text = " 人正在和你一起听",
+                    text = stringResource(R.string.str_fd8f58a1),
                     style = textStyle,
                     color = color,
                     maxLines = 1,
@@ -414,7 +416,7 @@ private fun ListenTogetherAudienceCountText(
             }
         } else {
             Text(
-                text = "孤独赏鉴中",
+                text = stringResource(R.string.str_c7af1efa),
                 modifier = modifier,
                 style = textStyle,
                 color = color,
@@ -433,7 +435,10 @@ private fun ListenTogetherAudienceLine(
     pageEntranceSettled: Boolean = true
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val presentation = resolveListenTogetherAudiencePresentation(state)
+    val presentation = resolveListenTogetherAudiencePresentation(
+        state = state,
+        unsupportedLabel = stringResource(R.string.str_bbede5f7)
+    )
 
     val displayTarget = if (pageEntranceSettled) presentation else null
 
@@ -1626,13 +1631,13 @@ internal fun NowPlayingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "切片管理",
+                            text = stringResource(R.string.str_69e51be3),
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         TextButton(onClick = { viewModel.clearSlicesForCurrentTrack() }) {
-                            Text("清空")
+                            Text(stringResource(R.string.str_288f0c40))
                         }
                     }
 
@@ -1666,7 +1671,7 @@ internal fun NowPlayingScreen(
 
                     if (sliceUiState.slices.isEmpty()) {
                         Text(
-                            text = "暂无切片",
+                            text = stringResource(R.string.str_04359b1d),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.textTertiary,
                             modifier = Modifier.padding(vertical = 18.dp)
@@ -1729,7 +1734,7 @@ internal fun NowPlayingScreen(
                                         IconButton(onClick = { viewModel.playSlicePreview(slice) }) {
                                             Icon(
                                                 imageVector = Icons.Rounded.PlayArrow,
-                                                contentDescription = "播放切片",
+                                                contentDescription = stringResource(R.string.str_4ff04453),
                                                 tint = colorScheme.onSurface
                                             )
                                         }
@@ -1737,7 +1742,7 @@ internal fun NowPlayingScreen(
                                         IconButton(onClick = { viewModel.deleteSlice(slice.id) }) {
                                             Icon(
                                                 imageVector = Icons.Outlined.DeleteOutline,
-                                                contentDescription = "删除切片",
+                                                contentDescription = stringResource(R.string.str_a68f3a88),
                                                 tint = colorScheme.onSurface.copy(alpha = 0.8f)
                                             )
                                         }
