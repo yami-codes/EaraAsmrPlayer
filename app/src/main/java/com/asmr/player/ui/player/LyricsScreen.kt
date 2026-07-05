@@ -51,7 +51,7 @@ fun LyricsScreen(
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (lyrics.isEmpty()) {
-            Text(text = stringResource(R.string.str_c24962a6), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+            Text(text = stringResource(R.string.no_lyrics_yet), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
         } else {
             LazyColumn(
                 state = listState,

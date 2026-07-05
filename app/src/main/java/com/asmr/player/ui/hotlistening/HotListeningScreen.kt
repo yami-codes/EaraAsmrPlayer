@@ -116,9 +116,9 @@ fun HotListeningScreen(
     }
 
     val periods = listOf(
-        "day" to stringResource(R.string.str_53a241f2),
-        "week" to stringResource(R.string.str_e9f2b5e1),
-        "month" to stringResource(R.string.str_24cf5e68)
+        "day" to stringResource(R.string.past_day),
+        "week" to stringResource(R.string.past_week),
+        "month" to stringResource(R.string.past_month)
     )
 
     fun scrollToTop() {
@@ -214,8 +214,8 @@ fun HotListeningScreen(
                 ) {
                     Text(
                         text = when (selectedSortMode) {
-                            HotListeningSortMode.PlayCount -> stringResource(R.string.str_f965fea3)
-                            HotListeningSortMode.ListenDuration -> stringResource(R.string.str_5bdfd7ee)
+                            HotListeningSortMode.PlayCount -> stringResource(R.string.count)
+                            HotListeningSortMode.ListenDuration -> stringResource(R.string.duration)
                         },
                         style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
@@ -243,13 +243,13 @@ fun HotListeningScreen(
 
             is HotListeningUiState.Error -> EaraBrandedEmptyState(
                 sectionTitle = stringResource(R.string.nav_hot_listening),
-                headline = stringResource(R.string.str_1f73e2c7),
+                headline = stringResource(R.string.failed_load_data),
                 sectionIcon = Icons.Rounded.Whatshot,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp),
                 footer = {
                     TextButton(onClick = { viewModel.refresh() }) {
-                        Text(stringResource(R.string.str_132c5cdc))
+                        Text(stringResource(R.string.retry))
                     }
                 }
             )
@@ -262,7 +262,7 @@ fun HotListeningScreen(
                 if (state.entries.isEmpty() && state.blockedEntries.isEmpty()) {
                     EaraBrandedEmptyState(
                         sectionTitle = stringResource(R.string.nav_hot_listening),
-                        headline = stringResource(R.string.str_af0f065e),
+                        headline = stringResource(R.string.no_ranking_data_yet),
                         sectionIcon = Icons.Rounded.Whatshot,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp)
@@ -382,8 +382,8 @@ private fun HotListeningListItem(
     copyMeta: (String, String) -> Unit
 ) {
     val album = entry.album
-    val circleLabel = stringResource(R.string.str_5e71ef43)
-    val tagLabel = stringResource(R.string.str_14d34236)
+    val circleLabel = stringResource(R.string.circles)
+    val tagLabel = stringResource(R.string.tags)
     val context = LocalContext.current
     AlbumItem(
         album = album,
@@ -404,8 +404,8 @@ private fun HotListeningGridItem(
     copyMeta: (String, String) -> Unit
 ) {
     val album = entry.album
-    val circleLabel = stringResource(R.string.str_5e71ef43)
-    val tagLabel = stringResource(R.string.str_14d34236)
+    val circleLabel = stringResource(R.string.circles)
+    val tagLabel = stringResource(R.string.tags)
     val context = LocalContext.current
     AlbumGridItem(
         album = album,
@@ -435,7 +435,7 @@ private fun BlockedHotListeningFooter(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.str_bd5c6e45, blockedCount),
+            text = stringResource(R.string.works_blocked, blockedCount),
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = colorScheme.textSecondary
         )
@@ -449,9 +449,9 @@ private fun BlockedHotListeningFooter(
             )
             Text(
                 if (expanded) {
-                    stringResource(R.string.str_e082621c)
+                    stringResource(R.string.log_collapse)
                 } else {
-                    stringResource(R.string.str_e2edde5a)
+                    stringResource(R.string.log_expand)
                 }
             )
         }

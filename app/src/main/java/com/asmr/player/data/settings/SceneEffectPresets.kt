@@ -39,8 +39,8 @@ object SceneEffectPresets {
     val All = listOf(
         SceneEffectPreset(
             id = DefaultPresetId,
-            labelRes = R.string.str_550eea74,
-            descriptionRes = R.string.str_f2da191b,
+            labelRes = R.string.bathroom_reverb,
+            descriptionRes = R.string.tiled_short_echo,
             profile = SceneEffectProfile(
                 dryMix = 0.58f,
                 directMix = 0.30f,
@@ -64,8 +64,8 @@ object SceneEffectPresets {
         ),
         SceneEffectPreset(
             id = "through_wall",
-            labelRes = R.string.str_0999034a,
-            descriptionRes = R.string.str_207ad2c8,
+            labelRes = R.string.under_blanket_muffled,
+            descriptionRes = R.string.muffled_cocoon_feel,
             profile = SceneEffectProfile(
                 dryMix = 0.03f,
                 directMix = 1.02f,
@@ -87,8 +87,8 @@ object SceneEffectPresets {
         ),
         SceneEffectPreset(
             id = "telephone",
-            labelRes = R.string.str_d36467ba,
-            descriptionRes = R.string.str_f1772644,
+            labelRes = R.string.telephone,
+            descriptionRes = R.string.narrowband_call,
             profile = SceneEffectProfile(
                 dryMix = 0f,
                 directMix = 1.08f,

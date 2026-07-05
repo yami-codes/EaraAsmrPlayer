@@ -167,9 +167,9 @@ internal fun PlaylistDetailContent(
     val draggedItemElevation = if (colorScheme.isDark) 10.dp else 14.dp
     val isFavorites = title == PlaylistRepository.PLAYLIST_FAVORITES
     val emptyHeadline = if (isFavorites) {
-        stringResource(R.string.str_78efd9c5)
+        stringResource(R.string.favorited_content_appear)
     } else {
-        stringResource(R.string.str_5915c42e)
+        stringResource(R.string.list_empty)
     }
     val emptySectionTitle = if (isFavorites) {
         stringResource(R.string.nav_favorites)
@@ -247,14 +247,14 @@ internal fun PlaylistDetailContent(
     }
 
     pendingRemoveItem?.let { item ->
-        val itemTitle = item.title.ifBlank { stringResource(R.string.str_unnamed_track) }
+        val itemTitle = item.title.ifBlank { stringResource(R.string.untitled_label) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveItem = null },
-            message = stringResource(R.string.str_108428dc, title, itemTitle),
+            message = stringResource(R.string.remove, title, itemTitle),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveItem = null }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveItem = null }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_86048b4f),
+                    text = stringResource(R.string.log_action_remove),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveItem = null
@@ -298,7 +298,7 @@ private fun PlaylistItemRow(
             prefixSegments = listOf(item.artist, item.albumCv)
         )
         AudioItemRow(
-            title = item.title.ifBlank { stringResource(R.string.str_unnamed_track) },
+            title = item.title.ifBlank { stringResource(R.string.untitled_label) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = showSubtitleStamp,
@@ -322,21 +322,21 @@ private fun PlaylistItemRow(
             titleTextStyle = MaterialTheme.typography.bodyMedium,
             actions = listOf(
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_b85270cd),
+                    label = stringResource(R.string.playback),
                     onClick = onPlay
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_f1d9539d),
+                    label = stringResource(R.string.move_top),
                     onClick = onMoveToTop,
                     testTag = PLAYLIST_DETAIL_MOVE_TOP_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_322defa2),
+                    label = stringResource(R.string.move_end),
                     onClick = onMoveToBottom,
                     testTag = PLAYLIST_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_86048b4f),
+                    label = stringResource(R.string.log_action_remove),
                     onClick = onRemove,
                     showDividerBefore = true
                 )

@@ -127,13 +127,13 @@ fun DownloadsScreen(
             OutlinedTextField(
                 value = rjQuery,
                 onValueChange = { rjQuery = it },
-                label = { Text(stringResource(R.string.str_65f4cae6)) },
+                label = { Text(stringResource(R.string.exact_rj_code_search)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Text(
-                text = stringResource(R.string.str_021ded54, downloadRoot),
+                text = stringResource(R.string.download_folder, downloadRoot),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -161,9 +161,9 @@ fun DownloadsScreen(
                 ) {
                     Text(
                         text = if (normalizedQuery.isBlank()) {
-                            stringResource(R.string.str_83ecf907)
+                            stringResource(R.string.no_download_tasks_yet)
                         } else {
-                            stringResource(R.string.str_eaf8581b, normalizedQuery)
+                            stringResource(R.string.task_not_found, normalizedQuery)
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -210,7 +210,7 @@ fun DownloadsScreen(
                     is PendingDeleteAction.Task -> {
                         val task = tasks.firstOrNull { it.taskId == action.taskId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = context.getString(R.string.str_8cccae5e, task.title)
+                            message = context.getString(R.string.permanently_delete_files, task.title)
                         )
                     }
 
@@ -219,7 +219,7 @@ fun DownloadsScreen(
                             .flatMap { it.items.asSequence() }
                             .firstOrNull { it.workId == action.workId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = context.getString(R.string.str_a2894ad7, item.fileName)
+                            message = context.getString(R.string.permanently_delete_file, item.fileName)
                         )
                     }
                 }
@@ -230,9 +230,9 @@ fun DownloadsScreen(
                     onDismissRequest = { pendingDelete = null },
                     message = resolved.message,
                     actions = listOf(
-                        FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingDelete = null }),
+                        FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingDelete = null }),
                         FlatDialogAction(
-                            text = stringResource(R.string.str_2f4aaddd),
+                            text = stringResource(R.string.delete),
                             tone = FlatDialogActionTone.Danger,
                             onClick = {
                                 pendingDelete = null
@@ -800,7 +800,7 @@ private fun rememberTaskSummary(
     val latestHasUnknownTotalRunning = rememberUpdatedState(hasUnknownTotalRunning)
     val latestState = rememberUpdatedState(state)
 
-    val downloadingLabel = stringResource(R.string.str_2d455ce5)
+    val downloadingLabel = stringResource(R.string.downloading)
     return produceState(
         initialValue = buildTaskSummaryText(
             downloadedBytes = downloadedBytes,
@@ -860,7 +860,7 @@ private fun TaskProgressMeta(
     emphasizeProgress: Boolean = false
 ) {
     val colors = AsmrTheme.colorScheme
-    val downloadingLabel = stringResource(R.string.str_2d455ce5)
+    val downloadingLabel = stringResource(R.string.downloading)
     val text = when {
         progressFraction != null -> "${(progressFraction * 100).toInt()}%"
         hasUnknownTotalRunning -> downloadingLabel
@@ -925,12 +925,12 @@ private fun CompactProgressBar(
 @Composable
 private fun downloadItemStateLabel(state: DownloadItemState): String {
     return when (state) {
-        DownloadItemState.SUCCEEDED -> stringResource(R.string.str_fad5222c)
-        DownloadItemState.FAILED -> stringResource(R.string.str_acd5cb84)
-        DownloadItemState.RUNNING -> stringResource(R.string.str_2d455ce5)
-        DownloadItemState.PAUSED -> stringResource(R.string.str_a2d930fd)
-        DownloadItemState.CANCELLED -> stringResource(R.string.str_2111ccbb)
-        DownloadItemState.ENQUEUED -> stringResource(R.string.str_65dd9ef1)
+        DownloadItemState.SUCCEEDED -> stringResource(R.string.completed)
+        DownloadItemState.FAILED -> stringResource(R.string.failed)
+        DownloadItemState.RUNNING -> stringResource(R.string.downloading)
+        DownloadItemState.PAUSED -> stringResource(R.string.paused)
+        DownloadItemState.CANCELLED -> stringResource(R.string.cancelled)
+        DownloadItemState.ENQUEUED -> stringResource(R.string.waiting)
     }
 }
 

@@ -165,7 +165,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = stringResource(R.string.str_3d6c396c),
+                        contentDescription = stringResource(R.string.like),
                         tint = if (isFavorite) Color.Red else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -174,7 +174,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = onShowPlaylistPicker) {
                     Icon(
                         Icons.AutoMirrored.Outlined.PlaylistAdd,
-                        contentDescription = stringResource(R.string.str_1c7e42b8),
+                        contentDescription = stringResource(R.string.add_playlist),
                         tint = colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -184,7 +184,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleFloatingLyrics() }) {
                     Icon(
                         imageVector = Icons.Rounded.Subtitles,
-                        contentDescription = stringResource(R.string.str_21c6786d),
+                        contentDescription = stringResource(R.string.lyric_overlay_section),
                         tint = if (floatingEnabled) primaryColor else colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -198,7 +198,7 @@ internal fun PlaybackControls(
                 ) {
                     Icon(
                         imageVector = if (isOnlineMedia) Icons.AutoMirrored.Outlined.LabelOff else Icons.AutoMirrored.Rounded.Label,
-                        contentDescription = stringResource(R.string.str_2ec512a4),
+                        contentDescription = stringResource(R.string.tag_management),
                         tint = colorScheme.onSurface.copy(alpha = if (isOnlineMedia) 0.38f else 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -207,7 +207,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = onShowEqualizer) {
                     Icon(
                         imageVector = Icons.Rounded.Tune,
-                        contentDescription = stringResource(R.string.str_d85f9094),
+                        contentDescription = stringResource(R.string.equalizer_title),
                         tint = colorScheme.onSurface.copy(alpha = 0.8f),
                         modifier = Modifier.size(24.dp)
                     )
@@ -223,7 +223,7 @@ internal fun PlaybackControls(
                 IconButton(onClick = { viewModel.toggleSliceMode() }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_segment),
-                        contentDescription = stringResource(R.string.str_c50b12bb),
+                        contentDescription = stringResource(R.string.slice_playback),
                         tint = tint,
                         modifier = Modifier.size(24.dp)
                     )
@@ -253,7 +253,7 @@ internal fun PlaybackControls(
                 }
                 Icon(
                     icon,
-                    contentDescription = stringResource(R.string.str_de28b9b1),
+                    contentDescription = stringResource(R.string.playback_mode_label),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
@@ -262,7 +262,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.previous() }) {
                 Icon(
                     Icons.Rounded.SkipPrevious,
-                    contentDescription = stringResource(R.string.str_579321cc),
+                    contentDescription = stringResource(R.string.previous_track),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
                 )
@@ -302,7 +302,7 @@ internal fun PlaybackControls(
                     ) { playing ->
                         Icon(
                             imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(R.string.str_81351ac4),
+                            contentDescription = stringResource(R.string.play_pause),
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -312,7 +312,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.next() }) {
                 Icon(
                     Icons.Rounded.SkipNext,
-                    contentDescription = stringResource(R.string.str_cfd9609d),
+                    contentDescription = stringResource(R.string.next_track),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp)
                 )
@@ -321,7 +321,7 @@ internal fun PlaybackControls(
             IconButton(onClick = { viewModel.seekForward10s() }) {
                 Icon(
                     Icons.Rounded.FastForward,
-                    contentDescription = stringResource(R.string.str_cdb86a39),
+                    contentDescription = stringResource(R.string.fast_forward_seconds),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )
@@ -364,7 +364,7 @@ internal fun SingleLineLyrics(
     val currentLine = remember(sortedLyrics, activeIndex) {
         sortedLyrics.getOrNull(activeIndex)
     }
-    val noLyricsText = stringResource(R.string.str_c24962a6)
+    val noLyricsText = stringResource(R.string.no_lyrics_yet)
     val currentText = remember(currentLine, noLyricsText) {
         val raw = currentLine?.text
         if (raw == null) {
@@ -637,7 +637,7 @@ internal fun VolumeControl(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = stringResource(R.string.str_e72050f1),
+                    text = stringResource(R.string.long_press_adjust_volume),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -674,7 +674,7 @@ internal fun VolumeControl(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = stringResource(R.string.str_09b095d8),
+                        text = stringResource(R.string.player_volume),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.textTertiary
                     )

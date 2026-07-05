@@ -73,12 +73,12 @@ fun DlsiteLoginScreen(
             ) {
                 OutlinedButton(onClick = {
                     viewModel.clear()
-                }, enabled = uiState.isLoggedIn) { Text(stringResource(R.string.str_44efd179)) }
+                }, enabled = uiState.isLoggedIn) { Text(stringResource(R.string.dlsite_logout)) }
                 Spacer(modifier = Modifier.weight(1f))
                 Button(onClick = {
                     onDone()
                 }, enabled = uiState.isLoggedIn) {
-                    Text(stringResource(R.string.str_769d88e4))
+                    Text(stringResource(R.string.done))
                 }
             }
     
@@ -89,7 +89,7 @@ fun DlsiteLoginScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (uiState.isLoggedIn) {
-                    Text(stringResource(R.string.str_ea3d7d7f), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.current_credentials), style = MaterialTheme.typography.titleMedium)
 
                     CredentialBlock(
                         title = "dlsite.com Cookie",
@@ -109,7 +109,7 @@ fun DlsiteLoginScreen(
                     OutlinedTextField(
                         value = loginId,
                         onValueChange = { loginId = it },
-                        label = { Text(stringResource(R.string.str_4f387715)) },
+                        label = { Text(stringResource(R.string.account_email)) },
                         singleLine = true,
                         enabled = !uiState.isLoading,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
@@ -118,7 +118,7 @@ fun DlsiteLoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text(stringResource(R.string.str_a8105204)) },
+                        label = { Text(stringResource(R.string.password)) },
                         singleLine = true,
                         enabled = !uiState.isLoading,
                         visualTransformation = PasswordVisualTransformation(),
@@ -138,7 +138,7 @@ fun DlsiteLoginScreen(
                                 size = 18.dp
                             )
                         } else {
-                            Text(stringResource(R.string.str_402d19e5))
+                            Text(stringResource(R.string.login_action))
                         }
                     }
                 }
@@ -158,7 +158,7 @@ private fun CredentialBlock(
     revealed: Boolean,
     onToggleRevealed: () -> Unit
 ) {
-    val unknownLabel = stringResource(R.string.str_1622dc9b)
+    val unknownLabel = stringResource(R.string.unknown)
     val display = if (revealed) value else maskSecret(value)
     val expiresText = if (value.isBlank()) {
         "-"
@@ -182,9 +182,9 @@ private fun CredentialBlock(
                             Icon(
                                 imageVector = if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                 contentDescription = if (revealed) {
-                                    stringResource(R.string.str_dce5379c)
+                                    stringResource(R.string.hide)
                                 } else {
-                                    stringResource(R.string.str_4d775d4c)
+                                    stringResource(R.string.show)
                                 }
                             )
                         }
@@ -192,7 +192,7 @@ private fun CredentialBlock(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            Text(stringResource(R.string.str_f7acfd00, expiresText), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.expires, expiresText), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

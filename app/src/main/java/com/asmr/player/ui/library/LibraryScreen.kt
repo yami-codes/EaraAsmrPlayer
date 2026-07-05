@@ -286,8 +286,8 @@ fun LibraryScreen(
     val userTagsByTrackId by viewModel.userTagsByTrackId.collectAsState()
     val isGlobalSyncRunning by viewModel.isGlobalSyncRunning.collectAsState()
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
-    val circleCopyLabel = stringResource(R.string.str_5e71ef43)
-    val tagCopyLabel = stringResource(R.string.str_14d34236)
+    val circleCopyLabel = stringResource(R.string.circles)
+    val tagCopyLabel = stringResource(R.string.tags)
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val scope = rememberCoroutineScope()
     var searchText by rememberSaveable { mutableStateOf(querySpec.textQuery.orEmpty()) }
@@ -458,8 +458,8 @@ fun LibraryScreen(
                         ) {
                             Text(
                                 text = when (progress.phase) {
-                                    com.asmr.player.ui.library.BulkPhase.ScanningLocal -> stringResource(R.string.str_4a3184e1)
-                                    com.asmr.player.ui.library.BulkPhase.SyncingCloud -> stringResource(R.string.str_00c008ea)
+                                    com.asmr.player.ui.library.BulkPhase.ScanningLocal -> stringResource(R.string.scanning_local_library)
+                                    com.asmr.player.ui.library.BulkPhase.SyncingCloud -> stringResource(R.string.syncing_cloud)
                                 },
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = colorScheme.textPrimary
@@ -475,7 +475,7 @@ fun LibraryScreen(
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
-                                text = stringResource(R.string.str_596e927a, progress.current, progress.total),
+                                text = stringResource(R.string.progress, progress.current, progress.total),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colorScheme.textSecondary
                             )
@@ -492,7 +492,7 @@ fun LibraryScreen(
                             if (progress.currentFile.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = stringResource(R.string.str_8395660e, progress.currentFile),
+                                    text = stringResource(R.string.scanning, progress.currentFile),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -500,7 +500,7 @@ fun LibraryScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(18.dp))
-                            Button(onClick = { viewModel.cancelBulkTask() }) { Text(stringResource(R.string.str_625fb26b)) }
+                            Button(onClick = { viewModel.cancelBulkTask() }) { Text(stringResource(R.string.cancel)) }
                         }
                     }
                     is LibraryUiState.Success -> {
@@ -548,14 +548,14 @@ fun LibraryScreen(
 
                                     EaraBrandedEmptyState(
                                         sectionTitle = if (hasAnyQuery) {
-                                            stringResource(R.string.str_698421af)
+                                            stringResource(R.string.local_library_results)
                                         } else {
                                             stringResource(R.string.nav_library)
                                         },
                                         headline = if (hasAnyQuery) {
-                                            stringResource(R.string.str_6ff96d8c)
+                                            stringResource(R.string.no_matching_local_content)
                                         } else {
-                                            stringResource(R.string.str_79f029a1)
+                                            stringResource(R.string.local_albums_have)
                                         },
                                         sectionIcon = if (hasAnyQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
                                         modifier = Modifier
@@ -578,7 +578,7 @@ fun LibraryScreen(
                                                         contentColor = colorScheme.onPrimaryContainer
                                                     )
                                                 ) {
-                                                    Text(stringResource(R.string.str_0f47025e))
+                                                    Text(stringResource(R.string.reset_filters))
                                                 }
                                             }
                                         } else {
@@ -916,7 +916,7 @@ fun LibraryScreen(
                 val isSyncing = syncStatus is SyncStatus.Syncing
                 val hasLocalPaths = remember(album) { album.getAllLocalPaths().isNotEmpty() }
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.str_2f4aaddd)) },
+                    headlineContent = { Text(stringResource(R.string.delete)) },
                     leadingContent = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -927,7 +927,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.str_2ec512a4)) },
+                    headlineContent = { Text(stringResource(R.string.tag_management)) },
                     leadingContent = { Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -945,7 +945,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.str_f0ece022)) },
+                    headlineContent = { Text(stringResource(R.string.add_group)) },
                     leadingContent = { Icon(Icons.Rounded.CreateNewFolder, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -956,7 +956,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.str_6d34d246)) },
+                    headlineContent = { Text(stringResource(R.string.local_sync)) },
                     leadingContent = { Icon(Icons.Rounded.Sync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -967,7 +967,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.str_d99f6553)) },
+                    headlineContent = { Text(stringResource(R.string.cloud_sync)) },
                     leadingContent = { Icon(Icons.Rounded.CloudSync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -979,7 +979,7 @@ fun LibraryScreen(
                 )
                 if (isSyncing) {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.str_7ec7feb7)) },
+                        headlineContent = { Text(stringResource(R.string.cancel_sync)) },
                         leadingContent = { Icon(Icons.Rounded.Close, contentDescription = null) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1002,11 +1002,11 @@ fun LibraryScreen(
         if (album != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                message = stringResource(R.string.str_98fb00ce),
+                message = stringResource(R.string.remove_album_local),
                 actions = listOf(
-                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
+                    FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_2f4aaddd),
+                        text = stringResource(R.string.delete),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showDeleteConfirm = false
@@ -1097,7 +1097,7 @@ internal fun LibraryChrome(
         CustomSearchBar(
             value = searchText,
             onValueChange = onSearchTextChange,
-            placeholder = stringResource(R.string.str_179ff622),
+            placeholder = stringResource(R.string.circle_cv_tags),
             modifier = Modifier
                 .weight(1f),
             inputTestTag = LIBRARY_SEARCH_INPUT_TAG,
@@ -1146,7 +1146,7 @@ internal fun LibraryChrome(
                     modifier = Modifier.background(chromeActionContainerColor)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_f1579e89)) },
+                        text = { Text(stringResource(R.string.recent_play)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortLastPlayed()
@@ -1158,7 +1158,7 @@ internal fun LibraryChrome(
                         color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_4ee931e5)) },
+                        text = { Text(stringResource(R.string.recently_added)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortAdded()
@@ -1170,7 +1170,7 @@ internal fun LibraryChrome(
                         color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.str_b31a206d)) },
+                        text = { Text(stringResource(R.string.album_title)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortTitle()
@@ -1258,7 +1258,7 @@ private fun TrackAlbumHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.str_22054661) } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_label) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,
@@ -1267,7 +1267,7 @@ private fun TrackAlbumHeader(
 
             val footerSegments = buildList {
                 if (rjCode.isNotBlank()) add(rjCode)
-                add(stringResource(R.string.str_020a5f34, trackCount))
+                add(stringResource(R.string.audio_tracks, trackCount))
                 Formatting.formatTrackSeconds(totalDurationSeconds).takeIf { it.isNotBlank() }?.let(::add)
                 totalSizeBytes?.takeIf { it > 0L }?.let(Formatting::formatFileSize)?.let(::add)
             }
@@ -1341,14 +1341,14 @@ private fun TrackListRow(
         actions = buildList {
             add(
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_58a8759e),
+                    label = stringResource(R.string.add_play_queue),
                     onClick = onAddToQueue,
                     icon = Icons.AutoMirrored.Rounded.QueueMusic
                 )
             )
             add(
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_1c7e42b8),
+                    label = stringResource(R.string.add_playlist),
                     onClick = onAddToPlaylist,
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     showDividerBefore = true
@@ -1357,7 +1357,7 @@ private fun TrackListRow(
             if (onManageTags != null) {
                 add(
                     AudioItemMenuAction(
-                        label = stringResource(R.string.str_2ec512a4),
+                        label = stringResource(R.string.tag_management),
                         onClick = onManageTags,
                         icon = Icons.AutoMirrored.Rounded.Label,
                         showDividerBefore = true
@@ -1366,7 +1366,7 @@ private fun TrackListRow(
             }
             add(
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_9a9dd2e0),
+                    label = stringResource(R.string.remove_album),
                     onClick = onRemove,
                     icon = Icons.Rounded.Delete,
                     showDividerBefore = true

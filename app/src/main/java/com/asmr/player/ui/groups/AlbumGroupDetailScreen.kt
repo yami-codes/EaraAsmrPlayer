@@ -232,7 +232,7 @@ internal fun AlbumGroupDetailContent(
             if (tracks.isEmpty()) {
                 EaraBrandedEmptyState(
                     sectionTitle = title.ifBlank { stringResource(R.string.nav_groups) },
-                    headline = stringResource(R.string.str_28f8ab81),
+                    headline = stringResource(R.string.group_empty),
                     sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
@@ -313,14 +313,14 @@ internal fun AlbumGroupDetailContent(
     }
 
     pendingRemoveTrack?.let { track ->
-        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.str_unnamed_track) }
+        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.untitled_label) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveTrack = null },
-            message = stringResource(R.string.str_daf48296, title, trackTitle),
+            message = stringResource(R.string.remove_from_group_fmt, title, trackTitle),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveTrack = null }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveTrack = null }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_86048b4f),
+                    text = stringResource(R.string.log_action_remove),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveTrack = null
@@ -334,11 +334,11 @@ internal fun AlbumGroupDetailContent(
     pendingRemoveAlbum?.let { album ->
         FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            message = stringResource(R.string.str_a02b7d62, album.second, title),
+            message = stringResource(R.string.remove_album_fmt, album.second, title),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveAlbum = null }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_86048b4f),
+                    text = stringResource(R.string.log_action_remove),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveAlbum = null
@@ -369,7 +369,7 @@ private fun AlbumSectionHeader(
                 .takeIf { it > 0L }
         }
     }
-    val tracksLabel = stringResource(R.string.str_6bdee1ed, tracks.size)
+    val tracksLabel = stringResource(R.string.track_count_fmt, tracks.size)
     val footerSegments = remember(rjCode, tracks, totalSizeBytes, tracksLabel) {
         buildList {
             if (rjCode.isNotBlank()) add(rjCode)
@@ -400,7 +400,7 @@ private fun AlbumSectionHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.str_22054661) } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_label) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,
@@ -456,7 +456,7 @@ private fun GroupTrackRow(
             prefixSegments = listOf(item.albumCv.orEmpty())
         )
         AudioItemRow(
-            title = item.trackTitle.ifBlank { stringResource(R.string.str_unnamed_track) },
+            title = item.trackTitle.ifBlank { stringResource(R.string.untitled_label) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = item.hasSubtitles,
@@ -481,21 +481,21 @@ private fun GroupTrackRow(
             titleTextStyle = MaterialTheme.typography.bodyMedium,
             actions = listOf(
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_b85270cd),
+                    label = stringResource(R.string.playback),
                     onClick = onPlay
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_f1d9539d),
+                    label = stringResource(R.string.move_top),
                     onClick = onMoveToTop,
                     testTag = GROUP_DETAIL_MOVE_TOP_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_322defa2),
+                    label = stringResource(R.string.move_end),
                     onClick = onMoveToBottom,
                     testTag = GROUP_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = stringResource(R.string.str_0b82ac96),
+                    label = stringResource(R.string.remove_group),
                     onClick = onRemove,
                     showDividerBefore = true
                 )

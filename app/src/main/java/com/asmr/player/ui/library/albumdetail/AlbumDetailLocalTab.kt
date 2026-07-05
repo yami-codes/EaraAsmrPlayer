@@ -251,7 +251,7 @@ internal fun AlbumLocalBreadcrumbTabV2(
                         .height(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(stringResource(R.string.str_8e3f24e3))
+                    Text(stringResource(R.string.no_files_current_directory))
                 }
             }
         } else {

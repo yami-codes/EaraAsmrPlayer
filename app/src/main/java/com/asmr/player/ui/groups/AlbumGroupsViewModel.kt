@@ -30,9 +30,9 @@ class AlbumGroupsViewModel @Inject constructor(
         viewModelScope.launch {
             val id = groupRepository.createGroup(trimmed)
             if (id != null) {
-                messageManager.showSuccess(R.string.str_945ee611)
+                messageManager.showSuccess(R.string.group_created)
             } else {
-                messageManager.showError(R.string.str_27ac29f2)
+                messageManager.showError(R.string.group_name_already_exists)
             }
         }
     }
@@ -40,7 +40,7 @@ class AlbumGroupsViewModel @Inject constructor(
     fun deleteGroup(group: AlbumGroupEntity) {
         viewModelScope.launch {
             groupRepository.deleteGroup(group)
-            messageManager.showInfo(R.string.str_eb4aff77)
+            messageManager.showInfo(R.string.group_deleted)
         }
     }
 
@@ -48,10 +48,10 @@ class AlbumGroupsViewModel @Inject constructor(
         val trimmed = newName.trim()
         viewModelScope.launch {
             when (groupRepository.renameGroup(groupId, trimmed)) {
-                RenameAlbumGroupResult.RENAMED -> messageManager.showSuccess(R.string.str_e6f61e54)
-                RenameAlbumGroupResult.DUPLICATE -> messageManager.showError(R.string.str_27ac29f2)
-                RenameAlbumGroupResult.INVALID -> messageManager.showError(R.string.str_fb7cf353)
-                RenameAlbumGroupResult.NOT_FOUND -> messageManager.showError(R.string.str_c52a40c6)
+                RenameAlbumGroupResult.RENAMED -> messageManager.showSuccess(R.string.renamed)
+                RenameAlbumGroupResult.DUPLICATE -> messageManager.showError(R.string.group_name_already_exists)
+                RenameAlbumGroupResult.INVALID -> messageManager.showError(R.string.group_name_cannot_empty)
+                RenameAlbumGroupResult.NOT_FOUND -> messageManager.showError(R.string.group_does_not_exist)
             }
         }
     }
@@ -68,7 +68,7 @@ class AlbumGroupsViewModel @Inject constructor(
                 onComplete()
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError(R.string.str_32911c8a)
+                messageManager.showError(R.string.failed_add_group_try_again)
                 onFailure(t)
             }
         }
@@ -79,6 +79,6 @@ class AlbumGroupsViewModel @Inject constructor(
         groupRepository.addAlbumToGroup(groupId, albumId)
         val group = groupRepository.getGroupById(groupId)
         val name = group?.name.orEmpty()
-        messageManager.showSuccess(R.string.str_20bb9cd8)
+        messageManager.showSuccess(R.string.added_group)
     }
 }

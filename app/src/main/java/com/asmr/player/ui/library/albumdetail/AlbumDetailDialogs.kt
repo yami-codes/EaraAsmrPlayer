@@ -169,7 +169,7 @@ internal fun AsmrOneDownloadDialog(
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
-                        text = stringResource(R.string.str_e4aa4937),
+                        text = stringResource(R.string.select_files_download),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -177,7 +177,7 @@ internal fun AsmrOneDownloadDialog(
                     TextButton(
                         onClick = { onConfirm(selected.toSet()) },
                         enabled = leafPaths.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text(stringResource(R.string.str_d7f0d336)) }
+                    ) { Text(stringResource(R.string.start_download)) }
                 }
 
                 Column(
@@ -191,8 +191,8 @@ internal fun AsmrOneDownloadDialog(
                         OutlinedButton(onClick = {
                             selected.clear()
                             selected.addAll(leafPaths)
-                        }) { Text(stringResource(R.string.str_66eeacd9)) }
-                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.str_10119554)) }
+                        }) { Text(stringResource(R.string.batch_translate_select_all)) }
+                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.deselect_all)) }
                     }
                     if (leafPaths.isEmpty()) {
                         Box(
@@ -201,7 +201,7 @@ internal fun AsmrOneDownloadDialog(
                                 .height(180.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.str_22ec90fe))
+                            Text(stringResource(R.string.no_files_available_download))
                         }
                     } else {
                         val entries = flattenAsmrOneTreeForUi(mediaTree, expanded.toSet()).entries
@@ -427,7 +427,7 @@ internal fun OnlineSaveDialog(
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
-                        text = stringResource(R.string.str_f3a8c2d1),
+                        text = stringResource(R.string.select_files_save),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -435,7 +435,7 @@ internal fun OnlineSaveDialog(
                     TextButton(
                         onClick = { onConfirm(selected.toSet()) },
                         enabled = leaves.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text(stringResource(R.string.str_a7e4b9c3)) }
+                    ) { Text(stringResource(R.string.save_local_library)) }
                 }
 
                 Column(
@@ -449,8 +449,8 @@ internal fun OnlineSaveDialog(
                         OutlinedButton(onClick = {
                             selected.clear()
                             selected.addAll(leaves.map { it.relativePath })
-                        }) { Text(stringResource(R.string.str_66eeacd9)) }
-                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.str_10119554)) }
+                        }) { Text(stringResource(R.string.batch_translate_select_all)) }
+                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.deselect_all)) }
                     }
                     if (leaves.isEmpty()) {
                         Box(
@@ -459,7 +459,7 @@ internal fun OnlineSaveDialog(
                                 .height(180.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.str_4a4fef28))
+                            Text(stringResource(R.string.no_audio_video_files_save))
                         }
                     } else {
                         val entries = flattenAsmrOneMediaTreeForUi(trackTree, expanded.toSet()).entries
@@ -767,7 +767,7 @@ internal fun FilePreviewDialog(
     fun openWithOtherApp() {
         val path = currentPath.trim()
         if (path.isBlank()) {
-            messageManager.showError(R.string.str_65a85106)
+            messageManager.showError(R.string.unable_open_path_empty)
             return
         }
 
@@ -796,12 +796,12 @@ internal fun FilePreviewDialog(
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, context.getString(R.string.str_6cfd8797)))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.open_file)))
         }.onFailure { t ->
             when (t) {
-                is android.content.ActivityNotFoundException -> messageManager.showInfo(R.string.str_8c5d893a)
-                is java.io.FileNotFoundException -> messageManager.showError(R.string.str_d9523e34)
-                else -> messageManager.showError(R.string.str_fd093cf3)
+                is android.content.ActivityNotFoundException -> messageManager.showInfo(R.string.no_app_found_open)
+                is java.io.FileNotFoundException -> messageManager.showError(R.string.file_does_not_exist)
+                else -> messageManager.showError(R.string.unable_open_file)
             }
         }
     }
@@ -857,22 +857,22 @@ internal fun FilePreviewDialog(
                     )
                     if (canNavigate) {
                         IconButton(onClick = { currentIndex = (currentIndex - 1 + initialCandidates.size) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.str_93732670))
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.previous_item))
                         }
                         IconButton(onClick = { currentIndex = (currentIndex + 1) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.str_15df591b))
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.next_item))
                         }
                     }
                     if (canFullscreen) {
                         TextButton(onClick = { fullscreen = !fullscreen }) {
-                            Text(if (fullscreen) stringResource(R.string.str_49041f24) else stringResource(R.string.str_185926bf))
+                            Text(if (fullscreen) stringResource(R.string.exit_full_screen) else stringResource(R.string.full_screen))
                         }
                     }
                     IconButton(onClick = ::openWithOtherApp) {
-                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = stringResource(R.string.str_d7098f50))
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = stringResource(R.string.open))
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.str_b15d9127))
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.sleep_timer_off))
                     }
                 }
                 
@@ -892,11 +892,11 @@ internal fun FilePreviewDialog(
                             )
                         }
                         TreeFileType.Subtitle, TreeFileType.Text -> {
-                            val loadingText = stringResource(R.string.str_26b5bd49)
+                            val loadingText = stringResource(R.string.loading)
                             val textContent by produceState<String?>(initialValue = loadingText, currentPath) {
-                                val emptyContent = context.getString(R.string.str_31224a7f)
-                                val onlineUnsupported = context.getString(R.string.str_53ee58eb)
-                                val readFailed = context.getString(R.string.str_de62343b)
+                                val emptyContent = context.getString(R.string.content_empty)
+                                val onlineUnsupported = context.getString(R.string.online_files_not)
+                                val readFailed = context.getString(R.string.failed_read)
                                 value = withContext(Dispatchers.IO) {
                                     runCatching {
                                         if (currentPath.startsWith("content://")) {
@@ -933,12 +933,12 @@ internal fun FilePreviewDialog(
                                     tint = colorScheme.danger
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text(stringResource(R.string.str_b9ac3889), color = colorScheme.textSecondary)
-                                Text(stringResource(R.string.str_c743105c), color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.pdf_files_not), color = colorScheme.textSecondary)
+                                Text(stringResource(R.string.open_external_app), color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         else -> {
-                            Text(stringResource(R.string.str_a04c9405), color = colorScheme.textTertiary)
+                            Text(stringResource(R.string.preview_file_type), color = colorScheme.textTertiary)
                         }
                     }
                 }

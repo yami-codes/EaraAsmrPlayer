@@ -849,15 +849,15 @@ fun MainContainer(
         when (result) {
             AppUpdateInstallResult.Started -> {
                 pendingAutomaticInstallPath = null
-                messageManager.showInfo(R.string.str_9ef083de)
+                messageManager.showInfo(R.string.opening_system_installer)
             }
             AppUpdateInstallResult.PermissionRequired -> {
                 pendingAutomaticInstallPath = apkPath
-                messageManager.showInfo(R.string.str_989d0bfb)
+                messageManager.showInfo(R.string.allow_unknown_sources)
             }
             AppUpdateInstallResult.FileInvalid -> {
                 pendingAutomaticInstallPath = null
-                messageManager.showError(R.string.str_a808529d)
+                messageManager.showError(R.string.invalid_apk_redownload)
             }
             is AppUpdateInstallResult.Failed -> {
                 pendingAutomaticInstallPath = null
@@ -1135,7 +1135,7 @@ fun MainContainer(
             activity?.finish()
         } else {
             lastLibraryBackPressElapsedRealtime = now
-            messageManager.showInfo(R.string.str_b1582796)
+            messageManager.showInfo(R.string.press_back_again_exit_app)
         }
     }
 
@@ -1167,7 +1167,7 @@ fun MainContainer(
                         Triple(Icons.Rounded.Favorite, R.string.nav_favorites, "playlist_system/favorites"),
                         Triple(Icons.AutoMirrored.Rounded.QueueMusic, R.string.nav_playlists, "playlists"),
                         Triple(Icons.Rounded.Folder, R.string.nav_groups, "groups"),
-                        Triple(Icons.Rounded.Download, R.string.str_0d3b071f, "downloads"),
+                        Triple(Icons.Rounded.Download, R.string.downloads, "downloads"),
                         Triple(Icons.Rounded.Settings, R.string.nav_settings, "settings"),
                         Triple(Icons.Rounded.Person, R.string.nav_dlsite_login, "dlsite_login")
                     )
@@ -1349,7 +1349,7 @@ fun MainContainer(
                                             val appName = stringResource(R.string.app_name)
                                             val titleText = when {
                                                 resolvedTitleRoute == "library" -> stringResource(R.string.nav_library)
-                                                resolvedTitleRoute == "library_filter" -> stringResource(R.string.str_c2fe6253)
+                                                resolvedTitleRoute == "library_filter" -> stringResource(R.string.filter)
                                                 resolvedTitleRoute == "search" -> stringResource(R.string.nav_search)
                                                 resolvedTitleRoute == Routes.SearchAssist -> stringResource(R.string.nav_search)
                                                 resolvedTitleRoute == Routes.SearchAssistPattern -> stringResource(R.string.nav_search)
@@ -1366,10 +1366,10 @@ fun MainContainer(
                                                 resolvedTitleRoute == "group/{groupId}/{groupName}" ->
                                                     groupName.ifBlank { stringResource(R.string.nav_groups) }
                                                 resolvedTitleRoute == "settings" -> stringResource(R.string.nav_settings)
-                                                resolvedTitleRoute == "downloads" -> stringResource(R.string.str_0d3b071f)
+                                                resolvedTitleRoute == "downloads" -> stringResource(R.string.downloads)
                                                 resolvedTitleRoute == "dlsite_login" -> stringResource(R.string.nav_dlsite_login)
-                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> stringResource(R.string.str_4c6ecbab)
-                                                resolvedTitleRoute?.startsWith("album_detail") == true -> stringResource(R.string.str_cc96ff11)
+                                                resolvedTitleRoute?.startsWith("playlist_picker") == true -> stringResource(R.string.add_my_list)
+                                                resolvedTitleRoute?.startsWith("album_detail") == true -> stringResource(R.string.album_details)
                                                 else -> appName
                                             }
                                             Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -1438,7 +1438,7 @@ fun MainContainer(
                                                 }
                                                 Box {
                                                     IconButton(onClick = { navController.navigate("downloads") }) {
-                                                        Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.str_0d3b071f))
+                                                        Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.downloads))
                                                     }
                                                     if (activeDownloadCount > 0) {
                                                         Badge(
@@ -1462,7 +1462,7 @@ fun MainContainer(
                                                             else -> Icons.AutoMirrored.Rounded.ViewList
                                                         }
                                                         IconButton(onClick = { viewMenuExpanded = true }) {
-                                                            Icon(imageVector = icon, contentDescription = stringResource(R.string.str_03816381))
+                                                            Icon(imageVector = icon, contentDescription = stringResource(R.string.switch_view))
                                                         }
                                                         MaterialTheme(
                                                             colorScheme = materialColorScheme.copy(
@@ -1476,7 +1476,7 @@ fun MainContainer(
                                                                 modifier = Modifier.background(dynamicContainerColor)
                                                             ) {
                                                             DropdownMenuItem(
-                                                                text = { Text(stringResource(R.string.str_037771bf)) },
+                                                                text = { Text(stringResource(R.string.album_list)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null)
                                                                 },
@@ -1491,7 +1491,7 @@ fun MainContainer(
                                                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                                                             )
                                                             DropdownMenuItem(
-                                                                text = { Text(stringResource(R.string.str_7b79f1a2)) },
+                                                                text = { Text(stringResource(R.string.album_cards)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.Rounded.GridView, contentDescription = null)
                                                                 },
@@ -1506,7 +1506,7 @@ fun MainContainer(
                                                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                                                             )
                                                             DropdownMenuItem(
-                                                                text = { Text(stringResource(R.string.str_87e06905)) },
+                                                                text = { Text(stringResource(R.string.track_list)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.Rounded.Audiotrack, contentDescription = null)
                                                                 },
@@ -1552,12 +1552,12 @@ fun MainContainer(
                                                     TextButton(
                                                         onClick = { downloadsViewModel.pauseAll() },
                                                         colors = ButtonDefaults.textButtonColors(contentColor = topBarContentColor)
-                                                    ) { Text(stringResource(R.string.str_e5c4f1fc)) }
+                                                    ) { Text(stringResource(R.string.pause_all)) }
                                                 } else if (hasPausedDownloads) {
                                                     TextButton(
                                                         onClick = { downloadsViewModel.resumeAll() },
                                                         colors = ButtonDefaults.textButtonColors(contentColor = topBarContentColor)
-                                                    ) { Text(stringResource(R.string.str_4dce7ca0)) }
+                                                    ) { Text(stringResource(R.string.resume_all)) }
                                                 }
                                             } else if (entry != null && (
                                                 currentRoute?.startsWith("album_detail/{albumId}") == true ||
@@ -1588,7 +1588,7 @@ fun MainContainer(
                                                             .albumDetailTopBarButtonMotion(true, navBackStackEntry)
                                                             .albumDetailTopBarButtonSurface(true)
                                                     ) {
-                                                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.str_3c11c389))
+                                                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.enter_rj_code_manually))
                                                     }
                                                 }
                                             }
@@ -2227,11 +2227,11 @@ fun MainContainer(
                 val albumDetailViewModel: AlbumDetailViewModel = hiltViewModel(navBackStackEntry!!)
                 FlatTextFieldDialog(
                     onDismissRequest = { showManualRjDialog = false },
-                    message = stringResource(R.string.str_f53780b0),
+                    message = stringResource(R.string.enter_number_cloud),
                     value = manualRjInput,
                     onValueChange = { manualRjInput = it },
-                    placeholder = stringResource(R.string.str_51d26fb3),
-                    confirmText = stringResource(R.string.str_6a620e3c),
+                    placeholder = stringResource(R.string.rj_code_e_g_rj123456),
+                    confirmText = stringResource(R.string.sync),
                     confirmEnabled = manualRjInput.trim().isNotBlank(),
                     onConfirm = {
                         showManualRjDialog = false
@@ -2542,30 +2542,30 @@ fun MainContainer(
         automaticUpdateAvailable?.let { available ->
             val release = available.release
             FlatActionDialog(
-                message = stringResource(R.string.str_8b2adc69, release.tagName),
+                message = stringResource(R.string.new_version_found, release.tagName),
                 onDismissRequest = { automaticUpdateDialogDismissed = true },
                 actions = listOf(
                     FlatDialogAction(
-                        text = stringResource(R.string.str_2541ca48),
+                        text = stringResource(R.string.update_now),
                         tone = FlatDialogActionTone.Primary,
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             automaticUpdateInstallRequested = true
                             settingsViewModel.downloadLatestApk()
-                            messageManager.showInfo(R.string.str_ac7b1038)
+                            messageManager.showInfo(R.string.starting_update_download)
                         }
                     ),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_b8efaca0),
+                        text = stringResource(R.string.don_t_remind_me_again),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             settingsViewModel.disableAutoUpdateCheck()
-                            messageManager.showInfo(R.string.str_d2d8c72d)
+                            messageManager.showInfo(R.string.automatic_update_check)
                         }
                     ),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_f26225bd),
+                        text = stringResource(R.string.details),
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_github),
@@ -2576,7 +2576,7 @@ fun MainContainer(
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             if (!openUpdateReleasePage(context, release)) {
-                                messageManager.showError(R.string.str_6356783c)
+                                messageManager.showError(R.string.unable_open_github)
                             }
                         }
                     )
@@ -2584,7 +2584,7 @@ fun MainContainer(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = stringResource(R.string.str_3df598c2, com.asmr.player.BuildConfig.VERSION_NAME),
+                        text = stringResource(R.string.current_version, com.asmr.player.BuildConfig.VERSION_NAME),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.textSecondary
                     )
@@ -2599,7 +2599,7 @@ fun MainContainer(
                     }
                     if (release.apkName.isNotBlank()) {
                         Text(
-                            text = stringResource(R.string.str_4f8deb8f, release.apkName),
+                            text = stringResource(R.string.apk_package, release.apkName),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary,
                             maxLines = 1,

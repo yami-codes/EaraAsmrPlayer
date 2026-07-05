@@ -23,7 +23,7 @@ import com.asmr.player.ui.theme.AsmrTheme
 
 @Composable
 fun SubtitleStamp(
-    text: String = stringResource(R.string.str_a8c3cc44),
+    text: String = stringResource(R.string.subtitle_chip),
     modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme

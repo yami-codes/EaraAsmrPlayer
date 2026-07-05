@@ -110,7 +110,7 @@ fun PlaylistsScreen(
                 if (userPlaylists.isEmpty()) {
                     EaraBrandedEmptyState(
                         sectionTitle = stringResource(R.string.nav_playlists),
-                        headline = stringResource(R.string.str_898a30d0),
+                        headline = stringResource(R.string.no_lists_created_yet),
                         sectionIcon = Icons.AutoMirrored.Rounded.QueueMusic,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
@@ -206,7 +206,7 @@ private fun PlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.str_58a42f85, playlist.itemCount),
+                    text = stringResource(R.string.tracks_total, playlist.itemCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -241,11 +241,11 @@ private fun PlaylistRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.str_e0788e07, playlist.name),
+            message = stringResource(R.string.are_you_sure_2, playlist.name),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_2f4aaddd),
+                    text = stringResource(R.string.delete),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         showDeleteConfirm = false
@@ -277,11 +277,11 @@ private fun CreatePlaylistDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.str_451d9b45),
+        message = stringResource(R.string.enter_list_name_prompt),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.str_ade3663e),
-        confirmText = stringResource(R.string.str_d9ac9228),
+        placeholder = stringResource(R.string.enter_list_name),
+        confirmText = stringResource(R.string.create),
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onCreate(name.trim()) },
     )
@@ -297,11 +297,11 @@ private fun RenamePlaylistDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.str_0abc6c57),
+        message = stringResource(R.string.enter_new_list_name),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.str_ade3663e),
-        confirmText = stringResource(R.string.str_38cf16f2),
+        placeholder = stringResource(R.string.enter_list_name),
+        confirmText = stringResource(R.string.dialog_confirm),
         confirmEnabled = name.trim().isNotBlank() && name.trim() != initialName.trim(),
         onConfirm = { onRename(name.trim()) },
     )

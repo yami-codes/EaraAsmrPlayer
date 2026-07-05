@@ -139,7 +139,7 @@ data class AlbumCoverHint(
 
 internal fun albumFromCoverHint(context: Context, rj: String, hint: AlbumCoverHint?): Album {
     val normalizedRj = rj.ifBlank { hint?.rjCode.orEmpty() }
-    val albumFallback = context.getString(R.string.str_22054661)
+    val albumFallback = context.getString(R.string.album_label)
     return Album(
         title = hint?.title?.ifBlank { normalizedRj }.orEmpty().ifBlank { albumFallback },
         path = "",

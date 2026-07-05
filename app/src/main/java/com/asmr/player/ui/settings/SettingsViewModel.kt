@@ -279,7 +279,7 @@ class SettingsViewModel @Inject constructor(
                 AppUpdateState.UpToDate(latestVersionName = release.versionName, source = source)
             }
         } catch (e: Exception) {
-            val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_9e1acb3b) }
+            val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.failed_check_updates) }
             _updateState.value = AppUpdateState.Failed(msg, source)
         }
     }
@@ -310,10 +310,10 @@ class SettingsViewModel @Inject constructor(
                 okHttpClient.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         throw IllegalStateException(
-                            context.getString(R.string.str_bc9897a9, "${resp.code} ${resp.message}")
+                            context.getString(R.string.download_failed_fmt, "${resp.code} ${resp.message}")
                         )
                     }
-                    val body = resp.body ?: throw IllegalStateException(context.getString(R.string.str_c3d9b7a2))
+                    val body = resp.body ?: throw IllegalStateException(context.getString(R.string.download_failed_empty))
                     val total = body.contentLength().coerceAtLeast(0L)
                     val input = body.byteStream()
                     touchedTargetFile = true
@@ -349,13 +349,13 @@ class SettingsViewModel @Inject constructor(
                 }
 
                 val ok = withContext(Dispatchers.IO) { file.exists() && file.length() > 0L }
-                if (!ok) throw IllegalStateException(context.getString(R.string.str_a808529d))
+                if (!ok) throw IllegalStateException(context.getString(R.string.invalid_apk_redownload))
                 _updateState.value = AppUpdateState.ReadyToInstall(release, apkPath = file.absolutePath, source = source)
             } catch (e: Exception) {
                 if (touchedTargetFile) {
                     runCatching { targetFile?.takeIf { it.exists() }?.delete() }
                 }
-                val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_65e200d3) }
+                val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.download_failed) }
                 _updateState.value = AppUpdateState.Failed(msg, source)
             }
         }

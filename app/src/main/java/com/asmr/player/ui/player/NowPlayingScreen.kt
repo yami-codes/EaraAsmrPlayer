@@ -407,7 +407,7 @@ private fun ListenTogetherAudienceCountText(
                     )
                 }
                 Text(
-                    text = stringResource(R.string.str_fd8f58a1),
+                    text = stringResource(R.string.people_listening_you),
                     style = textStyle,
                     color = color,
                     maxLines = 1,
@@ -416,7 +416,7 @@ private fun ListenTogetherAudienceCountText(
             }
         } else {
             Text(
-                text = stringResource(R.string.str_c7af1efa),
+                text = stringResource(R.string.enjoying_alone),
                 modifier = modifier,
                 style = textStyle,
                 color = color,
@@ -437,7 +437,7 @@ private fun ListenTogetherAudienceLine(
     val colorScheme = AsmrTheme.colorScheme
     val presentation = resolveListenTogetherAudiencePresentation(
         state = state,
-        unsupportedLabel = stringResource(R.string.str_bbede5f7)
+        unsupportedLabel = stringResource(R.string.audio_can_used)
     )
 
     val displayTarget = if (pageEntranceSettled) presentation else null
@@ -764,8 +764,8 @@ internal fun NowPlayingScreen(
     BackHandler(enabled = !pendingRouteExit) {
         handleNavigateUp()
     }
-    val notPlayingLabel = stringResource(R.string.str_4740234f)
-    val lyricsLabel = stringResource(R.string.str_5676764e)
+    val notPlayingLabel = stringResource(R.string.not_played)
+    val lyricsLabel = stringResource(R.string.lyrics)
     val playerHeaderTitle = metadata?.title?.toString().orEmpty().ifBlank {
         lyricsState.title.ifBlank { notPlayingLabel }
     }
@@ -1633,13 +1633,13 @@ internal fun NowPlayingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = stringResource(R.string.str_69e51be3),
+                            text = stringResource(R.string.slice_management),
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         TextButton(onClick = { viewModel.clearSlicesForCurrentTrack() }) {
-                            Text(stringResource(R.string.str_288f0c40))
+                            Text(stringResource(R.string.clear))
                         }
                     }
 
@@ -1673,7 +1673,7 @@ internal fun NowPlayingScreen(
 
                     if (sliceUiState.slices.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.str_04359b1d),
+                            text = stringResource(R.string.no_clips_yet),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.textTertiary,
                             modifier = Modifier.padding(vertical = 18.dp)
@@ -1736,7 +1736,7 @@ internal fun NowPlayingScreen(
                                         IconButton(onClick = { viewModel.playSlicePreview(slice) }) {
                                             Icon(
                                                 imageVector = Icons.Rounded.PlayArrow,
-                                                contentDescription = stringResource(R.string.str_4ff04453),
+                                                contentDescription = stringResource(R.string.play_slices),
                                                 tint = colorScheme.onSurface
                                             )
                                         }
@@ -1744,7 +1744,7 @@ internal fun NowPlayingScreen(
                                         IconButton(onClick = { viewModel.deleteSlice(slice.id) }) {
                                             Icon(
                                                 imageVector = Icons.Outlined.DeleteOutline,
-                                                contentDescription = stringResource(R.string.str_a68f3a88),
+                                                contentDescription = stringResource(R.string.delete_slice),
                                                 tint = colorScheme.onSurface.copy(alpha = 0.8f)
                                             )
                                         }
@@ -1765,9 +1765,9 @@ internal fun NowPlayingScreen(
                 PlaybackProgressContent(viewModel, isVideo) { progress ->
                     SliceTimeEditDialog(
                         title = if (edit.second) {
-                            stringResource(R.string.str_a73fc712)
+                            stringResource(R.string.change_start_point)
                         } else {
-                            stringResource(R.string.str_faa9553c)
+                            stringResource(R.string.edit_end_point)
                         },
                         durationMs = progressDurationMs,
                         currentMs = progress.positionMs,

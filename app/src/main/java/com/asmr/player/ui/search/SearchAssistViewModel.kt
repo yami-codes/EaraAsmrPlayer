@@ -118,7 +118,7 @@ class SearchAssistViewModel @Inject constructor(
                     hotWorks = suggestions?.hotWorks.orEmpty()
                         .filter { item -> item.rj.isNotBlank() || item.title.isNotBlank() }
                         .take(10)
-                        .map { item -> item.toHotWork(context.getString(R.string.str_3e943286)) }
+                        .map { item -> item.toHotWork(context.getString(R.string.home_title_popular)) }
                 )
             )
         }

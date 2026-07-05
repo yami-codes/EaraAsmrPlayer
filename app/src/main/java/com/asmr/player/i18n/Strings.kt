@@ -6,18 +6,16 @@ import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
 
 /**
- * Typed accessors for frequently used string resources.
- * Most UI strings are referenced directly via R.string.* after migration.
+ * Typed accessors for common UI strings.
+ * Edit res/values/strings.xml by hand. Add entries here when useful.
  */
 object Strings {
-    @Composable
-    fun navLibrary() = stringResource(R.string.nav_library)
-
-    @Composable
-    fun navSearch() = stringResource(R.string.nav_search)
-
-    @Composable
-    fun navSettings() = stringResource(R.string.nav_settings)
+    @Composable fun navLibrary() = stringResource(R.string.nav_library)
+    @Composable fun navSearch() = stringResource(R.string.nav_search)
+    @Composable fun navSettings() = stringResource(R.string.nav_settings)
+    @Composable fun cancel() = stringResource(R.string.cancel)
+    @Composable fun confirm() = stringResource(R.string.confirm)
+    @Composable fun retry() = stringResource(R.string.retry)
 
     fun languageLabelRes(@StringRes key: String): Int = when (key) {
         "language_system" -> R.string.language_system

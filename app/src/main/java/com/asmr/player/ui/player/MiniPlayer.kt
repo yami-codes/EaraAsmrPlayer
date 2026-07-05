@@ -255,7 +255,7 @@ fun MiniPlayer(
                                     verticalArrangement = Arrangement.Center
                                 ) {
                                     Text(
-                                        text = metadata.title?.toString().orEmpty().ifBlank { stringResource(R.string.str_4740234f) },
+                                        text = metadata.title?.toString().orEmpty().ifBlank { stringResource(R.string.not_played) },
                                         modifier = Modifier.basicMarquee(),
                                         maxLines = 1,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),

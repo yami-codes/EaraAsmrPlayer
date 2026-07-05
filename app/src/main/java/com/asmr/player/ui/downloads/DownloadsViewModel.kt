@@ -386,7 +386,7 @@ class DownloadsViewModel @Inject constructor(
             downloadDao.deleteItemsForTask(taskId)
             downloadDao.deleteTaskById(taskId)
             DownloadQueueCoordinator.requestSchedule(context)
-            messageManager.showInfo(R.string.str_2b9701e2)
+            messageManager.showInfo(R.string.task_deleted)
         }
     }
 
@@ -428,7 +428,7 @@ class DownloadsViewModel @Inject constructor(
                 downloadDao.deleteTaskById(item.taskId)
             }
             DownloadQueueCoordinator.requestSchedule(context)
-            messageManager.showInfo(R.string.str_d303b1d4)
+            messageManager.showInfo(R.string.file_deleted)
         }
     }
 

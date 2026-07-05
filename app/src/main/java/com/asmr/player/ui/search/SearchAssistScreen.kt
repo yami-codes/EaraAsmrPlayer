@@ -293,7 +293,7 @@ internal fun SearchAssistContent(
         ) {
             item(contentType = "history") {
                 SearchAssistSection(
-                    title = stringResource(R.string.str_e9c38f88),
+                    title = stringResource(R.string.search_history),
                     trailing = {
                         if (uiState.history.isNotEmpty()) {
                             Row(
@@ -302,7 +302,7 @@ internal fun SearchAssistContent(
                             ) {
                                 HeaderIconButton(
                                     icon = Icons.Rounded.Delete,
-                                    contentDescription = stringResource(R.string.str_1aaedfdf),
+                                    contentDescription = stringResource(R.string.clear_search_history),
                                     onClick = { showClearHistoryDialog = true },
                                     modifier = Modifier.testTag(SEARCH_ASSIST_HISTORY_CLEAR_TAG)
                                 )
@@ -315,7 +315,7 @@ internal fun SearchAssistContent(
                     }
                 ) {
                     if (uiState.history.isEmpty()) {
-                        AssistMutedText(stringResource(R.string.str_968064c5))
+                        AssistMutedText(stringResource(R.string.no_search_history_yet))
                     } else {
                         SearchAssistHistoryChips(
                             history = uiState.history,
@@ -328,21 +328,21 @@ internal fun SearchAssistContent(
 
             if (uiState.isLoadingSuggestions) {
                 item(contentType = "hotCvsLoading") {
-                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.str_e2901cbe))
+                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.popular_voice_actors))
                 }
                 item(contentType = "hotTagsLoading") {
-                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.str_ad5516e3))
+                    SearchAssistTermSectionSkeleton(title = stringResource(R.string.popular_tags))
                 }
                 item(contentType = "hotWorksLoading") {
                     SearchAssistWorkSectionSkeleton(
-                        title = stringResource(R.string.str_3e943286),
+                        title = stringResource(R.string.home_title_popular),
                         compact = isCompact
                     )
                 }
             } else if (uiState.suggestions.hotCvs.isNotEmpty()) {
                 item(contentType = "hotCvs") {
                     SearchAssistTermSection(
-                        title = stringResource(R.string.str_e2901cbe),
+                        title = stringResource(R.string.popular_voice_actors),
                         terms = uiState.suggestions.hotCvs,
                         expanded = hotCvsExpanded,
                         onExpandedChange = { hotCvsExpanded = it },
@@ -354,7 +354,7 @@ internal fun SearchAssistContent(
             if (uiState.suggestions.hotTags.isNotEmpty()) {
                 item(contentType = "hotTags") {
                     SearchAssistTermSection(
-                        title = stringResource(R.string.str_ad5516e3),
+                        title = stringResource(R.string.popular_tags),
                         terms = uiState.suggestions.hotTags,
                         expanded = hotTagsExpanded,
                         onExpandedChange = { hotTagsExpanded = it },
@@ -366,7 +366,7 @@ internal fun SearchAssistContent(
             if (uiState.suggestions.hotWorks.isNotEmpty()) {
                 item(contentType = "hotWorks") {
                     SearchAssistSection(
-                        title = stringResource(R.string.str_3e943286),
+                        title = stringResource(R.string.home_title_popular),
                         trailing = {
                             TextButton(
                                 onClick = onOpenFullRanking,
@@ -377,7 +377,7 @@ internal fun SearchAssistContent(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Text(stringResource(R.string.str_28858be8))
+                                Text(stringResource(R.string.view_full_ranking))
                             }
                         }
                     ) {
@@ -447,11 +447,11 @@ internal fun SearchAssistContent(
         if (showClearHistoryDialog) {
             FlatActionDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                message = stringResource(R.string.str_6a51c612),
+                message = stringResource(R.string.clear_search_history_confirm),
                 actions = listOf(
-                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showClearHistoryDialog = false }),
+                    FlatDialogAction(stringResource(R.string.cancel), onClick = { showClearHistoryDialog = false }),
                     FlatDialogAction(
-                        text = stringResource(R.string.str_288f0c40),
+                        text = stringResource(R.string.clear),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showClearHistoryDialog = false
@@ -759,9 +759,9 @@ private fun ExpandCollapseIconButton(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight
         },
         contentDescription = if (expanded) {
-            stringResource(R.string.str_e082621c)
+            stringResource(R.string.log_collapse)
         } else {
-            stringResource(R.string.str_e2edde5a)
+            stringResource(R.string.log_expand)
         },
         onClick = onClick
     )
@@ -815,7 +815,7 @@ private fun SearchAssistWorkChip(
     }
     val containerColor = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.72f else 0.82f)
         .compositeOver(colorScheme.background)
-    val hotWorkFallback = stringResource(R.string.str_3e943286)
+    val hotWorkFallback = stringResource(R.string.home_title_popular)
     val meta = listOf(album.cv, album.circle)
         .map { it.trim() }
         .firstOrNull { it.isNotBlank() }

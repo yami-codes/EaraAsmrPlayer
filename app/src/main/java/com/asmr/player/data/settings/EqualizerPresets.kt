@@ -22,17 +22,17 @@ object EqualizerPresets {
 
     private val presetLabelResByName = mapOf(
         "default" to R.string.eq_preset_default,
-        "whisper" to R.string.str_eb3c55ba,
-        "deep" to R.string.str_c98c1f4d,
-        "bright" to R.string.str_f30db82d,
-        "soft" to R.string.str_ee1ca6be,
-        "custom" to R.string.str_f1d4ff50,
+        "whisper" to R.string.whisper,
+        "deep" to R.string.ear_licking,
+        "bright" to R.string.tapping_crisp,
+        "soft" to R.string.tapping_dull,
+        "custom" to R.string.custom,
         "默认" to R.string.eq_preset_default,
-        "耳语增强" to R.string.str_eb3c55ba,
-        "低沉氛围" to R.string.str_c98c1f4d,
-        "明亮清晰" to R.string.str_f30db82d,
-        "柔软包裹" to R.string.str_ee1ca6be,
-        "人声突出" to R.string.str_475aa056
+        "耳语增强" to R.string.whisper,
+        "低沉氛围" to R.string.ear_licking,
+        "明亮清晰" to R.string.tapping_crisp,
+        "柔软包裹" to R.string.tapping_dull,
+        "人声突出" to R.string.vocal_enhancement_vocal
     )
 
     fun labelResForName(name: String): Int? = presetLabelResByName[name]

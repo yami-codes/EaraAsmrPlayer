@@ -155,7 +155,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setSleepTimerLastDurationMin(minutes)
             settingsRepository.setSleepTimerEndAtMs(endAtMs)
-            messageManager.showSuccess(appContext.getString(R.string.str_68460ac1, endAtText))
+            messageManager.showSuccess(appContext.getString(R.string.set_successfully_playback, endAtText))
         }
     }
 
@@ -284,10 +284,10 @@ class PlayerViewModel @Inject constructor(
             val favId = playlistRepository.getOrCreateFavoritesPlaylistId()
             if (isFavorite.value) {
                 playlistRepository.removeItemFromPlaylist(favId, mediaId)
-                messageManager.showInfo(appContext.getString(R.string.str_3a906c71))
+                messageManager.showInfo(appContext.getString(R.string.removed_favorites))
             } else {
                 playlistRepository.addItemToPlaylist(favId, item)
-                messageManager.showSuccess(appContext.getString(R.string.str_a385702c))
+                messageManager.showSuccess(appContext.getString(R.string.added_my_favorites))
             }
         }
     }
@@ -308,18 +308,18 @@ class PlayerViewModel @Inject constructor(
             settingsRepository.setFloatingLyricsEnabled(enabled)
             messageManager.showInfo(
                 appContext.getString(
-                    if (enabled) R.string.str_863af597 else R.string.str_a96b4ab1
+                    if (enabled) R.string.floating_lyrics_enabled else R.string.floating_lyrics_off
                 )
             )
         }
     }
 
     fun showOnlineTagManageUnsupported() {
-        messageManager.showInfo(appContext.getString(R.string.str_835a8142))
+        messageManager.showInfo(appContext.getString(R.string.online_audio_does))
     }
 
     fun showOnlineManualLyricsUnsupported() {
-        messageManager.showInfo(appContext.getString(R.string.str_dd5bf0b5))
+        messageManager.showInfo(appContext.getString(R.string.replace_lyrics_online))
     }
 
     fun bindManualLyrics(uri: String, onSuccess: () -> Unit = {}) {
@@ -336,16 +336,16 @@ class PlayerViewModel @Inject constructor(
                 manualLyricsSourceRepository.upsert(target, trimmed)
                 playerConnection.requestLyricsReload()
             }.onSuccess {
-                messageManager.showSuccess(appContext.getString(R.string.str_c910a684))
+                messageManager.showSuccess(appContext.getString(R.string.lyrics_added))
                 onSuccess()
             }.onFailure {
-                messageManager.showError(appContext.getString(R.string.str_812710eb))
+                messageManager.showError(appContext.getString(R.string.failed_add_lyrics))
             }
         }
     }
 
     fun showUnsupportedLyricsFileMessage() {
-        messageManager.showInfo(appContext.getString(R.string.str_c0744782))
+        messageManager.showInfo(appContext.getString(R.string.only_lrc_srt_vtt_lyric_files))
     }
 
     fun addToQueue() {
@@ -368,9 +368,9 @@ class PlayerViewModel @Inject constructor(
         val item = playback.value.currentMediaItem ?: return false
         val added = playlistRepository.addItemToPlaylist(playlistId, item)
         if (added) {
-            messageManager.showSuccess(appContext.getString(R.string.str_5a27b609))
+            messageManager.showSuccess(appContext.getString(R.string.added_playlist))
         } else {
-            messageManager.showInfo(appContext.getString(R.string.str_2577654c))
+            messageManager.showInfo(appContext.getString(R.string.already_playlist))
         }
         return added
     }
@@ -380,17 +380,17 @@ class PlayerViewModel @Inject constructor(
             summary.addedCount > 0 && summary.skippedCount > 0 ->
                 messageManager.showSuccess(
                     appContext.getString(
-                        R.string.str_13ecc782,
+                        R.string.added_items_queue_skipped,
                         summary.addedCount,
                         summary.skippedCount
                     )
                 )
             summary.addedCount > 0 ->
                 messageManager.showSuccess(
-                    appContext.getString(R.string.str_1427f22c, summary.addedCount)
+                    appContext.getString(R.string.added_items_play_queue, summary.addedCount)
                 )
             summary.totalCount > 0 ->
-                messageManager.showInfo(appContext.getString(R.string.str_009d549c))
+                messageManager.showInfo(appContext.getString(R.string.selected_items_are))
             else -> Unit
         }
     }
@@ -414,10 +414,10 @@ class PlayerViewModel @Inject constructor(
         val enabled = slicePlaybackController.sliceModeEnabled.value
         if (!enabled) {
             slicePlaybackController.setSliceModeEnabled(true)
-            messageManager.showInfo(appContext.getString(R.string.str_420909ff))
+            messageManager.showInfo(appContext.getString(R.string.clip_only_playback))
         } else {
             slicePlaybackController.setSliceModeEnabled(false)
-            messageManager.showInfo(appContext.getString(R.string.str_32e56bf0))
+            messageManager.showInfo(appContext.getString(R.string.clip_only_playback_off))
         }
     }
 
@@ -440,9 +440,9 @@ class PlayerViewModel @Inject constructor(
                         selectedSliceId.value = null
                         editDrag.value = SliceEditDrag.None
                     }
-                    messageManager.showInfo(appContext.getString(R.string.str_9096a56d))
+                    messageManager.showInfo(appContext.getString(R.string.slice_deleted))
                 }
-                .onFailure { messageManager.showError(appContext.getString(R.string.str_fe9ed5a0)) }
+                .onFailure { messageManager.showError(appContext.getString(R.string.failed_delete_slice)) }
         }
     }
 
@@ -454,9 +454,9 @@ class PlayerViewModel @Inject constructor(
                     selectedSliceId.value = null
                     editDrag.value = SliceEditDrag.None
                     tempStartMs.value = null
-                    messageManager.showInfo(appContext.getString(R.string.str_73eacf06))
+                    messageManager.showInfo(appContext.getString(R.string.slices_cleared))
                 }
-                .onFailure { messageManager.showError(appContext.getString(R.string.str_e586a08c)) }
+                .onFailure { messageManager.showError(appContext.getString(R.string.failed_clear_slices)) }
         }
     }
 
@@ -465,16 +465,16 @@ class PlayerViewModel @Inject constructor(
         val start = startMs.coerceIn(0L, safeDuration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         val end = endMs.coerceIn(0L, safeDuration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         if (end <= start) {
-            messageManager.showInfo(appContext.getString(R.string.str_b48a86b5))
+            messageManager.showInfo(appContext.getString(R.string.end_time_cannot))
             return
         }
         viewModelScope.launch {
             runCatching { trackSliceRepository.updateSliceRange(sliceId, start, end) }
                 .onFailure { e ->
                     if (e is SliceOverlapException) {
-                        messageManager.showInfo(appContext.getString(R.string.str_6cb0d682))
+                        messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
                     } else {
-                        messageManager.showError(appContext.getString(R.string.str_615385c4))
+                        messageManager.showError(appContext.getString(R.string.failed_update_slice))
                     }
                 }
         }
@@ -482,11 +482,11 @@ class PlayerViewModel @Inject constructor(
 
     fun onCutPressed(durationMs: Long) {
         val mediaId = sliceUiState.value.trackMediaId ?: run {
-            messageManager.showInfo(appContext.getString(R.string.str_b704028e))
+            messageManager.showInfo(appContext.getString(R.string.no_playable_tracks_yet))
             return
         }
         if (durationMs <= 0L) {
-            messageManager.showInfo(appContext.getString(R.string.str_34ecd071))
+            messageManager.showInfo(appContext.getString(R.string.duration_unavailable))
             return
         }
         val pos = playback.value.positionMs.coerceAtLeast(0L)
@@ -497,24 +497,24 @@ class PlayerViewModel @Inject constructor(
             val hit = existing.any { s -> clamped >= s.startMs && clamped < s.endMs }
             if (hit) {
                 _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-                messageManager.showInfo(appContext.getString(R.string.str_5e0e90f7))
+                messageManager.showInfo(appContext.getString(R.string.start_point_falls))
                 return
             }
             tempStartMs.value = clamped
             _sliceUiEvents.tryEmit(SliceUiEvent.CutStartMarked)
-            messageManager.showInfo(appContext.getString(R.string.str_a940b3fc))
+            messageManager.showInfo(appContext.getString(R.string.start_point_marked))
             return
         }
         val end = pos.coerceIn(0L, durationMs)
         if (end <= start) {
             _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-            messageManager.showInfo(appContext.getString(R.string.str_b48a86b5))
+            messageManager.showInfo(appContext.getString(R.string.end_time_cannot))
             return
         }
         val overlap = existing.any { s -> start < s.endMs && end > s.startMs }
         if (overlap) {
             _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-            messageManager.showInfo(appContext.getString(R.string.str_6cb0d682))
+            messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
             return
         }
         viewModelScope.launch {
@@ -523,13 +523,13 @@ class PlayerViewModel @Inject constructor(
             }.onSuccess {
                 tempStartMs.value = null
                 _sliceUiEvents.tryEmit(SliceUiEvent.CutSliceCreated)
-                messageManager.showSuccess(appContext.getString(R.string.str_7cb68c1a))
+                messageManager.showSuccess(appContext.getString(R.string.slice_created))
             }.onFailure {
                 if (it is SliceOverlapException) {
                     _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-                    messageManager.showInfo(appContext.getString(R.string.str_6cb0d682))
+                    messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
                 } else {
-                    messageManager.showError(appContext.getString(R.string.str_df23584d))
+                    messageManager.showError(appContext.getString(R.string.failed_create_slice))
                 }
             }
         }
@@ -572,20 +572,20 @@ class PlayerViewModel @Inject constructor(
             1 -> {
                 playerConnection.setRepeatMode(Player.REPEAT_MODE_ONE)
                 playerConnection.setShuffleEnabled(false)
-                appContext.getString(R.string.str_7e91d9a0)
+                appContext.getString(R.string.repeat_one)
             }
             2 -> {
                 playerConnection.setRepeatMode(Player.REPEAT_MODE_ALL)
                 playerConnection.setShuffleEnabled(true)
-                appContext.getString(R.string.str_7e42a7d7)
+                appContext.getString(R.string.shuffle)
             }
             else -> {
                 playerConnection.setRepeatMode(Player.REPEAT_MODE_ALL)
                 playerConnection.setShuffleEnabled(false)
-                appContext.getString(R.string.str_700e986e)
+                appContext.getString(R.string.list_loop)
             }
         }
-        messageManager.showInfo(appContext.getString(R.string.str_d484f2f4, modeText))
+        messageManager.showInfo(appContext.getString(R.string.playback_mode, modeText))
         viewModelScope.launch { settingsRepository.setPlayMode(nextMode) }
     }
 
@@ -617,7 +617,7 @@ class PlayerViewModel @Inject constructor(
                 )
             }
             if (allTracks.isEmpty()) {
-                messageManager.showError(appContext.getString(R.string.str_9f439e8c))
+                messageManager.showError(appContext.getString(R.string.playable_audio_tracks))
                 return@launch
             }
             val resumeId = resumeMediaId?.trim().orEmpty().ifBlank { null }
@@ -677,11 +677,11 @@ class PlayerViewModel @Inject constructor(
 
     fun playTracks(album: Album, tracks: List<Track>, startTrack: Track, startPositionMs: Long) {
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError(appContext.getString(R.string.str_b5707dce))
+            messageManager.showError(appContext.getString(R.string.player_not_connected))
             return
         }
         if (startTrack.path.contains(".m3u8", ignoreCase = true)) {
-            messageManager.showError(appContext.getString(R.string.str_d8ab712e))
+            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not))
             return
         }
         val items = tracks.map { MediaItemFactory.fromTrack(album, it) }
@@ -696,11 +696,11 @@ class PlayerViewModel @Inject constructor(
         startPositionMs: Long
     ): Boolean {
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError(appContext.getString(R.string.str_b5707dce))
+            messageManager.showError(appContext.getString(R.string.player_not_connected))
             return false
         }
         if (startTrack.path.contains(".m3u8", ignoreCase = true)) {
-            messageManager.showError(appContext.getString(R.string.str_d8ab712e))
+            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not))
             return false
         }
         val (items, index) = withContext(Dispatchers.Default) {
@@ -709,7 +709,7 @@ class PlayerViewModel @Inject constructor(
             preparedItems to preparedIndex
         }
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError(appContext.getString(R.string.str_b5707dce))
+            messageManager.showError(appContext.getString(R.string.player_not_connected))
             return false
         }
         playerConnection.setQueue(
@@ -764,7 +764,7 @@ class PlayerViewModel @Inject constructor(
 
     fun playMediaItems(items: List<MediaItem>, startIndex: Int) {
         if (playerConnection.getControllerOrNull() == null) {
-            messageManager.showError(appContext.getString(R.string.str_b5707dce))
+            messageManager.showError(appContext.getString(R.string.player_not_connected))
             return
         }
         if (items.isEmpty()) return

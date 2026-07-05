@@ -153,7 +153,7 @@ internal fun ManualReorderDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = stringResource(R.string.str_5271f8ec),
+                            text = stringResource(R.string.long_press_drag),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary
                         )
@@ -273,7 +273,7 @@ private fun BoxScope.ManualReorderRow(
             }
         }
         Text(
-            text = stringResource(R.string.str_67fe2331),
+            text = stringResource(R.string.drag),
             style = MaterialTheme.typography.labelMedium,
             color = colorScheme.textTertiary,
             modifier = Modifier.padding(start = 12.dp)

@@ -23,12 +23,12 @@ enum class SearchFilterOption(
     val sortOption: SearchSortOption? = null
 ) {
     Collected(
-        labelRes = R.string.str_b811f9b1,
+        labelRes = R.string.included,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_collected_library),
         mode = SearchFilterMode.CollectedOnly
     ),
     ChineseTranslated(
-        labelRes = R.string.str_1ba04371,
+        labelRes = R.string.chinese_works,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_chinese_book),
         mode = SearchFilterMode.ChineseTranslated
     ),
@@ -57,12 +57,12 @@ enum class SearchFilterOption(
         sortOption = SearchSortOption.PriceHigh
     ),
     Presale(
-        labelRes = R.string.str_8d863b73,
+        labelRes = R.string.pre_order,
         icon = SearchFilterIcon.Vector(Icons.Rounded.CalendarMonth),
         mode = SearchFilterMode.PresaleOnly
     ),
     PurchasedOnly(
-        labelRes = R.string.str_5af67104,
+        labelRes = R.string.purchased,
         icon = SearchFilterIcon.Vector(Icons.Rounded.ShoppingBag),
         mode = SearchFilterMode.PurchasedOnly
     );

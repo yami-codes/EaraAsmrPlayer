@@ -111,7 +111,7 @@ fun AlbumGroupsScreen(
                 if (groups.isEmpty()) {
                     EaraBrandedEmptyState(
                         sectionTitle = stringResource(R.string.nav_groups),
-                        headline = stringResource(R.string.str_88fd1adf),
+                        headline = stringResource(R.string.no_groups_created_yet),
                         sectionIcon = Icons.Rounded.Folder,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
@@ -207,7 +207,7 @@ private fun AlbumGroupRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.str_92fabc79, group.albumCount, group.itemCount),
+                    text = stringResource(R.string.albums_tracks, group.albumCount, group.itemCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -234,11 +234,11 @@ private fun AlbumGroupRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.str_de997108, group.name),
+            message = stringResource(R.string.are_you_sure, group.name),
             actions = listOf(
-                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
-                    text = stringResource(R.string.str_2f4aaddd),
+                    text = stringResource(R.string.delete),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         showDeleteConfirm = false
@@ -270,11 +270,11 @@ private fun CreateAlbumGroupDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.str_8fefe67a),
+        message = stringResource(R.string.enter_new_group_name),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.str_1014b33d),
-        confirmText = stringResource(R.string.str_d9ac9228),
+        placeholder = stringResource(R.string.group_name),
+        confirmText = stringResource(R.string.create),
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onCreate(name.trim()) },
     )
@@ -290,11 +290,11 @@ private fun RenameAlbumGroupDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.str_b3b754dc),
+        message = stringResource(R.string.enter_group_name_prompt),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.str_1014b33d),
-        confirmText = stringResource(R.string.str_38cf16f2),
+        placeholder = stringResource(R.string.group_name),
+        confirmText = stringResource(R.string.dialog_confirm),
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onRename(name.trim()) },
     )

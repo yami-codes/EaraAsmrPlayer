@@ -105,14 +105,14 @@ class HotListeningViewModel @Inject constructor(
 
     private suspend fun loadTopListings(period: String, sortMode: HotListeningSortMode) {
         if (!hotListeningApi.isBackendConfigured) {
-            _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.str_8cdaa720)) }
+            _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.backend_not_configured)) }
             return
         }
         _rawUiState.update { HotListeningRawUiState.Loading }
         runCatching {
             val items = hotListeningApi.getTopListings(period, sortMode)
             if (items == null) {
-                _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.str_f50bf418)) }
+                _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.request_failed)) }
                 return
             }
             val entries = items.map { it.toEntry(sortMode) }
@@ -125,7 +125,7 @@ class HotListeningViewModel @Inject constructor(
             }
         }.onFailure { error ->
             _rawUiState.update {
-                HotListeningRawUiState.Error(error.message ?: appContext.getString(R.string.str_866b795e))
+                HotListeningRawUiState.Error(error.message ?: appContext.getString(R.string.load_failed))
             }
         }
     }
@@ -187,8 +187,8 @@ internal fun formatHotListeningMetricLabel(context: Context, entry: HotListening
 
 private fun formatHotListeningCompactCount(context: Context, value: Long): String {
     return when {
-        value >= 100_000_000L -> formatHotListeningDecimalUnit(context, value, 100_000_000L, R.string.str_37ae2852)
-        value >= 10_000L -> formatHotListeningDecimalUnit(context, value, 10_000L, R.string.str_9d032066)
+        value >= 100_000_000L -> formatHotListeningDecimalUnit(context, value, 100_000_000L, R.string.key_100m)
+        value >= 10_000L -> formatHotListeningDecimalUnit(context, value, 10_000L, R.string.key_10k)
         else -> value.toString()
     }
 }
@@ -210,18 +210,18 @@ private fun formatHotListeningDecimalUnit(
 }
 
 private fun formatHotListeningCompactDuration(context: Context, ms: Long): String {
-    if (ms < 60_000L) return context.getString(R.string.str_d950c32d)
+    if (ms < 60_000L) return context.getString(R.string.lt_minute)
 
     val totalMinutes = ms / 60_000L
-    if (totalMinutes < 60L) return context.getString(R.string.str_2424a778, totalMinutes)
+    if (totalMinutes < 60L) return context.getString(R.string.duration_minutes, totalMinutes)
 
     val totalHours = totalMinutes / 60L
     val compactHours = when {
-        totalHours >= 100_000_000L -> formatHotListeningDecimalUnit(context, totalHours, 100_000_000L, R.string.str_37ae2852)
-        totalHours >= 10_000L -> formatHotListeningDecimalUnit(context, totalHours, 10_000L, R.string.str_9d032066)
+        totalHours >= 100_000_000L -> formatHotListeningDecimalUnit(context, totalHours, 100_000_000L, R.string.key_100m)
+        totalHours >= 10_000L -> formatHotListeningDecimalUnit(context, totalHours, 10_000L, R.string.key_10k)
         else -> totalHours.toString()
     }
-    return context.getString(R.string.str_53128531, compactHours)
+    return context.getString(R.string.h, compactHours)
 }
 
 sealed class HotListeningUiState {

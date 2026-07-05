@@ -38,9 +38,9 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch {
             val id = playlistRepository.createUserPlaylist(trimmed)
             if (id != null) {
-                messageManager.showSuccess(R.string.str_1cf66abb)
+                messageManager.showSuccess(R.string.playlist_created)
             } else {
-                messageManager.showError(R.string.str_6e1bdee8)
+                messageManager.showError(R.string.list_name_already_exists)
             }
         }
     }
@@ -48,7 +48,7 @@ class PlaylistsViewModel @Inject constructor(
     fun deletePlaylist(playlist: PlaylistEntity) {
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlist)
-            messageManager.showInfo(R.string.str_d1c6154e)
+            messageManager.showInfo(R.string.playlist_deleted)
         }
     }
 
@@ -56,10 +56,10 @@ class PlaylistsViewModel @Inject constructor(
         val trimmed = newName.trim()
         viewModelScope.launch {
             when (playlistRepository.renamePlaylist(playlistId, trimmed)) {
-                RenamePlaylistResult.RENAMED -> messageManager.showSuccess(R.string.str_e6f61e54)
-                RenamePlaylistResult.DUPLICATE -> messageManager.showError(R.string.str_6e1bdee8)
-                RenamePlaylistResult.INVALID -> messageManager.showError(R.string.str_16ec0511)
-                RenamePlaylistResult.NOT_FOUND -> messageManager.showError(R.string.str_ca72ca5e)
+                RenamePlaylistResult.RENAMED -> messageManager.showSuccess(R.string.renamed)
+                RenamePlaylistResult.DUPLICATE -> messageManager.showError(R.string.list_name_already_exists)
+                RenamePlaylistResult.INVALID -> messageManager.showError(R.string.list_name_cannot_empty)
+                RenamePlaylistResult.NOT_FOUND -> messageManager.showError(R.string.list_does_not_exist)
             }
         }
     }
@@ -74,7 +74,7 @@ class PlaylistsViewModel @Inject constructor(
                 addItemsToFavorites(items)
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError(R.string.str_a17fe9f2)
+                messageManager.showError(R.string.failed_add_favorites)
             }
         }
     }
@@ -91,7 +91,7 @@ class PlaylistsViewModel @Inject constructor(
                 onComplete()
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError(R.string.str_94ebd9da)
+                messageManager.showError(R.string.failed_add_list_try_again)
                 onFailure(t)
             }
         }
@@ -114,11 +114,11 @@ class PlaylistsViewModel @Inject constructor(
     private fun showAddSummary(playlistName: String, summary: PlaylistAddSummary) {
         when {
             summary.addedCount > 0 && summary.skippedCount > 0 ->
-                messageManager.showSuccess(R.string.str_26abe922)
+                messageManager.showSuccess(R.string.added_items_skipped)
             summary.addedCount > 0 ->
-                messageManager.showSuccess(R.string.str_69b6fdea)
+                messageManager.showSuccess(R.string.added_items)
             summary.totalCount > 0 ->
-                messageManager.showInfo(R.string.str_b71144cb)
+                messageManager.showInfo(R.string.selected_items_already)
             else -> Unit
         }
     }

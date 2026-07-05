@@ -177,20 +177,20 @@ internal fun AlbumDescription(album: Album) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(R.string.str_e05dce83),
+                    stringResource(R.string.synopsis),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 if (shouldCollapse) {
                     TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) stringResource(R.string.str_def9e98b) else stringResource(R.string.str_e2edde5a), color = colorScheme.primary)
+                        Text(if (expanded) stringResource(R.string.collapse_label) else stringResource(R.string.log_expand), color = colorScheme.primary)
                     }
                 }
             }
             HorizontalDivider(color = colorScheme.textTertiary.copy(alpha = 0.25f))
             if (paragraphs.isEmpty()) {
-                Text(stringResource(R.string.str_88c7a67c), color = colorScheme.textTertiary)
+                Text(stringResource(R.string.no_description_yet), color = colorScheme.textTertiary)
             } else {
                 visible.forEach { p ->
                     val trimmed = p.trimStart()
@@ -252,17 +252,17 @@ internal fun DlsiteRecommendationsBlocks(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         DlsiteRecommendationsBlock(
-            title = stringResource(R.string.str_ba08cc27),
+            title = stringResource(R.string.circle_works),
             items = recommendations.circleWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
         DlsiteRecommendationsBlock(
-            title = stringResource(R.string.str_90e35c2f),
+            title = stringResource(R.string.same_voice_actor_works),
             items = recommendations.sameVoiceWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
         DlsiteRecommendationsBlock(
-            title = stringResource(R.string.str_03486e15),
+            title = stringResource(R.string.customers_who_bought),
             items = recommendations.alsoBoughtWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
@@ -433,7 +433,7 @@ internal fun AlbumTracks(album: Album, onTrackClick: (Track) -> Unit) {
     
     if (groupedTracks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(stringResource(R.string.str_b704028e))
+            Text(stringResource(R.string.no_playable_tracks_yet))
         }
     } else {
         LazyColumn(
@@ -502,11 +502,11 @@ internal fun TrackItem(
         supportingContent = { 
             val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
             val durationText = Formatting.formatTrackSeconds(track.duration)
-            val onlineOnlyLabel = stringResource(R.string.str_68905cf3)
-            val onlinePlaybackLabel = stringResource(R.string.str_8a463bf5)
+            val onlineOnlyLabel = stringResource(R.string.online_label)
+            val onlinePlaybackLabel = stringResource(R.string.online_playback)
             Text(
                 when {
-                    isOnline && durationText.isNotBlank() -> stringResource(R.string.str_1f5a4249, durationText)
+                    isOnline && durationText.isNotBlank() -> stringResource(R.string.online, durationText)
                     isOnline -> onlineOnlyLabel
                     durationText.isNotBlank() -> durationText
                     else -> onlinePlaybackLabel
@@ -585,7 +585,7 @@ private fun OnlineTrackRow(
                         modifier = Modifier.background(dynamicContainerColor)
                     ) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.str_b85270cd)) },
+                            text = { Text(stringResource(R.string.playback)) },
                             onClick = {
                                 onPlay()
                                 expanded = false
@@ -601,7 +601,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.str_58a8759e)) },
+                                text = { Text(stringResource(R.string.add_play_queue)) },
                                 onClick = {
                                     onAddToQueue.invoke()
                                     expanded = false
@@ -618,7 +618,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
+                                text = { Text(stringResource(R.string.add_my_list)) },
                                 onClick = {
                                     onAddToPlaylist.invoke()
                                     expanded = false
@@ -635,7 +635,7 @@ private fun OnlineTrackRow(
                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.str_2ec512a4)) },
+                                text = { Text(stringResource(R.string.tag_management)) },
                                 onClick = {
                                     onManageTags.invoke()
                                     expanded = false
