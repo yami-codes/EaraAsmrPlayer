@@ -33,7 +33,10 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "EaraAsmrPlayer"
-            packageVersion = "1.1.4"
+            packageVersion =
+                (project.findProperty("packageVersion") as? String)
+                    ?: System.getenv("PACKAGE_VERSION")
+                    ?: "1.1.4"
             description = "Eara ASMR Player - cross-platform desktop companion"
             vendor = "eValDoll"
 
