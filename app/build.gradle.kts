@@ -21,24 +21,24 @@ android {
         }
 
     val earaReleaseStoreFile =
-        System.getenv("EARA_RELEASE_STORE_FILE")
-            ?: (project.findProperty("EARA_RELEASE_STORE_FILE") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_STORE_FILE")
-            ?: "eara-release.jks"
+        System.getenv("APP_RELEASE_STORE_FILE")
+            ?: (project.findProperty("APP_RELEASE_STORE_FILE") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_STORE_FILE")
+            ?: "app-release.jks"
     val earaReleaseStorePassword =
-        System.getenv("EARA_RELEASE_STORE_PASSWORD")
-            ?: (project.findProperty("EARA_RELEASE_STORE_PASSWORD") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_STORE_PASSWORD")
+        System.getenv("APP_RELEASE_STORE_PASSWORD")
+            ?: (project.findProperty("APP_RELEASE_STORE_PASSWORD") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_STORE_PASSWORD")
             ?: ""
     val earaReleaseKeyAlias =
-        System.getenv("EARA_RELEASE_KEY_ALIAS")
-            ?: (project.findProperty("EARA_RELEASE_KEY_ALIAS") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_KEY_ALIAS")
+        System.getenv("APP_RELEASE_KEY_ALIAS")
+            ?: (project.findProperty("APP_RELEASE_KEY_ALIAS") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_KEY_ALIAS")
             ?: ""
     val earaReleaseKeyPassword =
-        System.getenv("EARA_RELEASE_KEY_PASSWORD")
-            ?: (project.findProperty("EARA_RELEASE_KEY_PASSWORD") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_KEY_PASSWORD")
+        System.getenv("APP_RELEASE_KEY_PASSWORD")
+            ?: (project.findProperty("APP_RELEASE_KEY_PASSWORD") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_KEY_PASSWORD")
             ?: ""
 
     val earaReleaseStoreFileOnDisk = rootProject.file(earaReleaseStoreFile)
