@@ -1,5 +1,7 @@
 package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -84,13 +86,13 @@ fun SleepTimerSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "定时关闭",
+                text = stringResource(R.string.str_47cab5ae),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textSecondary
             )
             TextButton(onClick = onDismiss) {
-                Text("完成")
+                Text(stringResource(R.string.str_769d88e4))
             }
         }
 
@@ -121,7 +123,7 @@ fun SleepTimerSheetContent(
                                 viewModel.setSleepTimerMinutes(min)
                                 onDismiss()
                             },
-                        headlineContent = { Text("${min}分钟") },
+                        headlineContent = { Text(stringResource(R.string.str_031b44ec)) },
                         colors = ListItemDefaults.colors(
                             containerColor = Color.Transparent,
                             headlineColor = colorScheme.textPrimary,
@@ -145,8 +147,8 @@ fun SleepTimerSheetContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showCustomDialog = true },
-                    headlineContent = { Text("自定义") },
-                    supportingContent = { Text("输入分钟数") },
+                    headlineContent = { Text(stringResource(R.string.str_f1d4ff50)) },
+                    supportingContent = { Text(stringResource(R.string.str_04b71807)) },
                     colors = ListItemDefaults.colors(
                         containerColor = Color.Transparent,
                         headlineColor = colorScheme.textPrimary,
@@ -166,7 +168,7 @@ fun SleepTimerSheetContent(
                                 viewModel.cancelSleepTimer()
                                 onDismiss()
                             },
-                        headlineContent = { Text("取消定时") },
+                        headlineContent = { Text(stringResource(R.string.str_c155f17a)) },
                         colors = ListItemDefaults.colors(
                             containerColor = Color.Transparent,
                             headlineColor = colorScheme.textPrimary,
@@ -181,11 +183,11 @@ fun SleepTimerSheetContent(
     if (showCustomDialog) {
         FlatTextFieldDialog(
             onDismissRequest = { showCustomDialog = false },
-            message = "输入定时关闭的分钟数。",
+            message = stringResource(R.string.str_f8070b95),
             value = customMinutesText,
             onValueChange = { customMinutesText = it.filter { ch -> ch.isDigit() }.take(4) },
-            placeholder = "输入分钟数",
-            confirmText = "确定",
+            placeholder = stringResource(R.string.str_04b71807),
+            confirmText = stringResource(R.string.str_38cf16f2),
             confirmEnabled = (customMinutesText.toIntOrNull() ?: 0) > 0,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             onConfirm = {

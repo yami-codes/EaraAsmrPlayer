@@ -1,5 +1,7 @@
 package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -49,7 +51,7 @@ fun LyricsScreen(
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (lyrics.isEmpty()) {
-            Text(text = "暂无歌词", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+            Text(text = stringResource(R.string.str_c24962a6), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
         } else {
             LazyColumn(
                 state = listState,

@@ -14,6 +14,8 @@ import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.FloatingLyricsSettings
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.data.settings.SettingsRepository
+import com.asmr.player.i18n.AppLanguage
+import com.asmr.player.i18n.LocaleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -72,6 +74,7 @@ sealed interface AppUpdateState {
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val settingsDataStore: SettingsDataStore,
+    private val localeManager: LocaleManager,
     private val okHttpClient: OkHttpClient,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -132,6 +135,9 @@ class SettingsViewModel @Inject constructor(
     val showMiniPlayerBar: StateFlow<Boolean> = settingsRepository.showMiniPlayerBar
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val appLanguage: StateFlow<AppLanguage> = settingsRepository.appLanguage
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppLanguage.System)
+
     val searchBlockedKeywords: StateFlow<List<String>> = settingsRepository.searchBlockedKeywords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -159,6 +165,13 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: String) {
         viewModelScope.launch { settingsDataStore.setTheme(mode) }
+    }
+
+    fun setAppLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            settingsRepository.setAppLanguage(language)
+            localeManager.applyLanguage(language)
+        }
     }
 
     fun setStaticHueArgb(argb: Int?) {

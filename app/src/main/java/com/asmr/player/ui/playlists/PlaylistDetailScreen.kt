@@ -1,5 +1,7 @@
 package com.asmr.player.ui.playlists
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -241,13 +243,14 @@ internal fun PlaylistDetailContent(
     }
 
     pendingRemoveItem?.let { item ->
+        val itemTitle = item.title.ifBlank { stringResource(R.string.str_unnamed_track) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveItem = null },
-            message = "确定从「$title」移除“${item.title.ifBlank { "未命名" }}”吗？",
+            message = stringResource(R.string.str_108428dc, title, itemTitle),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { pendingRemoveItem = null }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveItem = null }),
                 FlatDialogAction(
-                    text = "移除",
+                    text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveItem = null
@@ -315,21 +318,21 @@ private fun PlaylistItemRow(
             titleTextStyle = MaterialTheme.typography.bodyMedium,
             actions = listOf(
                 AudioItemMenuAction(
-                    label = "播放",
+                    label = stringResource(R.string.str_b85270cd),
                     onClick = onPlay
                 ),
                 AudioItemMenuAction(
-                    label = "移至顶部",
+                    label = stringResource(R.string.str_f1d9539d),
                     onClick = onMoveToTop,
                     testTag = PLAYLIST_DETAIL_MOVE_TOP_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = "移至末尾",
+                    label = stringResource(R.string.str_322defa2),
                     onClick = onMoveToBottom,
                     testTag = PLAYLIST_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = "移除",
+                    label = stringResource(R.string.str_86048b4f),
                     onClick = onRemove,
                     showDividerBefore = true
                 )

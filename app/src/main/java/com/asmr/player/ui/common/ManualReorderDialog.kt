@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.common
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -151,7 +153,7 @@ internal fun ManualReorderDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "长按后拖动，放手立即保存",
+                            text = stringResource(R.string.str_5271f8ec),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary
                         )
@@ -271,7 +273,7 @@ private fun BoxScope.ManualReorderRow(
             }
         }
         Text(
-            text = "拖动",
+            text = stringResource(R.string.str_67fe2331),
             style = MaterialTheme.typography.labelMedium,
             color = colorScheme.textTertiary,
             modifier = Modifier.padding(start = 12.dp)

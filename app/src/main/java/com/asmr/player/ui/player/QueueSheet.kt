@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.player
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -59,7 +61,7 @@ fun QueueSheetContent(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "当前播放队列",
+            text = stringResource(R.string.str_bf7b0d9f),
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             color = colorScheme.textSecondary
@@ -124,7 +126,7 @@ fun QueueSheetContent(
                         IconButton(onClick = { viewModel.removeFromQueue(index) }) {
                             Icon(
                                 imageVector = Icons.Rounded.Close,
-                                contentDescription = "移除",
+                                contentDescription = stringResource(R.string.str_86048b4f),
                                 tint = colorScheme.textSecondary,
                                 modifier = Modifier.size(20.dp)
                             )

@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -190,7 +192,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item(key = "group:local") {
-                    SettingsGroup(title = "本地库") {
+                    SettingsGroup(title = stringResource(R.string.nav_library)) {
                 val isDark = AsmrTheme.colorScheme.isDark
                 val buttonColors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = colorScheme.primarySoft,
@@ -209,7 +211,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Rounded.Refresh, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("刷新本地")
+                        Text(stringResource(R.string.str_ca2290b7))
                     }
                     FilledTonalButton(
                         onClick = { libraryViewModel.syncMetadata() },
@@ -219,7 +221,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Rounded.CloudSync, contentDescription = null, tint = buttonColors.contentColor)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("云同步")
+                        Text(stringResource(R.string.str_d99f6553))
                     }
                 }
 
@@ -230,7 +232,7 @@ fun SettingsScreen(
                 ) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = buttonColors.contentColor)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("添加目录")
+                    Text(stringResource(R.string.str_8eff8036))
                 }
 
                 bulkProgress?.let { progress ->
@@ -252,7 +254,7 @@ fun SettingsScreen(
                                     Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                     if (progress.currentAlbumTitle.isNotBlank()) {
                                         Text(
-                                            text = "专辑 ${progress.current}/${progress.total}：${progress.currentAlbumTitle}",
+                                            text = stringResource(R.string.str_17212956),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary,
                                             maxLines = 1,
@@ -260,13 +262,13 @@ fun SettingsScreen(
                                         )
                                     } else {
                                         Text(
-                                            text = "进度 ${progress.current}/${progress.total}",
+                                            text = stringResource(R.string.str_596e927a),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary
                                         )
                                     }
                                 }
-                                TextButton(onClick = { libraryViewModel.cancelBulkTask() }) { Text("取消") }
+                                TextButton(onClick = { libraryViewModel.cancelBulkTask() }) { Text(stringResource(R.string.str_625fb26b)) }
                             }
                             if (progress.total > 0) {
                                 LinearProgressIndicator(
@@ -278,7 +280,7 @@ fun SettingsScreen(
                             }
                             if (progress.currentFile.isNotBlank()) {
                                 Text(
-                                    text = "正在扫描：${progress.currentFile}",
+                                    text = stringResource(R.string.str_8395660e),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -290,9 +292,9 @@ fun SettingsScreen(
                 }
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("已添加目录", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.str_d5a4dec6), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     if (scanRoots.isEmpty()) {
-                        Text("暂无", style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
+                        Text(stringResource(R.string.str_f61f4cf6), style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
                     } else {
                         scanRoots.forEach { root ->
                             val label = remember(root) { formatTreeRootLabel(root) }
@@ -321,7 +323,7 @@ fun SettingsScreen(
         }
 
                 item(key = "group:block_words") {
-                    SettingsGroup(title = "屏蔽词") {
+                    SettingsGroup(title = stringResource(R.string.str_f99496c0)) {
                         SearchBlockedKeywordsSection(
                             input = searchBlockedKeywordInput,
                             keywords = searchBlockedKeywords,
@@ -338,37 +340,69 @@ fun SettingsScreen(
                     }
                 }
 
+                item(key = "group:language") {
+                    val appLanguage by viewModel.appLanguage.collectAsState()
+                    SettingsGroup(
+                        title = stringResource(R.string.settings_language_section),
+                        collapsible = true,
+                        initiallyExpanded = true,
+                        content = {
+                            Text(
+                                stringResource(R.string.settings_app_language),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                com.asmr.player.i18n.AppLanguage.entries.forEach { language ->
+                                    ThemeModeChip(
+                                        label = stringResource(
+                                            when (language) {
+                                                com.asmr.player.i18n.AppLanguage.System -> R.string.language_system
+                                                com.asmr.player.i18n.AppLanguage.English -> R.string.language_english
+                                                com.asmr.player.i18n.AppLanguage.Thai -> R.string.language_thai
+                                                com.asmr.player.i18n.AppLanguage.ChineseSimplified -> R.string.language_chinese_simplified
+                                            }
+                                        ),
+                                        selected = appLanguage == language,
+                                        onClick = { viewModel.setAppLanguage(language) }
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+
                 item(key = "group:appearance") {
                     SettingsGroup(
-                        title = "外观",
+                        title = stringResource(R.string.str_afcde261),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
-                            Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.str_b0bb0f81), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                 ThemeModeChip(
-                                    label = "系统",
+                                    label = stringResource(R.string.str_8a8b895f),
                                     selected = themeMode == "system",
                                     onClick = { viewModel.setThemeMode("system") }
                                 )
                                 ThemeModeChip(
-                                    label = "浅色",
+                                    label = stringResource(R.string.str_48d0a09b),
                                     selected = themeMode == "light",
                                     onClick = { viewModel.setThemeMode("light") }
                                 )
                                 ThemeModeChip(
-                                    label = "深色",
+                                    label = stringResource(R.string.str_41e8e8b9),
                                     selected = themeMode == "dark",
                                     onClick = { viewModel.setThemeMode("dark") }
                                 )
                                 ThemeModeChip(
-                                    label = "柔和深色",
+                                    label = stringResource(R.string.str_4a2c2e30),
                                     selected = themeMode == "soft_dark",
                                     onClick = { viewModel.setThemeMode("soft_dark") }
                                 )
                             }
 
-                            Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.str_b47707f0), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -415,19 +449,19 @@ fun SettingsScreen(
                         }
                     ) {
                         SettingsToggleRow(
-                            text = "封面动态主题（全局）",
+                            text = stringResource(R.string.str_4cd6894d),
                             checked = dynamicPlayerHueEnabled,
                             onCheckedChange = viewModel::setDynamicPlayerHueEnabled
                         )
 
                         SettingsToggleRow(
-                            text = "播放页/歌词页封面背景",
+                            text = stringResource(R.string.str_4c83b811),
                             checked = coverBackgroundEnabled,
                             onCheckedChange = viewModel::setCoverBackgroundEnabled
                         )
                         /*
                         SettingsToggleRow(
-                            text = "封面随手机转动查看完整图片",
+                            text = stringResource(R.string.str_f013b565),
                             checked = coverMotionEnabled,
                             onCheckedChange = viewModel::setCoverMotionEnabled
                         )
@@ -436,7 +470,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.str_b276b42d), style = MaterialTheme.typography.bodyMedium)
                             PreviewModeInfoTip(
                                 active = activeTipKey == "cover_preview_mode",
                                 onToggle = {
@@ -451,7 +485,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text("关闭") }
+                                    label = { Text(stringResource(R.string.str_b15d9127)) }
                                 )
                                 SegmentedButton(
                                     selected = coverPreviewMode == CoverPreviewMode.Drag,
@@ -459,7 +493,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text("滑动") }
+                                    label = { Text(stringResource(R.string.str_367f6ba4)) }
                                 )
                                 SegmentedButton(
                                     selected = coverPreviewMode == CoverPreviewMode.Motion,
@@ -467,7 +501,7 @@ fun SettingsScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                                     colors = segmentedButtonColors,
                                     icon = {},
-                                    label = { Text("转动") }
+                                    label = { Text(stringResource(R.string.str_0db17075)) }
                                 )
                             }
                         }
@@ -490,49 +524,49 @@ fun SettingsScreen(
 
                 item(key = "group:playback") {
                     SettingsGroup(
-                        title = "播放设置",
+                        title = stringResource(R.string.str_28e6b9ff),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
                             SettingsToggleRow(
-                                text = "迷你播放栏开关",
+                                text = stringResource(R.string.str_e90d534f),
                                 checked = showMiniPlayerBar,
                                 onCheckedChange = viewModel::setShowMiniPlayerBar,
                                 infoKey = "show_mini_player_bar",
-                                infoTitle = "迷你播放栏",
-                                infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
+                                infoTitle = stringResource(R.string.str_d2c48391),
+                                infoText = stringResource(R.string.str_af9aa94f),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
                             SettingsToggleRow(
-                                text = "SFW开关",
+                                text = stringResource(R.string.str_69b2ad6d),
                                 checked = sfwHideSystemControls,
                                 onCheckedChange = viewModel::setSfwHideSystemControls,
                                 infoKey = "sfw_hide_system_controls",
                                 infoTitle = "SFW",
-                                infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
+                                infoText = stringResource(R.string.str_dd48a009),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
                         }
                     ) {
                         SettingsToggleRow(
-                            text = "断开扬声器、有线/蓝牙耳机或蓝牙关闭时立刻暂停播放",
+                            text = stringResource(R.string.str_7c68a655),
                             checked = pauseOnOutputDisconnect,
                             onCheckedChange = viewModel::setPauseOnOutputDisconnect,
                             infoKey = "pause_on_output_disconnect",
-                            infoTitle = "输出断开自动暂停",
-                            infoText = "播放中如果外放、耳机或蓝牙输出被移除，会立刻暂停，避免声音突然外放。",
+                            infoTitle = stringResource(R.string.str_c515aaff),
+                            infoText = stringResource(R.string.str_006a01bb),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
                         SettingsToggleRow(
-                            text = "连接有线/蓝牙耳机或其他外接输出时继续播放",
+                            text = stringResource(R.string.str_6869710f),
                             checked = resumeOnOutputConnect,
                             onCheckedChange = viewModel::setResumeOnOutputConnect,
                             infoKey = "resume_on_output_connect",
-                            infoTitle = "输出接入自动恢复",
-                            infoText = "检测到耳机、蓝牙耳机、USB 音频、HDMI 或 AUX 等外接输出接入时，如果播放器当前处于暂停，会自动尝试恢复播放；手机扬声器不触发。",
+                            infoTitle = stringResource(R.string.str_d935677a),
+                            infoText = stringResource(R.string.str_fb656200),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -543,8 +577,8 @@ fun SettingsScreen(
                             textForValue = { value -> "播放时逐渐增强音量: ${value.toInt()}ms" },
                             onValueCommitted = { viewModel.setPlayFadeInMs(it.toInt()) },
                             infoKey = "play_fade_in",
-                            infoTitle = "播放淡入",
-                            infoText = "点击播放时，音量会在设定时长内从低到高平滑升到正常值。",
+                            infoTitle = stringResource(R.string.str_441c490a),
+                            infoText = stringResource(R.string.str_601c253e),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -556,19 +590,19 @@ fun SettingsScreen(
                             textForValue = { value -> "暂停时逐渐降低音量: ${value.toInt()}ms" },
                             onValueCommitted = { viewModel.setPauseFadeOutMs(it.toInt()) },
                             infoKey = "pause_fade_out",
-                            infoTitle = "暂停淡出",
-                            infoText = "点击暂停时，音量会在设定时长内逐渐降到 0，然后再真正暂停。",
+                            infoTitle = stringResource(R.string.str_54bb3e71),
+                            infoText = stringResource(R.string.str_a8230446),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
                         )
                         SettingsToggleRow(
-                            text = "其他应用播放音/视频时暂停",
+                            text = stringResource(R.string.str_d051ca82),
                             checked = pauseOnOtherAudio,
                             onCheckedChange = viewModel::setPauseOnOtherAudio,
                             infoKey = "pause_on_other_audio",
-                            infoTitle = "音频焦点暂停",
-                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
+                            infoTitle = stringResource(R.string.str_dfad5bb2),
+                            infoText = stringResource(R.string.str_37e39bb6),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -578,12 +612,12 @@ fun SettingsScreen(
                 // 悬浮歌词
                 item(key = "group:lyrics") {
                     SettingsGroup(
-                        title = "歌词",
+                        title = stringResource(R.string.str_5676764e),
                         collapsible = true,
                         initiallyExpanded = false,
                         collapsedContent = {
                             SettingsToggleRow(
-                                text = "开启悬浮歌词",
+                                text = stringResource(R.string.str_ee5b947d),
                                 checked = floatingLyricsEnabled,
                                 onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
                             )
@@ -597,7 +631,7 @@ fun SettingsScreen(
                         )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                        Text("悬浮歌词细节", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.str_b1288dea), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
                         if (!overlayGranted && floatingLyricsEnabled) {
                             OutlinedButton(
@@ -611,13 +645,13 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.outlinedButtonColors()
                             ) {
-                                Text("授权悬浮窗权限")
+                                Text(stringResource(R.string.str_686c2b78))
                             }
                         }
 
                         if (floatingLyricsEnabled && overlayGranted) {
                             SettingsSliderRow(
-                                text = "字体大小: ${floatingSettings.size.toInt()}",
+                                text = stringResource(R.string.str_1882f8d9),
                                 value = floatingSettings.size,
                                 range = 12f..32f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(size = it)) },
@@ -625,7 +659,7 @@ fun SettingsScreen(
                             )
 
                             SettingsSliderRow(
-                                text = "背景透明度: ${(floatingSettings.opacity * 100).toInt()}%",
+                                text = stringResource(R.string.str_03b99129),
                                 value = floatingSettings.opacity,
                                 range = 0f..1f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(opacity = it)) },
@@ -633,7 +667,7 @@ fun SettingsScreen(
                             )
 
                             SettingsSliderRow(
-                                text = "垂直位置 (Y轴)",
+                                text = stringResource(R.string.str_0bf14860),
                                 value = floatingSettings.yOffset.toFloat(),
                                 range = 0f..2000f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(yOffset = it.toInt())) },
@@ -644,7 +678,7 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("对齐方式", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.str_d5bc3536), style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.weight(1f))
                                 SingleChoiceSegmentedButtonRow {
                                     SegmentedButton(
@@ -684,7 +718,7 @@ fun SettingsScreen(
                                 )
                             }
                             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("歌词颜色", style = MaterialTheme.typography.bodyMedium)
+                                Text(stringResource(R.string.str_786fa2a1), style = MaterialTheme.typography.bodyMedium)
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                     presetColors.forEach { c ->
                                         val selected = floatingSettings.color == c
@@ -705,7 +739,7 @@ fun SettingsScreen(
                             }
 
                             SettingsToggleRow(
-                                text = "点击穿透(锁定位置)",
+                                text = stringResource(R.string.str_f61221ee),
                                 checked = !floatingSettings.touchable,
                                 onCheckedChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(touchable = !it)) }
                             )
@@ -713,7 +747,7 @@ fun SettingsScreen(
                     }
                 }
                 item(key = "group:about_update") {
-                    SettingsGroup(title = "关于") {
+                    SettingsGroup(title = stringResource(R.string.str_81d9f505)) {
                         val isDark = AsmrTheme.colorScheme.isDark
                         val buttonColors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = colorScheme.primarySoft,
@@ -721,13 +755,13 @@ fun SettingsScreen(
                         )
 
                         Text(
-                            text = "当前版本：${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                            text = stringResource(R.string.str_ec893572),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
 
                         SettingsToggleRow(
-                            text = "启动时自动检查更新",
+                            text = stringResource(R.string.str_a2f7c6d7),
                             checked = autoUpdateCheckEnabled,
                             onCheckedChange = viewModel::setAutoUpdateCheckEnabled
                         )
@@ -742,23 +776,23 @@ fun SettingsScreen(
                             if (updateState is AppUpdateState.Checking) {
                                 EaraLogoLoadingIndicator(size = 18.dp)
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text("检查中…")
+                                Text(stringResource(R.string.str_d6a22312))
                             } else {
-                                Text("检查更新")
+                                Text(stringResource(R.string.str_4ff13370))
                             }
                         }
 
                         when (val s = updateState) {
                             is AppUpdateState.UpToDate -> {
                                 Text(
-                                    text = "已是最新：${s.latestVersionName}",
+                                    text = stringResource(R.string.str_826d6f41),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
                             }
                             is AppUpdateState.UpdateAvailable -> {
                                 Text(
-                                    text = "发现新版本：${s.release.tagName}",
+                                    text = stringResource(R.string.str_2d6c530c),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -768,7 +802,7 @@ fun SettingsScreen(
                                     colors = buttonColors,
                                     enabled = !busy
                                 ) {
-                                    Text("下载并安装")
+                                    Text(stringResource(R.string.str_229d360a))
                                 }
                             }
                             is AppUpdateState.Downloading -> {
@@ -777,7 +811,7 @@ fun SettingsScreen(
                                 val progress = if (total > 0L) (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) else null
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = "正在下载：${s.release.apkName}",
+                                        text = stringResource(R.string.str_f7bce717),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.textSecondary,
                                         maxLines = 1,
@@ -792,7 +826,7 @@ fun SettingsScreen(
                             }
                             is AppUpdateState.ReadyToInstall -> {
                                 Text(
-                                    text = "下载完成：${s.release.tagName}",
+                                    text = stringResource(R.string.str_9e86f38e),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -803,7 +837,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = buttonColors
                                 ) {
-                                    Text("安装更新")
+                                    Text(stringResource(R.string.str_9fad6a62))
                                 }
                             }
                             is AppUpdateState.Failed -> {
@@ -816,7 +850,7 @@ fun SettingsScreen(
                                     onClick = { viewModel.resetUpdateState() },
                                     modifier = Modifier.align(Alignment.End)
                                 ) {
-                                    Text("关闭")
+                                    Text(stringResource(R.string.str_b15d9127))
                                 }
                             }
                             else -> {}
@@ -825,7 +859,7 @@ fun SettingsScreen(
                 }
 
                 item(key = "group:support_status") {
-                    SettingsGroup(title = "支持与状态") {
+                    SettingsGroup(title = stringResource(R.string.str_b0b4b042)) {
                         AppSupportStatusSection()
                     }
                 }
@@ -841,11 +875,11 @@ fun SettingsScreen(
     if (removeRoot != null) {
         FlatActionDialog(
             onDismissRequest = { pendingRemoveRoot = null },
-            message = "将从列表中移除该目录，后续不会再扫描它。",
+            message = stringResource(R.string.str_10a8c4f8),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { pendingRemoveRoot = null }),
                 FlatDialogAction(
-                    text = "移除",
+                    text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         val uri = runCatching { Uri.parse(removeRoot) }.getOrNull()
@@ -870,9 +904,9 @@ private fun LyricsPageSettingsSection(
     onSettingsChange: (LyricsPageSettings) -> Unit,
     onHorizontalControlInteractionChanged: (Boolean) -> Unit = {}
 ) {
-    Text("歌词页", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text(stringResource(R.string.str_64f79450), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     SettingsSliderRow(
-        text = "字体大小: ${settings.fontSizeSp.toInt()}sp",
+        text = stringResource(R.string.str_b1bd0bc5),
         value = settings.fontSizeSp,
         range = 18f..36f,
         stepSize = 1f,
@@ -880,7 +914,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "字体阴影: ${"%.1f".format(settings.strokeWidthSp)}sp",
+        text = "${stringResource(R.string.str_9a641afa)}${"%.1f".format(settings.strokeWidthSp)}sp",
         value = settings.strokeWidthSp,
         range = 0f..3f,
         stepSize = 0.1f,
@@ -888,7 +922,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "行间距: ${"%.2f".format(settings.lineHeightMultiplier)}x",
+        text = "${stringResource(R.string.str_3dd4f6bb)}${"%.2f".format(settings.lineHeightMultiplier)}x",
         value = settings.lineHeightMultiplier,
         range = 0.1f..3.0f,
         stepSize = 0.1f,
@@ -899,7 +933,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("显示区域", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.str_a8b3a2a6), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -908,7 +942,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text("全屏") }
+                label = { Text(stringResource(R.string.str_185926bf)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 1,
@@ -916,7 +950,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text("上1/4") }
+                label = { Text(stringResource(R.string.str_a81ff5c2)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 2,
@@ -924,7 +958,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 2, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text("中1/4") }
+                label = { Text(stringResource(R.string.str_a8fb2437)) }
             )
             SegmentedButton(
                 selected = settings.displayAreaMode == 3,
@@ -932,7 +966,7 @@ private fun LyricsPageSettingsSection(
                 shape = SegmentedButtonDefaults.itemShape(index = 3, count = 4),
                 colors = segmentedButtonColors,
                 icon = {},
-                label = { Text("下1/4") }
+                label = { Text(stringResource(R.string.str_fd22f00f)) }
             )
         }
     }
@@ -940,7 +974,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("对齐方式", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.str_d5bc3536), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -1003,7 +1037,7 @@ private fun SearchBlockedKeywordsSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "屏蔽关键词",
+                text = stringResource(R.string.str_45b206c6),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = colorScheme.textPrimary,
@@ -1015,7 +1049,7 @@ private fun SearchBlockedKeywordsSection(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Info,
-                    contentDescription = "搜索高级用法",
+                    contentDescription = stringResource(R.string.str_c1fd18de),
                     tint = colorScheme.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
@@ -1040,13 +1074,13 @@ private fun SearchBlockedKeywordsSection(
                 shape = RoundedCornerShape(10.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
-                Text("添加")
+                Text(stringResource(R.string.str_b58c7549))
             }
         }
 
         if (keywords.isEmpty()) {
             Text(
-                text = "暂无屏蔽关键词",
+                text = stringResource(R.string.str_5fbf18e4),
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.textSecondary
             )
@@ -1067,21 +1101,21 @@ private fun SearchBlockedKeywordsHelpDialog(
     onDismissRequest: () -> Unit
 ) {
     FlatActionDialog(
-        message = "搜索高级用法",
+        message = stringResource(R.string.str_c1fd18de),
         onDismissRequest = onDismissRequest,
         actions = listOf(
             FlatDialogAction(
-                text = "知道了",
+                text = stringResource(R.string.str_ce26955a),
                 tone = FlatDialogActionTone.Primary,
                 onClick = onDismissRequest
             )
         )
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchHelpText("和 搜索(空格分割)：「学校 制服」，表示同时包含指定关键词")
-            SearchHelpText("或 搜索(英文竖线分割)：「学校|制服」，表示包含一个或多个指定关键词均可")
-            SearchHelpText("排除 搜索(空格与减号)：「学校 -制服」，表示排除指定关键词")
-            SearchHelpText("完整 搜索(英文双引号包裹)：「\"【简体中文】 舔耳\"」，表示将多个词当做完整词组搜索")
+            SearchHelpText(stringResource(R.string.str_2439320a))
+            SearchHelpText(stringResource(R.string.str_82f01423))
+            SearchHelpText(stringResource(R.string.str_ebec5b02))
+            SearchHelpText(stringResource(R.string.str_32e03fa3))
         }
     }
 }
@@ -1238,7 +1272,7 @@ private fun SearchBlockedKeywordInputField(
                     ) {
                         if (value.isEmpty()) {
                             Text(
-                                text = "屏蔽关键词，例如：NTR",
+                                text = stringResource(R.string.str_692c3b3c),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colorScheme.textTertiary,
                                 maxLines = 1,
@@ -1275,7 +1309,7 @@ private fun SearchBlockedKeywordChip(
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = "删除 $keyword",
+                    contentDescription = stringResource(R.string.str_bdec61dd),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1386,7 +1420,7 @@ internal fun BackgroundEffectTypeSelectorRow(
             .testTag(BACKGROUND_EFFECT_TYPE_ROW_TAG),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("背景特效", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.str_98dc7955), style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         Box(
             modifier = Modifier.wrapContentSize(Alignment.TopEnd)
@@ -1432,7 +1466,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                     modifier = Modifier.background(dynamicContainerColor)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("关闭") },
+                        text = { Text(stringResource(R.string.str_b15d9127)) },
                         onClick = {
                             expanded = false
                             onBackgroundEffectEnabledChange(false)
@@ -1444,7 +1478,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text("光点") },
+                        text = { Text(stringResource(R.string.str_fa68c99e)) },
                         onClick = {
                             expanded = false
                             onSelected(BackgroundEffectType.Flow)
@@ -1452,7 +1486,7 @@ internal fun BackgroundEffectTypeSelectorRow(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("呼吸波纹") },
+                        text = { Text(stringResource(R.string.str_b52a783c)) },
                         onClick = {
                             expanded = false
                             onSelected(BackgroundEffectType.Ripple)
@@ -1758,20 +1792,20 @@ private fun PreviewModeInfoTip(active: Boolean, onToggle: () -> Unit) {
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "背景封面预览方式",
+                                text = stringResource(R.string.str_b276b42d),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "关闭：背景与封面保持居中静止",
+                                text = stringResource(R.string.str_60337f85),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = "滑动：播放页封面与歌词页背景都使用双指拖动预览，且会临时屏蔽左侧菜单侧滑",
+                                text = stringResource(R.string.str_43967475),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = "转动：通过转动手机预览封面其他区域",
+                                text = stringResource(R.string.str_dcab0ce3),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

@@ -1,5 +1,7 @@
 package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.util.Log
 import android.webkit.CookieManager
 import androidx.compose.foundation.BorderStroke
@@ -156,7 +158,7 @@ internal fun CloudSyncSelectionDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "云同步候选：${state.candidates.size} 个疑似结果(点击对应作品以确认同步)",
+                            text = stringResource(R.string.str_033daf88),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = 16.sp
@@ -226,7 +228,7 @@ internal fun CloudSyncSelectionDialog(
                                     contentColor = colorScheme.textSecondary
                                 )
                             ) {
-                                Text("忽略全部")
+                                Text(stringResource(R.string.str_e35640b4))
                             }
                         }
                     }

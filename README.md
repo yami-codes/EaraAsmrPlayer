@@ -65,7 +65,20 @@
 
 ## Downloads
 
-从 **GitHub Releases** 下载最新版本（tag `v*`，目前最新：`v1.1.0`）。
+From **GitHub Releases** download the latest version (tag `v*`, currently latest: `v1.1.0`).
+
+### Platform support
+
+| Platform | Status |
+|----------|--------|
+| **Android** | Full app (APK) |
+| **Windows** | Desktop companion (`build-windows.bat` → MSI installer) |
+| **Linux** | Desktop companion (`./build-linux.sh` → DEB package) |
+| **iOS** | Shared Kotlin module targets iOS (build on macOS) |
+
+### Languages
+
+The app supports **English** (default), **Thai**, and **Simplified Chinese**. Change language in **Settings → Language**, or follow the system locale.
 
 ---
 

@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.hotlistening
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -232,14 +234,14 @@ fun HotListeningScreen(
             }
 
             is HotListeningUiState.Error -> EaraBrandedEmptyState(
-                sectionTitle = "热门收听",
-                headline = "数据加载失败",
+                sectionTitle = stringResource(R.string.nav_hot_listening),
+                headline = stringResource(R.string.str_1f73e2c7),
                 sectionIcon = Icons.Rounded.Whatshot,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp),
                 footer = {
                     TextButton(onClick = { viewModel.refresh() }) {
-                        Text("重试")
+                        Text(stringResource(R.string.str_132c5cdc))
                     }
                 }
             )
@@ -251,8 +253,8 @@ fun HotListeningScreen(
 
                 if (state.entries.isEmpty() && state.blockedEntries.isEmpty()) {
                     EaraBrandedEmptyState(
-                        sectionTitle = "热门收听",
-                        headline = "暂无排行数据",
+                        sectionTitle = stringResource(R.string.nav_hot_listening),
+                        headline = stringResource(R.string.str_af0f065e),
                         sectionIcon = Icons.Rounded.Whatshot,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 24.dp)
@@ -419,7 +421,7 @@ private fun BlockedHotListeningFooter(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "$blockedCount 个作品被屏蔽",
+            text = stringResource(R.string.str_bd5c6e45),
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = colorScheme.textSecondary
         )

@@ -1,5 +1,7 @@
 package com.asmr.player.ui.playlists
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -96,13 +98,13 @@ fun PlaylistPickerScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "选择列表",
+                    text = stringResource(R.string.str_cbe45515),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
                 if (pickerItems.size > 1) {
                     Text(
-                        text = "将添加 ${pickerItems.size} 项",
+                        text = stringResource(R.string.str_2294bede),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.textSecondary
                     )
@@ -118,7 +120,7 @@ fun PlaylistPickerScreen(
                             enabled = !isAdding,
                             colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                         ) {
-                            Text("关闭")
+                            Text(stringResource(R.string.str_b15d9127))
                         }
                     }
                 }
@@ -130,7 +132,7 @@ fun PlaylistPickerScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !isAdding,
                         singleLine = true,
-                        placeholder = { Text("新建列表名称") }
+                        placeholder = { Text(stringResource(R.string.str_539edec4)) }
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     TextButton(
@@ -143,7 +145,7 @@ fun PlaylistPickerScreen(
                         enabled = canCreate && !isAdding,
                         colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                     ) {
-                        Text("创建")
+                        Text(stringResource(R.string.str_d9ac9228))
                     }
                 }
             }
@@ -154,7 +156,7 @@ fun PlaylistPickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text("暂无可选列表", color = colorScheme.textSecondary)
+                    Text(stringResource(R.string.str_43397019), color = colorScheme.textSecondary)
                 }
             } else {
                 LazyColumn(

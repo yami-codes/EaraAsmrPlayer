@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.playlists
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,8 +109,8 @@ fun PlaylistsScreen(
             Box(modifier = contentModifier) {
                 if (userPlaylists.isEmpty()) {
                     EaraBrandedEmptyState(
-                        sectionTitle = "我的列表",
-                        headline = "还没有创建列表",
+                        sectionTitle = stringResource(R.string.nav_playlists),
+                        headline = stringResource(R.string.str_898a30d0),
                         sectionIcon = Icons.AutoMirrored.Rounded.QueueMusic,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
@@ -204,7 +206,7 @@ private fun PlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "共 ${playlist.itemCount} 首",
+                    text = stringResource(R.string.str_58a42f85),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -239,11 +241,11 @@ private fun PlaylistRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = "确定要删除列表“${playlist.name}”吗？此操作不可撤销。",
+            message = stringResource(R.string.str_e0788e07),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
-                    text = "删除",
+                    text = stringResource(R.string.str_2f4aaddd),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         showDeleteConfirm = false
@@ -275,11 +277,11 @@ private fun CreatePlaylistDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = "请输入新列表名称。",
+        message = stringResource(R.string.str_451d9b45),
         value = name,
         onValueChange = { name = it },
-        placeholder = "请输入列表名称",
-        confirmText = "创建",
+        placeholder = stringResource(R.string.str_ade3663e),
+        confirmText = stringResource(R.string.str_d9ac9228),
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onCreate(name.trim()) },
     )
@@ -295,11 +297,11 @@ private fun RenamePlaylistDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = "请输入新的列表名称。",
+        message = stringResource(R.string.str_0abc6c57),
         value = name,
         onValueChange = { name = it },
-        placeholder = "请输入列表名称",
-        confirmText = "确定",
+        placeholder = stringResource(R.string.str_ade3663e),
+        confirmText = stringResource(R.string.str_38cf16f2),
         confirmEnabled = name.trim().isNotBlank() && name.trim() != initialName.trim(),
         onConfirm = { onRename(name.trim()) },
     )

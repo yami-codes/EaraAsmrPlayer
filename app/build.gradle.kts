@@ -21,24 +21,24 @@ android {
         }
 
     val earaReleaseStoreFile =
-        System.getenv("EARA_RELEASE_STORE_FILE")
-            ?: (project.findProperty("EARA_RELEASE_STORE_FILE") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_STORE_FILE")
-            ?: "eara-release.jks"
+        System.getenv("APP_RELEASE_STORE_FILE")
+            ?: (project.findProperty("APP_RELEASE_STORE_FILE") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_STORE_FILE")
+            ?: "app-release.jks"
     val earaReleaseStorePassword =
-        System.getenv("EARA_RELEASE_STORE_PASSWORD")
-            ?: (project.findProperty("EARA_RELEASE_STORE_PASSWORD") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_STORE_PASSWORD")
+        System.getenv("APP_RELEASE_STORE_PASSWORD")
+            ?: (project.findProperty("APP_RELEASE_STORE_PASSWORD") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_STORE_PASSWORD")
             ?: ""
     val earaReleaseKeyAlias =
-        System.getenv("EARA_RELEASE_KEY_ALIAS")
-            ?: (project.findProperty("EARA_RELEASE_KEY_ALIAS") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_KEY_ALIAS")
+        System.getenv("APP_RELEASE_KEY_ALIAS")
+            ?: (project.findProperty("APP_RELEASE_KEY_ALIAS") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_KEY_ALIAS")
             ?: ""
     val earaReleaseKeyPassword =
-        System.getenv("EARA_RELEASE_KEY_PASSWORD")
-            ?: (project.findProperty("EARA_RELEASE_KEY_PASSWORD") as? String)
-            ?: earaKeystoreProps.getProperty("EARA_RELEASE_KEY_PASSWORD")
+        System.getenv("APP_RELEASE_KEY_PASSWORD")
+            ?: (project.findProperty("APP_RELEASE_KEY_PASSWORD") as? String)
+            ?: earaKeystoreProps.getProperty("APP_RELEASE_KEY_PASSWORD")
             ?: ""
 
     val earaReleaseStoreFileOnDisk = rootProject.file(earaReleaseStoreFile)
@@ -130,6 +130,7 @@ dependencies {
     val paging_version = "3.2.1"
 
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.7.0")
     implementation("androidx.savedstate:savedstate:1.2.1")
@@ -191,6 +192,7 @@ dependencies {
     // Coil (Image Loading)
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation(project(":shared"))
 
     // Unit Testing
     testImplementation(platform("androidx.compose:compose-bom:2024.02.00"))

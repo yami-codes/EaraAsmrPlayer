@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -471,7 +473,7 @@ fun LibraryScreen(
                             }
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
-                                text = "进度 ${progress.current}/${progress.total}",
+                                text = stringResource(R.string.str_596e927a),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colorScheme.textSecondary
                             )
@@ -488,7 +490,7 @@ fun LibraryScreen(
                             if (progress.currentFile.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "正在扫描：${progress.currentFile}",
+                                    text = stringResource(R.string.str_8395660e),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -496,7 +498,7 @@ fun LibraryScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(18.dp))
-                            Button(onClick = { viewModel.cancelBulkTask() }) { Text("取消") }
+                            Button(onClick = { viewModel.cancelBulkTask() }) { Text(stringResource(R.string.str_625fb26b)) }
                         }
                     }
                     is LibraryUiState.Success -> {
@@ -566,7 +568,7 @@ fun LibraryScreen(
                                                         contentColor = colorScheme.onPrimaryContainer
                                                     )
                                                 ) {
-                                                    Text("重置筛选")
+                                                    Text(stringResource(R.string.str_0f47025e))
                                                 }
                                             }
                                         } else {
@@ -904,7 +906,7 @@ fun LibraryScreen(
                 val isSyncing = syncStatus is SyncStatus.Syncing
                 val hasLocalPaths = remember(album) { album.getAllLocalPaths().isNotEmpty() }
                 ListItem(
-                    headlineContent = { Text("删除") },
+                    headlineContent = { Text(stringResource(R.string.str_2f4aaddd)) },
                     leadingContent = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -915,7 +917,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text("标签管理") },
+                    headlineContent = { Text(stringResource(R.string.str_2ec512a4)) },
                     leadingContent = { Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -933,7 +935,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text("添加到分组") },
+                    headlineContent = { Text(stringResource(R.string.str_f0ece022)) },
                     leadingContent = { Icon(Icons.Rounded.CreateNewFolder, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -944,7 +946,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text("本地同步") },
+                    headlineContent = { Text(stringResource(R.string.str_6d34d246)) },
                     leadingContent = { Icon(Icons.Rounded.Sync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -955,7 +957,7 @@ fun LibraryScreen(
                         }
                 )
                 ListItem(
-                    headlineContent = { Text("云同步") },
+                    headlineContent = { Text(stringResource(R.string.str_d99f6553)) },
                     leadingContent = { Icon(Icons.Rounded.CloudSync, contentDescription = null) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -967,7 +969,7 @@ fun LibraryScreen(
                 )
                 if (isSyncing) {
                     ListItem(
-                        headlineContent = { Text("取消同步") },
+                        headlineContent = { Text(stringResource(R.string.str_7ec7feb7)) },
                         leadingContent = { Icon(Icons.Rounded.Close, contentDescription = null) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -990,11 +992,11 @@ fun LibraryScreen(
         if (album != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                message = "将从本地库中移除该专辑，并尝试删除本地文件。",
+                message = stringResource(R.string.str_98fb00ce),
                 actions = listOf(
                     FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
                     FlatDialogAction(
-                        text = "删除",
+                        text = stringResource(R.string.str_2f4aaddd),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             showDeleteConfirm = false
@@ -1085,7 +1087,7 @@ internal fun LibraryChrome(
         CustomSearchBar(
             value = searchText,
             onValueChange = onSearchTextChange,
-            placeholder = "社团 / CV / 标签...",
+            placeholder = stringResource(R.string.str_179ff622),
             modifier = Modifier
                 .weight(1f),
             inputTestTag = LIBRARY_SEARCH_INPUT_TAG,
@@ -1134,7 +1136,7 @@ internal fun LibraryChrome(
                     modifier = Modifier.background(chromeActionContainerColor)
                 ) {
                     DropdownMenuItem(
-                        text = { Text("最近播放") },
+                        text = { Text(stringResource(R.string.str_f1579e89)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortLastPlayed()
@@ -1146,7 +1148,7 @@ internal fun LibraryChrome(
                         color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text("最近加入") },
+                        text = { Text(stringResource(R.string.str_4ee931e5)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortAdded()
@@ -1158,7 +1160,7 @@ internal fun LibraryChrome(
                         color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     DropdownMenuItem(
-                        text = { Text("专辑标题") },
+                        text = { Text(stringResource(R.string.str_b31a206d)) },
                         onClick = {
                             onSortMenuExpandedChange(false)
                             onSortTitle()
@@ -1255,7 +1257,7 @@ private fun TrackAlbumHeader(
 
             val footerSegments = buildList {
                 if (rjCode.isNotBlank()) add(rjCode)
-                add("$trackCount 音频")
+                add(stringResource(R.string.str_020a5f34))
                 Formatting.formatTrackSeconds(totalDurationSeconds).takeIf { it.isNotBlank() }?.let(::add)
                 totalSizeBytes?.takeIf { it > 0L }?.let(Formatting::formatFileSize)?.let(::add)
             }
@@ -1329,14 +1331,14 @@ private fun TrackListRow(
         actions = buildList {
             add(
                 AudioItemMenuAction(
-                    label = "添加到播放队列",
+                    label = stringResource(R.string.str_58a8759e),
                     onClick = onAddToQueue,
                     icon = Icons.AutoMirrored.Rounded.QueueMusic
                 )
             )
             add(
                 AudioItemMenuAction(
-                    label = "添加到播放列表",
+                    label = stringResource(R.string.str_1c7e42b8),
                     onClick = onAddToPlaylist,
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     showDividerBefore = true
@@ -1345,7 +1347,7 @@ private fun TrackListRow(
             if (onManageTags != null) {
                 add(
                     AudioItemMenuAction(
-                        label = "标签管理",
+                        label = stringResource(R.string.str_2ec512a4),
                         onClick = onManageTags,
                         icon = Icons.AutoMirrored.Rounded.Label,
                         showDividerBefore = true
@@ -1354,7 +1356,7 @@ private fun TrackListRow(
             }
             add(
                 AudioItemMenuAction(
-                    label = "从专辑移除",
+                    label = stringResource(R.string.str_9a9dd2e0),
                     onClick = onRemove,
                     icon = Icons.Rounded.Delete,
                     showDividerBefore = true

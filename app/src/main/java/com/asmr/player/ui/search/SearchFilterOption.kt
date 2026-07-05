@@ -1,6 +1,7 @@
 ﻿package com.asmr.player.ui.search
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -16,52 +17,52 @@ sealed class SearchFilterIcon {
 }
 
 enum class SearchFilterOption(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: SearchFilterIcon,
     val mode: SearchFilterMode,
     val sortOption: SearchSortOption? = null
 ) {
     Collected(
-        label = "已收录",
+        labelRes = R.string.str_b811f9b1,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_collected_library),
         mode = SearchFilterMode.CollectedOnly
     ),
     ChineseTranslated(
-        label = "中文作品",
+        labelRes = R.string.str_1ba04371,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_chinese_book),
         mode = SearchFilterMode.ChineseTranslated
     ),
     Trend(
-        label = SearchSortOption.Trend.label,
+        labelRes = SearchSortOption.Trend.labelRes,
         icon = SearchFilterIcon.Vector(Icons.Rounded.LocalFireDepartment),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.Trend
     ),
     ReleaseNew(
-        label = SearchSortOption.ReleaseNew.label,
+        labelRes = SearchSortOption.ReleaseNew.labelRes,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_new_releases_new),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.ReleaseNew
     ),
     DLCount(
-        label = SearchSortOption.DLCount.label,
+        labelRes = SearchSortOption.DLCount.labelRes,
         icon = SearchFilterIcon.Vector(Icons.Rounded.EmojiEvents),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.DLCount
     ),
     PriceHigh(
-        label = SearchSortOption.PriceHigh.label,
+        labelRes = SearchSortOption.PriceHigh.labelRes,
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_badge_japanese_yen),
         mode = SearchFilterMode.Standard,
         sortOption = SearchSortOption.PriceHigh
     ),
     Presale(
-        label = "预售",
+        labelRes = R.string.str_8d863b73,
         icon = SearchFilterIcon.Vector(Icons.Rounded.CalendarMonth),
         mode = SearchFilterMode.PresaleOnly
     ),
     PurchasedOnly(
-        label = "已购",
+        labelRes = R.string.str_5af67104,
         icon = SearchFilterIcon.Vector(Icons.Rounded.ShoppingBag),
         mode = SearchFilterMode.PurchasedOnly
     );

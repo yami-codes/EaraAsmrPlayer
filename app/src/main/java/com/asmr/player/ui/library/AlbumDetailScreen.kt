@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.content.Intent
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -577,7 +579,7 @@ fun AlbumDetailScreen(
                                         DlsiteLanguageEdition(
                                             workno = model.baseRjCode.ifBlank { model.rjCode },
                                             lang = "JPN",
-                                            label = "日本語",
+                                            label = stringResource(R.string.str_00110af8),
                                             displayOrder = 1
                                         )
                                     )
@@ -727,7 +729,7 @@ fun AlbumDetailScreen(
                                                 onTogglePreferredCurrentPath = { path, enabled ->
                                                     if (enabled) {
                                                         viewModel.persistPreferredTreeCurrentPath(localTreeStateKey, path)
-                                                        viewModel.messageManager.showSuccess("已设为默认打开目录")
+                                                        viewModel.messageManager.showSuccess(R.string.str_b4885315)
                                                     } else {
                                                         viewModel.clearPreferredTreeCurrentPath(localTreeStateKey)
                                                     }
@@ -758,7 +760,7 @@ fun AlbumDetailScreen(
                                                 if (albumId != null && albumId > 0) {
                                                     EaraLogoLoadingIndicator(tint = AsmrTheme.colorScheme.primary)
                                                 } else {
-                                                    Text("未下载到本地")
+                                                    Text(stringResource(R.string.str_1205be59))
                                                 }
                                             }
                                         }
@@ -1311,7 +1313,7 @@ private fun AlbumHeroIdentityOverlay(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "${listenTogetherRjListenerCount.coerceAtLeast(0)} 人正在听",
+                                    text = stringResource(R.string.str_deba8810),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = listenerContent,
                                     maxLines = 1,
@@ -1622,7 +1624,7 @@ private fun AlbumHeader(
                                         modifier = Modifier.size(primaryIconSize)
                                     )
                                     Spacer(modifier = Modifier.width(primaryIconGap))
-                                    Text("分组", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
+                                    Text(stringResource(R.string.str_829abe5a), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary, maxLines = 1)
                                 }
                             }
 
@@ -1902,7 +1904,7 @@ private fun AlbumHeaderDownloadAction(
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(iconSize))
             Spacer(modifier = Modifier.width(iconGap))
-            Text("下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            Text(stringResource(R.string.str_f26ef914), style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
         Box(
             modifier = Modifier
@@ -1928,7 +1930,7 @@ private fun AlbumHeaderDownloadAction(
                 ) {
                     Icon(Icons.Rounded.Bookmark, contentDescription = null, modifier = Modifier.size(iconSize))
                     Spacer(modifier = Modifier.width(iconGap))
-                    Text("保存", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(stringResource(R.string.str_be5fbbe3), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
 
                 AlbumHeaderButtonGroupState.Lossless -> Button(
@@ -1948,7 +1950,7 @@ private fun AlbumHeaderDownloadAction(
                 ) {
                     Icon(Icons.Rounded.LibraryMusic, contentDescription = null, modifier = Modifier.size(iconSize))
                     Spacer(modifier = Modifier.width(iconGap))
-                    Text("无损下载", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                    Text(stringResource(R.string.str_216efe05), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
 
                 AlbumHeaderButtonGroupState.DownloadOnly -> Unit

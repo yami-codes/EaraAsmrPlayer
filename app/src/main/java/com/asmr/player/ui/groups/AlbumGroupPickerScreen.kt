@@ -1,5 +1,7 @@
 package com.asmr.player.ui.groups
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -90,7 +92,7 @@ fun AlbumGroupPickerScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "选择分组",
+                    text = stringResource(R.string.str_3e8c9c54),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
@@ -102,7 +104,7 @@ fun AlbumGroupPickerScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !isAdding,
                         singleLine = true,
-                        placeholder = { Text("新建分组名称") }
+                        placeholder = { Text(stringResource(R.string.str_1c02e687)) }
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     TextButton(
@@ -115,7 +117,7 @@ fun AlbumGroupPickerScreen(
                         enabled = canCreate && !isAdding,
                         colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
                     ) {
-                        Text("创建")
+                        Text(stringResource(R.string.str_d9ac9228))
                     }
                 }
             }
@@ -126,7 +128,7 @@ fun AlbumGroupPickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text("暂无可选分组", color = colorScheme.textSecondary)
+                    Text(stringResource(R.string.str_1b667e41), color = colorScheme.textSecondary)
                 }
             } else {
                 LazyColumn(

@@ -10,6 +10,7 @@ import com.asmr.player.data.local.db.AppDatabaseProvider
 import com.asmr.player.data.remote.download.DownloadQueueCoordinator
 import com.asmr.player.data.remote.download.DownloadRuntimeConfig
 import com.asmr.player.data.settings.SettingsRepository
+import com.asmr.player.i18n.LocaleManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,10 +32,14 @@ class AsmrApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    @Inject
+    lateinit var localeManager: LocaleManager
+
     override fun onCreate() {
         super.onCreate()
         runBlocking {
             runCatching { settingsRepository.clearSleepTimer() }
+            runCatching { localeManager.applyLanguage(localeManager.getAppLanguage()) }
         }
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             runCatching { AppDatabaseProvider.get(applicationContext) }

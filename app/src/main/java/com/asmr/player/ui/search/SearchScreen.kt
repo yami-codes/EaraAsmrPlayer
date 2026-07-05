@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.search
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -719,7 +721,7 @@ fun SearchScreen(
                             is SearchUiState.Success -> {
                                 if (state.results.isEmpty()) {
                                     EaraBrandedEmptyState(
-                                        sectionTitle = "在线搜索",
+                                        sectionTitle = stringResource(R.string.nav_search),
                                         headline = if (state.keyword.isBlank()) "还没有搜索结果" else "没有找到匹配结果",
                                         sectionIcon = Icons.Rounded.Search,
                                         modifier = Modifier.fillMaxSize(),
@@ -804,8 +806,8 @@ fun SearchScreen(
                             }
 
                             is SearchUiState.Error -> EaraBrandedEmptyState(
-                                sectionTitle = "在线搜索",
-                                headline = "网络连接出了点问题",
+                                sectionTitle = stringResource(R.string.nav_search),
+                                headline = stringResource(R.string.str_96d3c4e7),
                                 sectionIcon = Icons.Rounded.WifiOff,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
@@ -820,7 +822,7 @@ fun SearchScreen(
                                             contentColor = colorScheme.onPrimaryContainer
                                         )
                                     ) {
-                                        Text("重试")
+                                        Text(stringResource(R.string.str_132c5cdc))
                                     }
                                 }
                             )
@@ -1074,7 +1076,7 @@ private fun SearchPullNextPageIndicator(
                 modifier = Modifier.size(22.dp)
             )
             Text(
-                text = "下一页",
+                text = stringResource(R.string.str_b4e1b508),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (armed) colorScheme.primary else colorScheme.textPrimary
             )
@@ -1092,7 +1094,7 @@ internal fun SearchChrome(
     modifier: Modifier = Modifier,
     keyword: String,
     onKeywordChange: (String) -> Unit,
-    placeholder: String = DefaultSearchPlaceholder,
+    placeholder: String? = null,
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
@@ -1124,6 +1126,7 @@ internal fun SearchChrome(
     onPrev: () -> Unit,
     onNext: () -> Unit
 ) {
+    val resolvedPlaceholder = placeholder ?: stringResource(DefaultSearchPlaceholderRes)
     Column(
         modifier = modifier
             .onSizeChanged(onMeasured)
@@ -1136,7 +1139,7 @@ internal fun SearchChrome(
         SearchToolbar(
             keyword = keyword,
             onKeywordChange = onKeywordChange,
-            placeholder = placeholder,
+            placeholder = resolvedPlaceholder,
             searchFieldReadOnly = searchFieldReadOnly,
             onSearchFieldClick = onSearchFieldClick,
             selectedFilter = selectedFilter,
@@ -1174,7 +1177,7 @@ internal fun SearchChrome(
 internal fun SearchToolbar(
     keyword: String,
     onKeywordChange: (String) -> Unit,
-    placeholder: String = DefaultSearchPlaceholder,
+    placeholder: String? = null,
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
@@ -1194,6 +1197,7 @@ internal fun SearchToolbar(
     onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
     rightPanelToggle: (@Composable (Modifier) -> Unit)? = null
 ) {
+    val resolvedPlaceholder = placeholder ?: stringResource(DefaultSearchPlaceholderRes)
     val colorScheme = AsmrTheme.colorScheme
     var scopeMenuExpanded by remember { mutableStateOf(false) }
     var secondaryMenuExpanded by remember { mutableStateOf(false) }
@@ -1220,7 +1224,7 @@ internal fun SearchToolbar(
         CustomSearchBar(
             value = keyword,
             onValueChange = onKeywordChange,
-            placeholder = placeholder,
+            placeholder = resolvedPlaceholder,
             modifier = Modifier
                 .weight(1f),
             readOnly = searchFieldReadOnly,
@@ -1250,7 +1254,7 @@ internal fun SearchToolbar(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = selectedFilter.label,
+                                text = stringResource(selectedFilter.labelRes),
                                 style = MaterialTheme.typography.labelSmall,
                                 maxLines = 1
                             )
@@ -1282,7 +1286,7 @@ internal fun SearchToolbar(
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Text(
-                                            text = option.label,
+                                            text = stringResource(option.labelRes),
                                             color = if (option == selectedFilter) colorScheme.primary else colorScheme.textPrimary
                                         )
                                     }
@@ -1335,16 +1339,16 @@ internal fun SearchToolbar(
                                 contentColor = colorScheme.primary
                             )
                         ) {
-                            val label = if (selectedFilter.isCollectedOnly) {
-                                selectedCollectedSort.label
+                            val labelRes = if (selectedFilter.isCollectedOnly) {
+                                selectedCollectedSort.labelRes
                             } else {
                                 when (selectedLocale.trim()) {
-                                    "zh_CN" -> "简中"
-                                    "zh_TW" -> "繁中"
-                                    else -> "日语"
+                                    "zh_CN" -> R.string.content_locale_zh_cn
+                                    "zh_TW" -> R.string.content_locale_zh_tw
+                                    else -> R.string.content_locale_ja
                                 }
                             }
-                            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Text(stringResource(labelRes), style = MaterialTheme.typography.labelSmall, maxLines = 1)
                         }
                         DropdownMenu(
                             expanded = secondaryMenuExpanded,
@@ -1361,7 +1365,7 @@ internal fun SearchToolbar(
                                         )
                                     }
                                     DropdownMenuItem(
-                                        text = { Text(option.label, color = colorScheme.textPrimary) },
+                                        text = { Text(stringResource(option.labelRes), color = colorScheme.textPrimary) },
                                         onClick = {
                                             secondaryMenuExpanded = false
                                             onCollectedSortSelected(option)
@@ -1505,14 +1509,14 @@ internal fun SearchPaginationHeader(
                             onClick = onFirstPage,
                             enabled = canGoFirst && !controlsLocked,
                             imageVector = Icons.Rounded.SkipPrevious,
-                            contentDescription = "回到第一页",
+                            contentDescription = stringResource(R.string.str_0bb32f76),
                             modifier = Modifier.testTag(SEARCH_FIRST_PAGE_BUTTON_TAG)
                         )
                         SearchPaginationIconButton(
                             onClick = onPrev,
                             enabled = canGoPrev && !controlsLocked,
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "上一页",
+                            contentDescription = stringResource(R.string.str_f4f85316),
                             modifier = Modifier.testTag(SEARCH_PREV_BUTTON_TAG)
                         )
                     }
@@ -1523,7 +1527,7 @@ internal fun SearchPaginationHeader(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "第 ${page.coerceAtLeast(1)} 页",
+                        text = stringResource(R.string.str_cd712071),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isDark) colorScheme.textPrimary else Color.Black
                     )
@@ -1537,7 +1541,7 @@ internal fun SearchPaginationHeader(
                         onClick = onNext,
                         enabled = canGoNext && !controlsLocked,
                         imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = "下一页",
+                        contentDescription = stringResource(R.string.str_b4e1b508),
                         modifier = Modifier.testTag(SEARCH_NEXT_BUTTON_TAG)
                     )
                 }

@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.dlsite
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -71,12 +73,12 @@ fun DlsiteLoginScreen(
             ) {
                 OutlinedButton(onClick = {
                     viewModel.clear()
-                }, enabled = uiState.isLoggedIn) { Text("退出登录") }
+                }, enabled = uiState.isLoggedIn) { Text(stringResource(R.string.str_44efd179)) }
                 Spacer(modifier = Modifier.weight(1f))
                 Button(onClick = {
                     onDone()
                 }, enabled = uiState.isLoggedIn) {
-                    Text("完成")
+                    Text(stringResource(R.string.str_769d88e4))
                 }
             }
     
@@ -87,7 +89,7 @@ fun DlsiteLoginScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (uiState.isLoggedIn) {
-                    Text("当前凭证", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.str_ea3d7d7f), style = MaterialTheme.typography.titleMedium)
 
                     CredentialBlock(
                         title = "dlsite.com Cookie",
@@ -107,7 +109,7 @@ fun DlsiteLoginScreen(
                     OutlinedTextField(
                         value = loginId,
                         onValueChange = { loginId = it },
-                        label = { Text("账号（邮箱）") },
+                        label = { Text(stringResource(R.string.str_4f387715)) },
                         singleLine = true,
                         enabled = !uiState.isLoading,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
@@ -116,7 +118,7 @@ fun DlsiteLoginScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("密码") },
+                        label = { Text(stringResource(R.string.str_a8105204)) },
                         singleLine = true,
                         enabled = !uiState.isLoading,
                         visualTransformation = PasswordVisualTransformation(),
@@ -136,7 +138,7 @@ fun DlsiteLoginScreen(
                                 size = 18.dp
                             )
                         } else {
-                            Text("登录")
+                            Text(stringResource(R.string.str_402d19e5))
                         }
                     }
                 }
@@ -185,7 +187,7 @@ private fun CredentialBlock(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            Text("过期时间：$expiresText", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.str_f7acfd00), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

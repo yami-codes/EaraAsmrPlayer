@@ -1,5 +1,7 @@
 ﻿package com.asmr.player.ui.common
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -283,7 +285,7 @@ fun EqualizerPanel(
     val currentPresetName = settings.presetName
     LaunchedEffect(currentPresetName) {
         // When preset changes to something other than "自定义", update our local state
-        if (currentPresetName != "自定义") {
+        if (currentPresetName != "custom") {
             editingLevels = normalizedLevels()
         }
     }
@@ -292,7 +294,7 @@ fun EqualizerPanel(
         val newLevels = editingLevels.toMutableList()
         newLevels[index] = value
         editingLevels = newLevels
-        onSettingsChanged(settings.copy(enabled = true, bandLevels = newLevels, presetName = "自定义"))
+        onSettingsChanged(settings.copy(enabled = true, bandLevels = newLevels, presetName = "custom"))
     }
 
     fun updateBalance(value: Float) {
@@ -380,7 +382,7 @@ fun EqualizerPanel(
                         onCheckedChange = onEnabledChange,
                         modifier = Modifier.scale(0.85f)
                     )
-                    TextButton(onClick = onReset, enabled = resetEnabled) { Text("重置") }
+                    TextButton(onClick = onReset, enabled = resetEnabled) { Text(stringResource(R.string.str_4b9c3271)) }
                     IconButton(onClick = { onExpandedChange(!expanded) }, modifier = Modifier.size(28.dp)) {
                         Icon(
                             imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -405,7 +407,7 @@ fun EqualizerPanel(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Text("音效器", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.str_f47919b6), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
         val vtEnabled = settings.volumeThresholdEnabled
         val vtMode = settings.volumeThresholdMode
@@ -414,7 +416,7 @@ fun EqualizerPanel(
         val defaultVtMaxDb = -6f
         val defaultVtTargetDb = -18f
         ModuleCard(
-            title = "音量阈值",
+            title = stringResource(R.string.str_579cea82),
             enabled = vtEnabled,
             onEnabledChange = { updateVolumeThreshold(enabled = it) },
             expanded = settings.volumeThresholdExpanded,
@@ -427,12 +429,12 @@ fun EqualizerPanel(
                 settings.volumeLoudnessTargetDb != defaultVtTargetDb
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("模式", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.str_f0789e79), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "vt_mode",
-                    title = "模式",
-                    text = "响度均衡：把整体响度拉向目标值，适合不同音频之间的音量统一；阈值：把响度限制在一个区间，更像自动增益+压制。"
+                    title = stringResource(R.string.str_f0789e79),
+                    text = stringResource(R.string.str_06e41c19)
                 )
             }
             val modeChipColors = FilterChipDefaults.filterChipColors(
@@ -461,12 +463,12 @@ fun EqualizerPanel(
             if (vtMode == 1) {
                 Column {
                     Row {
-                        Text("目标响度", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_13678214), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_target",
-                            title = "目标响度",
-                            text = "把播放响度逐步拉向该目标值（变化更平滑，更适合不同音频之间的统一）。建议范围：-24 到 -14。"
+                            title = stringResource(R.string.str_13678214),
+                            text = stringResource(R.string.str_9be46da3)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeLoudnessTargetDb), style = MaterialTheme.typography.labelSmall)
@@ -482,12 +484,12 @@ fun EqualizerPanel(
             } else {
                 Column {
                     Row {
-                        Text("最小阈值", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_1e4b5981), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_min",
-                            title = "最小阈值",
-                            text = "当音量低于该值时，会自动放大到接近该阈值。"
+                            title = stringResource(R.string.str_1e4b5981),
+                            text = stringResource(R.string.str_519ef472)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMinDb), style = MaterialTheme.typography.labelSmall)
@@ -503,12 +505,12 @@ fun EqualizerPanel(
 
                 Column {
                     Row {
-                        Text("最大阈值", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_3bef7820), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "vt_max",
-                            title = "最大阈值",
-                            text = "当音量高于该值时，会自动压制到不超过该阈值。"
+                            title = stringResource(R.string.str_3bef7820),
+                            text = stringResource(R.string.str_140aa4c4)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMaxDb), style = MaterialTheme.typography.labelSmall)
@@ -529,7 +531,7 @@ fun EqualizerPanel(
             SceneEffectPresets.resolve(settings.sceneEffectPresetId)
         }
         ModuleCard(
-            title = "场景效果",
+            title = stringResource(R.string.str_6588591f),
             enabled = sceneEnabled,
             onEnabledChange = { updateSceneEffect(enabled = it) },
             expanded = settings.sceneEffectExpanded,
@@ -547,12 +549,12 @@ fun EqualizerPanel(
             var sceneExpanded by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("场景预设", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.str_4f95b545), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "scene_preset",
-                        title = "场景效果",
-                        text = "通过带限、声场收窄和延迟反射来模拟常见空间或传输介质。推荐先选预设，再微调强度。"
+                        title = stringResource(R.string.str_6588591f),
+                        text = stringResource(R.string.str_55e525ca)
                     )
                 }
                 ExposedDropdownMenuBox(
@@ -561,7 +563,7 @@ fun EqualizerPanel(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "预设",
+                        text = stringResource(R.string.str_9cdfce42),
                         style = MaterialTheme.typography.labelSmall,
                         color = materialColorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
@@ -587,7 +589,7 @@ fun EqualizerPanel(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = activeScenePreset.label,
+                                text = stringResource(activeScenePreset.labelRes),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -595,7 +597,7 @@ fun EqualizerPanel(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = activeScenePreset.description,
+                                text = stringResource(activeScenePreset.descriptionRes),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodySmall,
@@ -635,14 +637,14 @@ fun EqualizerPanel(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = preset.label,
+                                                text = stringResource(preset.labelRes),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.widthIn(min = 0.dp, max = 124.dp)
                                             )
                                             Spacer(modifier = Modifier.width(12.dp))
                                             Text(
-                                                text = preset.description,
+                                                text = stringResource(preset.descriptionRes),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = materialColorScheme.onSurfaceVariant,
                                                 maxLines = 1,
@@ -672,12 +674,12 @@ fun EqualizerPanel(
                 }
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("效果强度", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_e66f71dd), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "scene_amount",
-                            title = "效果强度",
-                            text = "强度越高，场景特征越明显。像电话音、被窝闷声这类预设在高强度下会更有辨识度。"
+                            title = stringResource(R.string.str_e66f71dd),
+                            text = stringResource(R.string.str_f9a8f001)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text("${settings.sceneEffectAmount}%", style = MaterialTheme.typography.labelSmall)
@@ -700,7 +702,7 @@ fun EqualizerPanel(
         ) {
             val speedPitchEnabled = settings.speedPitchEnabled
             ModuleCard(
-                title = "变速变调",
+                title = stringResource(R.string.str_c5650b1b),
                 enabled = speedPitchEnabled,
                 onEnabledChange = { enabled ->
                     onSettingsChanged(settings.copy(speedPitchEnabled = enabled))
@@ -717,12 +719,12 @@ fun EqualizerPanel(
             ) {
                 Column {
                     Row {
-                        Text("播放速度", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_c16eed0e), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "playback_speed",
-                            title = "播放速度",
-                            text = "越大播放越快（影响节奏与时长）。"
+                            title = stringResource(R.string.str_c16eed0e),
+                            text = stringResource(R.string.str_3504474d)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackSpeed), style = MaterialTheme.typography.labelSmall)
@@ -738,12 +740,12 @@ fun EqualizerPanel(
 
                 Column {
                     Row {
-                        Text("音调", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                        Text(stringResource(R.string.str_e3ed175f), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         InfoTip(
                             key = "playback_pitch",
-                            title = "音调",
-                            text = "越大音高越高、越小音高越低（不一定改变播放时长）。"
+                            title = stringResource(R.string.str_e3ed175f),
+                            text = stringResource(R.string.str_6a464976)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackPitch), style = MaterialTheme.typography.labelSmall)
@@ -761,7 +763,7 @@ fun EqualizerPanel(
 
         val stereoEnabled = settings.stereoEnabled
         ModuleCard(
-            title = "立体声",
+            title = stringResource(R.string.str_87c33fb4),
             enabled = stereoEnabled,
             onEnabledChange = { onSettingsChanged(settings.copy(stereoEnabled = it)) },
             expanded = settings.stereoExpanded,
@@ -783,12 +785,12 @@ fun EqualizerPanel(
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("声源距离", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.str_85996dec), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_distance",
-                        title = "声源距离",
-                        text = "距离越远，声音会更柔和并略有衰减。"
+                        title = stringResource(R.string.str_85996dec),
+                        text = stringResource(R.string.str_527c97e4)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.1f", settings.orbitDistance), style = MaterialTheme.typography.labelSmall)
@@ -804,12 +806,12 @@ fun EqualizerPanel(
 
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("声源方向", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.str_a1574db9), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_azimuth",
-                        title = "声源方向",
-                        text = "0°为居中，90°偏右，270°偏左。"
+                        title = stringResource(R.string.str_a1574db9),
+                        text = stringResource(R.string.str_950ad70a)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.0f°", settings.orbitAzimuthDeg), style = MaterialTheme.typography.labelSmall)
@@ -834,12 +836,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("声源自动环绕", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.str_85d7ab52), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "st_orbit",
-                    title = "声源自动环绕",
-                    text = "开启后，声像会按速度自动移动。"
+                    title = stringResource(R.string.str_85d7ab52),
+                    text = stringResource(R.string.str_6bf41f64)
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
@@ -852,12 +854,12 @@ fun EqualizerPanel(
 
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("环绕速度", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.str_d21778dd), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "st_speed",
-                        title = "环绕速度",
-                        text = "速度越大，声像移动越快。"
+                        title = stringResource(R.string.str_d21778dd),
+                        text = stringResource(R.string.str_925a58c8)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.0f°/s", settings.orbitSpeed), style = MaterialTheme.typography.labelSmall)
@@ -874,12 +876,12 @@ fun EqualizerPanel(
             val panActive = settings.orbitEnabled || settings.orbitAzimuthDeg != 0f
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("左右平衡", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                    Text(stringResource(R.string.str_a713d152), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     InfoTip(
                         key = "ch_balance",
-                        title = "左右平衡",
-                        text = "把整体声音偏向左或右声道。与“声源方向/自动环绕”互斥。"
+                        title = stringResource(R.string.str_a713d152),
+                        text = stringResource(R.string.str_bc87c9b8)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     val balText = when {
@@ -899,12 +901,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("声道模式", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.str_a60d2c0a), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "ch_mode",
-                    title = "声道模式",
-                    text = "反转：交换左右声道；克隆：把一侧声道复制到另一侧。"
+                    title = stringResource(R.string.str_a60d2c0a),
+                    text = stringResource(R.string.str_07b5142d)
                 )
             }
             val channelModeChipColors = FilterChipDefaults.filterChipColors(
@@ -938,9 +940,9 @@ fun EqualizerPanel(
 
         val eqEnabled = settings.enabled
         ModuleCard(
-            title = "均衡器",
+            title = stringResource(R.string.str_d85f9094),
             enabled = eqEnabled,
-            onEnabledChange = { onSettingsChanged(settings.copy(enabled = it, presetName = "自定义")) },
+            onEnabledChange = { onSettingsChanged(settings.copy(enabled = it, presetName = "custom")) },
             expanded = settings.equalizerExpanded,
             onExpandedChange = { onSettingsChanged(settings.copy(equalizerExpanded = it)) },
             onReset = {
@@ -948,7 +950,7 @@ fun EqualizerPanel(
                     settings.copy(
                         enabled = true,
                         bandLevels = List(10) { 0 },
-                        presetName = "默认"
+                        presetName = "default"
                     )
                 )
             },
@@ -961,7 +963,7 @@ fun EqualizerPanel(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "预设",
+                    text = stringResource(R.string.str_9cdfce42),
                     style = MaterialTheme.typography.labelSmall,
                     color = materialColorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 6.dp, bottom = 6.dp)
@@ -1020,7 +1022,8 @@ fun EqualizerPanel(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(preset.name)
+                                        val presetLabel = preset.labelResOrNull()?.let { stringResource(it) } ?: preset.name
+                                        Text(presetLabel)
                                         if (preset.isCustom) {
                                             Spacer(modifier = Modifier.weight(1f))
                                             IconButton(onClick = { onDeletePreset(preset) }) {
@@ -1060,12 +1063,12 @@ fun EqualizerPanel(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("频段调节", style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
+                Text(stringResource(R.string.str_b02e27c2), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
                 InfoTip(
                     key = "eq_bands",
-                    title = "频段调节",
-                    text = "每个滑条对应一个中心频段。向上提升、向下削减该频段的能量。"
+                    title = stringResource(R.string.str_b02e27c2),
+                    text = stringResource(R.string.str_0c778628)
                 )
             }
             // val levels = normalizedLevels()  // 不再使用，改用 currentLevels
@@ -1162,7 +1165,7 @@ fun EqualizerPanel(
             ) {
                 Icon(Icons.Rounded.Save, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("保存为自定义预设")
+                Text(stringResource(R.string.str_c45327d4))
             }
         }
     }
@@ -1170,11 +1173,11 @@ fun EqualizerPanel(
     if (showSaveDialog) {
         FlatTextFieldDialog(
             onDismissRequest = { showSaveDialog = false },
-            message = "请输入自定义预设名称。",
+            message = stringResource(R.string.str_c7530619),
             value = newPresetName,
             onValueChange = { newPresetName = it },
-            placeholder = "预设名称",
-            confirmText = "保存",
+            placeholder = stringResource(R.string.str_8ed52abe),
+            confirmText = stringResource(R.string.str_be5fbbe3),
             confirmEnabled = newPresetName.trim().isNotBlank(),
             onConfirm = {
                 if (newPresetName.isNotBlank()) {

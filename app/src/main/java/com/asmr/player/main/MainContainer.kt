@@ -1,5 +1,6 @@
 ﻿package com.asmr.player
 
+import com.asmr.player.R
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -848,15 +849,15 @@ fun MainContainer(
         when (result) {
             AppUpdateInstallResult.Started -> {
                 pendingAutomaticInstallPath = null
-                messageManager.showInfo("正在打开系统安装器")
+                messageManager.showInfo(R.string.str_9ef083de)
             }
             AppUpdateInstallResult.PermissionRequired -> {
                 pendingAutomaticInstallPath = apkPath
-                messageManager.showInfo("请允许 Eara 安装未知来源应用后继续安装")
+                messageManager.showInfo(R.string.str_989d0bfb)
             }
             AppUpdateInstallResult.FileInvalid -> {
                 pendingAutomaticInstallPath = null
-                messageManager.showError("下载文件无效，请重新下载")
+                messageManager.showError(R.string.str_a808529d)
             }
             is AppUpdateInstallResult.Failed -> {
                 pendingAutomaticInstallPath = null
@@ -1134,7 +1135,7 @@ fun MainContainer(
             activity?.finish()
         } else {
             lastLibraryBackPressElapsedRealtime = now
-            messageManager.showInfo("再按一次返回退出应用")
+            messageManager.showInfo(R.string.str_b1582796)
         }
     }
 
@@ -1161,14 +1162,14 @@ fun MainContainer(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val navItems = listOf(
-                        Triple(Icons.Rounded.Home, "本地库", "library"),
-                        Triple(Icons.Rounded.Search, "在线搜索", "search"),
-                        Triple(Icons.Rounded.Favorite, "我的收藏", "playlist_system/favorites"),
-                        Triple(Icons.AutoMirrored.Rounded.QueueMusic, "我的列表", "playlists"),
-                        Triple(Icons.Rounded.Folder, "我的分组", "groups"),
-                        Triple(Icons.Rounded.Download, "下载管理", "downloads"),
-                        Triple(Icons.Rounded.Settings, "设置", "settings"),
-                        Triple(Icons.Rounded.Person, "DLsite 登录", "dlsite_login")
+                        Triple(Icons.Rounded.Home, R.string.nav_library, "library"),
+                        Triple(Icons.Rounded.Search, R.string.nav_search, "search"),
+                        Triple(Icons.Rounded.Favorite, R.string.nav_favorites, "playlist_system/favorites"),
+                        Triple(Icons.AutoMirrored.Rounded.QueueMusic, R.string.nav_playlists, "playlists"),
+                        Triple(Icons.Rounded.Folder, R.string.nav_groups, "groups"),
+                        Triple(Icons.Rounded.Download, R.string.str_0d3b071f, "downloads"),
+                        Triple(Icons.Rounded.Settings, R.string.nav_settings, "settings"),
+                        Triple(Icons.Rounded.Person, R.string.nav_dlsite_login, "dlsite_login")
                     )
 
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -1218,7 +1219,7 @@ fun MainContainer(
                                     }
                                     DrawerNavCardItem(
                                         icon = icon,
-                                        label = label,
+                                        label = stringResource(label),
                                         selected = isSelected,
                                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                                         onClick = { openPrimaryRoute(route) }
@@ -1437,7 +1438,7 @@ fun MainContainer(
                                                 }
                                                 Box {
                                                     IconButton(onClick = { navController.navigate("downloads") }) {
-                                                        Icon(Icons.Rounded.Download, contentDescription = "下载管理")
+                                                        Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.str_0d3b071f))
                                                     }
                                                     if (activeDownloadCount > 0) {
                                                         Badge(
@@ -1461,7 +1462,7 @@ fun MainContainer(
                                                             else -> Icons.AutoMirrored.Rounded.ViewList
                                                         }
                                                         IconButton(onClick = { viewMenuExpanded = true }) {
-                                                            Icon(imageVector = icon, contentDescription = "切换视图")
+                                                            Icon(imageVector = icon, contentDescription = stringResource(R.string.str_03816381))
                                                         }
                                                         MaterialTheme(
                                                             colorScheme = materialColorScheme.copy(
@@ -1475,7 +1476,7 @@ fun MainContainer(
                                                                 modifier = Modifier.background(dynamicContainerColor)
                                                             ) {
                                                             DropdownMenuItem(
-                                                                text = { Text("专辑列表") },
+                                                                text = { Text(stringResource(R.string.str_037771bf)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null)
                                                                 },
@@ -1490,7 +1491,7 @@ fun MainContainer(
                                                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                                                             )
                                                             DropdownMenuItem(
-                                                                text = { Text("专辑卡片") },
+                                                                text = { Text(stringResource(R.string.str_7b79f1a2)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.Rounded.GridView, contentDescription = null)
                                                                 },
@@ -1505,7 +1506,7 @@ fun MainContainer(
                                                                 color = materialColorScheme.outlineVariant.copy(alpha = 0.3f)
                                                             )
                                                             DropdownMenuItem(
-                                                                text = { Text("音轨列表") },
+                                                                text = { Text(stringResource(R.string.str_87e06905)) },
                                                                 leadingIcon = {
                                                                     Icon(Icons.Rounded.Audiotrack, contentDescription = null)
                                                                 },
@@ -1551,12 +1552,12 @@ fun MainContainer(
                                                     TextButton(
                                                         onClick = { downloadsViewModel.pauseAll() },
                                                         colors = ButtonDefaults.textButtonColors(contentColor = topBarContentColor)
-                                                    ) { Text("全部暂停") }
+                                                    ) { Text(stringResource(R.string.str_e5c4f1fc)) }
                                                 } else if (hasPausedDownloads) {
                                                     TextButton(
                                                         onClick = { downloadsViewModel.resumeAll() },
                                                         colors = ButtonDefaults.textButtonColors(contentColor = topBarContentColor)
-                                                    ) { Text("全部继续") }
+                                                    ) { Text(stringResource(R.string.str_4dce7ca0)) }
                                                 }
                                             } else if (entry != null && (
                                                 currentRoute?.startsWith("album_detail/{albumId}") == true ||
@@ -1587,7 +1588,7 @@ fun MainContainer(
                                                             .albumDetailTopBarButtonMotion(true, navBackStackEntry)
                                                             .albumDetailTopBarButtonSurface(true)
                                                     ) {
-                                                        Icon(Icons.Rounded.Edit, contentDescription = "手动输入RJ号")
+                                                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.str_3c11c389))
                                                     }
                                                 }
                                             }
@@ -2226,11 +2227,11 @@ fun MainContainer(
                 val albumDetailViewModel: AlbumDetailViewModel = hiltViewModel(navBackStackEntry!!)
                 FlatTextFieldDialog(
                     onDismissRequest = { showManualRjDialog = false },
-                    message = "请输入 RJ 号，保存后将自动执行云同步。",
+                    message = stringResource(R.string.str_f53780b0),
                     value = manualRjInput,
                     onValueChange = { manualRjInput = it },
-                    placeholder = "RJ号（如 RJ123456）",
-                    confirmText = "同步",
+                    placeholder = stringResource(R.string.str_51d26fb3),
+                    confirmText = stringResource(R.string.str_6a620e3c),
                     confirmEnabled = manualRjInput.trim().isNotBlank(),
                     onConfirm = {
                         showManualRjDialog = false
@@ -2541,30 +2542,30 @@ fun MainContainer(
         automaticUpdateAvailable?.let { available ->
             val release = available.release
             FlatActionDialog(
-                message = "发现新版本：${release.tagName}",
+                message = stringResource(R.string.str_8b2adc69),
                 onDismissRequest = { automaticUpdateDialogDismissed = true },
                 actions = listOf(
                     FlatDialogAction(
-                        text = "立即更新",
+                        text = stringResource(R.string.str_2541ca48),
                         tone = FlatDialogActionTone.Primary,
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             automaticUpdateInstallRequested = true
                             settingsViewModel.downloadLatestApk()
-                            messageManager.showInfo("开始下载更新…")
+                            messageManager.showInfo(R.string.str_ac7b1038)
                         }
                     ),
                     FlatDialogAction(
-                        text = "不再提醒",
+                        text = stringResource(R.string.str_b8efaca0),
                         tone = FlatDialogActionTone.Danger,
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             settingsViewModel.disableAutoUpdateCheck()
-                            messageManager.showInfo("已关闭启动时自动检查更新")
+                            messageManager.showInfo(R.string.str_d2d8c72d)
                         }
                     ),
                     FlatDialogAction(
-                        text = "详情",
+                        text = stringResource(R.string.str_f26225bd),
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_github),
@@ -2575,7 +2576,7 @@ fun MainContainer(
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             if (!openUpdateReleasePage(context, release)) {
-                                messageManager.showError("无法打开 GitHub 发布页")
+                                messageManager.showError(R.string.str_6356783c)
                             }
                         }
                     )
@@ -2583,7 +2584,7 @@ fun MainContainer(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "当前版本：${BuildConfig.VERSION_NAME}",
+                        text = stringResource(R.string.str_3df598c2),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.textSecondary
                     )
@@ -2598,7 +2599,7 @@ fun MainContainer(
                     }
                     if (release.apkName.isNotBlank()) {
                         Text(
-                            text = "安装包：${release.apkName}",
+                            text = stringResource(R.string.str_4f8deb8f),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary,
                             maxLines = 1,

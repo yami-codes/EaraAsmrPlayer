@@ -1,5 +1,7 @@
 package com.asmr.player.ui.groups
 
+import androidx.compose.ui.res.stringResource
+import com.asmr.player.R
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -230,7 +232,7 @@ internal fun AlbumGroupDetailContent(
             if (tracks.isEmpty()) {
                 EaraBrandedEmptyState(
                     sectionTitle = title.ifBlank { "我的分组" },
-                    headline = "这个分组还没有内容",
+                    headline = stringResource(R.string.str_28f8ab81),
                     sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current + 88.dp)
@@ -311,13 +313,14 @@ internal fun AlbumGroupDetailContent(
     }
 
     pendingRemoveTrack?.let { track ->
+        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.str_unnamed_track) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveTrack = null },
-            message = "确定从「$title」移除“${track.trackTitle.ifBlank { "未命名" }}”吗？",
+            message = stringResource(R.string.str_daf48296, title, trackTitle),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { pendingRemoveTrack = null }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveTrack = null }),
                 FlatDialogAction(
-                    text = "移除",
+                    text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveTrack = null
@@ -331,11 +334,11 @@ internal fun AlbumGroupDetailContent(
     pendingRemoveAlbum?.let { album ->
         FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            message = "确定从「$title」移除专辑“${album.second}”吗？",
+            message = stringResource(R.string.str_a02b7d62),
             actions = listOf(
                 FlatDialogAction("取消", onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
-                    text = "移除",
+                    text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
                     onClick = {
                         pendingRemoveAlbum = null
@@ -366,10 +369,11 @@ private fun AlbumSectionHeader(
                 .takeIf { it > 0L }
         }
     }
-    val footerSegments = remember(rjCode, tracks, totalSizeBytes) {
+    val tracksLabel = stringResource(R.string.str_6bdee1ed)
+    val footerSegments = remember(rjCode, tracks, totalSizeBytes, tracksLabel) {
         buildList {
             if (rjCode.isNotBlank()) add(rjCode)
-            add("${tracks.size} 音频")
+            add(tracksLabel)
             Formatting.formatTrackSeconds(tracks.sumOf { it.trackDuration }).takeIf { it.isNotBlank() }?.let(::add)
             totalSizeBytes?.let(Formatting::formatFileSize)?.let(::add)
         }
@@ -477,21 +481,21 @@ private fun GroupTrackRow(
             titleTextStyle = MaterialTheme.typography.bodyMedium,
             actions = listOf(
                 AudioItemMenuAction(
-                    label = "播放",
+                    label = stringResource(R.string.str_b85270cd),
                     onClick = onPlay
                 ),
                 AudioItemMenuAction(
-                    label = "移至顶部",
+                    label = stringResource(R.string.str_f1d9539d),
                     onClick = onMoveToTop,
                     testTag = GROUP_DETAIL_MOVE_TOP_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = "移至末尾",
+                    label = stringResource(R.string.str_322defa2),
                     onClick = onMoveToBottom,
                     testTag = GROUP_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
                 ),
                 AudioItemMenuAction(
-                    label = "从分组移除",
+                    label = stringResource(R.string.str_0b82ac96),
                     onClick = onRemove,
                     showDividerBefore = true
                 )
