@@ -268,6 +268,8 @@ fun SearchScreen(
     val gridState = rememberSaveable(currentPageKey, saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
+    val circleLabel = stringResource(R.string.str_5e71ef43)
+    val tagLabel = stringResource(R.string.str_14d34236)
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -722,7 +724,11 @@ fun SearchScreen(
                                 if (state.results.isEmpty()) {
                                     EaraBrandedEmptyState(
                                         sectionTitle = stringResource(R.string.nav_search),
-                                        headline = if (state.keyword.isBlank()) "还没有搜索结果" else "没有找到匹配结果",
+                                        headline = if (state.keyword.isBlank()) {
+                                            stringResource(R.string.str_037de0b2)
+                                        } else {
+                                            stringResource(R.string.str_ca2e24da)
+                                        },
                                         sectionIcon = Icons.Rounded.Search,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(
@@ -756,9 +762,9 @@ fun SearchScreen(
                                                 onlineDetailLoading = onlineDetailLoading,
                                                 onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCircleClick = { copyMeta(circleLabel, it) },
                                                 onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta("标签", it) },
+                                                onTagClick = { copyMeta(tagLabel, it) },
                                             )
                                         }
                                     }
@@ -796,9 +802,9 @@ fun SearchScreen(
                                                 onlineDetailLoading = onlineDetailLoading,
                                                 onlineCvLoading = onlineDetailLoading,
                                                 onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCircleClick = { copyMeta(circleLabel, it) },
                                                 onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta("标签", it) },
+                                                onTagClick = { copyMeta(tagLabel, it) },
                                             )
                                         }
                                     }
@@ -1081,7 +1087,11 @@ private fun SearchPullNextPageIndicator(
                 color = if (armed) colorScheme.primary else colorScheme.textPrimary
             )
             Text(
-                text = if (armed) "松手翻页" else "继续上拉",
+                text = if (armed) {
+                    stringResource(R.string.str_6bf46726)
+                } else {
+                    stringResource(R.string.str_4f6b921a)
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = if (armed) colorScheme.primary else colorScheme.textSecondary
             )
@@ -1374,10 +1384,10 @@ internal fun SearchToolbar(
                                 }
                             } else {
                                 listOf(
-                                    "ja_JP" to "日语",
-                                    "zh_CN" to "简中",
-                                    "zh_TW" to "繁中"
-                                ).forEachIndexed { index, (locale, label) ->
+                                    "ja_JP" to R.string.content_locale_ja,
+                                    "zh_CN" to R.string.content_locale_zh_cn,
+                                    "zh_TW" to R.string.content_locale_zh_tw
+                                ).forEachIndexed { index, (locale, labelRes) ->
                                     if (index > 0) {
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 8.dp),
@@ -1386,7 +1396,7 @@ internal fun SearchToolbar(
                                         )
                                     }
                                     DropdownMenuItem(
-                                        text = { Text(label, color = colorScheme.textPrimary) },
+                                        text = { Text(stringResource(labelRes), color = colorScheme.textPrimary) },
                                         onClick = {
                                             secondaryMenuExpanded = false
                                             onLocaleSelected(locale)

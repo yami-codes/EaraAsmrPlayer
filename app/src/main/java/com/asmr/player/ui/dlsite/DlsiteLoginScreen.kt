@@ -158,11 +158,12 @@ private fun CredentialBlock(
     revealed: Boolean,
     onToggleRevealed: () -> Unit
 ) {
+    val unknownLabel = stringResource(R.string.str_1622dc9b)
     val display = if (revealed) value else maskSecret(value)
     val expiresText = if (value.isBlank()) {
         "-"
     } else {
-        expiresAtMs?.let { formatEpochMs(it) } ?: "未知"
+        expiresAtMs?.let { formatEpochMs(it) } ?: unknownLabel
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -180,7 +181,11 @@ private fun CredentialBlock(
                         IconButton(onClick = onToggleRevealed, enabled = value.isNotBlank()) {
                             Icon(
                                 imageVector = if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                contentDescription = if (revealed) "隐藏" else "显示"
+                                contentDescription = if (revealed) {
+                                    stringResource(R.string.str_dce5379c)
+                                } else {
+                                    stringResource(R.string.str_4d775d4c)
+                                }
                             )
                         }
                     },

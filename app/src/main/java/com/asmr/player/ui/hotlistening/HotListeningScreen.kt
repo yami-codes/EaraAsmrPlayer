@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -114,7 +115,11 @@ fun HotListeningScreen(
         )
     }
 
-    val periods = listOf("day" to "过去一天", "week" to "过去一周", "month" to "过去一月")
+    val periods = listOf(
+        "day" to stringResource(R.string.str_53a241f2),
+        "week" to stringResource(R.string.str_e9f2b5e1),
+        "month" to stringResource(R.string.str_24cf5e68)
+    )
 
     fun scrollToTop() {
         viewModel.resetScrollPosition()
@@ -208,7 +213,10 @@ fun HotListeningScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = selectedSortMode.toggleLabel,
+                        text = when (selectedSortMode) {
+                            HotListeningSortMode.PlayCount -> stringResource(R.string.str_f965fea3)
+                            HotListeningSortMode.ListenDuration -> stringResource(R.string.str_5bdfd7ee)
+                        },
                         style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = colorScheme.primary
@@ -374,15 +382,18 @@ private fun HotListeningListItem(
     copyMeta: (String, String) -> Unit
 ) {
     val album = entry.album
+    val circleLabel = stringResource(R.string.str_5e71ef43)
+    val tagLabel = stringResource(R.string.str_14d34236)
+    val context = LocalContext.current
     AlbumItem(
         album = album,
         onClick = { onAlbumClick(album) },
         emptyCoverUseShimmer = true,
-        coverBadge = entry.toCoverBadge(),
+        coverBadge = entry.toCoverBadge(context),
         onRjClick = { copyMeta("RJ", it) },
-        onCircleClick = { copyMeta("社团", it) },
+        onCircleClick = { copyMeta(circleLabel, it) },
         onCvClick = { copyMeta("CV", it) },
-        onTagClick = { copyMeta("标签", it) },
+        onTagClick = { copyMeta(tagLabel, it) },
     )
 }
 
@@ -393,15 +404,18 @@ private fun HotListeningGridItem(
     copyMeta: (String, String) -> Unit
 ) {
     val album = entry.album
+    val circleLabel = stringResource(R.string.str_5e71ef43)
+    val tagLabel = stringResource(R.string.str_14d34236)
+    val context = LocalContext.current
     AlbumGridItem(
         album = album,
         onClick = { onAlbumClick(album) },
         emptyCoverUseShimmer = true,
-        coverBadge = entry.toCoverBadge(),
+        coverBadge = entry.toCoverBadge(context),
         onRjClick = { copyMeta("RJ", it) },
-        onCircleClick = { copyMeta("社团", it) },
+        onCircleClick = { copyMeta(circleLabel, it) },
         onCvClick = { copyMeta("CV", it) },
-        onTagClick = { copyMeta("标签", it) },
+        onTagClick = { copyMeta(tagLabel, it) },
     )
 }
 
@@ -433,24 +447,24 @@ private fun BlockedHotListeningFooter(
                     .padding(end = 2.dp)
                     .size(18.dp)
             )
-            Text(if (expanded) "折叠" else "展开")
+            Text(
+                if (expanded) {
+                    stringResource(R.string.str_e082621c)
+                } else {
+                    stringResource(R.string.str_e2edde5a)
+                }
+            )
         }
     }
 }
 
-private fun HotListeningEntry.toCoverBadge(): AlbumCoverBadge {
+private fun HotListeningEntry.toCoverBadge(context: android.content.Context): AlbumCoverBadge {
     val icon = when (sortMode) {
         HotListeningSortMode.PlayCount -> Icons.Rounded.PlayArrow
         HotListeningSortMode.ListenDuration -> Icons.Rounded.AccessTime
     }
-    return AlbumCoverBadge(icon = icon, text = metricLabel)
+    return AlbumCoverBadge(icon = icon, text = formatHotListeningMetricLabel(context, this))
 }
-
-private val HotListeningSortMode.toggleLabel: String
-    get() = when (this) {
-        HotListeningSortMode.PlayCount -> "次数"
-        HotListeningSortMode.ListenDuration -> "时长"
-    }
 
 private val HotListeningSortMode.nextMode: HotListeningSortMode
     get() = when (this) {

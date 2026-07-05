@@ -46,6 +46,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -146,6 +147,7 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.R
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
@@ -1483,22 +1485,23 @@ internal fun flattenAsmrOneTreeForUi(
     return AsmrTreeUiResult(entries = out)
 }
 
+@Composable
 internal fun fileTypeLabel(fileType: TreeFileType): String = when (fileType) {
-    TreeFileType.Audio -> "音频"
-    TreeFileType.Video -> "视频"
-    TreeFileType.Image -> "图片"
-    TreeFileType.Subtitle -> "字幕"
-    TreeFileType.Text -> "文本"
+    TreeFileType.Audio -> stringResource(R.string.str_726dd5df)
+    TreeFileType.Video -> stringResource(R.string.str_7fcf42ed)
+    TreeFileType.Image -> stringResource(R.string.str_20def794)
+    TreeFileType.Subtitle -> stringResource(R.string.str_a8c3cc44)
+    TreeFileType.Text -> stringResource(R.string.str_97d07614)
     TreeFileType.Pdf -> "PDF"
-    TreeFileType.Archive -> "压缩包"
-    TreeFileType.Document -> "文档"
-    TreeFileType.Spreadsheet -> "表格"
-    TreeFileType.Presentation -> "演示文稿"
-    TreeFileType.Code -> "代码"
-    TreeFileType.Ebook -> "电子书"
-    TreeFileType.Font -> "字体"
-    TreeFileType.AppPackage -> "安装包"
-    TreeFileType.Other -> "文件"
+    TreeFileType.Archive -> stringResource(R.string.str_c806d0fa)
+    TreeFileType.Document -> stringResource(R.string.str_32536950)
+    TreeFileType.Spreadsheet -> stringResource(R.string.str_b339aa87)
+    TreeFileType.Presentation -> stringResource(R.string.str_93090486)
+    TreeFileType.Code -> stringResource(R.string.str_06e41c19)
+    TreeFileType.Ebook -> stringResource(R.string.str_709f7c56)
+    TreeFileType.Font -> stringResource(R.string.str_8456bc40)
+    TreeFileType.AppPackage -> stringResource(R.string.str_03070d08)
+    TreeFileType.Other -> stringResource(R.string.str_2a0c4740)
 }
 
 internal fun treeFileTypeIcon(fileType: TreeFileType): ImageVector = when (fileType) {
@@ -1585,7 +1588,7 @@ internal fun DirectoryBreadcrumbBar(
             FilterChip(
                 selected = currentPath.isBlank(),
                 onClick = { onNavigate("") },
-                label = { Text("根目录") },
+                label = { Text(stringResource(R.string.str_c2b9f4b9)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Rounded.Home,
@@ -1648,7 +1651,7 @@ internal fun CompactDirectoryBreadcrumbBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             CompactBreadcrumbNode(
-                text = "根目录",
+                text = stringResource(R.string.str_c2b9f4b9),
                 selected = currentPath.isBlank(),
                 icon = Icons.Rounded.Home,
                 onClick = { onNavigate("") }
@@ -1742,7 +1745,7 @@ internal fun CompactDirectoryBreadcrumbContent(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         CompactBreadcrumbNode(
-            text = "根目录",
+            text = stringResource(R.string.str_c2b9f4b9),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -1785,7 +1788,7 @@ internal fun DirectoryBrowserPanel(
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String = "当前目录暂无文件",
+    emptyText: String? = null,
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
@@ -1794,6 +1797,7 @@ internal fun DirectoryBrowserPanel(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
     val browserListState = rememberSaveable("dir-panel:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -1806,8 +1810,10 @@ internal fun DirectoryBrowserPanel(
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
-        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
+    val batchSummaryText = if (selectionMode) {
+        stringResource(R.string.str_67033521, selectedPaths.size)
+    } else {
+        stringResource(R.string.str_f2c5706a, batchTargets.size)
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -1866,7 +1872,7 @@ internal fun DirectoryBrowserPanel(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = emptyText,
+                                text = resolvedEmptyText,
                                 color = AsmrTheme.colorScheme.textSecondary
                             )
                         }
@@ -1953,7 +1959,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.Rounded.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("收藏", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.str_ae336cd0), style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onOpenBatchPlaylistPicker(mediaItems) },
@@ -1963,7 +1969,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("列表", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.str_3712972d), style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onAddMediaItemsToQueue(mediaItems) },
@@ -1973,7 +1979,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("队列", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.str_0796f7f8), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -2004,7 +2010,7 @@ internal fun CompactDirectoryBreadcrumbContentV2(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         CompactBreadcrumbNode(
-            text = "根目录",
+            text = stringResource(R.string.str_c2b9f4b9),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -2133,7 +2139,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = "收藏",
+                    text = stringResource(R.string.str_ae336cd0),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
@@ -2144,7 +2150,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                     thickness = 0.5.dp
                 )
                 DirectoryActionGroupButton(
-                    text = "列表",
+                    text = stringResource(R.string.str_3712972d),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
@@ -2155,7 +2161,7 @@ internal fun DirectoryBatchBarEmbeddedV3(
                     thickness = 0.5.dp
                 )
                 DirectoryActionGroupButton(
-                    text = "队列",
+                    text = stringResource(R.string.str_0796f7f8),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2179,7 +2185,7 @@ internal fun DirectoryBrowserPanelV2(
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String = "当前目录暂无文件",
+    emptyText: String? = null,
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
@@ -2188,6 +2194,7 @@ internal fun DirectoryBrowserPanelV2(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
     val browserListState = rememberSaveable("dir-panel-v2:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2200,11 +2207,15 @@ internal fun DirectoryBrowserPanelV2(
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
-        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
+    val batchSummaryText = if (selectionMode) {
+        stringResource(R.string.str_67033521, selectedPaths.size)
+    } else {
+        stringResource(R.string.str_f2c5706a, batchTargets.size)
     }
-    val batchHintText = remember(selectionMode) {
-        if (selectionMode) "点击文件可增减选择" else "长按可批量操作"
+    val batchHintText = if (selectionMode) {
+        stringResource(R.string.str_7a1add9b)
+    } else {
+        stringResource(R.string.str_e5c8fbd3)
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -2263,7 +2274,7 @@ internal fun DirectoryBrowserPanelV2(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = emptyText,
+                                text = resolvedEmptyText,
                                 color = AsmrTheme.colorScheme.textSecondary
                             )
                         }
@@ -2385,7 +2396,7 @@ internal fun CompactDirectoryBreadcrumbContentV3(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         CompactBreadcrumbNode(
-            text = "根目录",
+            text = stringResource(R.string.str_c2b9f4b9),
             selected = currentPath.isBlank(),
             icon = Icons.Rounded.Home,
             onClick = { onNavigate("") }
@@ -2496,21 +2507,21 @@ internal fun DirectoryBatchBarEmbeddedV4(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = "收藏",
+                    text = stringResource(R.string.str_ae336cd0),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = "列表",
+                    text = stringResource(R.string.str_3712972d),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = "队列",
+                    text = stringResource(R.string.str_0796f7f8),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2562,14 +2573,14 @@ internal fun DirectoryBatchBarEmbeddedV5(
         if (showActions) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DirectoryActionGroupButton(
-                    text = "收藏",
+                    text = stringResource(R.string.str_ae336cd0),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = "列表",
+                    text = stringResource(R.string.str_3712972d),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = {
@@ -2580,7 +2591,7 @@ internal fun DirectoryBatchBarEmbeddedV5(
                 )
                 Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
-                    text = "队列",
+                    text = stringResource(R.string.str_0796f7f8),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
@@ -2608,7 +2619,7 @@ internal fun DirectoryBrowserPanelV4(
     onTogglePreferredPath: ((Boolean) -> Unit)? = null,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String = "当前目录暂无文件",
+    emptyText: String? = null,
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
@@ -2617,6 +2628,7 @@ internal fun DirectoryBrowserPanelV4(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
+    val resolvedEmptyText = emptyText ?: stringResource(R.string.str_8e3f24e3)
     val browserListState = rememberSaveable("dir-panel-v4:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2659,11 +2671,15 @@ internal fun DirectoryBrowserPanelV4(
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
-        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
+    val batchSummaryText = if (selectionMode) {
+        stringResource(R.string.str_67033521, selectedPaths.size)
+    } else {
+        stringResource(R.string.str_f2c5706a, batchTargets.size)
     }
-    val batchHintText = remember(selectionMode) {
-        if (selectionMode) "点击文件可增减选择" else "长按可批量操作"
+    val batchHintText = if (selectionMode) {
+        stringResource(R.string.str_7a1add9b)
+    } else {
+        stringResource(R.string.str_e5c8fbd3)
     }
     LaunchedEffect(preferredPath) {
         preferredPathState = preferredPath.trim().trim('/')
@@ -2761,7 +2777,7 @@ internal fun DirectoryBrowserPanelV4(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "默认打开",
+                            text = stringResource(R.string.str_b5107106),
                             style = MaterialTheme.typography.labelMedium,
                             color = preferredTextColor
                         )
@@ -2791,7 +2807,7 @@ internal fun DirectoryBrowserPanelV4(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = emptyText,
+                                text = resolvedEmptyText,
                                 color = AsmrTheme.colorScheme.textSecondary
                             )
                         }
@@ -2881,9 +2897,10 @@ internal fun DirectoryFileRow(
             is FileSizeSource.Remote -> loadRemoteFileSize(sizeSource.url)?.let(Formatting::formatFileSize)
         }
     }
-    val metaLine = remember(file.fileType, file.durationSeconds, sizeText) {
+    val fileTypeText = fileTypeLabel(file.fileType)
+    val metaLine = remember(file.fileType, file.durationSeconds, sizeText, fileTypeText) {
         listOf(
-            fileTypeLabel(file.fileType),
+            fileTypeText,
             Formatting.formatTrackSeconds(file.durationSeconds).takeIf { it.isNotBlank() },
             sizeText
         ).filterNotNull().joinToString(" · ")
@@ -2970,7 +2987,7 @@ internal fun DirectoryFileRow(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Photo,
-                                    contentDescription = "设为封面",
+                                    contentDescription = stringResource(R.string.str_137f3c79),
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -2985,7 +3002,7 @@ internal fun DirectoryFileRow(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = "更多操作",
+                                        contentDescription = stringResource(R.string.str_fff96ede),
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -3003,7 +3020,7 @@ internal fun DirectoryFileRow(
                                     ) {
                                         if (showPrimaryAction) {
                                             DropdownMenuItem(
-                                                text = { Text("播放") },
+                                                text = { Text(stringResource(R.string.str_b85270cd)) },
                                                 onClick = {
                                                     onPrimary()
                                                     showMenuExpanded = false
@@ -3015,7 +3032,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onDownload != null) {
                                             DropdownMenuItem(
-                                                text = { Text("下载") },
+                                                text = { Text(stringResource(R.string.str_f26ef914)) },
                                                 onClick = {
                                                     onDownload()
                                                     showMenuExpanded = false
@@ -3027,7 +3044,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onAddToQueue != null) {
                                             DropdownMenuItem(
-                                                text = { Text("添加到播放队列") },
+                                                text = { Text(stringResource(R.string.str_58a8759e)) },
                                                 onClick = {
                                                     onAddToQueue()
                                                     showMenuExpanded = false
@@ -3039,7 +3056,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onAddToPlaylist != null) {
                                             DropdownMenuItem(
-                                                text = { Text("添加到我的列表") },
+                                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
                                                 onClick = {
                                                     onAddToPlaylist()
                                                     showMenuExpanded = false
@@ -3051,7 +3068,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onManageTags != null) {
                                             DropdownMenuItem(
-                                                text = { Text("标签管理") },
+                                                text = { Text(stringResource(R.string.str_2ec512a4)) },
                                                 onClick = {
                                                     onManageTags()
                                                     showMenuExpanded = false
@@ -3063,7 +3080,7 @@ internal fun DirectoryFileRow(
                                         }
                                         if (onRemoveFromAlbum != null) {
                                             DropdownMenuItem(
-                                                text = { Text("从专辑移除") },
+                                                text = { Text(stringResource(R.string.str_9a9dd2e0)) },
                                                 onClick = {
                                                     onRemoveFromAlbum()
                                                     showMenuExpanded = false
@@ -3210,7 +3227,7 @@ internal fun TreeFileRow(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Photo,
-                                    contentDescription = "设为封面",
+                                    contentDescription = stringResource(R.string.str_137f3c79),
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -3225,7 +3242,7 @@ internal fun TreeFileRow(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = "更多操作",
+                                        contentDescription = stringResource(R.string.str_fff96ede),
                                         tint = colorScheme.textSecondary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -3258,7 +3275,7 @@ internal fun TreeFileRow(
                                         if (showPrimaryAction) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("播放") },
+                                                text = { Text(stringResource(R.string.str_b85270cd)) },
                                                 onClick = {
                                                     onPrimary()
                                                     showMenuExpanded = false
@@ -3275,7 +3292,7 @@ internal fun TreeFileRow(
                                         if (onDownload != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("下载") },
+                                                text = { Text(stringResource(R.string.str_f26ef914)) },
                                                 onClick = {
                                                     onDownload.invoke()
                                                     showMenuExpanded = false
@@ -3292,7 +3309,7 @@ internal fun TreeFileRow(
                                         if (onAddToQueue != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("添加到播放队列") },
+                                                text = { Text(stringResource(R.string.str_58a8759e)) },
                                                 onClick = {
                                                     onAddToQueue.invoke()
                                                     showMenuExpanded = false
@@ -3309,7 +3326,7 @@ internal fun TreeFileRow(
                                         if (onAddToPlaylist != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("添加到我的列表") },
+                                                text = { Text(stringResource(R.string.str_4c6ecbab)) },
                                                 onClick = {
                                                     onAddToPlaylist.invoke()
                                                     showMenuExpanded = false
@@ -3326,7 +3343,7 @@ internal fun TreeFileRow(
                                         if (onManageTags != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("标签管理") },
+                                                text = { Text(stringResource(R.string.str_2ec512a4)) },
                                                 onClick = {
                                                     onManageTags.invoke()
                                                     showMenuExpanded = false
@@ -3343,7 +3360,7 @@ internal fun TreeFileRow(
                                         if (onRemoveFromAlbum != null) {
                                             addDividerIfNeeded()
                                             DropdownMenuItem(
-                                                text = { Text("从专辑移除") },
+                                                text = { Text(stringResource(R.string.str_9a9dd2e0)) },
                                                 onClick = {
                                                     onRemoveFromAlbum.invoke()
                                                     showMenuExpanded = false

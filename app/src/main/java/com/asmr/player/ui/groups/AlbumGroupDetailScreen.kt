@@ -231,7 +231,7 @@ internal fun AlbumGroupDetailContent(
         ) {
             if (tracks.isEmpty()) {
                 EaraBrandedEmptyState(
-                    sectionTitle = title.ifBlank { "我的分组" },
+                    sectionTitle = title.ifBlank { stringResource(R.string.nav_groups) },
                     headline = stringResource(R.string.str_28f8ab81),
                     sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
@@ -336,7 +336,7 @@ internal fun AlbumGroupDetailContent(
             onDismissRequest = { pendingRemoveAlbum = null },
             message = stringResource(R.string.str_a02b7d62, album.second, title),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { pendingRemoveAlbum = null }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
                     text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
@@ -400,7 +400,7 @@ private fun AlbumSectionHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { "专辑" } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.str_22054661) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,
@@ -456,7 +456,7 @@ private fun GroupTrackRow(
             prefixSegments = listOf(item.albumCv.orEmpty())
         )
         AudioItemRow(
-            title = item.trackTitle.ifBlank { "未命名" },
+            title = item.trackTitle.ifBlank { stringResource(R.string.str_unnamed_track) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = item.hasSubtitles,
@@ -513,7 +513,7 @@ private fun buildGroupDetailRows(
     sections.forEach { (albumId, list) ->
         val first = list.firstOrNull() ?: return@forEach
         val sectionTitle = first.albumTitle.orEmpty().ifBlank {
-            first.albumRjCode.orEmpty().ifBlank { "专辑" }
+            first.albumRjCode.orEmpty()
         }
         val coverModel = first.albumCoverThumbPath.orEmpty()
             .ifBlank { first.albumCoverPath.orEmpty() }

@@ -286,6 +286,8 @@ fun LibraryScreen(
     val userTagsByTrackId by viewModel.userTagsByTrackId.collectAsState()
     val isGlobalSyncRunning by viewModel.isGlobalSyncRunning.collectAsState()
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
+    val circleCopyLabel = stringResource(R.string.str_5e71ef43)
+    val tagCopyLabel = stringResource(R.string.str_14d34236)
     val playerViewModel: PlayerViewModel = hiltViewModel()
     val scope = rememberCoroutineScope()
     var searchText by rememberSaveable { mutableStateOf(querySpec.textQuery.orEmpty()) }
@@ -456,8 +458,8 @@ fun LibraryScreen(
                         ) {
                             Text(
                                 text = when (progress.phase) {
-                                    com.asmr.player.ui.library.BulkPhase.ScanningLocal -> "正在扫描本地库"
-                                    com.asmr.player.ui.library.BulkPhase.SyncingCloud -> "正在云同步"
+                                    com.asmr.player.ui.library.BulkPhase.ScanningLocal -> stringResource(R.string.str_4a3184e1)
+                                    com.asmr.player.ui.library.BulkPhase.SyncingCloud -> stringResource(R.string.str_00c008ea)
                                 },
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = colorScheme.textPrimary
@@ -545,8 +547,16 @@ fun LibraryScreen(
                                             querySpec.source != null
 
                                     EaraBrandedEmptyState(
-                                        sectionTitle = if (hasAnyQuery) "本地库结果" else "本地库",
-                                        headline = if (hasAnyQuery) "没有匹配的本地内容" else "还没有扫描到本地专辑",
+                                        sectionTitle = if (hasAnyQuery) {
+                                            stringResource(R.string.str_698421af)
+                                        } else {
+                                            stringResource(R.string.nav_library)
+                                        },
+                                        headline = if (hasAnyQuery) {
+                                            stringResource(R.string.str_6ff96d8c)
+                                        } else {
+                                            stringResource(R.string.str_79f029a1)
+                                        },
                                         sectionIcon = if (hasAnyQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -773,9 +783,9 @@ fun LibraryScreen(
                                                     showAlbumActions = true
                                                 },
                                                 onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCircleClick = { copyMeta(circleCopyLabel, it) },
                                                 onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta("标签", it) },
+                                                onTagClick = { copyMeta(tagCopyLabel, it) },
                                             )
                                         }
                                     }
@@ -835,9 +845,9 @@ fun LibraryScreen(
                                                     showAlbumActions = true
                                                 },
                                                 onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta("社团", it) },
+                                                onCircleClick = { copyMeta(circleCopyLabel, it) },
                                                 onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta("标签", it) },
+                                                onTagClick = { copyMeta(tagCopyLabel, it) },
                                             )
                                         }
                                     }
@@ -994,7 +1004,7 @@ fun LibraryScreen(
                 onDismissRequest = { showDeleteConfirm = false },
                 message = stringResource(R.string.str_98fb00ce),
                 actions = listOf(
-                    FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
                     FlatDialogAction(
                         text = stringResource(R.string.str_2f4aaddd),
                         tone = FlatDialogActionTone.Danger,
@@ -1248,7 +1258,7 @@ private fun TrackAlbumHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { "专辑" } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.str_22054661) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,

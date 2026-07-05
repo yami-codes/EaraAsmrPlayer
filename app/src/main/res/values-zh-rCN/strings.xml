@@ -736,4 +736,17 @@
     <string name="content_locale_zh_cn">简中</string>
     <string name="content_locale_zh_tw">繁中</string>
     <string name="str_unnamed_track">未命名</string>
+    <string name="str_e05dce83">简介</string>
+    <string name="str_88c7a67c">暂无介绍</string>
+    <string name="str_ba08cc27">社团作品一览</string>
+    <string name="str_90e35c2f">同声优作品</string>
+    <string name="str_03486e15">购买了此作品的人也购买了这些作品</string>
+    <string name="str_65e200d3">下载失败</string>
+    <string name="str_bc9897a9">下载失败：%1$s</string>
+    <string name="str_c3d9b7a2">下载失败：空响应体</string>
+    <string name="str_f3a8c2d1">选择要保存的文件</string>
+    <string name="str_a7e4b9c3">保存到本地库</string>
+    <string name="str_d6f1a8e2">本地已存在，已跳过下载（%1$s项）：%2$s</string>
+    <string name="str_c4b7e3f9">已加入下载队列（%1$s项），跳过已存在（%2$s项）：%3$s</string>
+    <string name="str_e8d2c5a1">正在加入下载队列（%1$s项）：%2$s</string>
 </resources>

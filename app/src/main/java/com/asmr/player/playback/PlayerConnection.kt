@@ -12,6 +12,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.asmr.player.R
 import com.asmr.player.data.local.db.dao.AlbumDao
 import com.asmr.player.data.local.db.dao.TrackDao
 import com.asmr.player.data.lyrics.EXTRA_REMOTE_SUBTITLE_SOURCES_JSON
@@ -134,7 +135,7 @@ class PlayerConnection @Inject constructor(
                     if (!meteredWarnedMediaIds.add(mediaId)) return@collect
 
                     lastMeteredWarnAtMs = now
-                    messageManager.showWarning("正在使用流量播放")
+                    messageManager.showWarning(R.string.str_a4b0f852)
                 }
         }
         scope.launch {
@@ -274,9 +275,9 @@ class PlayerConnection @Inject constructor(
                         val item = controller?.currentMediaItem
                         val uri = item?.localConfiguration?.uri?.toString().orEmpty()
                         val msg = if (uri.contains(".m3u8", ignoreCase = true)) {
-                            "当前不支持 m3u8 流媒体，请先下载音频文件"
+                            context.getString(R.string.str_d8ab712e)
                         } else {
-                            "播放失败：${error.errorCodeName}"
+                            context.getString(R.string.str_ffb9ee0c, error.errorCodeName)
                         }
                         messageManager.showError(msg)
                         android.util.Log.e(

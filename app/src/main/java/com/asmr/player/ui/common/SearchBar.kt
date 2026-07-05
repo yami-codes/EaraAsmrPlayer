@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import com.asmr.player.R
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlin.math.roundToInt
 
@@ -186,11 +188,16 @@ private fun SearchBarSelectionToolbarPopup(
         toolbar.hide()
     }
 
+    val copyLabel = stringResource(R.string.str_79d3abe9)
+    val pasteLabel = stringResource(R.string.str_eafbece1)
+    val cutLabel = stringResource(R.string.str_43fc7788)
+    val selectAllLabel = stringResource(R.string.str_66eeacd9)
+
     val actions = buildList {
-        menuState.onCopyRequested?.let { add("复制" to it) }
-        menuState.onPasteRequested?.let { add("粘贴" to it) }
-        menuState.onCutRequested?.let { add("剪切" to it) }
-        menuState.onSelectAllRequested?.let { add("全选" to it) }
+        menuState.onCopyRequested?.let { add(copyLabel to it) }
+        menuState.onPasteRequested?.let { add(pasteLabel to it) }
+        menuState.onCutRequested?.let { add(cutLabel to it) }
+        menuState.onSelectAllRequested?.let { add(selectAllLabel to it) }
     }
 
     Popup(

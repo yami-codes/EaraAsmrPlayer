@@ -52,7 +52,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.asmr.player.R
 import com.asmr.player.data.local.db.dao.TagWithCount
 import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
@@ -85,14 +87,14 @@ fun LibraryFilterScreen(
             IconButton(onClick = { showTagManager = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ManageSearch,
-                    contentDescription = "管理标签",
+                    contentDescription = stringResource(R.string.str_a107e6e1),
                     tint = colorScheme.primary
                 )
             }
             IconButton(onClick = { viewModel.clearFilters() }) {
                 Icon(
                     imageVector = Icons.Rounded.Restore,
-                    contentDescription = "重置筛选",
+                    contentDescription = stringResource(R.string.str_0f47025e),
                     tint = colorScheme.primary
                 )
             }
@@ -178,7 +180,7 @@ fun LibraryFilterSheet(
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Rounded.FilterList, contentDescription = null, tint = colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "筛选", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(text = stringResource(R.string.str_c2fe6253), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = onOpenTagManager) {
                     Icon(imageVector = Icons.AutoMirrored.Rounded.ManageSearch, contentDescription = null)
@@ -200,15 +202,19 @@ fun LibraryFilterSheet(
         ) {
             item { Spacer(modifier = Modifier.height(2.dp)) }
             item {
-                SectionCard(title = "来源") {
+                SectionCard(title = stringResource(R.string.str_26ca20b1)) {
                     SourceChips(current = querySpec.source, onSetSource = onSetSource)
                 }
             }
 
             item {
                 SectionCard(
-                    title = "标签",
-                    subtitle = if (querySpec.includeTagIds.isNotEmpty()) "已选 ${querySpec.includeTagIds.size}" else null
+                    title = stringResource(R.string.str_14d34236),
+                    subtitle = if (querySpec.includeTagIds.isNotEmpty()) {
+                        stringResource(R.string.str_119eaa8b, querySpec.includeTagIds.size)
+                    } else {
+                        null
+                    }
                 ) {
                     OutlinedTextField(
                         value = tagSearch,
@@ -219,7 +225,7 @@ fun LibraryFilterSheet(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall,
                         leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
-                        placeholder = { Text("搜索标签", style = MaterialTheme.typography.bodySmall) }
+                        placeholder = { Text(stringResource(R.string.str_2f37a9e2), style = MaterialTheme.typography.bodySmall) }
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -275,8 +281,12 @@ fun LibraryFilterSheet(
 
             item {
                 SectionCard(
-                    title = "社团",
-                    subtitle = if (querySpec.circles.isNotEmpty()) "已选 ${querySpec.circles.size}" else null
+                    title = stringResource(R.string.str_5e71ef43),
+                    subtitle = if (querySpec.circles.isNotEmpty()) {
+                        stringResource(R.string.str_119eaa8b, querySpec.circles.size)
+                    } else {
+                        null
+                    }
                 ) {
                     ValueChipGrid(
                         values = circles.take(30),
@@ -289,7 +299,11 @@ fun LibraryFilterSheet(
             item {
                 SectionCard(
                     title = "CV",
-                    subtitle = if (querySpec.cvs.isNotEmpty()) "已选 ${querySpec.cvs.size}" else null
+                    subtitle = if (querySpec.cvs.isNotEmpty()) {
+                        stringResource(R.string.str_119eaa8b, querySpec.cvs.size)
+                    } else {
+                        null
+                    }
                 ) {
                     ValueChipGrid(
                         values = cvs.take(30),
@@ -309,9 +323,9 @@ fun LibraryFilterSheet(
                     Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         Icon(imageVector = Icons.Rounded.Bookmark, contentDescription = null, tint = colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "预设")
+                        Text(text = stringResource(R.string.str_9cdfce42))
                     }
-                    TextButton(onClick = { showSavePreset = true }) { Text("保存当前") }
+                    TextButton(onClick = { showSavePreset = true }) { Text(stringResource(R.string.str_7170bb3d)) }
                 }
             }
             items(presets, key = { it.id }) { preset ->
@@ -343,11 +357,11 @@ fun LibraryFilterSheet(
     if (showSavePreset) {
         FlatTextFieldDialog(
             onDismissRequest = { showSavePreset = false },
-            message = "请输入筛选预设名称。",
+            message = stringResource(R.string.str_b9d917e5),
             value = presetName,
             onValueChange = { presetName = it },
-            placeholder = "请输入预设名称",
-            confirmText = "保存",
+            placeholder = stringResource(R.string.str_a94dc02c),
+            confirmText = stringResource(R.string.str_be5fbbe3),
             confirmEnabled = presetName.trim().isNotBlank(),
             onConfirm = {
                 val name = presetName.trim()
@@ -410,25 +424,25 @@ private fun SourceChips(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SourceChip(
-            label = "不限",
+            label = stringResource(R.string.str_8441b348),
             selected = normalized == null,
             onClick = { onSetSource(null) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = "仅本地",
+            label = stringResource(R.string.str_f0f8f9da),
             selected = normalized == LibrarySourceFilter.LocalOnly,
             onClick = { onSetSource(LibrarySourceFilter.LocalOnly) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = "仅下载",
+            label = stringResource(R.string.str_068a9cb2),
             selected = normalized == LibrarySourceFilter.DownloadOnly,
             onClick = { onSetSource(LibrarySourceFilter.DownloadOnly) },
             colorScheme = colorScheme
         )
         SourceChip(
-            label = "本地+下载",
+            label = stringResource(R.string.str_f9293473),
             selected = normalized == LibrarySourceFilter.LocalAndDownload,
             onClick = { onSetSource(LibrarySourceFilter.LocalAndDownload) },
             colorScheme = colorScheme
@@ -553,19 +567,20 @@ private fun ValueChipGrid(
     }
 }
 
+@Composable
 private fun buildPresetSummary(spec: LibraryQuerySpec): String {
     val parts = ArrayList<String>(5)
     val source = when (spec.source) {
-        LibrarySourceFilter.LocalOnly -> "仅本地"
-        LibrarySourceFilter.DownloadOnly -> "仅下载"
-        LibrarySourceFilter.LocalAndDownload -> "本地+下载"
-        LibrarySourceFilter.Both -> "不限来源"
-        null -> "不限来源"
+        LibrarySourceFilter.LocalOnly -> stringResource(R.string.str_f0f8f9da)
+        LibrarySourceFilter.DownloadOnly -> stringResource(R.string.str_068a9cb2)
+        LibrarySourceFilter.LocalAndDownload -> stringResource(R.string.str_f9293473)
+        LibrarySourceFilter.Both -> stringResource(R.string.str_5721183b)
+        null -> stringResource(R.string.str_5721183b)
     }
     parts.add(source)
-    if (!spec.textQuery.isNullOrBlank()) parts.add("搜索")
-    if (spec.includeTagIds.isNotEmpty()) parts.add("标签 ${spec.includeTagIds.size}")
-    if (spec.circles.isNotEmpty()) parts.add("社团 ${spec.circles.size}")
+    if (!spec.textQuery.isNullOrBlank()) parts.add(stringResource(R.string.str_e5f71fc3))
+    if (spec.includeTagIds.isNotEmpty()) parts.add(stringResource(R.string.str_dca7dc6f, spec.includeTagIds.size))
+    if (spec.circles.isNotEmpty()) parts.add(stringResource(R.string.str_d565736b, spec.circles.size))
     if (spec.cvs.isNotEmpty()) parts.add("CV ${spec.cvs.size}")
     return parts.joinToString(" · ")
 }

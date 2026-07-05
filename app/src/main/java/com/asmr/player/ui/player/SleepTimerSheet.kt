@@ -63,9 +63,9 @@ fun SleepTimerSheetContent(
 
     val isActive = remainingMs > 0L
     val remainingText = if (isActive) {
-        "剩余 ${formatSleepTimerRemaining(remainingMs)}"
+        stringResource(R.string.str_45741efd, formatSleepTimerRemaining(remainingMs))
     } else {
-        "未设置定时关闭"
+        stringResource(R.string.str_dedbed00)
     }
 
     var showCustomDialog by remember { mutableStateOf(false) }

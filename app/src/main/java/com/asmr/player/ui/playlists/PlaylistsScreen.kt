@@ -243,7 +243,7 @@ private fun PlaylistRow(
             onDismissRequest = { showDeleteConfirm = false },
             message = stringResource(R.string.str_e0788e07, playlist.name),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
                     text = stringResource(R.string.str_2f4aaddd),
                     tone = FlatDialogActionTone.Danger,

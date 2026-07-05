@@ -364,10 +364,11 @@ internal fun SingleLineLyrics(
     val currentLine = remember(sortedLyrics, activeIndex) {
         sortedLyrics.getOrNull(activeIndex)
     }
-    val currentText = remember(currentLine) {
+    val noLyricsText = stringResource(R.string.str_c24962a6)
+    val currentText = remember(currentLine, noLyricsText) {
         val raw = currentLine?.text
         if (raw == null) {
-            "暂无歌词"
+            noLyricsText
         } else {
             normalizeSingleLineText(raw).ifBlank { " " }
         }

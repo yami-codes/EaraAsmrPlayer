@@ -85,14 +85,7 @@ internal data class CloudSyncSelectionDialogState(
     val candidates: List<DlsiteCloudSyncCandidate>,
     val currentPosition: Int? = null,
     val totalCount: Int? = null
-) {
-    val progressLabel: String?
-        get() = if ((currentPosition ?: 0) > 0 && (totalCount ?: 0) > 0) {
-            "待确认 ${currentPosition} / ${totalCount}"
-        } else {
-            null
-        }
-}
+)
 
 internal data class CloudSyncCandidateCoverSource(
     val label: String,
@@ -120,6 +113,13 @@ internal fun CloudSyncSelectionDialog(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val listState = rememberLazyListState()
+    val currentPosition = state.currentPosition ?: 0
+    val totalCount = state.totalCount ?: 0
+    val progressLabel = if (currentPosition > 0 && totalCount > 0) {
+        stringResource(R.string.str_bf070baf, currentPosition, totalCount)
+    } else {
+        null
+    }
     Dialog(
         onDismissRequest = onCancel,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -168,7 +168,7 @@ internal fun CloudSyncSelectionDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = state.albumTitle.ifBlank { "当前专辑" },
+                            text = state.albumTitle.ifBlank { stringResource(R.string.str_b668ec29) },
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = 20.sp
@@ -236,7 +236,7 @@ internal fun CloudSyncSelectionDialog(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        state.progressLabel?.let { progress ->
+                        progressLabel?.let { progress ->
                             Text(
                                 text = progress,
                                 modifier = Modifier.testTag(CLOUD_SYNC_SELECTION_PROGRESS_TAG),
@@ -256,7 +256,13 @@ internal fun CloudSyncSelectionDialog(
                                 contentColor = colorScheme.primary
                             )
                         ) {
-                            Text(if (onIgnoreAll != null) "取消当前" else "取消")
+                            Text(
+                                if (onIgnoreAll != null) {
+                                    stringResource(R.string.str_6770b3c2)
+                                } else {
+                                    stringResource(R.string.str_625fb26b)
+                                }
+                            )
                         }
                     }
                 }

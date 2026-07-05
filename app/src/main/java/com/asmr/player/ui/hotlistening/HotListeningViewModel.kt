@@ -1,7 +1,9 @@
 package com.asmr.player.ui.hotlistening
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.asmr.player.R
 import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.domain.model.Album
 import com.asmr.player.hotlistening.HotListeningApi
@@ -9,6 +11,7 @@ import com.asmr.player.hotlistening.HotListeningItem
 import com.asmr.player.hotlistening.HotListeningSortMode
 import com.asmr.player.util.MessageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +26,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HotListeningViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val hotListeningApi: HotListeningApi,
     private val settingsRepository: SettingsRepository,
     val messageManager: MessageManager,
@@ -101,14 +105,14 @@ class HotListeningViewModel @Inject constructor(
 
     private suspend fun loadTopListings(period: String, sortMode: HotListeningSortMode) {
         if (!hotListeningApi.isBackendConfigured) {
-            _rawUiState.update { HotListeningRawUiState.Error("后端未配置") }
+            _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.str_8cdaa720)) }
             return
         }
         _rawUiState.update { HotListeningRawUiState.Loading }
         runCatching {
             val items = hotListeningApi.getTopListings(period, sortMode)
             if (items == null) {
-                _rawUiState.update { HotListeningRawUiState.Error("请求失败") }
+                _rawUiState.update { HotListeningRawUiState.Error(appContext.getString(R.string.str_f50bf418)) }
                 return
             }
             val entries = items.map { it.toEntry(sortMode) }
@@ -121,7 +125,7 @@ class HotListeningViewModel @Inject constructor(
             }
         }.onFailure { error ->
             _rawUiState.update {
-                HotListeningRawUiState.Error(error.message ?: "加载失败")
+                HotListeningRawUiState.Error(error.message ?: appContext.getString(R.string.str_866b795e))
             }
         }
     }
@@ -172,45 +176,52 @@ data class HotListeningEntry(
     val playCount: Int,
     val listenDurationMs: Long,
     val sortMode: HotListeningSortMode
-) {
-    val metricLabel: String
-        get() = when (sortMode) {
-            HotListeningSortMode.PlayCount -> formatCompactCount(playCount.toLong())
-            HotListeningSortMode.ListenDuration -> formatCompactDuration(listenDurationMs)
-        }
+)
 
-    private fun formatCompactCount(value: Long): String {
-        return when {
-            value >= 100_000_000L -> formatDecimalUnit(value, 100_000_000L, "亿")
-            value >= 10_000L -> formatDecimalUnit(value, 10_000L, "万")
-            else -> value.toString()
-        }
+internal fun formatHotListeningMetricLabel(context: Context, entry: HotListeningEntry): String {
+    return when (entry.sortMode) {
+        HotListeningSortMode.PlayCount -> formatHotListeningCompactCount(context, entry.playCount.toLong())
+        HotListeningSortMode.ListenDuration -> formatHotListeningCompactDuration(context, entry.listenDurationMs)
     }
+}
 
-    private fun formatDecimalUnit(value: Long, unitValue: Long, unit: String): String {
-        val whole = value / unitValue
-        val decimal = (value % unitValue) / (unitValue / 10L)
-        return if (decimal > 0L && whole < 100L) {
-            "$whole.$decimal$unit"
-        } else {
-            "$whole$unit"
-        }
+private fun formatHotListeningCompactCount(context: Context, value: Long): String {
+    return when {
+        value >= 100_000_000L -> formatHotListeningDecimalUnit(context, value, 100_000_000L, R.string.str_37ae2852)
+        value >= 10_000L -> formatHotListeningDecimalUnit(context, value, 10_000L, R.string.str_9d032066)
+        else -> value.toString()
     }
+}
 
-    private fun formatCompactDuration(ms: Long): String {
-        if (ms < 60_000L) return "<1分钟"
-
-        val totalMinutes = ms / 60_000L
-        if (totalMinutes < 60L) return "${totalMinutes}分钟"
-
-        val totalHours = totalMinutes / 60L
-        val compactHours = when {
-            totalHours >= 100_000_000L -> "${totalHours / 100_000_000L}亿"
-            totalHours >= 10_000L -> "${totalHours / 10_000L}万"
-            else -> totalHours.toString()
-        }
-        return "${compactHours}小时"
+private fun formatHotListeningDecimalUnit(
+    context: Context,
+    value: Long,
+    unitValue: Long,
+    unitResId: Int
+): String {
+    val unit = context.getString(unitResId)
+    val whole = value / unitValue
+    val decimal = (value % unitValue) / (unitValue / 10L)
+    return if (decimal > 0L && whole < 100L) {
+        "$whole.$decimal$unit"
+    } else {
+        "$whole$unit"
     }
+}
+
+private fun formatHotListeningCompactDuration(context: Context, ms: Long): String {
+    if (ms < 60_000L) return context.getString(R.string.str_d950c32d)
+
+    val totalMinutes = ms / 60_000L
+    if (totalMinutes < 60L) return context.getString(R.string.str_2424a778, totalMinutes)
+
+    val totalHours = totalMinutes / 60L
+    val compactHours = when {
+        totalHours >= 100_000_000L -> formatHotListeningDecimalUnit(context, totalHours, 100_000_000L, R.string.str_37ae2852)
+        totalHours >= 10_000L -> formatHotListeningDecimalUnit(context, totalHours, 10_000L, R.string.str_9d032066)
+        else -> totalHours.toString()
+    }
+    return context.getString(R.string.str_53128531, compactHours)
 }
 
 sealed class HotListeningUiState {

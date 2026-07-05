@@ -45,6 +45,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -133,6 +134,7 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.R
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
@@ -167,7 +169,7 @@ internal fun AsmrOneDownloadDialog(
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
-                        text = "选择要下载的文件",
+                        text = stringResource(R.string.str_e4aa4937),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -175,7 +177,7 @@ internal fun AsmrOneDownloadDialog(
                     TextButton(
                         onClick = { onConfirm(selected.toSet()) },
                         enabled = leafPaths.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text("开始下载") }
+                    ) { Text(stringResource(R.string.str_d7f0d336)) }
                 }
 
                 Column(
@@ -189,8 +191,8 @@ internal fun AsmrOneDownloadDialog(
                         OutlinedButton(onClick = {
                             selected.clear()
                             selected.addAll(leafPaths)
-                        }) { Text("全选") }
-                        OutlinedButton(onClick = { selected.clear() }) { Text("全不选") }
+                        }) { Text(stringResource(R.string.str_66eeacd9)) }
+                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.str_10119554)) }
                     }
                     if (leafPaths.isEmpty()) {
                         Box(
@@ -199,7 +201,7 @@ internal fun AsmrOneDownloadDialog(
                                 .height(180.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("没有可下载文件")
+                            Text(stringResource(R.string.str_22ec90fe))
                         }
                     } else {
                         val entries = flattenAsmrOneTreeForUi(mediaTree, expanded.toSet()).entries
@@ -425,7 +427,7 @@ internal fun OnlineSaveDialog(
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
                     }
                     Text(
-                        text = "选择要保存的文件",
+                        text = stringResource(R.string.str_f3a8c2d1),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -433,7 +435,7 @@ internal fun OnlineSaveDialog(
                     TextButton(
                         onClick = { onConfirm(selected.toSet()) },
                         enabled = leaves.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text("保存到本地库") }
+                    ) { Text(stringResource(R.string.str_a7e4b9c3)) }
                 }
 
                 Column(
@@ -447,8 +449,8 @@ internal fun OnlineSaveDialog(
                         OutlinedButton(onClick = {
                             selected.clear()
                             selected.addAll(leaves.map { it.relativePath })
-                        }) { Text("全选") }
-                        OutlinedButton(onClick = { selected.clear() }) { Text("全不选") }
+                        }) { Text(stringResource(R.string.str_66eeacd9)) }
+                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.str_10119554)) }
                     }
                     if (leaves.isEmpty()) {
                         Box(
@@ -457,7 +459,7 @@ internal fun OnlineSaveDialog(
                                 .height(180.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("没有可保存的音频/视频文件")
+                            Text(stringResource(R.string.str_4a4fef28))
                         }
                     } else {
                         val entries = flattenAsmrOneMediaTreeForUi(trackTree, expanded.toSet()).entries
@@ -765,7 +767,7 @@ internal fun FilePreviewDialog(
     fun openWithOtherApp() {
         val path = currentPath.trim()
         if (path.isBlank()) {
-            messageManager.showError("无法打开：路径为空")
+            messageManager.showError(R.string.str_65a85106)
             return
         }
 
@@ -794,12 +796,12 @@ internal fun FilePreviewDialog(
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "打开文件"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.str_6cfd8797)))
         }.onFailure { t ->
             when (t) {
-                is android.content.ActivityNotFoundException -> messageManager.showInfo("未找到可打开的应用")
-                is java.io.FileNotFoundException -> messageManager.showError("文件不存在")
-                else -> messageManager.showError("无法打开该文件")
+                is android.content.ActivityNotFoundException -> messageManager.showInfo(R.string.str_8c5d893a)
+                is java.io.FileNotFoundException -> messageManager.showError(R.string.str_d9523e34)
+                else -> messageManager.showError(R.string.str_fd093cf3)
             }
         }
     }
@@ -855,22 +857,22 @@ internal fun FilePreviewDialog(
                     )
                     if (canNavigate) {
                         IconButton(onClick = { currentIndex = (currentIndex - 1 + initialCandidates.size) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "上一项")
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(R.string.str_93732670))
                         }
                         IconButton(onClick = { currentIndex = (currentIndex + 1) % initialCandidates.size }) {
-                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "下一项")
+                            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(R.string.str_15df591b))
                         }
                     }
                     if (canFullscreen) {
                         TextButton(onClick = { fullscreen = !fullscreen }) {
-                            Text(if (fullscreen) "退出全屏" else "全屏")
+                            Text(if (fullscreen) stringResource(R.string.str_49041f24) else stringResource(R.string.str_185926bf))
                         }
                     }
                     IconButton(onClick = ::openWithOtherApp) {
-                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "打开")
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = stringResource(R.string.str_d7098f50))
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.str_b15d9127))
                     }
                 }
                 
@@ -890,7 +892,11 @@ internal fun FilePreviewDialog(
                             )
                         }
                         TreeFileType.Subtitle, TreeFileType.Text -> {
-                            val textContent by produceState<String?>(initialValue = "加载中...") {
+                            val loadingText = stringResource(R.string.str_26b5bd49)
+                            val textContent by produceState<String?>(initialValue = loadingText, currentPath) {
+                                val emptyContent = context.getString(R.string.str_31224a7f)
+                                val onlineUnsupported = context.getString(R.string.str_53ee58eb)
+                                val readFailed = context.getString(R.string.str_de62343b)
                                 value = withContext(Dispatchers.IO) {
                                     runCatching {
                                         if (currentPath.startsWith("content://")) {
@@ -900,14 +906,14 @@ internal fun FilePreviewDialog(
                                         } else if (currentPath.startsWith("http")) {
                                             val loader = loadOnlineText
                                             if (loader != null) {
-                                                loader(currentPath)?.takeIf { it.isNotBlank() } ?: "内容为空"
+                                                loader(currentPath)?.takeIf { it.isNotBlank() } ?: emptyContent
                                             } else {
-                                                "在线文件暂不支持内容预览，请使用外部应用打开"
+                                                onlineUnsupported
                                             }
                                         } else {
                                             java.io.File(currentPath).readText()
                                         }
-                                    }.getOrNull() ?: "读取失败"
+                                    }.getOrNull() ?: readFailed
                                 }
                             }
                             Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -927,12 +933,12 @@ internal fun FilePreviewDialog(
                                     tint = colorScheme.danger
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text("PDF 文件暂不支持直接预览", color = colorScheme.textSecondary)
-                                Text("请使用外部应用打开", color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
+                                Text(stringResource(R.string.str_b9ac3889), color = colorScheme.textSecondary)
+                                Text(stringResource(R.string.str_c743105c), color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         else -> {
-                            Text("暂不支持预览该文件类型", color = colorScheme.textTertiary)
+                            Text(stringResource(R.string.str_a04c9405), color = colorScheme.textTertiary)
                         }
                     }
                 }

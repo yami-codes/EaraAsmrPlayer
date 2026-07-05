@@ -733,4 +733,17 @@
     <string name="content_locale_zh_cn">Simplified Chinese</string>
     <string name="content_locale_zh_tw">Traditional Chinese</string>
     <string name="str_unnamed_track">Untitled</string>
+    <string name="str_e05dce83">Synopsis</string>
+    <string name="str_88c7a67c">No description yet</string>
+    <string name="str_ba08cc27">Circle works</string>
+    <string name="str_90e35c2f">Same voice actor works</string>
+    <string name="str_03486e15">Customers who bought this also bought</string>
+    <string name="str_65e200d3">Download failed</string>
+    <string name="str_bc9897a9">Download failed: %1$s</string>
+    <string name="str_c3d9b7a2">Download failed: empty response body</string>
+    <string name="str_f3a8c2d1">Select files to save</string>
+    <string name="str_a7e4b9c3">Save to local library</string>
+    <string name="str_d6f1a8e2">Already exists locally, skipped download (%1$s items): %2$s</string>
+    <string name="str_c4b7e3f9">Added to download queue (%1$s items), skipped existing (%2$s items): %3$s</string>
+    <string name="str_e8d2c5a1">Adding to download queue (%1$s items): %2$s</string>
 </resources>

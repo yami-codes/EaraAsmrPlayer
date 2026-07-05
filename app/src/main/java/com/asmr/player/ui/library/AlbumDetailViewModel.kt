@@ -98,6 +98,7 @@ import okhttp3.Request
 import okhttp3.Response
 import javax.inject.Named
 import com.asmr.player.BuildConfig
+import com.asmr.player.R
 import com.asmr.player.work.AlbumCoverThumbWorker
 
 @HiltViewModel
@@ -637,7 +638,7 @@ class AlbumDetailViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.value = AlbumDetailUiState.Error(e.message ?: "加载失败")
+                _uiState.value = AlbumDetailUiState.Error(e.message ?: context.getString(R.string.str_866b795e))
             }
         }
     }
@@ -677,30 +678,30 @@ class AlbumDetailViewModel @Inject constructor(
     fun manualSetRjAndSync(input: String) {
         val normalized = Regex("""RJ\d+""", RegexOption.IGNORE_CASE).find(input.trim())?.value?.uppercase().orEmpty()
         if (normalized.isBlank()) {
-            messageManager.showError("请输入有效的作品编号")
+            messageManager.showError(R.string.str_16e3e1a4)
             return
         }
         val current = _uiState.value as? AlbumDetailUiState.Success
         val local = current?.model?.localAlbum
         if (local == null || local.id <= 0L) {
-            messageManager.showError("仅支持本地库专辑手动绑定作品编号")
+            messageManager.showError(R.string.str_d2c4f489)
             return
         }
 
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin("绑定RJ并云同步") ?: run {
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_6c990897)) ?: run {
                 val currentLabel = syncCoordinator.state.value?.label
                 if (currentLabel.isNullOrBlank()) {
-                    messageManager.showInfo("正在执行同步任务，请稍后再试")
+                    messageManager.showInfo(R.string.str_69d002a0)
                 } else {
-                    messageManager.showInfo("正在执行：$current，请等待完成或取消后再同步")
+                    messageManager.showInfo(R.string.str_de0230c7, currentLabel)
                 }
                 return@launch
             }
             _uiState.value = AlbumDetailUiState.Loading
             try {
                 val entity = withContext(Dispatchers.IO) { albumDao.getAlbumById(local.id) } ?: run {
-                    messageManager.showError("专辑不存在")
+                    messageManager.showError(R.string.str_2cfb19b5)
                     loadAlbum(local.id, normalized, force = true)
                     return@launch
                 }
@@ -719,7 +720,7 @@ class AlbumDetailViewModel @Inject constructor(
                         val resolvedWorkno = withContext(Dispatchers.IO) {
                             applyManualCloudSyncSuccess(entity, updatedWorkId, result)
                         }
-                        messageManager.showSuccess("已绑定 $resolvedWorkno 并完成云同步")
+                        messageManager.showSuccess(R.string.str_bf1f0f50, resolvedWorkno)
                         loadAlbum(local.id, resolvedWorkno, force = true)
                     }
 
@@ -739,19 +740,19 @@ class AlbumDetailViewModel @Inject constructor(
                                 val resolvedWorkno = withContext(Dispatchers.IO) {
                                     applyManualCloudSyncSuccess(entity, updatedWorkId, selectedResult)
                                 }
-                                messageManager.showSuccess("已绑定 $resolvedWorkno 并完成云同步")
+                                messageManager.showSuccess(R.string.str_bf1f0f50, resolvedWorkno)
                                 loadAlbum(local.id, resolvedWorkno, force = true)
                                 return@launch
                             }
 
                             is DlsiteCloudSyncResolveResult.Ambiguous -> {
-                                messageManager.showError("同步失败：搜索结果不唯一")
+                                messageManager.showError(R.string.str_cbe51e37)
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
 
                             DlsiteCloudSyncResolveResult.NotFound -> {
-                                messageManager.showError("同步失败：未找到专辑信息")
+                                messageManager.showError(R.string.str_e6344b79)
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
@@ -759,12 +760,12 @@ class AlbumDetailViewModel @Inject constructor(
                     }
 
                     DlsiteCloudSyncResolveResult.NotFound -> {
-                        messageManager.showError("同步失败：未找到专辑信息")
+                        messageManager.showError(R.string.str_e6344b79)
                         loadAlbum(local.id, normalized, force = true)
                     }
                 }
             } catch (e: Exception) {
-                messageManager.showError("同步失败，请稍后重试")
+                messageManager.showError(R.string.str_09e0b731)
                 loadAlbum(local.id, normalized, force = true)
             } finally {
                 syncCoordinator.end(token)
@@ -786,11 +787,11 @@ class AlbumDetailViewModel @Inject constructor(
                     albumDao.updateAlbum(entity.copy(coverPath = value, coverThumbPath = ""))
                 }
                 enqueueAlbumCoverThumbWork(local.id)
-                messageManager.showSuccess("已设置封面")
+                messageManager.showSuccess(R.string.str_98555c52)
                 val rj = current.model.rjCode.ifBlank { local.rjCode.ifBlank { local.workId } }
                 loadAlbum(local.id, rj, force = true)
             } catch (e: Exception) {
-                messageManager.showError("设置封面失败，请检查后重试")
+                messageManager.showError(R.string.str_17caa00b)
             }
         }
     }
@@ -1382,7 +1383,7 @@ class AlbumDetailViewModel @Inject constructor(
         val updatedKey = updated.rjCode.trim().uppercase()
         if (updatedKey.equals(keyRj, ignoreCase = true)) {
             if (showFailureMessage && updated.asmrOneTree.isEmpty()) {
-                messageManager.showError("在线资源加载失败，请稍后重试")
+                messageManager.showError(R.string.str_2ccf9c02)
             }
             _uiState.value = AlbumDetailUiState.Success(
                 model = updated.copy(
@@ -1421,7 +1422,7 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 val updatedWorkno = updated.dlsiteWorkno.trim().uppercase().ifBlank { updated.rjCode.trim().uppercase() }
                 if (token != dlsiteTrialLoadToken || !updatedWorkno.equals(workno, ignoreCase = true)) return@launch
-                messageManager.showError("试听刷新失败，请稍后重试")
+                messageManager.showError(R.string.str_ba5c6ac0)
                 _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingDlsiteTrial = false))
             }
         }
@@ -1700,7 +1701,7 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (pickedResult == null && lastError != null && !sawNotAvailable) {
                     dlsitePlayAttemptedRj.remove(attemptKey)
-                    messageManager.showError("DLsite Play 加载失败，请稍后重试")
+                    messageManager.showError(R.string.str_bf9b0677)
                 }
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
@@ -1744,7 +1745,7 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     private fun albumFromInitialHint(rj: String, hint: AlbumCoverHint?): Album {
-        return albumFromCoverHint(rj, hint)
+        return albumFromCoverHint(context, rj, hint)
     }
 
     private fun createInitialAlbumDetailModel(
@@ -1832,7 +1833,7 @@ class AlbumDetailViewModel @Inject constructor(
                 existingLocalKeysNoGroup.add(TrackKeyNormalizer.buildKey(t.title, "", null))
             }
         
-        messageManager.showInfo("正在加入下载队列：${album.title}")
+        messageManager.showInfo(R.string.str_b97ec9ac, album.title)
         
         val folderName = safeFolderName(album.rjCode.ifBlank { album.workId }.ifBlank { album.title })
         val baseDir = File(context.getExternalFilesDir(null), "albums")
@@ -1922,7 +1923,7 @@ class AlbumDetailViewModel @Inject constructor(
                 .ifBlank { album.rjCode.ifBlank { album.workId } }
         )
         if (workno.isBlank()) {
-            messageManager.showError("无法确定 DLsite Play 作品编号")
+            messageManager.showError(R.string.str_79733e8c)
             return
         }
 
@@ -1955,7 +1956,7 @@ class AlbumDetailViewModel @Inject constructor(
             albumRjCode = album.rjCode
         )
 
-        messageManager.showInfo("正在加入无损下载队列：${album.title}")
+        messageManager.showInfo(R.string.str_0eee3607, album.title)
     }
 
     fun downloadDlsiteTrialSelected(selectedLeafPaths: Set<String>) {
@@ -2113,14 +2114,14 @@ class AlbumDetailViewModel @Inject constructor(
                 }
             }
             if (selectedCount <= 0) {
-                messageManager.showInfo("没有可保存的音频/视频文件")
+                messageManager.showInfo(R.string.str_4a4fef28)
             } else if (insertedCount <= 0) {
-                messageManager.showInfo("本地已存在，未重复保存")
+                messageManager.showInfo(R.string.str_049354e9)
             } else if (insertedCount < selectedCount) {
                 val skipped = selectedCount - insertedCount
-                messageManager.showSuccess("已保存到本地库（${insertedCount}项），跳过已存在（${skipped}项）")
+                messageManager.showSuccess(R.string.str_b1d4a928, insertedCount, skipped)
             } else {
-                messageManager.showSuccess("已保存到本地库（${insertedCount}项）")
+                messageManager.showSuccess(R.string.str_b4f74eba, insertedCount)
             }
         }
     }
@@ -2663,11 +2664,11 @@ class AlbumDetailViewModel @Inject constructor(
         }
 
         if (skipped > 0 && enqueued == 0) {
-            messageManager.showInfo("本地已存在，已跳过下载（${skipped}项）：${album.title}")
+            messageManager.showInfo(R.string.str_d6f1a8e2, skipped, album.title)
         } else if (skipped > 0) {
-            messageManager.showInfo("已加入下载队列（${enqueued}项），跳过已存在（${skipped}项）：${album.title}")
+            messageManager.showInfo(R.string.str_c4b7e3f9, enqueued, skipped, album.title)
         } else if (enqueued > 0) {
-            messageManager.showInfo("正在加入下载队列（${enqueued}项）：${album.title}")
+            messageManager.showInfo(R.string.str_e8d2c5a1, enqueued, album.title)
         }
     }
 

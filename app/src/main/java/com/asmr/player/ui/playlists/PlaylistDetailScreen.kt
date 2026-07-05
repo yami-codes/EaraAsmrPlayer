@@ -167,11 +167,15 @@ internal fun PlaylistDetailContent(
     val draggedItemElevation = if (colorScheme.isDark) 10.dp else 14.dp
     val isFavorites = title == PlaylistRepository.PLAYLIST_FAVORITES
     val emptyHeadline = if (isFavorites) {
-        "收藏的内容会在这里出现"
+        stringResource(R.string.str_78efd9c5)
     } else {
-        "这个列表还没有内容"
+        stringResource(R.string.str_5915c42e)
     }
-    val emptySectionTitle = if (isFavorites) "我的收藏" else title.ifBlank { "我的列表" }
+    val emptySectionTitle = if (isFavorites) {
+        stringResource(R.string.nav_favorites)
+    } else {
+        title.ifBlank { stringResource(R.string.nav_playlists) }
+    }
 
     Scaffold(
         contentWindowInsets = StableWindowInsets.navigationBars,
@@ -294,7 +298,7 @@ private fun PlaylistItemRow(
             prefixSegments = listOf(item.artist, item.albumCv)
         )
         AudioItemRow(
-            title = item.title.ifBlank { "未命名" },
+            title = item.title.ifBlank { stringResource(R.string.str_unnamed_track) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = showSubtitleStamp,

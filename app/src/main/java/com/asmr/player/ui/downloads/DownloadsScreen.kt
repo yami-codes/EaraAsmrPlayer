@@ -65,9 +65,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.asmr.player.R
 import com.asmr.player.ui.common.FlatActionDialog
 import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
@@ -125,13 +127,13 @@ fun DownloadsScreen(
             OutlinedTextField(
                 value = rjQuery,
                 onValueChange = { rjQuery = it },
-                label = { Text("RJ号精准搜索") },
+                label = { Text(stringResource(R.string.str_65f4cae6)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Text(
-                text = "下载目录：$downloadRoot",
+                text = stringResource(R.string.str_021ded54, downloadRoot),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -158,7 +160,11 @@ fun DownloadsScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = if (normalizedQuery.isBlank()) "暂无下载任务" else "未找到任务：$normalizedQuery",
+                        text = if (normalizedQuery.isBlank()) {
+                            stringResource(R.string.str_83ecf907)
+                        } else {
+                            stringResource(R.string.str_eaf8581b, normalizedQuery)
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -204,7 +210,7 @@ fun DownloadsScreen(
                     is PendingDeleteAction.Task -> {
                         val task = tasks.firstOrNull { it.taskId == action.taskId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = "将物理删除“${task.title}”目录下的文件，且不可恢复。"
+                            message = context.getString(R.string.str_8cccae5e, task.title)
                         )
                     }
 
@@ -213,7 +219,7 @@ fun DownloadsScreen(
                             .flatMap { it.items.asSequence() }
                             .firstOrNull { it.workId == action.workId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = "将物理删除文件“${item.fileName}”，且不可恢复。"
+                            message = context.getString(R.string.str_a2894ad7, item.fileName)
                         )
                     }
                 }
@@ -224,9 +230,9 @@ fun DownloadsScreen(
                     onDismissRequest = { pendingDelete = null },
                     message = resolved.message,
                     actions = listOf(
-                        FlatDialogAction("取消", onClick = { pendingDelete = null }),
+                        FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingDelete = null }),
                         FlatDialogAction(
-                            text = "删除",
+                            text = stringResource(R.string.str_2f4aaddd),
                             tone = FlatDialogActionTone.Danger,
                             onClick = {
                                 pendingDelete = null
@@ -794,13 +800,15 @@ private fun rememberTaskSummary(
     val latestHasUnknownTotalRunning = rememberUpdatedState(hasUnknownTotalRunning)
     val latestState = rememberUpdatedState(state)
 
+    val downloadingLabel = stringResource(R.string.str_2d455ce5)
     return produceState(
         initialValue = buildTaskSummaryText(
             downloadedBytes = downloadedBytes,
             totalBytes = totalBytes,
             speed = speed,
             hasUnknownTotalRunning = hasUnknownTotalRunning,
-            state = state
+            state = state,
+            downloadingLabel = downloadingLabel
         )
     ) {
         while (true) {
@@ -809,7 +817,8 @@ private fun rememberTaskSummary(
                 totalBytes = latestTotalBytes.value,
                 speed = latestSpeed.value,
                 hasUnknownTotalRunning = latestHasUnknownTotalRunning.value,
-                state = latestState.value
+                state = latestState.value,
+                downloadingLabel = downloadingLabel
             )
             delay(1_000)
         }
@@ -821,7 +830,8 @@ private fun buildTaskSummaryText(
     totalBytes: Long?,
     speed: Long,
     hasUnknownTotalRunning: Boolean,
-    state: DownloadItemState
+    state: DownloadItemState,
+    downloadingLabel: String
 ): String {
     val progressText = buildString {
         append(Formatting.formatFileSize(downloadedBytes))
@@ -832,7 +842,7 @@ private fun buildTaskSummaryText(
     }
     val speedText = when {
         speed > 0L -> formatSpeed(speed)
-        hasUnknownTotalRunning || state == DownloadItemState.RUNNING -> "下载中"
+        hasUnknownTotalRunning || state == DownloadItemState.RUNNING -> downloadingLabel
         else -> ""
     }
     return when {
@@ -850,9 +860,10 @@ private fun TaskProgressMeta(
     emphasizeProgress: Boolean = false
 ) {
     val colors = AsmrTheme.colorScheme
+    val downloadingLabel = stringResource(R.string.str_2d455ce5)
     val text = when {
         progressFraction != null -> "${(progressFraction * 100).toInt()}%"
-        hasUnknownTotalRunning -> "下载中"
+        hasUnknownTotalRunning -> downloadingLabel
         else -> downloadItemStateLabel(state)
     }
     val color = when (state) {
@@ -911,14 +922,15 @@ private fun CompactProgressBar(
     }
 }
 
+@Composable
 private fun downloadItemStateLabel(state: DownloadItemState): String {
     return when (state) {
-        DownloadItemState.SUCCEEDED -> "已完成"
-        DownloadItemState.FAILED -> "失败"
-        DownloadItemState.RUNNING -> "下载中"
-        DownloadItemState.PAUSED -> "已暂停"
-        DownloadItemState.CANCELLED -> "已取消"
-        DownloadItemState.ENQUEUED -> "等待中"
+        DownloadItemState.SUCCEEDED -> stringResource(R.string.str_fad5222c)
+        DownloadItemState.FAILED -> stringResource(R.string.str_acd5cb84)
+        DownloadItemState.RUNNING -> stringResource(R.string.str_2d455ce5)
+        DownloadItemState.PAUSED -> stringResource(R.string.str_a2d930fd)
+        DownloadItemState.CANCELLED -> stringResource(R.string.str_2111ccbb)
+        DownloadItemState.ENQUEUED -> stringResource(R.string.str_65dd9ef1)
     }
 }
 

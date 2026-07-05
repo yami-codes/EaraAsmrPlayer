@@ -733,4 +733,17 @@
     <string name="content_locale_zh_cn">จีนตัวย่อ</string>
     <string name="content_locale_zh_tw">จีนตัวเต็ม</string>
     <string name="str_unnamed_track">ไม่มีชื่อ</string>
+    <string name="str_e05dce83">เรื่องย่อ</string>
+    <string name="str_88c7a67c">ยังไม่มีคำอธิบาย</string>
+    <string name="str_ba08cc27">ผลงานของเซอร์เคิล</string>
+    <string name="str_90e35c2f">ผลงานของนักพากย์คนเดียวกัน</string>
+    <string name="str_03486e15">ลูกค้าที่ซื้อผลงานนี้ยังซื้อ</string>
+    <string name="str_65e200d3">ดาวน์โหลดล้มเหลว</string>
+    <string name="str_bc9897a9">ดาวน์โหลดล้มเหลว: %1$s</string>
+    <string name="str_c3d9b7a2">ดาวน์โหลดล้มเหลว: response body ว่างเปล่า</string>
+    <string name="str_f3a8c2d1">เลือกไฟล์ที่จะบันทึก</string>
+    <string name="str_a7e4b9c3">บันทึกไปยังคลังในเครื่อง</string>
+    <string name="str_d6f1a8e2">มีอยู่ในเครื่องแล้ว ข้ามการดาวน์โหลด (%1$s รายการ): %2$s</string>
+    <string name="str_c4b7e3f9">เพิ่มในคิวดาวน์โหลดแล้ว (%1$s รายการ) ข้ามที่มีอยู่แล้ว (%2$s รายการ): %3$s</string>
+    <string name="str_e8d2c5a1">กำลังเพิ่มในคิวดาวน์โหลด (%1$s รายการ): %2$s</string>
 </resources>

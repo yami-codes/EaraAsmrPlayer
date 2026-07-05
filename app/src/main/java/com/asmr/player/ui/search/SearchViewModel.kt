@@ -670,22 +670,22 @@ class SearchViewModel @Inject constructor(
             is HttpException -> {
                 val code = e.code()
                 when {
-                    code == 401 -> "登录已过期，请重新登录"
-                    code == 403 -> "访问受限，请稍后再试"
-                    code in 500..599 -> "服务器开小差了，请稍后重试"
-                    else -> "请求失败，请稍后重试"
+                    code == 401 -> context.getString(R.string.str_d3ab821c)
+                    code == 403 -> context.getString(R.string.str_b88d3d76)
+                    code in 500..599 -> context.getString(R.string.str_effe0263)
+                    else -> context.getString(R.string.str_d5dd7d65)
                 }
             }
 
             is HttpStatusException -> {
                 when (e.statusCode) {
-                    403, 429 -> "访问受限或触发风控，请稍后再试"
-                    in 500..599 -> "服务器开小差了，请稍后重试"
-                    else -> "请求失败，请稍后重试"
+                    403, 429 -> context.getString(R.string.str_544ba34c)
+                    in 500..599 -> context.getString(R.string.str_effe0263)
+                    else -> context.getString(R.string.str_d5dd7d65)
                 }
             }
 
-            else -> "搜索失败，请稍后重试"
+            else -> context.getString(R.string.str_5764ab7d)
         }
     }
 
@@ -693,7 +693,7 @@ class SearchViewModel @Inject constructor(
         val normalizedRj = rj.trim().uppercase()
             .ifBlank { originalWorkno.trim().uppercase() }
         return Album(
-            title = title.trim().ifBlank { normalizedRj.ifBlank { "已收录作品" } },
+            title = title.trim().ifBlank { normalizedRj.ifBlank { context.getString(R.string.str_3f3241b7) } },
             path = "",
             workId = normalizedRj,
             rjCode = normalizedRj,

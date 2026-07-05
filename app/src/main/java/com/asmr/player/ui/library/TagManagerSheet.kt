@@ -153,7 +153,7 @@ fun TagManagerSheet(
                             showDeleteDialog = true
                         }
                     ),
-                    FlatDialogAction("取消", onClick = { showRenameDialog = false }),
+                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showRenameDialog = false }),
                     FlatDialogAction(
                         text = stringResource(R.string.str_be5fbbe3),
                         tone = FlatDialogActionTone.Primary,
@@ -182,7 +182,7 @@ fun TagManagerSheet(
                 onDismissRequest = { showDeleteDialog = false },
                 message = stringResource(R.string.str_beca1d1c),
                 actions = listOf(
-                    FlatDialogAction("取消", onClick = { showDeleteDialog = false }),
+                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteDialog = false }),
                     FlatDialogAction(
                         text = stringResource(R.string.str_2f4aaddd),
                         tone = FlatDialogActionTone.Danger,

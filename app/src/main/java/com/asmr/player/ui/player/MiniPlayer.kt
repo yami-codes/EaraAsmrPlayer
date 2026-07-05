@@ -54,6 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
@@ -64,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
+import com.asmr.player.R
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.delay
@@ -253,7 +255,7 @@ fun MiniPlayer(
                                     verticalArrangement = Arrangement.Center
                                 ) {
                                     Text(
-                                        text = metadata.title?.toString().orEmpty().ifBlank { "未播放" },
+                                        text = metadata.title?.toString().orEmpty().ifBlank { stringResource(R.string.str_4740234f) },
                                         modifier = Modifier.basicMarquee(),
                                         maxLines = 1,
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),

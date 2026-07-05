@@ -1,13 +1,16 @@
 package com.asmr.player.ui.search
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.asmr.player.R
 import com.asmr.player.data.local.datastore.SearchCacheStore
 import com.asmr.player.domain.model.Album
 import com.asmr.player.hotlistening.HotListeningApi
 import com.asmr.player.hotlistening.HotListeningItem
 import com.asmr.player.hotlistening.SearchSuggestionTerm
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,7 +57,8 @@ data class SearchAssistSearchRequest(
 @HiltViewModel
 class SearchAssistViewModel @Inject constructor(
     private val searchCacheStore: SearchCacheStore,
-    private val hotListeningApi: HotListeningApi
+    private val hotListeningApi: HotListeningApi,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchAssistUiState())
     val uiState: StateFlow<SearchAssistUiState> = _uiState.asStateFlow()
@@ -114,7 +118,7 @@ class SearchAssistViewModel @Inject constructor(
                     hotWorks = suggestions?.hotWorks.orEmpty()
                         .filter { item -> item.rj.isNotBlank() || item.title.isNotBlank() }
                         .take(10)
-                        .map { item -> item.toHotWork() }
+                        .map { item -> item.toHotWork(context.getString(R.string.str_3e943286)) }
                 )
             )
         }
@@ -137,11 +141,11 @@ data class SearchAssistHotWork(
     val album: Album
 )
 
-internal fun HotListeningItem.toHotWork(): SearchAssistHotWork {
+internal fun HotListeningItem.toHotWork(fallbackTitle: String): SearchAssistHotWork {
     val normalizedRj = rj.trim().uppercase()
     return SearchAssistHotWork(
         album = Album(
-            title = title.trim().ifBlank { "热门作品" },
+            title = title.trim().ifBlank { fallbackTitle },
             path = "",
             workId = normalizedRj,
             rjCode = normalizedRj,

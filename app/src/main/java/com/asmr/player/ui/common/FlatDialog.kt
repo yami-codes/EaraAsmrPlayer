@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.res.stringResource
 import com.asmr.player.ui.theme.AsmrTheme
 
 enum class FlatDialogActionTone {
@@ -144,7 +145,7 @@ fun FlatTextFieldDialog(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         actions = listOf(
-            FlatDialogAction("取消", onDismissRequest),
+            FlatDialogAction(stringResource(com.asmr.player.R.string.str_625fb26b), onDismissRequest),
             FlatDialogAction(
                 text = confirmText,
                 onClick = onConfirm,

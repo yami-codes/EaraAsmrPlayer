@@ -7,6 +7,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.asmr.player.BuildConfig
+import com.asmr.player.R
 import com.asmr.player.data.remote.update.UpdateRelease
 import java.io.File
 
@@ -32,7 +33,7 @@ fun launchDownloadedApkInstall(context: Context, apkPath: String): AppUpdateInst
             context.startActivity(intent)
             AppUpdateInstallResult.PermissionRequired
         }.getOrElse { e ->
-            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { "无法打开安装授权页面" })
+            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_c1fe2fa5) })
         }
     }
 
@@ -50,7 +51,7 @@ fun launchDownloadedApkInstall(context: Context, apkPath: String): AppUpdateInst
         context.startActivity(intent)
         AppUpdateInstallResult.Started
     }.getOrElse { e ->
-        AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { "无法打开系统安装器" })
+        AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_d439a0ff) })
     }
 }
 

@@ -177,20 +177,20 @@ internal fun AlbumDescription(album: Album) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "简介",
+                    stringResource(R.string.str_e05dce83),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.textPrimary
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 if (shouldCollapse) {
                     TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) "收起" else "展开", color = colorScheme.primary)
+                        Text(if (expanded) stringResource(R.string.str_def9e98b) else stringResource(R.string.str_e2edde5a), color = colorScheme.primary)
                     }
                 }
             }
             HorizontalDivider(color = colorScheme.textTertiary.copy(alpha = 0.25f))
             if (paragraphs.isEmpty()) {
-                Text("暂无介绍", color = colorScheme.textTertiary)
+                Text(stringResource(R.string.str_88c7a67c), color = colorScheme.textTertiary)
             } else {
                 visible.forEach { p ->
                     val trimmed = p.trimStart()
@@ -252,17 +252,17 @@ internal fun DlsiteRecommendationsBlocks(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         DlsiteRecommendationsBlock(
-            title = "社团作品一览",
+            title = stringResource(R.string.str_ba08cc27),
             items = recommendations.circleWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
         DlsiteRecommendationsBlock(
-            title = "同声优作品",
+            title = stringResource(R.string.str_90e35c2f),
             items = recommendations.sameVoiceWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
         DlsiteRecommendationsBlock(
-            title = "购买了此作品的人也购买了这些作品",
+            title = stringResource(R.string.str_03486e15),
             items = recommendations.alsoBoughtWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
@@ -433,7 +433,7 @@ internal fun AlbumTracks(album: Album, onTrackClick: (Track) -> Unit) {
     
     if (groupedTracks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("暂无曲目")
+            Text(stringResource(R.string.str_b704028e))
         }
     } else {
         LazyColumn(
@@ -502,12 +502,14 @@ internal fun TrackItem(
         supportingContent = { 
             val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
             val durationText = Formatting.formatTrackSeconds(track.duration)
+            val onlineOnlyLabel = stringResource(R.string.str_68905cf3)
+            val onlinePlaybackLabel = stringResource(R.string.str_8a463bf5)
             Text(
                 when {
-                    isOnline && durationText.isNotBlank() -> "在线 · $durationText"
-                    isOnline -> "在线"
+                    isOnline && durationText.isNotBlank() -> stringResource(R.string.str_1f5a4249, durationText)
+                    isOnline -> onlineOnlyLabel
                     durationText.isNotBlank() -> durationText
-                    else -> "在线播放"
+                    else -> onlinePlaybackLabel
                 },
                 color = colorScheme.textTertiary,
                 style = MaterialTheme.typography.bodySmall

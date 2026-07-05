@@ -1,5 +1,7 @@
 package com.asmr.player.ui.nav
 
+import android.content.Context
+import com.asmr.player.R
 import com.asmr.player.domain.model.Album
 
 /**
@@ -135,10 +137,11 @@ data class AlbumCoverHint(
     }
 }
 
-internal fun albumFromCoverHint(rj: String, hint: AlbumCoverHint?): Album {
+internal fun albumFromCoverHint(context: Context, rj: String, hint: AlbumCoverHint?): Album {
     val normalizedRj = rj.ifBlank { hint?.rjCode.orEmpty() }
+    val albumFallback = context.getString(R.string.str_22054661)
     return Album(
-        title = hint?.title?.ifBlank { normalizedRj }.orEmpty().ifBlank { "专辑" },
+        title = hint?.title?.ifBlank { normalizedRj }.orEmpty().ifBlank { albumFallback },
         path = "",
         workId = normalizedRj,
         rjCode = normalizedRj,

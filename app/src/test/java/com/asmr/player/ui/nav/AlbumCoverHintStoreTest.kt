@@ -3,10 +3,15 @@ package com.asmr.player.ui.nav
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
+@RunWith(RobolectricTestRunner::class)
 class AlbumCoverHintStoreTest {
     @Test
     fun albumFromCoverHint_keepsResolvedListMetadataForDetailHeader() {
+        val context = RuntimeEnvironment.getApplication()
         val hint = AlbumCoverHint(
             title = "作品",
             rjCode = "RJ123456",
@@ -24,7 +29,7 @@ class AlbumCoverHintStoreTest {
             hasResolvedDlsiteInfo = true
         )
 
-        val album = albumFromCoverHint("", hint)
+        val album = albumFromCoverHint(context, "", hint)
 
         assertEquals("RJ123456", album.rjCode)
         assertEquals("Alice, Bob", album.cv)

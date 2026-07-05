@@ -237,8 +237,8 @@ fun SettingsScreen(
 
                 bulkProgress?.let { progress ->
                     val title = when (progress.phase) {
-                        BulkPhase.ScanningLocal -> "正在扫描本地库"
-                        BulkPhase.SyncingCloud -> "正在云同步"
+                        BulkPhase.ScanningLocal -> stringResource(R.string.str_4a3184e1)
+                        BulkPhase.SyncingCloud -> stringResource(R.string.str_00c008ea)
                     }
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -517,7 +517,10 @@ fun SettingsScreen(
                                     range = 0f..1f,
                                     stepSize = 0.05f,
                                     textForValue = { value ->
-                                        "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
+                                        context.getString(
+                                            R.string.str_39ae4981,
+                                            (value.coerceIn(0f, 1f) * 100).toInt()
+                                        )
                                     },
                                     onValueCommitted = viewModel::setCoverBackgroundClarity,
                                     onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -579,7 +582,7 @@ fun SettingsScreen(
                             committedValue = playFadeInMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> "播放时逐渐增强音量: ${value.toInt()}ms" },
+                            textForValue = { value -> context.getString(R.string.str_fdef6cf5, value.toInt()) },
                             onValueCommitted = { viewModel.setPlayFadeInMs(it.toInt()) },
                             infoKey = "play_fade_in",
                             infoTitle = stringResource(R.string.str_441c490a),
@@ -592,7 +595,7 @@ fun SettingsScreen(
                             committedValue = pauseFadeOutMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> "暂停时逐渐降低音量: ${value.toInt()}ms" },
+                            textForValue = { value -> context.getString(R.string.str_ad976fa0, value.toInt()) },
                             onValueCommitted = { viewModel.setPauseFadeOutMs(it.toInt()) },
                             infoKey = "pause_fade_out",
                             infoTitle = stringResource(R.string.str_54bb3e71),
@@ -889,7 +892,7 @@ fun SettingsScreen(
             onDismissRequest = { pendingRemoveRoot = null },
             message = stringResource(R.string.str_10a8c4f8),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { pendingRemoveRoot = null }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { pendingRemoveRoot = null }),
                 FlatDialogAction(
                     text = stringResource(R.string.str_86048b4f),
                     tone = FlatDialogActionTone.Danger,
@@ -1364,14 +1367,18 @@ private fun SettingsGroup(
             )
             if (collapsible) {
                 Text(
-                    text = if (expanded) "收起" else "展开",
+                    text = if (expanded) stringResource(R.string.str_def9e98b) else stringResource(R.string.str_e2edde5a),
                     style = MaterialTheme.typography.labelMedium,
                     color = colorScheme.textSecondary
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Icon(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = if (expanded) "收起$title" else "展开$title",
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.str_9bc0e76a, title)
+                    } else {
+                        stringResource(R.string.str_364d726e, title)
+                    },
                     tint = colorScheme.textSecondary
                 )
             }
@@ -1418,11 +1425,11 @@ internal fun BackgroundEffectTypeSelectorRow(
     )
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = if (!backgroundEffectEnabled) {
-        "关闭"
+        stringResource(R.string.str_b15d9127)
     } else {
         when (selectedType) {
-            BackgroundEffectType.Flow -> "光点"
-            BackgroundEffectType.Ripple -> "呼吸波纹"
+            BackgroundEffectType.Flow -> stringResource(R.string.str_fa68c99e)
+            BackgroundEffectType.Ripple -> stringResource(R.string.str_b52a783c)
         }
     }
 

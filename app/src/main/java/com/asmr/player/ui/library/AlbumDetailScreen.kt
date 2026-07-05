@@ -1222,6 +1222,8 @@ private fun AlbumHeroIdentityOverlay(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
+    val titleLabel = stringResource(R.string.str_32c65d8d)
+    val circleLabel = stringResource(R.string.str_5e71ef43)
     val identity = rememberStableAlbumHeroIdentity(album, introSessionKey)
     val rj = identity.rj
     val circle = identity.circle
@@ -1247,7 +1249,7 @@ private fun AlbumHeroIdentityOverlay(
         ) {
             Text(
                 text = identity.title,
-                modifier = Modifier.clickable { copyMeta("标题", identity.title) },
+                modifier = Modifier.clickable { copyMeta(titleLabel, identity.title) },
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
@@ -1279,7 +1281,7 @@ private fun AlbumHeroIdentityOverlay(
                         circle = circle,
                         modifier = Modifier.weight(1f),
                         rjOnClick = { copyMeta("RJ", rj) },
-                        circleOnClick = { copyMeta("社团", circle) },
+                        circleOnClick = { copyMeta(circleLabel, circle) },
                         appearance = AlbumMetaAppearance.OnImage,
                         leadingVisual = AlbumMetaLeadingVisual.Icon,
                     )
@@ -1339,8 +1341,9 @@ private data class StableAlbumHeroIdentity(
 
 @Composable
 private fun rememberStableAlbumHeroIdentity(album: Album, identitySessionKey: String): StableAlbumHeroIdentity {
+    val albumFallback = stringResource(R.string.str_22054661)
     val current = StableAlbumHeroIdentity(
-        title = album.title.trim().ifBlank { "专辑" },
+        title = album.title.trim().ifBlank { albumFallback },
         rj = album.rjCode.ifBlank { album.workId }.trim(),
         circle = album.circle.trim()
     )
@@ -1441,6 +1444,7 @@ private fun AlbumHeader(
     val context = LocalContext.current
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(messageManager)
+    val tagsLabel = stringResource(R.string.str_14d34236)
 
     val headerAnimationScopeKey = remember(introSessionKey) { "albumHeader:$introSessionKey" }
     var headerIntroPlayed by rememberSaveable(headerAnimationScopeKey) { mutableStateOf(false) }
@@ -1471,11 +1475,9 @@ private fun AlbumHeader(
             .distinctBy { it.lang }
             .sortedWith(compareBy({ it.displayOrder }, { it.lang }))
     }
-    val selectedLangLabel = remember(dlsiteSelectedLang, langCandidates) {
-        langCandidates.firstOrNull { it.lang.equals(dlsiteSelectedLang, ignoreCase = true) }
-            ?.let { dlsiteLanguageButtonLabel(it.lang) }
-            ?: dlsiteLanguageButtonLabel(dlsiteSelectedLang)
-    }
+    val resolvedSelectedLang = langCandidates.firstOrNull { it.lang.equals(dlsiteSelectedLang, ignoreCase = true) }?.lang
+        ?: dlsiteSelectedLang
+    val selectedLangLabel = dlsiteLanguageButtonLabel(resolvedSelectedLang)
     var languageMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -1523,7 +1525,7 @@ private fun AlbumHeader(
                                 tags = album.tags,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
-                                onTagClick = { tag -> copyMeta("标签", tag) },
+                                onTagClick = { tag -> copyMeta(tagsLabel, tag) },
                                 leadingVisual = AlbumMetaLeadingVisual.Icon,
                             )
                         }
@@ -1729,12 +1731,13 @@ private fun AlbumHeader(
                 }
             }
         }
+@Composable
 private fun dlsiteLanguageButtonLabel(lang: String): String {
     return when (lang.trim().uppercase()) {
-        "CHI_HANS" -> "简中"
-        "CHI_HANT" -> "繁中"
-        "JPN" -> "日语"
-        else -> lang.trim().ifBlank { "日语" }
+        "CHI_HANS" -> stringResource(R.string.content_locale_zh_cn)
+        "CHI_HANT" -> stringResource(R.string.content_locale_zh_tw)
+        "JPN" -> stringResource(R.string.content_locale_ja)
+        else -> lang.trim().ifBlank { stringResource(R.string.content_locale_ja) }
     }
 }
 

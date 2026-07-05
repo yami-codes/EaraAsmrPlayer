@@ -236,7 +236,7 @@ private fun AlbumGroupRow(
             onDismissRequest = { showDeleteConfirm = false },
             message = stringResource(R.string.str_de997108, group.name),
             actions = listOf(
-                FlatDialogAction("取消", onClick = { showDeleteConfirm = false }),
+                FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
                     text = stringResource(R.string.str_2f4aaddd),
                     tone = FlatDialogActionTone.Danger,

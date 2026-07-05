@@ -1,5 +1,6 @@
 package com.asmr.player.service
 
+import com.asmr.player.R
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
@@ -978,12 +979,12 @@ class PlaybackService : MediaSessionService() {
         if (existing != null) return
         val channel = NotificationChannel(
             LYRICS_CHANNEL_ID,
-            "播放控制",
+            getString(R.string.str_72a1c1c1),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             setShowBadge(false)
             setSound(null, null)
-            description = "用于后台播放控制与锁屏媒体面板"
+            description = getString(R.string.str_46935535)
         }
         manager.createNotificationChannel(channel)
     }
@@ -1023,7 +1024,7 @@ class PlaybackService : MediaSessionService() {
         val lyrics = currentLyrics
         if (lyrics.isEmpty()) {
             withContext(Dispatchers.Main.immediate) {
-                if (overlayNeeded) overlay?.updateLine("暂无歌词")
+                if (overlayNeeded) overlay?.updateLine(getString(R.string.str_c24962a6))
             }
             return 2_000L
         }

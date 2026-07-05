@@ -449,7 +449,7 @@ internal fun SearchAssistContent(
                 onDismissRequest = { showClearHistoryDialog = false },
                 message = stringResource(R.string.str_6a51c612),
                 actions = listOf(
-                    FlatDialogAction("取消", onClick = { showClearHistoryDialog = false }),
+                    FlatDialogAction(stringResource(R.string.str_625fb26b), onClick = { showClearHistoryDialog = false }),
                     FlatDialogAction(
                         text = stringResource(R.string.str_288f0c40),
                         tone = FlatDialogActionTone.Danger,
@@ -758,7 +758,11 @@ private fun ExpandCollapseIconButton(
         } else {
             Icons.AutoMirrored.Rounded.KeyboardArrowRight
         },
-        contentDescription = if (expanded) "折叠" else "展开",
+        contentDescription = if (expanded) {
+            stringResource(R.string.str_e082621c)
+        } else {
+            stringResource(R.string.str_e2edde5a)
+        },
         onClick = onClick
     )
 }
@@ -811,6 +815,7 @@ private fun SearchAssistWorkChip(
     }
     val containerColor = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.72f else 0.82f)
         .compositeOver(colorScheme.background)
+    val hotWorkFallback = stringResource(R.string.str_3e943286)
     val meta = listOf(album.cv, album.circle)
         .map { it.trim() }
         .firstOrNull { it.isNotBlank() }
@@ -847,7 +852,7 @@ private fun SearchAssistWorkChip(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = album.title.ifBlank { "热门作品" },
+                text = album.title.ifBlank { hotWorkFallback },
                 style = MaterialTheme.typography.labelMedium,
                 color = colorScheme.textPrimary,
                 maxLines = 2,

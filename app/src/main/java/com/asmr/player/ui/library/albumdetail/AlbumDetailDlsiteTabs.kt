@@ -315,13 +315,12 @@ private fun DlsiteTrialAudioItem(
     val colorScheme = AsmrTheme.colorScheme
     val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
     val durationText = remember(track.duration) { Formatting.formatTrackSeconds(track.duration) }
-    val subtitleText = remember(isOnline, durationText) {
-        when {
-            isOnline && durationText.isNotBlank() -> "在线 · $durationText"
-            isOnline -> "在线"
-            durationText.isNotBlank() -> durationText
-            else -> "在线播放"
-        }
+    val onlineOnlyLabel = stringResource(R.string.str_68905cf3)
+    val subtitleText = when {
+        isOnline && durationText.isNotBlank() -> stringResource(R.string.str_1f5a4249, durationText)
+        isOnline -> onlineOnlyLabel
+        durationText.isNotBlank() -> durationText
+        else -> stringResource(R.string.str_8a463bf5)
     }
 
     Row(
@@ -873,7 +872,11 @@ internal fun AlbumDlsiteInfoBreadcrumbTabV2(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (asmrOneTree.isNotEmpty()) "ONE（已收录）" else "ONE",
+                    text = if (asmrOneTree.isNotEmpty()) {
+                        stringResource(R.string.str_8904c43b)
+                    } else {
+                        "ONE"
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

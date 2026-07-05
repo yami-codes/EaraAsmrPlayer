@@ -58,6 +58,8 @@ fun QueueSheetContent(
 
     val currentId = playback.currentMediaItem?.mediaId.orEmpty()
     val currentIndex = remember(queue, currentId) { queue.indexOfFirst { it.mediaId == currentId } }
+    val onlineLabel = stringResource(R.string.str_68905cf3)
+    val localLabel = stringResource(R.string.str_8e7eca1f)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -78,7 +80,7 @@ fun QueueSheetContent(
                 val title = mediaItem.mediaMetadata.title?.toString().orEmpty().ifBlank { mediaItem.mediaId }
                 val artist = mediaItem.mediaMetadata.artist?.toString().orEmpty()
                 val uriText = mediaItem.localConfiguration?.uri?.toString().orEmpty()
-                val sourceLabel = if (uriText.startsWith("http", ignoreCase = true)) "在线" else "本地"
+                val sourceLabel = if (uriText.startsWith("http", ignoreCase = true)) onlineLabel else localLabel
                 val selected = index == currentIndex
 
                 Column {

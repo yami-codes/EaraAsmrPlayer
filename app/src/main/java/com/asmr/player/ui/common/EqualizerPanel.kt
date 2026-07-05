@@ -443,7 +443,7 @@ fun EqualizerPanel(
                 selectedLeadingIconColor = colorScheme.primary
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(1 to "响度均衡", 0 to "阈值").forEach { (m, label) ->
+                listOf(1 to stringResource(R.string.str_30ff681a), 0 to stringResource(R.string.str_e0de1c9a)).forEach { (m, label) ->
                     FilterChip(
                         selected = vtMode == m,
                         onClick = { updateVolumeThreshold(mode = m) },
@@ -885,9 +885,9 @@ fun EqualizerPanel(
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     val balText = when {
-                        settings.balance < -0.05f -> "左偏 ${(settings.balance * -100).toInt()}%"
-                        settings.balance > 0.05f -> "右偏 ${(settings.balance * 100).toInt()}%"
-                        else -> "居中"
+                        settings.balance < -0.05f -> stringResource(R.string.str_061e0de8, (settings.balance * -100).toInt())
+                        settings.balance > 0.05f -> stringResource(R.string.str_87b472b9, (settings.balance * 100).toInt())
+                        else -> stringResource(R.string.str_0bbc2ea4)
                     }
                     Text(balText, style = MaterialTheme.typography.labelSmall)
                 }
@@ -916,10 +916,10 @@ fun EqualizerPanel(
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    0 to "正常",
-                    1 to "反转",
-                    2 to "克隆 L→R",
-                    3 to "克隆 R→L"
+                    0 to stringResource(R.string.str_fd6e80f1),
+                    1 to stringResource(R.string.str_4977b458),
+                    2 to stringResource(R.string.str_d948b7d9),
+                    3 to stringResource(R.string.str_f58ea2c2)
                 ).forEach { (mode, label) ->
                     FilterChip(
                         selected = settings.channelMode == mode,

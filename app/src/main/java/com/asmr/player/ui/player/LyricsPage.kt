@@ -23,12 +23,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.asmr.player.R
 import com.asmr.player.ui.theme.AsmrTheme
 
 import android.content.res.Configuration
@@ -129,7 +131,7 @@ internal fun LyricsPage(
                 }
 
                 Text(
-                    text = uiState.title.ifBlank { "歌词" },
+                    text = uiState.title.ifBlank { stringResource(R.string.str_5676764e) },
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontSize = if (isLandscape) 14.sp else 16.sp,
                         shadow = headerShadow

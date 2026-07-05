@@ -764,11 +764,13 @@ internal fun NowPlayingScreen(
     BackHandler(enabled = !pendingRouteExit) {
         handleNavigateUp()
     }
+    val notPlayingLabel = stringResource(R.string.str_4740234f)
+    val lyricsLabel = stringResource(R.string.str_5676764e)
     val playerHeaderTitle = metadata?.title?.toString().orEmpty().ifBlank {
-        lyricsState.title.ifBlank { "未播放" }
+        lyricsState.title.ifBlank { notPlayingLabel }
     }
     val lyricsHeaderTitle = lyricsState.title.ifBlank {
-        metadata?.title?.toString().orEmpty().ifBlank { "歌词" }
+        metadata?.title?.toString().orEmpty().ifBlank { lyricsLabel }
     }
 
     val sharedHeaderTitle = if (surfaceMode == NowPlayingSurfaceMode.LYRICS) {
@@ -907,7 +909,7 @@ internal fun NowPlayingScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = metadata?.title?.toString().orEmpty().ifBlank { "未播放" },
+                            text = metadata?.title?.toString().orEmpty().ifBlank { notPlayingLabel },
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = colorScheme.textPrimary,
@@ -1161,7 +1163,7 @@ internal fun NowPlayingScreen(
                         }
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = metadata?.title?.toString().orEmpty().ifBlank { "未播放" },
+                            text = metadata?.title?.toString().orEmpty().ifBlank { notPlayingLabel },
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = colorScheme.textPrimary,
                             maxLines = 1,
@@ -1404,7 +1406,7 @@ internal fun NowPlayingScreen(
                         }
 
                         Text(
-                            text = metadata?.title?.toString().orEmpty().ifBlank { "未播放" },
+                            text = metadata?.title?.toString().orEmpty().ifBlank { notPlayingLabel },
                             modifier = Modifier
                                 .weight(1f)
                                 .basicMarquee(),
@@ -1762,7 +1764,11 @@ internal fun NowPlayingScreen(
             if (slice != null) {
                 PlaybackProgressContent(viewModel, isVideo) { progress ->
                     SliceTimeEditDialog(
-                        title = if (edit.second) "修改起点" else "修改终点",
+                        title = if (edit.second) {
+                            stringResource(R.string.str_a73fc712)
+                        } else {
+                            stringResource(R.string.str_faa9553c)
+                        },
                         durationMs = progressDurationMs,
                         currentMs = progress.positionMs,
                         initialMs = if (edit.second) slice.startMs else slice.endMs,

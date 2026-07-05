@@ -57,12 +57,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import com.asmr.player.R
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.util.MessageManager
 import java.io.File
@@ -151,7 +153,7 @@ internal fun ImagePreviewDialog(
     fun openCurrentWithOtherApp() {
         val path = (resolvedItems[currentItem.key]?.openPathOrUrl ?: currentItem.openPathOrUrl).trim()
         if (path.isBlank()) {
-            messageManager.showError("无法打开：路径为空")
+            messageManager.showError(context.getString(R.string.str_65a85106))
             return
         }
 
@@ -178,12 +180,12 @@ internal fun ImagePreviewDialog(
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "打开图片"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.str_e2fb29cf)))
         }.onFailure { throwable ->
             when (throwable) {
-                is android.content.ActivityNotFoundException -> messageManager.showInfo("未找到可打开的应用")
-                is java.io.FileNotFoundException -> messageManager.showError("文件不存在")
-                else -> messageManager.showError("无法打开该图片")
+                is android.content.ActivityNotFoundException -> messageManager.showInfo(context.getString(R.string.str_8c5d893a))
+                is java.io.FileNotFoundException -> messageManager.showError(context.getString(R.string.str_d9523e34))
+                else -> messageManager.showError(context.getString(R.string.str_89baa8d8))
             }
         }
     }
@@ -247,13 +249,13 @@ internal fun ImagePreviewDialog(
                             onClick = ::openCurrentWithOtherApp,
                             modifier = Modifier.testTag(IMAGE_PREVIEW_OPEN_EXTERNAL_TAG)
                         ) {
-                            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = "打开")
+                            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = stringResource(R.string.str_d7098f50))
                         }
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier.testTag(IMAGE_PREVIEW_CLOSE_TAG)
                         ) {
-                            Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.str_b15d9127))
                         }
                     }
 
@@ -511,7 +513,7 @@ private fun PreviewImageFallback(
                 modifier = Modifier.size(40.dp)
             )
             Text(
-                text = if (failed) "图片加载失败" else title,
+                text = if (failed) stringResource(R.string.str_b3b83e12) else title,
                 color = colorScheme.textSecondary,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 10.dp)

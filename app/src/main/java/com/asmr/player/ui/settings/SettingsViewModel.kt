@@ -6,6 +6,7 @@ import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.asmr.player.BuildConfig
+import com.asmr.player.R
 import com.asmr.player.data.local.datastore.SettingsDataStore
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.data.remote.update.GitHubUpdateClient
@@ -278,7 +279,7 @@ class SettingsViewModel @Inject constructor(
                 AppUpdateState.UpToDate(latestVersionName = release.versionName, source = source)
             }
         } catch (e: Exception) {
-            val msg = e.message?.trim().orEmpty().ifBlank { "检查更新失败" }
+            val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_9e1acb3b) }
             _updateState.value = AppUpdateState.Failed(msg, source)
         }
     }
@@ -308,9 +309,11 @@ class SettingsViewModel @Inject constructor(
 
                 okHttpClient.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) {
-                        throw IllegalStateException("下载失败：${resp.code} ${resp.message}")
+                        throw IllegalStateException(
+                            context.getString(R.string.str_bc9897a9, "${resp.code} ${resp.message}")
+                        )
                     }
-                    val body = resp.body ?: throw IllegalStateException("下载失败：空响应体")
+                    val body = resp.body ?: throw IllegalStateException(context.getString(R.string.str_c3d9b7a2))
                     val total = body.contentLength().coerceAtLeast(0L)
                     val input = body.byteStream()
                     touchedTargetFile = true
@@ -346,13 +349,13 @@ class SettingsViewModel @Inject constructor(
                 }
 
                 val ok = withContext(Dispatchers.IO) { file.exists() && file.length() > 0L }
-                if (!ok) throw IllegalStateException("下载文件无效")
+                if (!ok) throw IllegalStateException(context.getString(R.string.str_a808529d))
                 _updateState.value = AppUpdateState.ReadyToInstall(release, apkPath = file.absolutePath, source = source)
             } catch (e: Exception) {
                 if (touchedTargetFile) {
                     runCatching { targetFile?.takeIf { it.exists() }?.delete() }
                 }
-                val msg = e.message?.trim().orEmpty().ifBlank { "下载失败" }
+                val msg = e.message?.trim().orEmpty().ifBlank { context.getString(R.string.str_65e200d3) }
                 _updateState.value = AppUpdateState.Failed(msg, source)
             }
         }

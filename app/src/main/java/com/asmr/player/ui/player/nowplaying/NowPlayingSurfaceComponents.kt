@@ -118,6 +118,7 @@ internal fun PlayerSurfaceHeader(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme
+    val notPlayingLabel = stringResource(R.string.str_4740234f)
     val headerShadow = if (colorScheme.isDark) {
         Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 2f), blurRadius = 4f)
     } else {
@@ -141,7 +142,7 @@ internal fun PlayerSurfaceHeader(
             )
         }
         Text(
-            text = title.ifBlank { "未播放" },
+            text = title.ifBlank { notPlayingLabel },
             style = MaterialTheme.typography.titleSmall.copy(
                 fontSize = if (isLandscape) 14.sp else 16.sp,
                 shadow = headerShadow
@@ -401,7 +402,11 @@ private fun NowPlayingVideoPlayer(
         ) {
             Icon(
                 imageVector = if (fullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
-                contentDescription = if (fullscreen) "退出全屏" else "全屏",
+                contentDescription = if (fullscreen) {
+                    stringResource(R.string.str_49041f24)
+                } else {
+                    stringResource(R.string.str_185926bf)
+                },
                 tint = Color.White
             )
         }

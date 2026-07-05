@@ -65,6 +65,7 @@ import com.asmr.player.work.AlbumCoverThumbWorker
 import com.asmr.player.work.TrackDurationWorker
 import com.google.gson.Gson
 import com.asmr.player.BuildConfig
+import com.asmr.player.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Deferred
@@ -594,21 +595,21 @@ class LibraryViewModel @Inject constructor(
     private fun showSyncBusy(nextAction: String) {
         val current = syncCoordinator.state.value?.label
         if (current.isNullOrBlank()) {
-            messageManager.showInfo("正在执行同步任务，请稍后再试")
+            messageManager.showInfo(R.string.str_69d002a0)
         } else {
-            messageManager.showInfo("正在执行：$current，请等待完成或取消后再$nextAction")
+            messageManager.showInfo(R.string.str_aff32ec2, current, nextAction)
         }
     }
 
     private fun tryRegisterAlbumJob(albumId: Long, taskName: String): Boolean {
         if (albumId <= 0L) return false
         if (isBulkTaskRunning()) {
-            messageManager.showInfo("正在执行批量任务，请先取消后再$taskName")
+            messageManager.showInfo(R.string.str_9af278ac, taskName)
             return false
         }
         val existing = albumJobs[albumId]
         if (existing?.isActive == true) {
-            messageManager.showInfo("该专辑正在执行${taskName}")
+            messageManager.showInfo(R.string.str_d810a6e3, taskName)
             return false
         }
         return true
@@ -617,13 +618,13 @@ class LibraryViewModel @Inject constructor(
     fun cancelAlbumTask(albumId: Long) {
         val job = albumJobs.remove(albumId)
         if (job == null) {
-            messageManager.showInfo("没有可取消的任务")
+            messageManager.showInfo(R.string.str_5790b75d)
             return
         }
         job.cancel()
         cloudSyncSelectionQueue.cancelForAlbum(albumId)
         _syncStatus.value -= albumId
-        messageManager.showInfo("已取消任务")
+        messageManager.showInfo(R.string.str_38175801)
     }
 
     fun confirmCloudSyncSelection(workno: String) {
@@ -636,7 +637,7 @@ class LibraryViewModel @Inject constructor(
 
     fun ignoreAllCloudSyncSelections() {
         cloudSyncSelectionQueue.ignoreAllRemainingInBatch()
-        messageManager.showInfo("已忽略本轮剩余待确认项")
+        messageManager.showInfo(R.string.str_b20a4f74)
     }
 
     private fun startBulkProgress(phase: BulkPhase, total: Int, current: Int = 0, currentAlbumTitle: String = "") {
@@ -816,7 +817,7 @@ class LibraryViewModel @Inject constructor(
         
         // 检查重复
         if (existingRoots.contains(uriString)) {
-            messageManager.showInfo("扫描目录已存在")
+            messageManager.showInfo(R.string.str_f83bc8e9)
             return false
         }
         
@@ -828,13 +829,13 @@ class LibraryViewModel @Inject constructor(
                 
                 // 检查新目录是否是现有目录的子目录
                 if (isSubdirectory(newUri, existingUri)) {
-                    messageManager.showInfo("该目录已被包含在现有扫描目录中")
+                    messageManager.showInfo(R.string.str_1677ef65)
                     return false
                 }
                 
                 // 检查现有目录是否是新目录的子目录
                 if (isSubdirectory(existingUri, newUri)) {
-                    messageManager.showInfo("该目录包含了现有的扫描目录，请先移除子目录")
+                    messageManager.showInfo(R.string.str_8f676ee7)
                     return false
                 }
             }
@@ -843,7 +844,7 @@ class LibraryViewModel @Inject constructor(
         val added = scanRootsStore.addRoot(uriString)
         _scanRoots.value = runCatching { scanRootsStore.getRoots() }.getOrDefault(emptySet())
         if (added) {
-            messageManager.showSuccess("已添加扫描目录")
+            messageManager.showSuccess(R.string.str_9baad8d4)
         }
         return added
     }
@@ -870,7 +871,7 @@ class LibraryViewModel @Inject constructor(
     fun removeScanRoot(uriString: String) {
         scanRootsStore.removeRoot(uriString)
         _scanRoots.value = runCatching { scanRootsStore.getRoots() }.getOrDefault(emptySet())
-        messageManager.showInfo("已移除扫描目录")
+        messageManager.showInfo(R.string.str_bc303c98)
     }
 
     fun removeScanRootAndDeleteAlbums(uriString: String) {
@@ -933,8 +934,8 @@ class LibraryViewModel @Inject constructor(
 
     fun scanAllRoots() {
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin("刷新本地") ?: run {
-                showSyncBusy("刷新本地")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_ca2290b7)) ?: run {
+                showSyncBusy(context.getString(R.string.str_ca2290b7))
                 return@launch
             }
             try {
@@ -976,12 +977,12 @@ class LibraryViewModel @Inject constructor(
                                 pruneOrphanedAlbumsByFilesystem()
                             }
                         }
-                        messageManager.showSuccess("扫描完成")
+                        messageManager.showSuccess(R.string.str_1df790ce)
                     } catch (e: CancellationException) {
-                        messageManager.showInfo("已取消扫描")
+                        messageManager.showInfo(R.string.str_0b39c4a2)
                     } catch (e: Exception) {
                         Log.e("LibraryViewModel", "scanAllRoots failed", e)
-                        messageManager.showError("扫描失败：${e.message}")
+                        messageManager.showError(R.string.str_f89f3da6, e.message.orEmpty())
                     } finally {
                         finishBulkProgress()
                         if (bulkJob == currentCoroutineContext()[Job]) {
@@ -998,8 +999,8 @@ class LibraryViewModel @Inject constructor(
     fun scanSingleRoot(uriString: String) {
         if (uriString.isBlank()) return
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin("刷新目录") ?: run {
-                showSyncBusy("刷新目录")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_90b5a467)) ?: run {
+                showSyncBusy(context.getString(R.string.str_90b5a467))
                 return@launch
             }
             try {
@@ -1024,12 +1025,12 @@ class LibraryViewModel @Inject constructor(
                                 }
                             }
                         }
-                        messageManager.showSuccess("目录刷新完成")
+                        messageManager.showSuccess(R.string.str_f45f9681)
                     } catch (e: CancellationException) {
-                        messageManager.showInfo("已取消刷新")
+                        messageManager.showInfo(R.string.str_36904e68)
                     } catch (e: Exception) {
                         Log.e("LibraryViewModel", "scanSingleRoot failed", e)
-                        messageManager.showError("刷新失败：${e.message}")
+                        messageManager.showError(R.string.str_3a458788, e.message.orEmpty())
                     } finally {
                         finishBulkProgress()
                         if (bulkJob == currentCoroutineContext()[Job]) {
@@ -1045,8 +1046,8 @@ class LibraryViewModel @Inject constructor(
 
     fun syncMetadata() {
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin("云同步（全量）") ?: run {
-                showSyncBusy("云同步")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_46437fee)) ?: run {
+                showSyncBusy(context.getString(R.string.str_d99f6553))
                 return@launch
             }
             try {
@@ -1055,12 +1056,12 @@ class LibraryViewModel @Inject constructor(
                     try {
                         val albums = withContext(Dispatchers.IO) { albumDao.getAllAlbumsOnce() }
                         runBatchCloudSync(albums)
-                        messageManager.showSuccess("全量同步完成")
+                        messageManager.showSuccess(R.string.str_291c8f0e)
                     } catch (e: CancellationException) {
-                        messageManager.showInfo("已取消云同步")
+                        messageManager.showInfo(R.string.str_7c55961c)
                     } catch (e: Exception) {
                         Log.e("LibraryViewModel", "syncMetadata failed", e)
-                        messageManager.showError("云同步失败：${e.message}")
+                        messageManager.showError(R.string.str_abebbe10, e.message.orEmpty())
                     } finally {
                         finishBulkProgress()
                         if (bulkJob == currentCoroutineContext()[Job]) {
@@ -1077,8 +1078,8 @@ class LibraryViewModel @Inject constructor(
     fun syncMetadataForRoot(uriString: String) {
         if (uriString.isBlank()) return
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin("云同步（目录）") ?: run {
-                showSyncBusy("云同步")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_8ed85456)) ?: run {
+                showSyncBusy(context.getString(R.string.str_d99f6553))
                 return@launch
             }
             try {
@@ -1092,12 +1093,12 @@ class LibraryViewModel @Inject constructor(
                                 }
                         }
                         runBatchCloudSync(albums)
-                        messageManager.showSuccess("云同步完成")
+                        messageManager.showSuccess(R.string.str_d0db53f3)
                     } catch (e: CancellationException) {
-                        messageManager.showInfo("已取消云同步")
+                        messageManager.showInfo(R.string.str_7c55961c)
                     } catch (e: Exception) {
                         Log.e("LibraryViewModel", "syncMetadataForRoot failed", e)
-                        messageManager.showError("云同步失败：${e.message}")
+                        messageManager.showError(R.string.str_abebbe10, e.message.orEmpty())
                     } finally {
                         finishBulkProgress()
                         if (bulkJob == currentCoroutineContext()[Job]) {
@@ -1112,11 +1113,11 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun syncAlbumMetadata(album: Album) {
-        if (!tryRegisterAlbumJob(album.id, "云同步")) return
+        if (!tryRegisterAlbumJob(album.id, context.getString(R.string.str_d99f6553))) return
         val job = viewModelScope.launch {
             val ownerJob = currentCoroutineContext()[Job]
-            val token = syncCoordinator.tryBegin("云同步：${album.title}") ?: run {
-                showSyncBusy("云同步")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_e7ae0d7b, album.title)) ?: run {
+                showSyncBusy(context.getString(R.string.str_d99f6553))
                 albumJobs.remove(album.id, ownerJob)
                 return@launch
             }
@@ -1124,7 +1125,7 @@ class LibraryViewModel @Inject constructor(
                 val entity = withContext(Dispatchers.IO) { albumDao.getAlbumById(album.id) } ?: return@launch
                 withContext(Dispatchers.IO) { syncAlbumMetadataInternal(entity) }
             } catch (e: CancellationException) {
-                messageManager.showInfo("已取消云同步：${album.title}")
+                messageManager.showInfo(R.string.str_d48973e4, album.title)
             } finally {
                 albumJobs.remove(album.id, ownerJob)
                 syncCoordinator.end(token)
@@ -1161,7 +1162,7 @@ class LibraryViewModel @Inject constructor(
         }
         val pendingCount = cloudSyncSelectionQueue.pendingCount()
         if (pendingCount > 0) {
-            messageManager.showInfo("主流程已完成，剩余${pendingCount}项待确认")
+            messageManager.showInfo(R.string.str_505d46cb, pendingCount)
         }
         pendingSelections.awaitAll()
         } finally {
@@ -1239,19 +1240,19 @@ class LibraryViewModel @Inject constructor(
                     is DlsiteCloudSyncResolveResult.Success -> {
                         applyResolvedCloudSync(entity, selectedResult)
                         if (!silent) {
-                            messageManager.showSuccess("元数据同步成功：${selectedResult.details.title}")
+                            messageManager.showSuccess(R.string.str_04aaa6c0, selectedResult.details.title)
                         }
                     }
 
                     is DlsiteCloudSyncResolveResult.Ambiguous -> {
                         if (!silent) {
-                            messageManager.showError("同步失败：搜索结果不唯一")
+                            messageManager.showError(R.string.str_cbe51e37)
                         }
                     }
 
                     DlsiteCloudSyncResolveResult.NotFound -> {
                         if (!silent) {
-                            messageManager.showError("同步失败：未找到专辑信息")
+                            messageManager.showError(R.string.str_e6344b79)
                         }
                     }
                 }
@@ -1268,9 +1269,9 @@ class LibraryViewModel @Inject constructor(
 
     private suspend fun reportSyncAlbumMetadataFailure(entityId: Long, error: Exception, silent: Boolean) {
         Log.e("LibraryViewModel", "syncAlbumMetadataInternal failed: $entityId", error)
-        _syncStatus.value += (entityId to SyncStatus.Error(error.message ?: "同步失败"))
+        _syncStatus.value += (entityId to SyncStatus.Error(error.message ?: context.getString(R.string.str_d61036e7)))
         if (!silent) {
-            messageManager.showError("同步异常：${error.message}")
+            messageManager.showError(R.string.str_5d0169cb, error.message.orEmpty())
             delay(3000)
         }
         _syncStatus.value -= entityId
@@ -1294,7 +1295,7 @@ class LibraryViewModel @Inject constructor(
                 is DlsiteCloudSyncResolveResult.Success -> {
                     val details = result.details
                     applyResolvedCloudSync(entity, result)
-                    if (!silent) messageManager.showSuccess("元数据同步成功：${details.title}")
+                    if (!silent) messageManager.showSuccess(R.string.str_04aaa6c0, details.title)
                 }
 
                 is DlsiteCloudSyncResolveResult.Ambiguous -> {
@@ -1308,7 +1309,7 @@ class LibraryViewModel @Inject constructor(
                 }
 
                 DlsiteCloudSyncResolveResult.NotFound -> {
-                    if (!silent) messageManager.showError("同步失败：未找到专辑信息")
+                    if (!silent) messageManager.showError(R.string.str_e6344b79)
                 }
             }
             if (clearSyncStatus) {
@@ -1321,8 +1322,8 @@ class LibraryViewModel @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e("LibraryViewModel", "syncAlbumMetadataInternal failed: ${entity.id}", e)
-            _syncStatus.value += (entity.id to SyncStatus.Error(e.message ?: "同步失败"))
-            if (!silent) messageManager.showError("同步异常：${e.message}")
+            _syncStatus.value += (entity.id to SyncStatus.Error(e.message ?: context.getString(R.string.str_d61036e7)))
+            if (!silent) messageManager.showError(R.string.str_5d0169cb, e.message.orEmpty())
             if (!silent) delay(3000)
             _syncStatus.value -= entity.id
         }
@@ -1464,11 +1465,11 @@ class LibraryViewModel @Inject constructor(
     fun rescanAlbum(album: Album) {
         val localPaths = album.getAllLocalPaths()
         if (localPaths.isEmpty()) return
-        if (!tryRegisterAlbumJob(album.id, "本地同步")) return
+        if (!tryRegisterAlbumJob(album.id, context.getString(R.string.str_6d34d246))) return
         val job = viewModelScope.launch {
             val ownerJob = currentCoroutineContext()[Job]
-            val token = syncCoordinator.tryBegin("本地同步：${album.title}") ?: run {
-                showSyncBusy("本地同步")
+            val token = syncCoordinator.tryBegin(context.getString(R.string.str_e1c45b3b, album.title)) ?: run {
+                showSyncBusy(context.getString(R.string.str_6d34d246))
                 albumJobs.remove(album.id, ownerJob)
                 return@launch
             }
@@ -1545,17 +1546,17 @@ class LibraryViewModel @Inject constructor(
                 }
                 _syncStatus.value -= album.id
                 if (removed) {
-                    messageManager.showInfo("目录不存在，已从本地库移除")
+                    messageManager.showInfo(R.string.str_0683a657)
                 } else {
-                    messageManager.showSuccess("重扫完成")
+                    messageManager.showSuccess(R.string.str_5f37af77)
                 }
             } catch (e: CancellationException) {
                 _syncStatus.value -= album.id
-                messageManager.showInfo("已取消重扫")
+                messageManager.showInfo(R.string.str_cabc4b93)
             } catch (e: Exception) {
                 Log.e(TAG, "rescanAlbum failed: ${album.id}", e)
-                _syncStatus.value += (album.id to SyncStatus.Error(e.message ?: "重扫失败"))
-                messageManager.showError("重扫失败：${e.message}")
+                _syncStatus.value += (album.id to SyncStatus.Error(e.message ?: context.getString(R.string.str_7ad7aeb9)))
+                messageManager.showError(R.string.str_bcc54aef, e.message.orEmpty())
                 delay(3000)
                 _syncStatus.value -= album.id
             } finally {
@@ -1569,7 +1570,7 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             if (album.id <= 0L) return@launch
             if (isBulkTaskRunning()) {
-                messageManager.showInfo("正在执行批量任务，请先取消后再删除")
+                messageManager.showInfo(R.string.str_fa6928e5)
                 return@launch
             }
 
@@ -1599,12 +1600,15 @@ class LibraryViewModel @Inject constructor(
                     deletePathSafely(downloadRoot)
                 }
 
-                messageManager.showSuccess("已删除专辑")
+                messageManager.showSuccess(R.string.str_4ceacf9e)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("LibraryViewModel", "deleteAlbum failed: ${album.id}", e)
-                messageManager.showError("删除失败：${e.message ?: "未知错误"}")
+                messageManager.showError(
+                    R.string.str_3528292b,
+                    e.message ?: context.getString(R.string.str_1622dc9b)
+                )
             }
         }
     }
@@ -1640,9 +1644,9 @@ class LibraryViewModel @Inject constructor(
             refreshAlbumAudioAggregate(track.albumId)
 
             if (deletedFile) {
-                messageManager.showSuccess("已删除文件并移除")
+                messageManager.showSuccess(R.string.str_1b91d334)
             } else {
-                messageManager.showSuccess("已从专辑移除")
+                messageManager.showSuccess(R.string.str_b1395320)
             }
         }
     }

@@ -49,9 +49,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.asmr.player.R
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
 import com.asmr.player.ui.drawer.SiteStatus
 import com.asmr.player.ui.drawer.SiteStatusType
@@ -104,7 +106,7 @@ fun DailyStatisticsSection(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "今日收听统计",
+                text = stringResource(R.string.str_55c77e58),
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.textSecondary,
                 modifier = Modifier.padding(start = 16.dp, top = 12.dp)
@@ -117,17 +119,17 @@ fun DailyStatisticsSection(
             ) {
                 StatItem(
                     icon = Icons.Rounded.AccessTime,
-                    label = "时长",
+                    label = stringResource(R.string.str_5bdfd7ee),
                     value = formatStatsDuration(stats?.listeningDurationMs ?: 0L)
                 )
                 StatItem(
                     icon = Icons.Rounded.Audiotrack,
-                    label = "音轨",
+                    label = stringResource(R.string.str_5c04ff2f),
                     value = "${stats?.trackCount ?: 0}"
                 )
                 StatItem(
                     icon = Icons.Rounded.CloudDownload,
-                    label = "流量",
+                    label = stringResource(R.string.str_c6e3373a),
                     value = formatStatsTraffic(stats?.networkTrafficBytes ?: 0L)
                 )
             }
@@ -148,7 +150,7 @@ fun SiteStatusSection(
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "站点状态测试",
+            text = stringResource(R.string.str_e7ad31f1),
             style = MaterialTheme.typography.labelSmall,
             color = colorScheme.textSecondary
         )
@@ -318,7 +320,7 @@ private fun SiteStatusRow(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(text = "测试", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                Text(text = stringResource(R.string.str_db06c78d), style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
     }
