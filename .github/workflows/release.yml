@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (example: 1.1.5)"
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -9,7 +15,33 @@ permissions:
   contents: write
 
 jobs:
-  github-release:
+  resolve-version:
+    name: Resolve release version
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            raw="${{ inputs.version }}"
+          else
+            raw="${GITHUB_REF_NAME}"
+          fi
+          raw="${raw#v}"
+          if [ -z "$raw" ]; then
+            echo "Release version is empty"
+            exit 1
+          fi
+          echo "release_tag=v${raw}" >> "$GITHUB_OUTPUT"
+          echo "package_version=${raw}" >> "$GITHUB_OUTPUT"
+
+  build-android:
+    name: Android APK
+    needs: resolve-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,30 +71,173 @@ jobs:
           printf '%s' "${APP_RELEASE_JKS_BASE64}" | base64 --decode > app-release.jks
           chmod 600 app-release.jks
       - name: Build release APK
-        run: ./gradlew :app:assembleRelease
+        run: ./gradlew :app:assembleRelease --no-daemon
         env:
           APP_RELEASE_STORE_FILE: app-release.jks
           APP_RELEASE_STORE_PASSWORD: ${{ secrets.APP_RELEASE_STORE_PASSWORD }}
           APP_RELEASE_KEY_ALIAS: ${{ secrets.APP_RELEASE_KEY_ALIAS }}
           APP_RELEASE_KEY_PASSWORD: ${{ secrets.APP_RELEASE_KEY_PASSWORD }}
-      - name: Prepare release artifact
+      - name: Stage Android artifact
         shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
         run: |
           set -euo pipefail
           mkdir -p dist
           APK_PATH="$(find . -type f -path '*/outputs/apk/release/*.apk' -name '*release*.apk' | head -n 1)"
           if [ -z "$APK_PATH" ]; then
             echo "Release APK not found under outputs/apk/release"
-            find . -maxdepth 4 -type d -name outputs -print
+            find . -maxdepth 6 -type f -name '*.apk' -print
             exit 1
           fi
-          echo "Using APK: $APK_PATH"
-          cp "$APK_PATH" "dist/AsmrPlayer-${{ github.ref_name }}-release.apk"
+          cp "$APK_PATH" "dist/EaraAsmrPlayer-${RELEASE_TAG}-android.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: dist/EaraAsmrPlayer-*-android.apk
+          if-no-files-found: error
+
+  build-windows:
+    name: Windows MSI
+    needs: resolve-version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Build Windows MSI
+        shell: cmd
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve-version.outputs.package_version }}
+        run: gradlew.bat :desktopApp:packageMsi --no-daemon -PpackageVersion=%PACKAGE_VERSION%
+      - name: Stage Windows artifact
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          MSI_PATH="$(find desktopApp/build/compose/binaries/main/msi -type f -name '*.msi' | head -n 1)"
+          if [ -z "$MSI_PATH" ]; then
+            echo "Windows MSI not found"
+            find desktopApp/build -type f -name '*.msi' -print || true
+            exit 1
+          fi
+          cp "$MSI_PATH" "dist/EaraAsmrPlayer-${RELEASE_TAG}-windows.msi"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: dist/EaraAsmrPlayer-*-windows.msi
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux DEB
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Enable Gradle Wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+      - name: Build Linux DEB
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve-version.outputs.package_version }}
+        run: ./gradlew :desktopApp:packageDeb --no-daemon -PpackageVersion="$PACKAGE_VERSION"
+      - name: Stage Linux artifact
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          DEB_PATH="$(find desktopApp/build/compose/binaries/main/deb -type f -name '*.deb' | head -n 1)"
+          if [ -z "$DEB_PATH" ]; then
+            echo "Linux DEB not found"
+            find desktopApp/build -type f -name '*.deb' -print || true
+            exit 1
+          fi
+          cp "$DEB_PATH" "dist/EaraAsmrPlayer-${RELEASE_TAG}-linux.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: dist/EaraAsmrPlayer-*-linux.deb
+          if-no-files-found: error
+
+  build-macos:
+    name: macOS DMG
+    needs: resolve-version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Enable Gradle Wrapper
+        run: chmod +x gradlew
+      - name: Build macOS DMG
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve-version.outputs.package_version }}
+        run: ./gradlew :desktopApp:packageDmg --no-daemon -PpackageVersion="$PACKAGE_VERSION"
+      - name: Stage macOS artifact
+        env:
+          RELEASE_TAG: ${{ needs.resolve-version.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          DMG_PATH="$(find desktopApp/build/compose/binaries/main/dmg -type f -name '*.dmg' | head -n 1)"
+          if [ -z "$DMG_PATH" ]; then
+            echo "macOS DMG not found"
+            find desktopApp/build -type f -name '*.dmg' -print || true
+            exit 1
+          fi
+          cp "$DMG_PATH" "dist/EaraAsmrPlayer-${RELEASE_TAG}-macos.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: dist/EaraAsmrPlayer-*-macos.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs:
+      - resolve-version
+      - build-android
+      - build-windows
+      - build-linux
+      - build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: List release artifacts
+        run: find dist -type f -print
       - uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: ${{ needs.resolve-version.outputs.release_tag }}
+          tag_name: ${{ needs.resolve-version.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           overwrite: true
-          files: dist/AsmrPlayer-${{ github.ref_name }}-release.apk
-          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            dist/EaraAsmrPlayer-${{ needs.resolve-version.outputs.release_tag }}-android.apk
+            dist/EaraAsmrPlayer-${{ needs.resolve-version.outputs.release_tag }}-windows.msi
+            dist/EaraAsmrPlayer-${{ needs.resolve-version.outputs.release_tag }}-linux.deb
+            dist/EaraAsmrPlayer-${{ needs.resolve-version.outputs.release_tag }}-macos.dmg
