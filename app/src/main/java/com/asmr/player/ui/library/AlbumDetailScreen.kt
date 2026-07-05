@@ -729,7 +729,7 @@ fun AlbumDetailScreen(
                                                 onTogglePreferredCurrentPath = { path, enabled ->
                                                     if (enabled) {
                                                         viewModel.persistPreferredTreeCurrentPath(localTreeStateKey, path)
-                                                        viewModel.messageManager.showSuccess(R.string.set_as_default_open_directory)
+                                                        viewModel.messageManager.showSuccess(R.string.set_default_open)
                                                     } else {
                                                         viewModel.clearPreferredTreeCurrentPath(localTreeStateKey)
                                                     }
@@ -1341,7 +1341,7 @@ private data class StableAlbumHeroIdentity(
 
 @Composable
 private fun rememberStableAlbumHeroIdentity(album: Album, identitySessionKey: String): StableAlbumHeroIdentity {
-    val albumFallback = stringResource(R.string.album_2)
+    val albumFallback = stringResource(R.string.album_label)
     val current = StableAlbumHeroIdentity(
         title = album.title.trim().ifBlank { albumFallback },
         rj = album.rjCode.ifBlank { album.workId }.trim(),

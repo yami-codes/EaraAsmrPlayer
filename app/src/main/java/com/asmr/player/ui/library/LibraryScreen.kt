@@ -555,7 +555,7 @@ fun LibraryScreen(
                                         headline = if (hasAnyQuery) {
                                             stringResource(R.string.no_matching_local_content)
                                         } else {
-                                            stringResource(R.string.no_local_albums_have_been_scanned)
+                                            stringResource(R.string.local_albums_have)
                                         },
                                         sectionIcon = if (hasAnyQuery) Icons.Rounded.Search else Icons.Rounded.FolderOpen,
                                         modifier = Modifier
@@ -1002,7 +1002,7 @@ fun LibraryScreen(
         if (album != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                message = stringResource(R.string.will_remove_album_local_library_try),
+                message = stringResource(R.string.remove_album_local),
                 actions = listOf(
                     FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                     FlatDialogAction(
@@ -1258,7 +1258,7 @@ private fun TrackAlbumHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_2) } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_label) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,

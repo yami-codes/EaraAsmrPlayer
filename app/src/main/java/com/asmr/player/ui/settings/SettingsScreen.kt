@@ -328,7 +328,7 @@ fun SettingsScreen(
         }
 
                 item(key = "group:block_words") {
-                    SettingsGroup(title = stringResource(R.string.blocked_keywords_2)) {
+                    SettingsGroup(title = stringResource(R.string.blocked_keywords_label)) {
                         SearchBlockedKeywordsSection(
                             input = searchBlockedKeywordInput,
                             keywords = searchBlockedKeywords,
@@ -460,13 +460,13 @@ fun SettingsScreen(
                         )
 
                         SettingsToggleRow(
-                            text = stringResource(R.string.player_lyrics_page_cover_background),
+                            text = stringResource(R.string.player_lyrics_page),
                             checked = coverBackgroundEnabled,
                             onCheckedChange = viewModel::setCoverBackgroundEnabled
                         )
                         /*
                         SettingsToggleRow(
-                            text = stringResource(R.string.rotate_your_phone_view_full_cover),
+                            text = stringResource(R.string.rotate_phone_view),
                             checked = coverMotionEnabled,
                             onCheckedChange = viewModel::setCoverMotionEnabled
                         )
@@ -475,7 +475,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(stringResource(R.string.background_cover_preview_mode), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.background_cover_preview), style = MaterialTheme.typography.bodyMedium)
                             PreviewModeInfoTip(
                                 active = activeTipKey == "cover_preview_mode",
                                 onToggle = {
@@ -542,7 +542,7 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setShowMiniPlayerBar,
                                 infoKey = "show_mini_player_bar",
                                 infoTitle = stringResource(R.string.mini_player_bar),
-                                infoText = stringResource(R.string.when_off_mini_player_bar_bottom),
+                                infoText = stringResource(R.string.off_mini_player),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
@@ -552,29 +552,29 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setSfwHideSystemControls,
                                 infoKey = "sfw_hide_system_controls",
                                 infoTitle = "SFW",
-                                infoText = stringResource(R.string.when_enabled_media_control_buttons_system),
+                                infoText = stringResource(R.string.enabled_media_control),
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
                         }
                     ) {
                         SettingsToggleRow(
-                            text = stringResource(R.string.pause_playback_immediately_when_speaker_wired),
+                            text = stringResource(R.string.pause_playback_immediately),
                             checked = pauseOnOutputDisconnect,
                             onCheckedChange = viewModel::setPauseOnOutputDisconnect,
                             infoKey = "pause_on_output_disconnect",
-                            infoTitle = stringResource(R.string.auto_pause_when_output_disconnects),
-                            infoText = stringResource(R.string.speaker_headphones_bluetooth_output_disconnected),
+                            infoTitle = stringResource(R.string.auto_pause_output),
+                            infoText = stringResource(R.string.output_disconnect_pause_hint),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
                         SettingsToggleRow(
-                            text = stringResource(R.string.continue_playback_when_wired_bluetooth_headphone),
+                            text = stringResource(R.string.continue_playback_wired),
                             checked = resumeOnOutputConnect,
                             onCheckedChange = viewModel::setResumeOnOutputConnect,
                             infoKey = "resume_on_output_connect",
-                            infoTitle = stringResource(R.string.auto_resume_output_connection),
-                            infoText = stringResource(R.string.when_headphones_bluetooth_headphones_usb_audio),
+                            infoTitle = stringResource(R.string.auto_resume_output),
+                            infoText = stringResource(R.string.headphones_bluetooth),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -586,7 +586,7 @@ fun SettingsScreen(
                             onValueCommitted = { viewModel.setPlayFadeInMs(it.toInt()) },
                             infoKey = "play_fade_in",
                             infoTitle = stringResource(R.string.play_fade_in),
-                            infoText = stringResource(R.string.when_you_tap_play_volume_will),
+                            infoText = stringResource(R.string.you_tap_play),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -599,18 +599,18 @@ fun SettingsScreen(
                             onValueCommitted = { viewModel.setPauseFadeOutMs(it.toInt()) },
                             infoKey = "pause_fade_out",
                             infoTitle = stringResource(R.string.pause_fade_out),
-                            infoText = stringResource(R.string.when_pause_tapped_volume_will_gradually),
+                            infoText = stringResource(R.string.pause_tapped_volume),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
                         )
                         SettingsToggleRow(
-                            text = stringResource(R.string.pause_when_other_apps_play_audio),
+                            text = stringResource(R.string.pause_other_apps),
                             checked = pauseOnOtherAudio,
                             onCheckedChange = viewModel::setPauseOnOtherAudio,
                             infoKey = "pause_on_other_audio",
                             infoTitle = stringResource(R.string.pause_audio_focus_loss),
-                            infoText = stringResource(R.string.pause_playback_when_another_music_video),
+                            infoText = stringResource(R.string.audio_focus_pause_hint),
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -767,7 +767,7 @@ fun SettingsScreen(
 
                         Text(
                             text = stringResource(
-                                R.string.current_version_2,
+                                R.string.current_version_fmt,
                                 com.asmr.player.BuildConfig.VERSION_NAME,
                                 com.asmr.player.BuildConfig.VERSION_CODE
                             ),
@@ -776,7 +776,7 @@ fun SettingsScreen(
                         )
 
                         SettingsToggleRow(
-                            text = stringResource(R.string.automatically_check_updates_startup),
+                            text = stringResource(R.string.automatically_check_updates),
                             checked = autoUpdateCheckEnabled,
                             onCheckedChange = viewModel::setAutoUpdateCheckEnabled
                         )
@@ -826,7 +826,7 @@ fun SettingsScreen(
                                 val progress = if (total > 0L) (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) else null
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = stringResource(R.string.downloading_2, s.release.apkName),
+                                        text = stringResource(R.string.downloading_fmt, s.release.apkName),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.textSecondary,
                                         maxLines = 1,
@@ -890,7 +890,7 @@ fun SettingsScreen(
     if (removeRoot != null) {
         FlatActionDialog(
             onDismissRequest = { pendingRemoveRoot = null },
-            message = stringResource(R.string.directory_will_removed_list_will_no),
+            message = stringResource(R.string.directory_removed_list),
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveRoot = null }),
                 FlatDialogAction(
@@ -1127,10 +1127,10 @@ private fun SearchBlockedKeywordsHelpDialog(
         )
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchHelpText(stringResource(R.string.search_space_separated_school_uniform_means_all))
-            SearchHelpText(stringResource(R.string.search_separated_by_english_vertical_bars))
-            SearchHelpText(stringResource(R.string.exclude_search_space_minus_school_uniform))
-            SearchHelpText(stringResource(R.string.exact_phrase_search_wrapped_english_double))
+            SearchHelpText(stringResource(R.string.search_and_hint))
+            SearchHelpText(stringResource(R.string.search_separated_english))
+            SearchHelpText(stringResource(R.string.exclude_search_space))
+            SearchHelpText(stringResource(R.string.search_exact_hint))
         }
     }
 }
@@ -1324,7 +1324,7 @@ private fun SearchBlockedKeywordChip(
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.delete_2, keyword),
+                    contentDescription = stringResource(R.string.delete_item_fmt, keyword),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1367,7 +1367,7 @@ private fun SettingsGroup(
             )
             if (collapsible) {
                 Text(
-                    text = if (expanded) stringResource(R.string.collapse_2) else stringResource(R.string.log_expand),
+                    text = if (expanded) stringResource(R.string.collapse_label) else stringResource(R.string.log_expand),
                     style = MaterialTheme.typography.labelMedium,
                     color = colorScheme.textSecondary
                 )
@@ -1811,20 +1811,20 @@ private fun PreviewModeInfoTip(active: Boolean, onToggle: () -> Unit) {
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.background_cover_preview_mode),
+                                text = stringResource(R.string.background_cover_preview),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = stringResource(R.string.off_background_cover_stay_centered_static),
+                                text = stringResource(R.string.off_background_cover),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = stringResource(R.string.swipe_use_two_fingers_drag_preview),
+                                text = stringResource(R.string.swipe_use_two),
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = stringResource(R.string.rotate_rotate_your_phone_preview_other),
+                                text = stringResource(R.string.rotate_rotate_phone),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }

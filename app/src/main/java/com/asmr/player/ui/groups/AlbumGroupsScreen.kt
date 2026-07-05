@@ -234,7 +234,7 @@ private fun AlbumGroupRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.you_sure_you_want_delete_group, group.name),
+            message = stringResource(R.string.are_you_sure, group.name),
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
@@ -290,7 +290,7 @@ private fun RenameAlbumGroupDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.enter_new_group_name_2),
+        message = stringResource(R.string.enter_group_name_prompt),
         value = name,
         onValueChange = { name = it },
         placeholder = stringResource(R.string.group_name),

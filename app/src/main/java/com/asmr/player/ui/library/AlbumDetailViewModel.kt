@@ -684,7 +684,7 @@ class AlbumDetailViewModel @Inject constructor(
         val current = _uiState.value as? AlbumDetailUiState.Success
         val local = current?.model?.localAlbum
         if (local == null || local.id <= 0L) {
-            messageManager.showError(R.string.only_local_library_albums_support_manual_2)
+            messageManager.showError(R.string.manual_rj_bind_hint)
             return
         }
 
@@ -692,9 +692,9 @@ class AlbumDetailViewModel @Inject constructor(
             val token = syncCoordinator.tryBegin(context.getString(R.string.bind_rj_cloud_sync)) ?: run {
                 val currentLabel = syncCoordinator.state.value?.label
                 if (currentLabel.isNullOrBlank()) {
-                    messageManager.showInfo(R.string.sync_task_progress_try_again_later)
+                    messageManager.showInfo(R.string.sync_task_progress)
                 } else {
-                    messageManager.showInfo(R.string.progress_wait_finish_cancel_before_syncing, currentLabel)
+                    messageManager.showInfo(R.string.progress_wait_finish_2, currentLabel)
                 }
                 return@launch
             }
@@ -746,13 +746,13 @@ class AlbumDetailViewModel @Inject constructor(
                             }
 
                             is DlsiteCloudSyncResolveResult.Ambiguous -> {
-                                messageManager.showError(R.string.sync_failed_search_results_not_unique)
+                                messageManager.showError(R.string.sync_failed_search)
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
 
                             DlsiteCloudSyncResolveResult.NotFound -> {
-                                messageManager.showError(R.string.sync_failed_album_information_not_found)
+                                messageManager.showError(R.string.sync_failed_album)
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
@@ -760,7 +760,7 @@ class AlbumDetailViewModel @Inject constructor(
                     }
 
                     DlsiteCloudSyncResolveResult.NotFound -> {
-                        messageManager.showError(R.string.sync_failed_album_information_not_found)
+                        messageManager.showError(R.string.sync_failed_album)
                         loadAlbum(local.id, normalized, force = true)
                     }
                 }
@@ -791,7 +791,7 @@ class AlbumDetailViewModel @Inject constructor(
                 val rj = current.model.rjCode.ifBlank { local.rjCode.ifBlank { local.workId } }
                 loadAlbum(local.id, rj, force = true)
             } catch (e: Exception) {
-                messageManager.showError(R.string.failed_set_cover_check_try_again)
+                messageManager.showError(R.string.failed_set_cover)
             }
         }
     }
@@ -1383,7 +1383,7 @@ class AlbumDetailViewModel @Inject constructor(
         val updatedKey = updated.rjCode.trim().uppercase()
         if (updatedKey.equals(keyRj, ignoreCase = true)) {
             if (showFailureMessage && updated.asmrOneTree.isEmpty()) {
-                messageManager.showError(R.string.failed_load_online_resources_try_again)
+                messageManager.showError(R.string.online_resources_failed)
             }
             _uiState.value = AlbumDetailUiState.Success(
                 model = updated.copy(
@@ -1422,7 +1422,7 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 val updatedWorkno = updated.dlsiteWorkno.trim().uppercase().ifBlank { updated.rjCode.trim().uppercase() }
                 if (token != dlsiteTrialLoadToken || !updatedWorkno.equals(workno, ignoreCase = true)) return@launch
-                messageManager.showError(R.string.preview_refresh_failed_try_again_later)
+                messageManager.showError(R.string.preview_refresh_failed)
                 _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingDlsiteTrial = false))
             }
         }
@@ -1701,7 +1701,7 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (pickedResult == null && lastError != null && !sawNotAvailable) {
                     dlsitePlayAttemptedRj.remove(attemptKey)
-                    messageManager.showError(R.string.dlsite_play_failed_load_try_again)
+                    messageManager.showError(R.string.dlsite_play_failed_2)
                 }
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
@@ -1923,7 +1923,7 @@ class AlbumDetailViewModel @Inject constructor(
                 .ifBlank { album.rjCode.ifBlank { album.workId } }
         )
         if (workno.isBlank()) {
-            messageManager.showError(R.string.unable_determine_dlsite_play_work_id)
+            messageManager.showError(R.string.unable_determine_dlsite)
             return
         }
 
@@ -1956,7 +1956,7 @@ class AlbumDetailViewModel @Inject constructor(
             albumRjCode = album.rjCode
         )
 
-        messageManager.showInfo(R.string.adding_lossless_download_queue, album.title)
+        messageManager.showInfo(R.string.adding_lossless_download, album.title)
     }
 
     fun downloadDlsiteTrialSelected(selectedLeafPaths: Set<String>) {
@@ -2116,10 +2116,10 @@ class AlbumDetailViewModel @Inject constructor(
             if (selectedCount <= 0) {
                 messageManager.showInfo(R.string.no_audio_video_files_save)
             } else if (insertedCount <= 0) {
-                messageManager.showInfo(R.string.already_exists_locally_not_saved_again)
+                messageManager.showInfo(R.string.already_exists_local)
             } else if (insertedCount < selectedCount) {
                 val skipped = selectedCount - insertedCount
-                messageManager.showSuccess(R.string.saved_local_library_items_skipped_existing, insertedCount, skipped)
+                messageManager.showSuccess(R.string.saved_local_library, insertedCount, skipped)
             } else {
                 messageManager.showSuccess(R.string.saved_local_library_items, insertedCount)
             }
@@ -2664,9 +2664,9 @@ class AlbumDetailViewModel @Inject constructor(
         }
 
         if (skipped > 0 && enqueued == 0) {
-            messageManager.showInfo(R.string.already_exists_locally_skipped_download_items, skipped, album.title)
+            messageManager.showInfo(R.string.already_exists_locally, skipped, album.title)
         } else if (skipped > 0) {
-            messageManager.showInfo(R.string.added_download_queue_items_skipped_existing, enqueued, skipped, album.title)
+            messageManager.showInfo(R.string.added_download_queue, enqueued, skipped, album.title)
         } else if (enqueued > 0) {
             messageManager.showInfo(R.string.adding_download_queue_items, enqueued, album.title)
         }

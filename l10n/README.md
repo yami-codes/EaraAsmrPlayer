@@ -1,24 +1,25 @@
-# Eara localization sources
+# Localization
 
-Edit these JSON files, then regenerate Android resources:
+Edit these files **by hand**:
 
-```bash
-python3 tools/regenerate_l10n.py
+- `app/src/main/res/values/strings.xml` — English (default)
+- `app/src/main/res/values-th/strings.xml` — Thai
+- `app/src/main/res/values-zh-rCN/strings.xml` — Chinese (Simplified)
+
+Use short, readable resource names — same idea as [LizuNemuri](https://github.com/yami-codes/LizuNemuri) (`cancel`, `retry`, `nav_search`), not hash keys like `str_cd712071`.
+
+```xml
+<string name="cancel">Cancel</string>
+<string name="retry">Retry</string>
 ```
 
-This mirrors the [LizuNemuri](https://github.com/yami-codes/LizuNemuri) workflow (`lib/l10n/*.arb` + codegen), adapted for Android/Kotlin:
+In Kotlin:
 
-| LizuNemuri (Flutter) | Eara (Android) |
-|----------------------|----------------|
-| `lib/l10n/app_*.arb` | `l10n/strings_*.json` |
-| `flutter gen-l10n` | `tools/regenerate_l10n.py` |
-| `Strings.cancel` facade | `Strings.cancel()` in `app/.../i18n/Strings.kt` |
+```kotlin
+stringResource(R.string.cancel)
+stringResource(R.string.retry)
+```
 
-Locales: `en` (template), `th`, `zh-CN`.
+Optional typed helpers live in `app/src/main/java/com/asmr/player/i18n/Strings.kt` — add entries there only when you want a shorter call site.
 
-Generated outputs (do not edit by hand):
-
-- `app/src/main/res/values/strings.xml`
-- `app/src/main/res/values-th/strings.xml`
-- `app/src/main/res/values-zh-rCN/strings.xml`
-- `app/src/main/java/com/asmr/player/i18n/Strings.kt`
+Placeholders use Android format: `%1$s`, `%2$d`.

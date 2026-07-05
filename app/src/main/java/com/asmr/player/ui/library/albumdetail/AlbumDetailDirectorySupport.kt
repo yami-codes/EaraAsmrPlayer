@@ -1491,13 +1491,13 @@ internal fun fileTypeLabel(fileType: TreeFileType): String = when (fileType) {
     TreeFileType.Video -> stringResource(R.string.video)
     TreeFileType.Image -> stringResource(R.string.image)
     TreeFileType.Subtitle -> stringResource(R.string.subtitle_chip)
-    TreeFileType.Text -> stringResource(R.string.text_2)
+    TreeFileType.Text -> stringResource(R.string.file_type_text)
     TreeFileType.Pdf -> "PDF"
     TreeFileType.Archive -> stringResource(R.string.archive)
     TreeFileType.Document -> stringResource(R.string.document)
     TreeFileType.Spreadsheet -> stringResource(R.string.table)
     TreeFileType.Presentation -> stringResource(R.string.presentation)
-    TreeFileType.Code -> stringResource(R.string.loudness_leveling_pulls_overall_loudness_toward)
+    TreeFileType.Code -> stringResource(R.string.code)
     TreeFileType.Ebook -> stringResource(R.string.e_book)
     TreeFileType.Font -> stringResource(R.string.font)
     TreeFileType.AppPackage -> stringResource(R.string.installer)
@@ -1811,7 +1811,7 @@ internal fun DirectoryBrowserPanel(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_3, selectedPaths.size)
+        stringResource(R.string.selected_count, selectedPaths.size)
     } else {
         stringResource(R.string.media_items, batchTargets.size)
     }
@@ -2208,12 +2208,12 @@ internal fun DirectoryBrowserPanelV2(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_3, selectedPaths.size)
+        stringResource(R.string.selected_count, selectedPaths.size)
     } else {
         stringResource(R.string.media_items, batchTargets.size)
     }
     val batchHintText = if (selectionMode) {
-        stringResource(R.string.tap_files_add_remove_them_selection)
+        stringResource(R.string.tap_files_add)
     } else {
         stringResource(R.string.long_press_batch_actions)
     }
@@ -2672,12 +2672,12 @@ internal fun DirectoryBrowserPanelV4(
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
     val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_3, selectedPaths.size)
+        stringResource(R.string.selected_count, selectedPaths.size)
     } else {
         stringResource(R.string.media_items, batchTargets.size)
     }
     val batchHintText = if (selectionMode) {
-        stringResource(R.string.tap_files_add_remove_them_selection)
+        stringResource(R.string.tap_files_add)
     } else {
         stringResource(R.string.long_press_batch_actions)
     }

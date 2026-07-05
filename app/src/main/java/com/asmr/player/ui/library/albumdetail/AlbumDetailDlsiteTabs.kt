@@ -315,7 +315,7 @@ private fun DlsiteTrialAudioItem(
     val colorScheme = AsmrTheme.colorScheme
     val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
     val durationText = remember(track.duration) { Formatting.formatTrackSeconds(track.duration) }
-    val onlineOnlyLabel = stringResource(R.string.online_2)
+    val onlineOnlyLabel = stringResource(R.string.online_label)
     val subtitleText = when {
         isOnline && durationText.isNotBlank() -> stringResource(R.string.online, durationText)
         isOnline -> onlineOnlyLabel
@@ -1166,7 +1166,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
     if (!loggedIn) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.you_need_log_dlsite_first_use))
+                Text(stringResource(R.string.you_need_log))
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(onClick = onOpenLogin) { Text(stringResource(R.string.go_login)) }
             }
@@ -1267,7 +1267,7 @@ internal fun AlbumDlsitePlayBreadcrumbTabV2(
                     if (isLoading) {
                         EaraLogoLoadingIndicator(tint = AsmrTheme.colorScheme.primary)
                     } else {
-                        Text(stringResource(R.string.no_playable_sources_available))
+                        Text(stringResource(R.string.playable_sources_available))
                     }
                 }
             }

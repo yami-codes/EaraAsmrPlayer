@@ -155,7 +155,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setSleepTimerLastDurationMin(minutes)
             settingsRepository.setSleepTimerEndAtMs(endAtMs)
-            messageManager.showSuccess(appContext.getString(R.string.set_successfully_playback_expected_pause, endAtText))
+            messageManager.showSuccess(appContext.getString(R.string.set_successfully_playback, endAtText))
         }
     }
 
@@ -315,11 +315,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun showOnlineTagManageUnsupported() {
-        messageManager.showInfo(appContext.getString(R.string.online_audio_does_not_support_tag))
+        messageManager.showInfo(appContext.getString(R.string.online_audio_does))
     }
 
     fun showOnlineManualLyricsUnsupported() {
-        messageManager.showInfo(appContext.getString(R.string.replace_lyrics_online_audio_download_audio))
+        messageManager.showInfo(appContext.getString(R.string.replace_lyrics_online))
     }
 
     fun bindManualLyrics(uri: String, onSuccess: () -> Unit = {}) {
@@ -390,7 +390,7 @@ class PlayerViewModel @Inject constructor(
                     appContext.getString(R.string.added_items_play_queue, summary.addedCount)
                 )
             summary.totalCount > 0 ->
-                messageManager.showInfo(appContext.getString(R.string.selected_items_already_play_queue))
+                messageManager.showInfo(appContext.getString(R.string.selected_items_are))
             else -> Unit
         }
     }
@@ -465,14 +465,14 @@ class PlayerViewModel @Inject constructor(
         val start = startMs.coerceIn(0L, safeDuration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         val end = endMs.coerceIn(0L, safeDuration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         if (end <= start) {
-            messageManager.showInfo(appContext.getString(R.string.end_time_cannot_earlier_than_start))
+            messageManager.showInfo(appContext.getString(R.string.end_time_cannot))
             return
         }
         viewModelScope.launch {
             runCatching { trackSliceRepository.updateSliceRange(sliceId, start, end) }
                 .onFailure { e ->
                     if (e is SliceOverlapException) {
-                        messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing_slice))
+                        messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
                     } else {
                         messageManager.showError(appContext.getString(R.string.failed_update_slice))
                     }
@@ -497,7 +497,7 @@ class PlayerViewModel @Inject constructor(
             val hit = existing.any { s -> clamped >= s.startMs && clamped < s.endMs }
             if (hit) {
                 _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-                messageManager.showInfo(appContext.getString(R.string.start_point_falls_within_existing_slice))
+                messageManager.showInfo(appContext.getString(R.string.start_point_falls))
                 return
             }
             tempStartMs.value = clamped
@@ -508,13 +508,13 @@ class PlayerViewModel @Inject constructor(
         val end = pos.coerceIn(0L, durationMs)
         if (end <= start) {
             _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-            messageManager.showInfo(appContext.getString(R.string.end_time_cannot_earlier_than_start))
+            messageManager.showInfo(appContext.getString(R.string.end_time_cannot))
             return
         }
         val overlap = existing.any { s -> start < s.endMs && end > s.startMs }
         if (overlap) {
             _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-            messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing_slice))
+            messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
             return
         }
         viewModelScope.launch {
@@ -527,7 +527,7 @@ class PlayerViewModel @Inject constructor(
             }.onFailure {
                 if (it is SliceOverlapException) {
                     _sliceUiEvents.tryEmit(SliceUiEvent.CutInvalidRange)
-                    messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing_slice))
+                    messageManager.showInfo(appContext.getString(R.string.slice_overlaps_existing))
                 } else {
                     messageManager.showError(appContext.getString(R.string.failed_create_slice))
                 }
@@ -617,7 +617,7 @@ class PlayerViewModel @Inject constructor(
                 )
             }
             if (allTracks.isEmpty()) {
-                messageManager.showError(appContext.getString(R.string.no_playable_audio_tracks_found))
+                messageManager.showError(appContext.getString(R.string.playable_audio_tracks))
                 return@launch
             }
             val resumeId = resumeMediaId?.trim().orEmpty().ifBlank { null }
@@ -681,7 +681,7 @@ class PlayerViewModel @Inject constructor(
             return
         }
         if (startTrack.path.contains(".m3u8", ignoreCase = true)) {
-            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not_currently_supported_download))
+            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not))
             return
         }
         val items = tracks.map { MediaItemFactory.fromTrack(album, it) }
@@ -700,7 +700,7 @@ class PlayerViewModel @Inject constructor(
             return false
         }
         if (startTrack.path.contains(".m3u8", ignoreCase = true)) {
-            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not_currently_supported_download))
+            messageManager.showError(appContext.getString(R.string.m3u8_streaming_not))
             return false
         }
         val (items, index) = withContext(Dispatchers.Default) {

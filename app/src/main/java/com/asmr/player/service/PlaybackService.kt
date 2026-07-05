@@ -984,7 +984,7 @@ class PlaybackService : MediaSessionService() {
         ).apply {
             setShowBadge(false)
             setSound(null, null)
-            description = getString(R.string.used_background_playback_controls_lock_screen)
+            description = getString(R.string.media_notification_hint)
         }
         manager.createNotificationChannel(channel)
     }

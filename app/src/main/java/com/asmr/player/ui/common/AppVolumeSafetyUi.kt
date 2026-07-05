@@ -94,7 +94,7 @@ fun AppVolumeHearingWarningDialog(
     val pendingChange = state.pendingChange ?: return
     FlatActionDialog(
         onDismissRequest = state::dismissPendingChange,
-        message = stringResource(R.string.volume_about_adjusted_which_exceeds_may, pendingChange.targetPercent),
+        message = stringResource(R.string.volume_about_adjusted, pendingChange.targetPercent),
         actions = listOf(
             FlatDialogAction(stringResource(R.string.cancel), state::dismissPendingChange),
             FlatDialogAction(stringResource(R.string.confirm), state::confirmPendingChange, FlatDialogActionTone.Primary)

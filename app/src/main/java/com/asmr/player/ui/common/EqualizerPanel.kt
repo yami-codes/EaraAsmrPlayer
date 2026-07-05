@@ -434,7 +434,7 @@ fun EqualizerPanel(
                 InfoTip(
                     key = "vt_mode",
                     title = stringResource(R.string.mode),
-                    text = stringResource(R.string.loudness_leveling_pulls_overall_loudness_toward)
+                    text = stringResource(R.string.loudness_leveling_help)
                 )
             }
             val modeChipColors = FilterChipDefaults.filterChipColors(
@@ -468,7 +468,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "vt_target",
                             title = stringResource(R.string.target_loudness),
-                            text = stringResource(R.string.gradually_adjust_playback_loudness_toward_target)
+                            text = stringResource(R.string.gradually_adjust_playback)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeLoudnessTargetDb), style = MaterialTheme.typography.labelSmall)
@@ -489,7 +489,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "vt_min",
                             title = stringResource(R.string.minimum_threshold),
-                            text = stringResource(R.string.when_volume_falls_below_value_will)
+                            text = stringResource(R.string.volume_falls_below)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMinDb), style = MaterialTheme.typography.labelSmall)
@@ -510,7 +510,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "vt_max",
                             title = stringResource(R.string.maximum_threshold),
-                            text = stringResource(R.string.when_volume_exceeds_value_will_reduced)
+                            text = stringResource(R.string.loudness_threshold_help)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.0f dBFS", settings.volumeThresholdMaxDb), style = MaterialTheme.typography.labelSmall)
@@ -554,7 +554,7 @@ fun EqualizerPanel(
                     InfoTip(
                         key = "scene_preset",
                         title = stringResource(R.string.scene_effects),
-                        text = stringResource(R.string.simulates_common_spaces_transmission_media_throu)
+                        text = stringResource(R.string.simulates_common_spaces)
                     )
                 }
                 ExposedDropdownMenuBox(
@@ -679,7 +679,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "scene_amount",
                             title = stringResource(R.string.effect_intensity),
-                            text = stringResource(R.string.higher_intensity_more_pronounced_scene_character)
+                            text = stringResource(R.string.higher_intensity_more)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text("${settings.sceneEffectAmount}%", style = MaterialTheme.typography.labelSmall)
@@ -724,7 +724,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "playback_speed",
                             title = stringResource(R.string.player_speed),
-                            text = stringResource(R.string.higher_values_play_faster_affects_tempo)
+                            text = stringResource(R.string.playback_speed_help)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackSpeed), style = MaterialTheme.typography.labelSmall)
@@ -745,7 +745,7 @@ fun EqualizerPanel(
                         InfoTip(
                             key = "playback_pitch",
                             title = stringResource(R.string.pitch),
-                            text = stringResource(R.string.higher_values_raise_pitch_lower_values)
+                            text = stringResource(R.string.higher_values_raise)
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(String.format("%.2fx", playbackPitch), style = MaterialTheme.typography.labelSmall)
@@ -790,7 +790,7 @@ fun EqualizerPanel(
                     InfoTip(
                         key = "st_distance",
                         title = stringResource(R.string.sound_source_distance),
-                        text = stringResource(R.string.farther_distance_softer_slightly_more_attenuated)
+                        text = stringResource(R.string.reverb_distance_help)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.1f", settings.orbitDistance), style = MaterialTheme.typography.labelSmall)
@@ -841,7 +841,7 @@ fun EqualizerPanel(
                 InfoTip(
                     key = "st_orbit",
                     title = stringResource(R.string.auto_surround_sound_source),
-                    text = stringResource(R.string.when_enabled_stereo_image_moves_automatically)
+                    text = stringResource(R.string.enabled_stereo_image)
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
@@ -859,7 +859,7 @@ fun EqualizerPanel(
                     InfoTip(
                         key = "st_speed",
                         title = stringResource(R.string.surround_speed),
-                        text = stringResource(R.string.higher_speed_faster_stereo_image_moves)
+                        text = stringResource(R.string.higher_speed_faster)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     Text(String.format("%.0f°/s", settings.orbitSpeed), style = MaterialTheme.typography.labelSmall)
@@ -881,7 +881,7 @@ fun EqualizerPanel(
                     InfoTip(
                         key = "ch_balance",
                         title = stringResource(R.string.left_right_balance),
-                        text = stringResource(R.string.shift_overall_sound_toward_left_right)
+                        text = stringResource(R.string.shift_overall_sound)
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     val balText = when {
@@ -906,7 +906,7 @@ fun EqualizerPanel(
                 InfoTip(
                     key = "ch_mode",
                     title = stringResource(R.string.channel_mode),
-                    text = stringResource(R.string.invert_swaps_left_right_channels_clone)
+                    text = stringResource(R.string.channel_mode_help)
                 )
             }
             val channelModeChipColors = FilterChipDefaults.filterChipColors(
@@ -1068,7 +1068,7 @@ fun EqualizerPanel(
                 InfoTip(
                     key = "eq_bands",
                     title = stringResource(R.string.band_adjustment),
-                    text = stringResource(R.string.each_slider_corresponds_center_frequency_band)
+                    text = stringResource(R.string.eq_band_help)
                 )
             }
             // val levels = normalizedLevels()  // 不再使用，改用 currentLevels

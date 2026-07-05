@@ -813,7 +813,7 @@ fun SearchScreen(
 
                             is SearchUiState.Error -> EaraBrandedEmptyState(
                                 sectionTitle = stringResource(R.string.nav_search),
-                                headline = stringResource(R.string.there_was_network_connection_problem),
+                                headline = stringResource(R.string.there_was_network),
                                 sectionIcon = Icons.Rounded.WifiOff,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(

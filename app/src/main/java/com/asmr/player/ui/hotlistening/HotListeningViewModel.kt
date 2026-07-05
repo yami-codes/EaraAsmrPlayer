@@ -213,7 +213,7 @@ private fun formatHotListeningCompactDuration(context: Context, ms: Long): Strin
     if (ms < 60_000L) return context.getString(R.string.lt_minute)
 
     val totalMinutes = ms / 60_000L
-    if (totalMinutes < 60L) return context.getString(R.string.min_2, totalMinutes)
+    if (totalMinutes < 60L) return context.getString(R.string.duration_minutes, totalMinutes)
 
     val totalHours = totalMinutes / 60L
     val compactHours = when {

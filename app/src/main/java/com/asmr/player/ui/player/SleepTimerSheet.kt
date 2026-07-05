@@ -183,7 +183,7 @@ fun SleepTimerSheetContent(
     if (showCustomDialog) {
         FlatTextFieldDialog(
             onDismissRequest = { showCustomDialog = false },
-            message = stringResource(R.string.enter_number_minutes_sleep_timer),
+            message = stringResource(R.string.enter_number_minutes),
             value = customMinutesText,
             onValueChange = { customMinutesText = it.filter { ch -> ch.isDigit() }.take(4) },
             placeholder = stringResource(R.string.enter_minutes),

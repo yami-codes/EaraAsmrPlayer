@@ -895,7 +895,7 @@ internal fun FilePreviewDialog(
                             val loadingText = stringResource(R.string.loading)
                             val textContent by produceState<String?>(initialValue = loadingText, currentPath) {
                                 val emptyContent = context.getString(R.string.content_empty)
-                                val onlineUnsupported = context.getString(R.string.online_files_do_not_support_content)
+                                val onlineUnsupported = context.getString(R.string.online_files_not)
                                 val readFailed = context.getString(R.string.failed_read)
                                 value = withContext(Dispatchers.IO) {
                                     runCatching {
@@ -933,12 +933,12 @@ internal fun FilePreviewDialog(
                                     tint = colorScheme.danger
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text(stringResource(R.string.pdf_files_do_not_support_direct), color = colorScheme.textSecondary)
+                                Text(stringResource(R.string.pdf_files_not), color = colorScheme.textSecondary)
                                 Text(stringResource(R.string.open_external_app), color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         else -> {
-                            Text(stringResource(R.string.preview_file_type_not_supported_yet), color = colorScheme.textTertiary)
+                            Text(stringResource(R.string.preview_file_type), color = colorScheme.textTertiary)
                         }
                     }
                 }

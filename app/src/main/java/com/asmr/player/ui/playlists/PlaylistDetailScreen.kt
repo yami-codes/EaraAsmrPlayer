@@ -167,7 +167,7 @@ internal fun PlaylistDetailContent(
     val draggedItemElevation = if (colorScheme.isDark) 10.dp else 14.dp
     val isFavorites = title == PlaylistRepository.PLAYLIST_FAVORITES
     val emptyHeadline = if (isFavorites) {
-        stringResource(R.string.favorited_content_will_appear_here)
+        stringResource(R.string.favorited_content_appear)
     } else {
         stringResource(R.string.list_empty)
     }
@@ -247,7 +247,7 @@ internal fun PlaylistDetailContent(
     }
 
     pendingRemoveItem?.let { item ->
-        val itemTitle = item.title.ifBlank { stringResource(R.string.untitled_2) }
+        val itemTitle = item.title.ifBlank { stringResource(R.string.untitled_label) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveItem = null },
             message = stringResource(R.string.remove, title, itemTitle),
@@ -298,7 +298,7 @@ private fun PlaylistItemRow(
             prefixSegments = listOf(item.artist, item.albumCv)
         )
         AudioItemRow(
-            title = item.title.ifBlank { stringResource(R.string.untitled_2) },
+            title = item.title.ifBlank { stringResource(R.string.untitled_label) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = showSubtitleStamp,

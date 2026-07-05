@@ -579,8 +579,8 @@ private fun buildPresetSummary(spec: LibraryQuerySpec): String {
     }
     parts.add(source)
     if (!spec.textQuery.isNullOrBlank()) parts.add(stringResource(R.string.search))
-    if (spec.includeTagIds.isNotEmpty()) parts.add(stringResource(R.string.tags_2, spec.includeTagIds.size))
-    if (spec.circles.isNotEmpty()) parts.add(stringResource(R.string.circles_2, spec.circles.size))
+    if (spec.includeTagIds.isNotEmpty()) parts.add(stringResource(R.string.tags_count_fmt, spec.includeTagIds.size))
+    if (spec.circles.isNotEmpty()) parts.add(stringResource(R.string.circles_count_fmt, spec.circles.size))
     if (spec.cvs.isNotEmpty()) parts.add("CV ${spec.cvs.size}")
     return parts.joinToString(" · ")
 }

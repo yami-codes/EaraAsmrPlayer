@@ -74,7 +74,7 @@ class PlaylistsViewModel @Inject constructor(
                 addItemsToFavorites(items)
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                messageManager.showError(R.string.failed_add_favorites_try_again)
+                messageManager.showError(R.string.failed_add_favorites)
             }
         }
     }

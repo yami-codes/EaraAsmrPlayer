@@ -437,7 +437,7 @@ private fun ListenTogetherAudienceLine(
     val colorScheme = AsmrTheme.colorScheme
     val presentation = resolveListenTogetherAudiencePresentation(
         state = state,
-        unsupportedLabel = stringResource(R.string.audio_can_t_used_listen_together)
+        unsupportedLabel = stringResource(R.string.audio_can_used)
     )
 
     val displayTarget = if (pageEntranceSettled) presentation else null

@@ -595,16 +595,16 @@ class LibraryViewModel @Inject constructor(
     private fun showSyncBusy(nextAction: String) {
         val current = syncCoordinator.state.value?.label
         if (current.isNullOrBlank()) {
-            messageManager.showInfo(R.string.sync_task_progress_try_again_later)
+            messageManager.showInfo(R.string.sync_task_progress)
         } else {
-            messageManager.showInfo(R.string.progress_wait_finish_cancel_before, current, nextAction)
+            messageManager.showInfo(R.string.progress_wait_finish, current, nextAction)
         }
     }
 
     private fun tryRegisterAlbumJob(albumId: Long, taskName: String): Boolean {
         if (albumId <= 0L) return false
         if (isBulkTaskRunning()) {
-            messageManager.showInfo(R.string.batch_task_progress_cancel_before, taskName)
+            messageManager.showInfo(R.string.batch_task_progress, taskName)
             return false
         }
         val existing = albumJobs[albumId]
@@ -637,7 +637,7 @@ class LibraryViewModel @Inject constructor(
 
     fun ignoreAllCloudSyncSelections() {
         cloudSyncSelectionQueue.ignoreAllRemainingInBatch()
-        messageManager.showInfo(R.string.ignored_remaining_pending_items_round)
+        messageManager.showInfo(R.string.ignored_remaining_pending)
     }
 
     private fun startBulkProgress(phase: BulkPhase, total: Int, current: Int = 0, currentAlbumTitle: String = "") {
@@ -817,7 +817,7 @@ class LibraryViewModel @Inject constructor(
         
         // 检查重复
         if (existingRoots.contains(uriString)) {
-            messageManager.showInfo(R.string.scan_directory_already_exists)
+            messageManager.showInfo(R.string.scan_directory_already)
             return false
         }
         
@@ -829,13 +829,13 @@ class LibraryViewModel @Inject constructor(
                 
                 // 检查新目录是否是现有目录的子目录
                 if (isSubdirectory(newUri, existingUri)) {
-                    messageManager.showInfo(R.string.directory_already_included_existing_scan_directo)
+                    messageManager.showInfo(R.string.directory_already_scanned)
                     return false
                 }
                 
                 // 检查现有目录是否是新目录的子目录
                 if (isSubdirectory(existingUri, newUri)) {
-                    messageManager.showInfo(R.string.directory_contains_existing_scan_directory_remov)
+                    messageManager.showInfo(R.string.directory_contains_existing)
                     return false
                 }
             }
@@ -1116,7 +1116,7 @@ class LibraryViewModel @Inject constructor(
         if (!tryRegisterAlbumJob(album.id, context.getString(R.string.cloud_sync))) return
         val job = viewModelScope.launch {
             val ownerJob = currentCoroutineContext()[Job]
-            val token = syncCoordinator.tryBegin(context.getString(R.string.cloud_sync_2, album.title)) ?: run {
+            val token = syncCoordinator.tryBegin(context.getString(R.string.cloud_sync_fmt, album.title)) ?: run {
                 showSyncBusy(context.getString(R.string.cloud_sync))
                 albumJobs.remove(album.id, ownerJob)
                 return@launch
@@ -1125,7 +1125,7 @@ class LibraryViewModel @Inject constructor(
                 val entity = withContext(Dispatchers.IO) { albumDao.getAlbumById(album.id) } ?: return@launch
                 withContext(Dispatchers.IO) { syncAlbumMetadataInternal(entity) }
             } catch (e: CancellationException) {
-                messageManager.showInfo(R.string.cloud_sync_canceled_2, album.title)
+                messageManager.showInfo(R.string.cloud_sync_canceled_fmt, album.title)
             } finally {
                 albumJobs.remove(album.id, ownerJob)
                 syncCoordinator.end(token)
@@ -1162,7 +1162,7 @@ class LibraryViewModel @Inject constructor(
         }
         val pendingCount = cloudSyncSelectionQueue.pendingCount()
         if (pendingCount > 0) {
-            messageManager.showInfo(R.string.main_process_completed_items_remain_confirmed, pendingCount)
+            messageManager.showInfo(R.string.sync_items_remain, pendingCount)
         }
         pendingSelections.awaitAll()
         } finally {
@@ -1246,13 +1246,13 @@ class LibraryViewModel @Inject constructor(
 
                     is DlsiteCloudSyncResolveResult.Ambiguous -> {
                         if (!silent) {
-                            messageManager.showError(R.string.sync_failed_search_results_not_unique)
+                            messageManager.showError(R.string.sync_failed_search)
                         }
                     }
 
                     DlsiteCloudSyncResolveResult.NotFound -> {
                         if (!silent) {
-                            messageManager.showError(R.string.sync_failed_album_information_not_found)
+                            messageManager.showError(R.string.sync_failed_album)
                         }
                     }
                 }
@@ -1309,7 +1309,7 @@ class LibraryViewModel @Inject constructor(
                 }
 
                 DlsiteCloudSyncResolveResult.NotFound -> {
-                    if (!silent) messageManager.showError(R.string.sync_failed_album_information_not_found)
+                    if (!silent) messageManager.showError(R.string.sync_failed_album)
                 }
             }
             if (clearSyncStatus) {
@@ -1468,7 +1468,7 @@ class LibraryViewModel @Inject constructor(
         if (!tryRegisterAlbumJob(album.id, context.getString(R.string.local_sync))) return
         val job = viewModelScope.launch {
             val ownerJob = currentCoroutineContext()[Job]
-            val token = syncCoordinator.tryBegin(context.getString(R.string.local_sync_2, album.title)) ?: run {
+            val token = syncCoordinator.tryBegin(context.getString(R.string.local_sync_fmt, album.title)) ?: run {
                 showSyncBusy(context.getString(R.string.local_sync))
                 albumJobs.remove(album.id, ownerJob)
                 return@launch
@@ -1546,7 +1546,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 _syncStatus.value -= album.id
                 if (removed) {
-                    messageManager.showInfo(R.string.directory_does_not_exist_was_removed)
+                    messageManager.showInfo(R.string.directory_removed)
                 } else {
                     messageManager.showSuccess(R.string.rescan_completed)
                 }
@@ -1556,7 +1556,7 @@ class LibraryViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "rescanAlbum failed: ${album.id}", e)
                 _syncStatus.value += (album.id to SyncStatus.Error(e.message ?: context.getString(R.string.rescan_failed)))
-                messageManager.showError(R.string.rescan_failed_2, e.message.orEmpty())
+                messageManager.showError(R.string.rescan_failed_fmt, e.message.orEmpty())
                 delay(3000)
                 _syncStatus.value -= album.id
             } finally {
@@ -1570,7 +1570,7 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             if (album.id <= 0L) return@launch
             if (isBulkTaskRunning()) {
-                messageManager.showInfo(R.string.batch_task_progress_cancel_before_deleting)
+                messageManager.showInfo(R.string.batch_task_progress_2)
                 return@launch
             }
 

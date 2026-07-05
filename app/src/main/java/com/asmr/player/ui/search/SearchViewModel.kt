@@ -194,7 +194,7 @@ class SearchViewModel @Inject constructor(
             collectedOnly = collectedOnly
         )
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning(R.string.log_dlsite_before_using_purchased_search)
+            messageManager.showWarning(R.string.log_dlsite_before)
             return false
         }
         val normalizedKeyword = keyword.trim()
@@ -245,7 +245,7 @@ class SearchViewModel @Inject constructor(
         val current = _uiState.value as? SearchUiState.Success ?: return false
         if (current.isBusy) return false
         if (nextFilters.purchasedOnly && !dlsitePlayLibraryClient.hasStoredCredentials()) {
-            messageManager.showWarning(R.string.log_dlsite_before_using_purchased_search)
+            messageManager.showWarning(R.string.log_dlsite_before)
             return false
         }
         if (
@@ -373,7 +373,7 @@ class SearchViewModel @Inject constructor(
                 if (e is CancellationException) throw e
                 Log.e("SearchViewModel", "Search paging failed", e)
                 val msg = if (e is IllegalStateException) {
-                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = context.getString(R.string.search_failed_try_again_later))
+                    AppErrorMessageFormatter.sanitize(e.message.orEmpty(), fallback = context.getString(R.string.search_failed_try))
                 } else {
                     toUserMessage(e)
                 }
@@ -663,29 +663,29 @@ class SearchViewModel @Inject constructor(
 
     private fun toUserMessage(e: Throwable): String {
         val raw = e.message.orEmpty()
-        if (raw.contains("已购")) return context.getString(R.string.log_dlsite_before_using_purchased_search)
+        if (raw.contains("已购")) return context.getString(R.string.log_dlsite_before)
         return when (e) {
-            is SocketTimeoutException -> context.getString(R.string.search_failed_try_again_later)
+            is SocketTimeoutException -> context.getString(R.string.search_failed_try)
             is IOException -> context.getString(R.string.error_operation_failed)
             is HttpException -> {
                 val code = e.code()
                 when {
                     code == 401 -> context.getString(R.string.login_expired_log_again)
-                    code == 403 -> context.getString(R.string.access_restricted_try_again_later)
-                    code in 500..599 -> context.getString(R.string.server_taking_break_try_again_later)
-                    else -> context.getString(R.string.request_failed_try_again_later)
+                    code == 403 -> context.getString(R.string.access_denied_retry)
+                    code in 500..599 -> context.getString(R.string.server_taking_break)
+                    else -> context.getString(R.string.request_failed_try)
                 }
             }
 
             is HttpStatusException -> {
                 when (e.statusCode) {
-                    403, 429 -> context.getString(R.string.access_restricted_risk_control_was_triggered)
-                    in 500..599 -> context.getString(R.string.server_taking_break_try_again_later)
-                    else -> context.getString(R.string.request_failed_try_again_later)
+                    403, 429 -> context.getString(R.string.access_risk_control)
+                    in 500..599 -> context.getString(R.string.server_taking_break)
+                    else -> context.getString(R.string.request_failed_try)
                 }
             }
 
-            else -> context.getString(R.string.search_failed_try_again_later)
+            else -> context.getString(R.string.search_failed_try)
         }
     }
 

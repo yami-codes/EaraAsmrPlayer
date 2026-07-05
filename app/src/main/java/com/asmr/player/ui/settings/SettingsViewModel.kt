@@ -310,10 +310,10 @@ class SettingsViewModel @Inject constructor(
                 okHttpClient.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         throw IllegalStateException(
-                            context.getString(R.string.download_failed_2, "${resp.code} ${resp.message}")
+                            context.getString(R.string.download_failed_fmt, "${resp.code} ${resp.message}")
                         )
                     }
-                    val body = resp.body ?: throw IllegalStateException(context.getString(R.string.download_failed_empty_response_body))
+                    val body = resp.body ?: throw IllegalStateException(context.getString(R.string.download_failed_empty))
                     val total = body.contentLength().coerceAtLeast(0L)
                     val input = body.byteStream()
                     touchedTargetFile = true
@@ -349,7 +349,7 @@ class SettingsViewModel @Inject constructor(
                 }
 
                 val ok = withContext(Dispatchers.IO) { file.exists() && file.length() > 0L }
-                if (!ok) throw IllegalStateException(context.getString(R.string.downloaded_file_invalid_download_again))
+                if (!ok) throw IllegalStateException(context.getString(R.string.invalid_apk_redownload))
                 _updateState.value = AppUpdateState.ReadyToInstall(release, apkPath = file.absolutePath, source = source)
             } catch (e: Exception) {
                 if (touchedTargetFile) {

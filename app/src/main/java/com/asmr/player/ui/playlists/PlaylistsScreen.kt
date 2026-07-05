@@ -241,7 +241,7 @@ private fun PlaylistRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.you_sure_you_want_delete_list, playlist.name),
+            message = stringResource(R.string.are_you_sure_2, playlist.name),
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
@@ -277,7 +277,7 @@ private fun CreatePlaylistDialog(
 
     FlatTextFieldDialog(
         onDismissRequest = onDismiss,
-        message = stringResource(R.string.enter_new_list_name_2),
+        message = stringResource(R.string.enter_list_name_prompt),
         value = name,
         onValueChange = { name = it },
         placeholder = stringResource(R.string.enter_list_name),

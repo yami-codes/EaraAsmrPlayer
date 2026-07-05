@@ -180,7 +180,7 @@ fun TagManagerSheet(
         if (tag != null) {
             FlatActionDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                message = stringResource(R.string.tag_will_removed_all_user_annotations),
+                message = stringResource(R.string.tag_removed_all),
                 actions = listOf(
                     FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteDialog = false }),
                     FlatDialogAction(

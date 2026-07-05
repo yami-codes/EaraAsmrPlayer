@@ -58,7 +58,7 @@ fun QueueSheetContent(
 
     val currentId = playback.currentMediaItem?.mediaId.orEmpty()
     val currentIndex = remember(queue, currentId) { queue.indexOfFirst { it.mediaId == currentId } }
-    val onlineLabel = stringResource(R.string.online_2)
+    val onlineLabel = stringResource(R.string.online_label)
     val localLabel = stringResource(R.string.library_segment_local)
 
     Column(modifier = modifier.fillMaxWidth()) {

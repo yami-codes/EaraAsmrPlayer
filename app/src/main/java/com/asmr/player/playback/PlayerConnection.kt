@@ -275,7 +275,7 @@ class PlayerConnection @Inject constructor(
                         val item = controller?.currentMediaItem
                         val uri = item?.localConfiguration?.uri?.toString().orEmpty()
                         val msg = if (uri.contains(".m3u8", ignoreCase = true)) {
-                            context.getString(R.string.m3u8_streaming_not_currently_supported_download)
+                            context.getString(R.string.m3u8_streaming_not)
                         } else {
                             context.getString(R.string.playback_failed, error.errorCodeName)
                         }

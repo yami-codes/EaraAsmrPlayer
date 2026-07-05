@@ -184,7 +184,7 @@ internal fun AlbumDescription(album: Album) {
                 Spacer(modifier = Modifier.weight(1f))
                 if (shouldCollapse) {
                     TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) stringResource(R.string.collapse_2) else stringResource(R.string.log_expand), color = colorScheme.primary)
+                        Text(if (expanded) stringResource(R.string.collapse_label) else stringResource(R.string.log_expand), color = colorScheme.primary)
                     }
                 }
             }
@@ -262,7 +262,7 @@ internal fun DlsiteRecommendationsBlocks(
             onOpenAlbumByRj = onOpenAlbumByRj
         )
         DlsiteRecommendationsBlock(
-            title = stringResource(R.string.customers_who_bought_also_bought),
+            title = stringResource(R.string.customers_who_bought),
             items = recommendations.alsoBoughtWorks,
             onOpenAlbumByRj = onOpenAlbumByRj
         )
@@ -502,7 +502,7 @@ internal fun TrackItem(
         supportingContent = { 
             val isOnline = remember(track.path) { track.path.trim().startsWith("http", ignoreCase = true) }
             val durationText = Formatting.formatTrackSeconds(track.duration)
-            val onlineOnlyLabel = stringResource(R.string.online_2)
+            val onlineOnlyLabel = stringResource(R.string.online_label)
             val onlinePlaybackLabel = stringResource(R.string.online_playback)
             Text(
                 when {

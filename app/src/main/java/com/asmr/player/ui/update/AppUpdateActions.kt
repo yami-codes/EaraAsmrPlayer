@@ -33,7 +33,7 @@ fun launchDownloadedApkInstall(context: Context, apkPath: String): AppUpdateInst
             context.startActivity(intent)
             AppUpdateInstallResult.PermissionRequired
         }.getOrElse { e ->
-            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.unable_open_install_permission_page) })
+            AppUpdateInstallResult.Failed(e.message?.trim().orEmpty().ifBlank { context.getString(R.string.unable_open_install) })
         }
     }
 

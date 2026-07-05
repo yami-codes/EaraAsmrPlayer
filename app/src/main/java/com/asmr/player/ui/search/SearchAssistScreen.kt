@@ -447,7 +447,7 @@ internal fun SearchAssistContent(
         if (showClearHistoryDialog) {
             FlatActionDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                message = stringResource(R.string.clear_search_history_2),
+                message = stringResource(R.string.clear_search_history_confirm),
                 actions = listOf(
                     FlatDialogAction(stringResource(R.string.cancel), onClick = { showClearHistoryDialog = false }),
                     FlatDialogAction(

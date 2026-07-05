@@ -153,7 +153,7 @@ internal fun ManualReorderDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = stringResource(R.string.long_press_drag_then_release_save),
+                            text = stringResource(R.string.long_press_drag),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.textSecondary
                         )

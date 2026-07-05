@@ -313,10 +313,10 @@ internal fun AlbumGroupDetailContent(
     }
 
     pendingRemoveTrack?.let { track ->
-        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.untitled_2) }
+        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.untitled_label) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveTrack = null },
-            message = stringResource(R.string.remove_2, title, trackTitle),
+            message = stringResource(R.string.remove_from_group_fmt, title, trackTitle),
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveTrack = null }),
                 FlatDialogAction(
@@ -334,7 +334,7 @@ internal fun AlbumGroupDetailContent(
     pendingRemoveAlbum?.let { album ->
         FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            message = stringResource(R.string.remove_album_2, album.second, title),
+            message = stringResource(R.string.remove_album_fmt, album.second, title),
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
@@ -369,7 +369,7 @@ private fun AlbumSectionHeader(
                 .takeIf { it > 0L }
         }
     }
-    val tracksLabel = stringResource(R.string.audio_tracks_2, tracks.size)
+    val tracksLabel = stringResource(R.string.track_count_fmt, tracks.size)
     val footerSegments = remember(rjCode, tracks, totalSizeBytes, tracksLabel) {
         buildList {
             if (rjCode.isNotBlank()) add(rjCode)
@@ -400,7 +400,7 @@ private fun AlbumSectionHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_2) } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_label) } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,
@@ -456,7 +456,7 @@ private fun GroupTrackRow(
             prefixSegments = listOf(item.albumCv.orEmpty())
         )
         AudioItemRow(
-            title = item.trackTitle.ifBlank { stringResource(R.string.untitled_2) },
+            title = item.trackTitle.ifBlank { stringResource(R.string.untitled_label) },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = item.hasSubtitles,

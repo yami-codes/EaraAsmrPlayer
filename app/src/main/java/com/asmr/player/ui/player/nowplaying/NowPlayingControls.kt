@@ -253,7 +253,7 @@ internal fun PlaybackControls(
                 }
                 Icon(
                     icon,
-                    contentDescription = stringResource(R.string.playback_mode_2),
+                    contentDescription = stringResource(R.string.playback_mode_label),
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(28.dp)
                 )

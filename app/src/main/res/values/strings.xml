@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about">About</string>
-    <string name="access_currently_restricted_try_again_later">Access is currently restricted. Please try again later.</string>
     <string name="access_denied">Access denied</string>
-    <string name="access_restricted_risk_control_was_triggered">Access is restricted or risk control was triggered. Please try again later.</string>
-    <string name="access_restricted_try_again_later">Access restricted. Please try again later.</string>
+    <string name="access_denied_retry">Access restricted. Please try again later.</string>
+    <string name="access_restricted">Access is currently restricted. Please try again later.</string>
+    <string name="access_risk_control">Access is restricted or risk control was triggered. Please try again later.</string>
     <string name="account_cannot_empty">Account cannot be empty</string>
     <string name="account_email">Account (email)</string>
     <string name="action_favorite">Favorites</string>
@@ -15,7 +15,7 @@
     <string name="add_my_list">Add to My List</string>
     <string name="add_play_queue">Add to play queue</string>
     <string name="add_playlist">Add to playlist</string>
-    <string name="added_download_queue_items_skipped_existing" formatted="false">Added to download queue (%1$s items), skipped existing (%2$s items): %3$s</string>
+    <string name="added_download_queue" formatted="false">Added to download queue (%1$s items), skipped existing (%2$s items): %3$s</string>
     <string name="added_group" formatted="false">Added to group: %1$s</string>
     <string name="added_items" formatted="false">Added %1$s items to %2$s</string>
     <string name="added_items_play_queue" formatted="false">Added %1$s items to play queue</string>
@@ -25,22 +25,22 @@
     <string name="added_playlist">Added to playlist</string>
     <string name="adding_download_queue" formatted="false">Adding to download queue: %1$s</string>
     <string name="adding_download_queue_items" formatted="false">Adding to download queue (%1$s items): %2$s</string>
-    <string name="adding_lossless_download_queue" formatted="false">Adding to lossless download queue: %1$s</string>
+    <string name="adding_lossless_download" formatted="false">Adding to lossless download queue: %1$s</string>
     <string name="advanced_search_usage">Advanced search usage</string>
     <string name="album" formatted="false">Album %1$s/%2$s: %3$s</string>
-    <string name="album_2">Album</string>
     <string name="album_cards">Album cards</string>
     <string name="album_currently_performing" formatted="false">This album is currently performing %1$s</string>
     <string name="album_deleted">Album deleted</string>
     <string name="album_details">Album details</string>
+    <string name="album_label">Album</string>
     <string name="album_list">Album list</string>
     <string name="album_not_found">Album not found</string>
     <string name="album_title">Album title</string>
     <string name="albums_tracks" formatted="false">%1$s albums · %2$s tracks</string>
     <string name="alignment">Alignment</string>
-    <string name="allow_eara_install_apps_unknown_sources">Please allow Eara to install apps from unknown sources, then continue the installation</string>
-    <string name="already_exists_locally_not_saved_again">Already exists locally, not saved again</string>
-    <string name="already_exists_locally_skipped_download_items" formatted="false">Already exists locally, skipped download (%1$s items): %2$s</string>
+    <string name="allow_unknown_sources">Please allow Eara to install apps from unknown sources, then continue the installation</string>
+    <string name="already_exists_local">Already exists locally, not saved again</string>
+    <string name="already_exists_locally" formatted="false">Already exists locally, skipped download (%1$s items): %2$s</string>
     <string name="already_playlist">Already in playlist</string>
     <string name="already_up_date" formatted="false">Already up to date: %1$s</string>
     <string name="any_source">Any source</string>
@@ -48,34 +48,36 @@
     <string name="app_name">Eara</string>
     <string name="appearance">Appearance</string>
     <string name="archive">Archive</string>
+    <string name="are_you_sure" formatted="false">Are you sure you want to delete group \\\\\\\"%1$s\\\\\\\"? This action cannot be undone.</string>
+    <string name="are_you_sure_2" formatted="false">Are you sure you want to delete list \\\\\\\"%1$s\\\\\\\"? This action cannot be undone.</string>
     <string name="audio">Audio</string>
-    <string name="audio_can_t_used_listen_together">\"This audio can\'t be used for Listen Together\"</string>
+    <string name="audio_can_used">\\\"This audio can\\\'t be used for Listen Together\\\"</string>
     <string name="audio_effects">Audio effects</string>
+    <string name="audio_focus_pause_hint">Pause playback when another music or video app takes audio focus; normal notification sounds will not trigger it.</string>
     <string name="audio_tracks" formatted="false">%1$s audio tracks</string>
-    <string name="audio_tracks_2" formatted="false">%1$s audio tracks</string>
     <string name="authentication">Authentication</string>
-    <string name="authentication_expired_log_again">Authentication expired. Please log in again.</string>
-    <string name="auto_pause_when_output_disconnects">Auto-pause when output disconnects</string>
-    <string name="auto_resume_output_connection">Auto resume on output connection</string>
+    <string name="authentication_expired_log">Authentication expired. Please log in again.</string>
+    <string name="auto_pause_output">Auto-pause when output disconnects</string>
+    <string name="auto_resume_output">Auto resume on output connection</string>
     <string name="auto_surround_sound_source">Auto surround sound source</string>
-    <string name="automatic_update_check_startup_disabled">Automatic update check on startup disabled</string>
-    <string name="automatically_check_updates_startup">Automatically check for updates on startup</string>
+    <string name="automatic_update_check">Automatic update check on startup disabled</string>
+    <string name="automatically_check_updates">Automatically check for updates on startup</string>
     <string name="back_first_page">Back to first page</string>
     <string name="backend_not_configured">Backend not configured</string>
-    <string name="background_cover_preview_mode">Background cover preview mode</string>
+    <string name="background_cover_preview">Background cover preview mode</string>
     <string name="background_effects">Background effects</string>
     <string name="background_opacity" formatted="false">Background opacity: %1$s%%</string>
     <string name="band_adjustment">Band adjustment</string>
-    <string name="batch_task_progress_cancel_before" formatted="false">A batch task is in progress. Cancel it before %1$s</string>
-    <string name="batch_task_progress_cancel_before_deleting">A batch task is in progress. Please cancel it before deleting.</string>
+    <string name="batch_task_progress" formatted="false">A batch task is in progress. Cancel it before %1$s</string>
+    <string name="batch_task_progress_2">A batch task is in progress. Please cancel it before deleting.</string>
     <string name="batch_translate_select_all">Select all</string>
     <string name="bathroom_reverb">Bathroom reverb</string>
     <string name="best_selling">Best selling</string>
     <string name="bind_lyrics_manually">Bind lyrics manually</string>
     <string name="bind_rj_cloud_sync">Bind RJ and cloud sync</string>
     <string name="blocked_keywords">Blocked keywords</string>
-    <string name="blocked_keywords_2">Blocked keywords</string>
     <string name="blocked_keywords_e_g_ntr">Blocked keywords, e.g.: NTR</string>
+    <string name="blocked_keywords_label">Blocked keywords</string>
     <string name="bottom">Bottom 1/4</string>
     <string name="bound_cloud_sync_completed" formatted="false">Bound to %1$s and cloud sync completed</string>
     <string name="breathing_ripple">Breathing ripple</string>
@@ -90,41 +92,42 @@
     <string name="centered_right_left">0° is centered, 90° is right, and 270° is left.</string>
     <string name="change_start_point">Change start point</string>
     <string name="channel_mode">Channel mode</string>
+    <string name="channel_mode_help">Invert: swaps the left and right channels; Clone: copies one channel to the other side.</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="checking">Checking...</string>
     <string name="chinese_works">Chinese works</string>
     <string name="circle_cv_tags">Circle / CV / tags...</string>
     <string name="circle_works">Circle works</string>
     <string name="circles">Circle</string>
-    <string name="circles_2" formatted="false">Circles %1$s</string>
+    <string name="circles_count_fmt" formatted="false">Circles %1$s</string>
     <string name="clear">Clear</string>
     <string name="clear_search_history">Clear search history</string>
-    <string name="clear_search_history_2">Clear search history?</string>
+    <string name="clear_search_history_confirm">Clear search history?</string>
     <string name="click_through_lock_position">Click-through (lock position)</string>
     <string name="clip_only_playback">Clip-only playback is on</string>
     <string name="clip_only_playback_off">Clip-only playback is off</string>
     <string name="clone_l_r">Clone L→R</string>
     <string name="clone_r_l">Clone R→L</string>
     <string name="cloud_sync">Cloud sync</string>
-    <string name="cloud_sync_2" formatted="false">Cloud sync: %1$s</string>
     <string name="cloud_sync_canceled">Cloud sync canceled</string>
-    <string name="cloud_sync_canceled_2" formatted="false">Cloud sync canceled: %1$s</string>
-    <string name="cloud_sync_candidates_possible_matches_tap" formatted="false">Cloud sync candidates: %1$s possible matches (tap the matching work to confirm sync)</string>
+    <string name="cloud_sync_canceled_fmt" formatted="false">Cloud sync canceled: %1$s</string>
+    <string name="cloud_sync_candidates" formatted="false">Cloud sync candidates: %1$s possible matches (tap the matching work to confirm sync)</string>
     <string name="cloud_sync_complete">Cloud sync complete</string>
     <string name="cloud_sync_directory">Cloud sync (directory)</string>
     <string name="cloud_sync_failed" formatted="false">Cloud sync failed: %1$s</string>
+    <string name="cloud_sync_fmt" formatted="false">Cloud sync: %1$s</string>
     <string name="cloud_sync_full">Cloud sync (full)</string>
     <string name="code">Code</string>
     <string name="collapse" formatted="false">Collapse %1$s</string>
-    <string name="collapse_2">Collapse</string>
+    <string name="collapse_label">Collapse</string>
     <string name="completed">Completed</string>
     <string name="confirm">Confirm</string>
-    <string name="connection_timed_out_try_again_later">Connection timed out. Please try again later.</string>
+    <string name="connection_timed_out">Connection timed out. Please try again later.</string>
     <string name="content_empty">Content is empty</string>
     <string name="content_locale_ja">Japanese</string>
     <string name="content_locale_zh_cn">Simplified Chinese</string>
     <string name="content_locale_zh_tw">Traditional Chinese</string>
-    <string name="continue_playback_when_wired_bluetooth_headphone">Continue playback when wired/Bluetooth headphones or other external outputs are connected</string>
+    <string name="continue_playback_wired">Continue playback when wired/Bluetooth headphones or other external outputs are connected</string>
     <string name="copied" formatted="false">%1$s copied</string>
     <string name="copy">Copy</string>
     <string name="count">Count</string>
@@ -135,85 +138,86 @@
     <string name="current_credentials">Current credentials</string>
     <string name="current_queue">Current queue</string>
     <string name="current_version" formatted="false">Current version: %1$s</string>
-    <string name="current_version_2" formatted="false">Current version: %1$s (%2$s)</string>
+    <string name="current_version_fmt" formatted="false">Current version: %1$s (%2$s)</string>
     <string name="custom">Custom</string>
     <string name="custom_tag_management">Custom tag management</string>
-    <string name="customers_who_bought_also_bought">Customers who bought this also bought</string>
+    <string name="customers_who_bought">Customers who bought this also bought</string>
     <string name="cut">Cut</string>
     <string name="delete">Delete</string>
-    <string name="delete_2" formatted="false">Delete %1$s</string>
     <string name="delete_failed" formatted="false">Delete failed: %%1%1$s</string>
+    <string name="delete_item_fmt" formatted="false">Delete %1$s</string>
     <string name="delete_slice">Delete slice</string>
-    <string name="deletion_failed_try_again_later">Deletion failed, please try again later</string>
+    <string name="deletion_failed_try">Deletion failed, please try again later</string>
     <string name="demo_version">Demo version</string>
     <string name="deselect_all">Deselect all</string>
-    <string name="desktop_android_full_features">Use the Android version for full playback features. The desktop version provides library management and settings sync.</string>
     <string name="desktop_welcome_subtitle">Cross-platform desktop companion</string>
     <string name="desktop_welcome_title">Eara ASMR Player</string>
     <string name="details">Details</string>
     <string name="dialog_confirm">Confirm</string>
     <string name="directory_added">Directory added</string>
-    <string name="directory_already_included_existing_scan_directo">This directory is already included in an existing scan directory</string>
-    <string name="directory_contains_existing_scan_directory_remov">This directory contains an existing scan directory. Remove the subdirectory first.</string>
-    <string name="directory_does_not_exist_was_removed">Directory does not exist and was removed from the local library</string>
+    <string name="directory_already_scanned">This directory is already included in an existing scan directory</string>
+    <string name="directory_contains_existing">This directory contains an existing scan directory. Remove the subdirectory first.</string>
     <string name="directory_refresh">Directory refresh</string>
     <string name="directory_refresh_complete">Directory refresh complete</string>
-    <string name="directory_will_removed_list_will_no">This directory will be removed from the list and will no longer be scanned.</string>
+    <string name="directory_removed">Directory does not exist and was removed from the local library</string>
+    <string name="directory_removed_list">This directory will be removed from the list and will no longer be scanned.</string>
     <string name="display_area">Display area</string>
     <string name="dlsite_logout">Log out</string>
-    <string name="dlsite_play_failed_get_signature" formatted="false">DLsite Play failed to get signature (%1$s)</string>
-    <string name="dlsite_play_failed_load_try_again">DLsite Play failed to load. Please try again later.</string>
-    <string name="dlsite_play_returned_empty_directory_tree">DLsite Play returned an empty directory tree</string>
-    <string name="dlsite_play_returned_empty_signature">DLsite Play returned an empty signature</string>
-    <string name="dlsite_play_signature_response_missing_url">DLsite Play signature response is missing url/params</string>
+    <string name="dlsite_play_failed" formatted="false">DLsite Play failed to get signature (%1$s)</string>
+    <string name="dlsite_play_failed_2">DLsite Play failed to load. Please try again later.</string>
+    <string name="dlsite_play_returned">DLsite Play returned an empty directory tree</string>
+    <string name="dlsite_play_returned_2">DLsite Play returned an empty signature</string>
+    <string name="dlsite_play_signature">DLsite Play signature response is missing url/params</string>
+    <string name="dlsite_tree_failed" formatted="false">Failed to get directory tree from DLsite Play (%1$s)</string>
     <string name="document">Document</string>
-    <string name="don_t_remind_me_again">\"Don\'t remind me again\"</string>
+    <string name="don_t_remind_me_again">\\\"Don\\\'t remind me again\\\"</string>
     <string name="done">Done</string>
     <string name="download_complete" formatted="false">Download complete: %1$s</string>
     <string name="download_confirm">Download</string>
     <string name="download_failed">Download failed</string>
-    <string name="download_failed_2" formatted="false">Download failed: %1$s</string>
-    <string name="download_failed_empty_response_body">Download failed: empty response body</string>
+    <string name="download_failed_empty">Download failed: empty response body</string>
+    <string name="download_failed_fmt" formatted="false">Download failed: %1$s</string>
     <string name="download_folder" formatted="false">Download folder: %1$s</string>
     <string name="download_install">Download and install</string>
     <string name="download_only">Download only</string>
-    <string name="downloaded_file_invalid_download_again">Downloaded file is invalid. Please download it again.</string>
     <string name="downloading">Downloading</string>
-    <string name="downloading_2" formatted="false">Downloading: %1$s</string>
+    <string name="downloading_fmt" formatted="false">Downloading: %1$s</string>
     <string name="downloads">Downloads</string>
     <string name="drag">Drag</string>
     <string name="drawer_section_system">System</string>
     <string name="duration">Duration</string>
+    <string name="duration_minutes" formatted="false">%1$s min</string>
     <string name="duration_unavailable">Duration unavailable</string>
     <string name="dynamic_cover_theme_global">Dynamic cover theme (global)</string>
     <string name="e_book">E-book</string>
-    <string name="each_slider_corresponds_center_frequency_band">Each slider corresponds to a center frequency band. Move up to boost and down to cut that band.</string>
     <string name="ear_licking">Ear Licking</string>
     <string name="edit_end_point">Edit end point</string>
     <string name="effect_intensity">Effect intensity</string>
-    <string name="end_time_cannot_earlier_than_start">End time cannot be earlier than start time</string>
+    <string name="enabled_media_control">When enabled, media control buttons on the system lock screen and notification bar will be hidden as much as possible, while keeping the foreground notification required for background playback.</string>
+    <string name="enabled_stereo_image">When enabled, the stereo image moves automatically based on the speed.</string>
+    <string name="end_time_cannot">End time cannot be earlier than start time</string>
     <string name="enjoying_alone">Enjoying alone</string>
     <string name="enter_custom_preset_name">Please enter a custom preset name.</string>
     <string name="enter_filter_preset_name">Please enter a filter preset name.</string>
+    <string name="enter_group_name_prompt">Please enter a new group name.</string>
     <string name="enter_list_name">Please enter a list name</string>
+    <string name="enter_list_name_prompt">Please enter a new list name.</string>
     <string name="enter_minutes">Enter minutes</string>
     <string name="enter_new_group_name">Please enter a new group name.</string>
-    <string name="enter_new_group_name_2">Please enter a new group name.</string>
     <string name="enter_new_list_name">Please enter a new list name.</string>
-    <string name="enter_new_list_name_2">Please enter a new list name.</string>
-    <string name="enter_number_minutes_sleep_timer">Enter the number of minutes for the sleep timer.</string>
+    <string name="enter_number_cloud">Please enter an RJ number. Cloud sync will run automatically after saving.</string>
+    <string name="enter_number_minutes">Enter the number of minutes for the sleep timer.</string>
     <string name="enter_preset_name">Please enter a preset name</string>
     <string name="enter_rj_code_manually">Enter RJ code manually</string>
-    <string name="enter_rj_number_cloud_sync_will">Please enter an RJ number. Cloud sync will run automatically after saving.</string>
     <string name="enter_valid_rj_number">Please enter a valid RJ number</string>
     <string name="enter_valid_work_id">Please enter a valid work ID</string>
+    <string name="eq_band_help">Each slider corresponds to a center frequency band. Move up to boost and down to cut that band.</string>
     <string name="eq_preset_default">Default</string>
     <string name="equalizer_title">Equalizer</string>
     <string name="error_operation_failed">Operation failed. Please try again later</string>
-    <string name="exact_phrase_search_wrapped_english_double">Exact phrase search (wrapped in English double quotes): e.g. \\\"simplified chinese ear licking\\\" searches multiple words as one exact phrase</string>
     <string name="exact_rj_code_search">Exact RJ code search</string>
     <string name="exception">Exception</string>
-    <string name="exclude_search_space_minus_school_uniform">Exclude search (space and minus): \\\"school -uniform\\\" excludes specified keywords</string>
+    <string name="exclude_search_space">Exclude search (space and minus): \\\\\\\"school -uniform\\\\\\\" excludes specified keywords</string>
     <string name="existing_tags">Existing tags</string>
     <string name="exit_full_screen">Exit full screen</string>
     <string name="expand" formatted="false">Expand %1$s</string>
@@ -222,7 +226,7 @@
     <string name="fade_out_pause_ms" formatted="false">Fade out on pause: %1$sms</string>
     <string name="fade_volume_play_ms" formatted="false">Fade in volume on play: %1$sms</string>
     <string name="failed">Failed</string>
-    <string name="failed_add_favorites_try_again">Failed to add to favorites. Please try again.</string>
+    <string name="failed_add_favorites">Failed to add to favorites. Please try again.</string>
     <string name="failed_add_group_try_again">Failed to add to group. Please try again</string>
     <string name="failed_add_list_try_again">Failed to add to list. Please try again.</string>
     <string name="failed_add_lyrics">Failed to add lyrics</string>
@@ -231,22 +235,20 @@
     <string name="failed_create_slice">Failed to create slice</string>
     <string name="failed_delete_slice">Failed to delete slice</string>
     <string name="failed_fetch_purchased_list" formatted="false">Failed to fetch purchased list (%1$s)</string>
-    <string name="failed_get_directory_tree_dlsite_play" formatted="false">Failed to get directory tree from DLsite Play (%1$s)</string>
     <string name="failed_load_data">Failed to load data</string>
     <string name="failed_load_image">Failed to load image</string>
-    <string name="failed_load_online_resources_try_again">Failed to load online resources. Please try again later</string>
     <string name="failed_obtain_login_cookie">Failed to obtain login Cookie</string>
     <string name="failed_open_login_page" formatted="false">Failed to open login page (%1$s)</string>
     <string name="failed_read">Failed to read</string>
-    <string name="failed_set_cover_check_try_again">Failed to set cover. Please check and try again</string>
+    <string name="failed_set_cover">Failed to set cover. Please check and try again</string>
     <string name="failed_update_slice">Failed to update slice</string>
-    <string name="farther_distance_softer_slightly_more_attenuated">The farther the distance, the softer and slightly more attenuated the sound becomes.</string>
     <string name="fast_forward_seconds">Fast forward 10 seconds</string>
-    <string name="favorited_content_will_appear_here">Favorited content will appear here</string>
+    <string name="favorited_content_appear">Favorited content will appear here</string>
     <string name="file">File</string>
     <string name="file_deleted" formatted="false">File deleted: %1$s</string>
     <string name="file_deleted_removed">File deleted and removed</string>
     <string name="file_does_not_exist">File does not exist</string>
+    <string name="file_type_text">Text</string>
     <string name="filter">Filter</string>
     <string name="floating_lyrics_details">Floating lyrics details</string>
     <string name="floating_lyrics_enabled">Floating lyrics enabled</string>
@@ -259,7 +261,7 @@
     <string name="github_request_failed" formatted="false">GitHub request failed: %1$s %2$s</string>
     <string name="go_login">Go to log in</string>
     <string name="got">Got it</string>
-    <string name="gradually_adjust_playback_loudness_toward_target">Gradually adjust playback loudness toward this target value (smoother changes, better for leveling across different audio). Recommended range: -24 to -14.</string>
+    <string name="gradually_adjust_playback">Gradually adjust playback loudness toward this target value (smoother changes, better for leveling across different audio). Recommended range: -24 to -14.</string>
     <string name="grant_overlay_permission">Grant overlay permission</string>
     <string name="group">Group</string>
     <string name="group_created" formatted="false">Group created: %1$s</string>
@@ -270,35 +272,40 @@
     <string name="group_name_already_exists" formatted="false">Group name already exists: %1$s</string>
     <string name="group_name_cannot_empty">Group name cannot be empty</string>
     <string name="h" formatted="false">%1$s h</string>
+    <string name="headphones_bluetooth">When headphones, Bluetooth headphones, USB audio, HDMI, AUX, or other external outputs are connected, if the player is currently paused it will automatically try to resume playback; the phone speaker does not trigger this.</string>
     <string name="hide">Hide</string>
-    <string name="higher_intensity_more_pronounced_scene_character">The higher the intensity, the more pronounced the scene characteristics. Presets like Telephone and Muffled Under Blanket become more recognizable at high intensity.</string>
-    <string name="higher_speed_faster_stereo_image_moves">The higher the speed, the faster the stereo image moves.</string>
-    <string name="higher_values_play_faster_affects_tempo">Higher values play faster (affects tempo and duration).</string>
-    <string name="higher_values_raise_pitch_lower_values">Higher values raise the pitch, lower values lower it (playback duration may not change).</string>
+    <string name="higher_intensity_more">The higher the intensity, the more pronounced the scene characteristics. Presets like Telephone and Muffled Under Blanket become more recognizable at high intensity.</string>
+    <string name="higher_speed_faster">The higher the speed, the faster the stereo image moves.</string>
+    <string name="higher_values_raise">Higher values raise the pitch, lower values lower it (playback duration may not change).</string>
     <string name="highest_price">Highest price</string>
     <string name="highest_rated">Highest rated</string>
     <string name="home_title_popular">Popular works</string>
     <string name="hundred_million" formatted="false">%1$s hundred million</string>
     <string name="ignore_all">Ignore all</string>
-    <string name="ignored_remaining_pending_items_round">Ignored the remaining pending items in this round</string>
+    <string name="ignored_remaining_pending">Ignored the remaining pending items in this round</string>
     <string name="image">Image</string>
     <string name="included">Included</string>
     <string name="indexed">Indexed</string>
     <string name="indexed_works">Indexed works</string>
     <string name="install_update">Install update</string>
     <string name="installer">Installer</string>
+    <string name="invalid_apk_redownload">Downloaded file is invalid. Please download it again.</string>
     <string name="invert">Invert</string>
-    <string name="invert_swaps_left_right_channels_clone">Invert: swaps the left and right channels; Clone: copies one channel to the other side.</string>
     <string name="items_will_added" formatted="false">%1$s items will be added</string>
     <string name="japanese">Japanese</string>
     <string name="key_100m">100M</string>
     <string name="key_10k">10K</string>
     <string name="korean">Korean</string>
-    <string name="korean_2">Korean</string>
     <string name="language_chinese_simplified">Simplified Chinese</string>
     <string name="language_english">English</string>
+    <string name="language_korean_short">Korean</string>
+    <string name="language_simplified_short">Simplified</string>
     <string name="language_system">Follow system</string>
     <string name="language_thai">Thai</string>
+    <string name="language_zh_cn">Simplified Chinese</string>
+    <string name="language_zh_cn_alt">Simplified Chinese</string>
+    <string name="language_zh_tw">Traditional Chinese</string>
+    <string name="language_zh_tw_alt">Traditional Chinese</string>
     <string name="last_listened">Last listened</string>
     <string name="latest_releases">Latest releases</string>
     <string name="left" formatted="false">Left %1$s%%</string>
@@ -319,33 +326,36 @@
     <string name="loading">Loading...</string>
     <string name="loading_dlsite_play">Loading DLsite Play</string>
     <string name="loading_online_resources">Loading online resources</string>
+    <string name="local_albums_have">No local albums have been scanned yet</string>
     <string name="local_downloads">Local + Downloads</string>
     <string name="local_library_results">Local library results</string>
     <string name="local_library_scan">Scan</string>
     <string name="local_only">Local only</string>
     <string name="local_sync">Local sync</string>
-    <string name="local_sync_2" formatted="false">Local sync: %1$s</string>
+    <string name="local_sync_fmt" formatted="false">Local sync: %1$s</string>
     <string name="log_action_add">Add</string>
     <string name="log_action_remove">Remove</string>
     <string name="log_collapse">Collapse</string>
-    <string name="log_dlsite_before_using_purchased_search">Please log in to DLsite before using \\\"Purchased\\\" search</string>
-    <string name="log_dlsite_first_requires_cookie_play">Please log in to DLsite first (requires the Cookie from play.dlsite.com)</string>
+    <string name="log_dlsite_before">Please log in to DLsite before using \\\\\\\"Purchased\\\\\\\" search</string>
+    <string name="log_dlsite_first">Please log in to DLsite first (requires the Cookie from play.dlsite.com)</string>
     <string name="log_expand">Expand</string>
-    <string name="log_first_before_using">Please log in first before using\\</string>
+    <string name="log_first_before_using">Please log in first before using\\\\</string>
     <string name="log_login_failed">Login failed</string>
     <string name="log_switch_account">Log in / Switch account</string>
     <string name="login_action">Sign in</string>
     <string name="login_expired_log_again">Login expired, please log in again</string>
-    <string name="login_failed_check_your_account_password">Login failed, please check your account and password</string>
-    <string name="login_has_expired_sign_again_retry">Login has expired. Please sign in again and retry</string>
+    <string name="login_failed_check">Login failed, please check your account and password</string>
+    <string name="login_form_found">No login form found and no logged-in state detected</string>
+    <string name="login_has_expired">Login has expired. Please sign in again and retry</string>
     <string name="login_required">Please log in first</string>
     <string name="login_successful">Login successful</string>
     <string name="long_press_adjust_volume">Long press to adjust volume</string>
     <string name="long_press_batch_actions">Long press for batch actions</string>
-    <string name="long_press_drag_then_release_save">Long press and drag, then release to save immediately</string>
+    <string name="long_press_drag">Long press and drag, then release to save immediately</string>
     <string name="lossless_download">Lossless download</string>
     <string name="loudness_leveling">Loudness leveling</string>
-    <string name="loudness_leveling_pulls_overall_loudness_toward">Loudness leveling: pulls overall loudness toward the target value, which is useful for matching volume across different audio; threshold: keeps loudness within a range, more like auto gain + suppression.</string>
+    <string name="loudness_leveling_help">Loudness leveling: pulls overall loudness toward the target value, which is useful for matching volume across different audio; threshold: keeps loudness within a range, more like auto gain + suppression.</string>
+    <string name="loudness_threshold_help">When volume exceeds this value, it will be reduced automatically so it does not go over the threshold.</string>
     <string name="lt_minute">&amp;lt;1 minute</string>
     <string name="lyric_overlay_perm_title">Enable floating lyrics</string>
     <string name="lyric_overlay_section">Floating lyrics</string>
@@ -353,17 +363,17 @@
     <string name="lyrics_added">Lyrics added</string>
     <string name="lyrics_color">Lyrics color</string>
     <string name="lyrics_page">Lyrics page</string>
-    <string name="m3u8_streaming_not_currently_supported_download">m3u8 streaming is not currently supported, please download the audio file first</string>
-    <string name="main_process_completed_items_remain_confirmed" formatted="false">Main process completed, %1$s items remain to be confirmed</string>
+    <string name="m3u8_streaming_not">m3u8 streaming is not currently supported, please download the audio file first</string>
     <string name="manage_tags">Manage tags</string>
+    <string name="manual_rj_bind_hint">Only local library albums support manual work ID binding</string>
     <string name="maximum_threshold">Maximum threshold</string>
-    <string name="meaning_multiple_words_will_searched_as">\\\", meaning multiple words will be searched as an exact phrase</string>
+    <string name="meaning_multiple_words">\\\\\\\", meaning multiple words will be searched as an exact phrase</string>
     <string name="media_items" formatted="false">%1$s media items</string>
+    <string name="media_notification_hint">Used for background playback controls and the lock screen media panel</string>
     <string name="metadata_sync_successful" formatted="false">Metadata sync successful: %1$s</string>
     <string name="metadata_synced_successfully" formatted="false">Metadata synced successfully: %1$s</string>
     <string name="middle">Middle 1/4</string>
     <string name="min" formatted="false">%1$s min</string>
-    <string name="min_2" formatted="false">%1$s min</string>
     <string name="mini_player_bar">Mini player bar</string>
     <string name="mini_player_bar_toggle">Mini player bar toggle</string>
     <string name="minimum_threshold">Minimum threshold</string>
@@ -387,7 +397,7 @@
     <string name="nav_settings">Settings</string>
     <string name="nav_switch">Switch</string>
     <string name="network">Network</string>
-    <string name="network_connection_failed_check_your_network">Network connection failed, please check your network</string>
+    <string name="network_connection_failed">Network connection failed, please check your network</string>
     <string name="new_group_name">New group name</string>
     <string name="new_list_name">New list name</string>
     <string name="new_version_available" formatted="false">New version available: %1$s</string>
@@ -409,16 +419,11 @@
     <string name="no_limit">No limit</string>
     <string name="no_lists_available">No lists available</string>
     <string name="no_lists_created_yet">No lists created yet</string>
-    <string name="no_local_albums_have_been_scanned">No local albums have been scanned yet</string>
-    <string name="no_login_form_found_no_logged_in">No login form found and no logged-in state detected</string>
     <string name="no_lyrics_yet">No lyrics yet</string>
     <string name="no_matching_local_content">No matching local content</string>
     <string name="no_matching_results_found">No matching results found</string>
-    <string name="no_playable_audio_tracks_found">No playable audio tracks found</string>
-    <string name="no_playable_sources_available">No playable sources available</string>
     <string name="no_playable_tracks_yet">No playable tracks yet</string>
     <string name="no_ranking_data_yet">No ranking data yet</string>
-    <string name="no_relevant_content_found_check_try">No relevant content found. Please check and try again.</string>
     <string name="no_sample_images_yet">No sample images yet</string>
     <string name="no_sample_preview_yet">No sample / preview yet</string>
     <string name="no_search_history_yet">No search history yet</string>
@@ -430,18 +435,19 @@
     <string name="not_downloaded_locally">Not downloaded locally</string>
     <string name="not_played">Not played</string>
     <string name="now_playing">Playing</string>
-    <string name="off_background_cover_stay_centered_static">Off: the background and cover stay centered and static</string>
+    <string name="off_background_cover">Off: the background and cover stay centered and static</string>
+    <string name="off_mini_player">When off, the mini player bar at the bottom of the app is hidden, and no extra space is reserved for it at the bottom of pages.</string>
     <string name="one_included">ONE (included)</string>
     <string name="one_not_indexed_yet">ONE not indexed yet</string>
     <string name="online" formatted="false">Online · %1$s</string>
-    <string name="online_2">Online</string>
-    <string name="online_audio_does_not_support_tag">Online audio does not support tag management yet</string>
-    <string name="online_files_do_not_support_content">Online files do not support content preview yet. Please open them with an external app.</string>
+    <string name="online_audio_does">Online audio does not support tag management yet</string>
+    <string name="online_files_not">Online files do not support content preview yet. Please open them with an external app.</string>
+    <string name="online_label">Online</string>
     <string name="online_playback">Online playback</string>
-    <string name="online_playback_not_currently_supported_audio">Online playback is not currently supported for this audio. Please download it first.</string>
+    <string name="online_playback_unsupported">Online playback is not currently supported for this audio. Please download it first.</string>
     <string name="online_resources">Online resources</string>
-    <string name="only_local_library_albums_support_manual">Only local library albums support manual RJ binding</string>
-    <string name="only_local_library_albums_support_manual_2">Only local library albums support manual work ID binding</string>
+    <string name="online_resources_failed">Failed to load online resources. Please try again later</string>
+    <string name="only_local_library">Only local library albums support manual RJ binding</string>
     <string name="only_lrc_srt_vtt_lyric_files">Only LRC, SRT, and VTT lyric files are supported</string>
     <string name="open">Open</string>
     <string name="open_by_default">Open by default</string>
@@ -449,6 +455,7 @@
     <string name="open_file">Open file</string>
     <string name="open_image">Open image</string>
     <string name="opening_system_installer">Opening system installer</string>
+    <string name="output_disconnect_pause_hint">If speaker, headphones, or Bluetooth output is disconnected during playback, playback pauses immediately to prevent sound from suddenly playing out loud.</string>
     <string name="page" formatted="false">Page %1$s</string>
     <string name="password">Password</string>
     <string name="password_cannot_empty">Password cannot be empty</string>
@@ -460,13 +467,15 @@
     <string name="pause_all">Pause all</string>
     <string name="pause_audio_focus_loss">Pause on audio focus loss</string>
     <string name="pause_fade_out">Pause fade-out</string>
-    <string name="pause_playback_immediately_when_speaker_wired">Pause playback immediately when the speaker, wired/Bluetooth headphones are disconnected, or Bluetooth is turned off</string>
-    <string name="pause_playback_when_another_music_video">Pause playback when another music or video app takes audio focus; normal notification sounds will not trigger it.</string>
-    <string name="pause_when_other_apps_play_audio">Pause when other apps play audio/video</string>
+    <string name="pause_other_apps">Pause when other apps play audio/video</string>
+    <string name="pause_playback_immediately">Pause playback immediately when the speaker, wired/Bluetooth headphones are disconnected, or Bluetooth is turned off</string>
+    <string name="pause_tapped_volume">When Pause is tapped, the volume will gradually fade to 0 over the set duration before actually pausing.</string>
     <string name="paused">Paused</string>
-    <string name="pdf_files_do_not_support_direct">PDF files do not support direct preview yet</string>
+    <string name="pdf_files_not">PDF files do not support direct preview yet</string>
     <string name="pending_confirmation" formatted="false">Pending confirmation %1$s / %2$s</string>
     <string name="people_listening_you"> people are listening with you</string>
+    <string name="permanently_delete_file" formatted="false">This will permanently delete the file “%1$s” and cannot be undone.</string>
+    <string name="permanently_delete_files" formatted="false">This will permanently delete files in the “%1$s” directory and cannot be undone.</string>
     <string name="pitch">Pitch</string>
     <string name="platform_android">Android</string>
     <string name="platform_ios">iOS</string>
@@ -475,14 +484,17 @@
     <string name="play_fade_in">Play fade-in</string>
     <string name="play_pause">Play/Pause</string>
     <string name="play_slices">Play slices</string>
+    <string name="playable_audio_tracks">No playable audio tracks found</string>
+    <string name="playable_sources_available">No playable sources available</string>
     <string name="playback">Play</string>
     <string name="playback_controls">Playback controls</string>
     <string name="playback_failed" formatted="false">Playback failed: %1$s</string>
-    <string name="playback_failed_try_again_later">Playback failed. Please try again later.</string>
+    <string name="playback_failed_try">Playback failed. Please try again later.</string>
     <string name="playback_mode" formatted="false">Playback mode: %1$s</string>
-    <string name="playback_mode_2">Playback mode</string>
+    <string name="playback_mode_label">Playback mode</string>
     <string name="playback_settings">Playback settings</string>
-    <string name="player_lyrics_page_cover_background">Player/Lyrics page cover background</string>
+    <string name="playback_speed_help">Higher values play faster (affects tempo and duration).</string>
+    <string name="player_lyrics_page">Player/Lyrics page cover background</string>
     <string name="player_not_connected">Player not connected</string>
     <string name="player_speed">Playback speed</string>
     <string name="player_view_cover">Cover</string>
@@ -500,19 +512,19 @@
     <string name="preset_name">Preset name</string>
     <string name="press_back_again_exit_app">Press Back again to exit the app</string>
     <string name="preview">Preview</string>
-    <string name="preview_file_type_not_supported_yet">Preview of this file type is not supported yet</string>
-    <string name="preview_refresh_failed_try_again_later">Preview refresh failed. Please try again later.</string>
+    <string name="preview_file_type">Preview of this file type is not supported yet</string>
+    <string name="preview_refresh_failed">Preview refresh failed. Please try again later.</string>
     <string name="preview_video">Preview video</string>
     <string name="previous_item">Previous item</string>
     <string name="previous_page">Previous page</string>
     <string name="previous_track">Previous track</string>
     <string name="progress" formatted="false">Progress %1$s/%2$s</string>
-    <string name="progress_wait_finish_cancel_before" formatted="false">In progress: %1$s Wait for it to finish or cancel it before %2$s</string>
-    <string name="progress_wait_finish_cancel_before_syncing" formatted="false">In progress: %1$s Please wait for it to finish or cancel it before syncing.</string>
+    <string name="progress_wait_finish" formatted="false">In progress: %1$s Wait for it to finish or cancel it before %2$s</string>
+    <string name="progress_wait_finish_2" formatted="false">In progress: %1$s Please wait for it to finish or cancel it before syncing.</string>
     <string name="pull_up_continue">Pull up to continue</string>
     <string name="purchased">Purchased</string>
     <string name="purchased_content">Purchased content</string>
-    <string name="purchased_library_authentication_failed_log_dlsi">Purchased library authentication failed (401). Please log in to DLsite again.</string>
+    <string name="purchased_library">Purchased library authentication failed (401). Please log in to DLsite again.</string>
     <string name="queue">Queue</string>
     <string name="recent_play">Recently played</string>
     <string name="recently_added">Recently added</string>
@@ -521,16 +533,18 @@
     <string name="refresh_cancelled">Refresh cancelled</string>
     <string name="refresh_directory">Refresh directory</string>
     <string name="refresh_failed" formatted="false">Refresh failed: %1$s</string>
-    <string name="refresh_failed_try_again_later">Refresh failed, please try again later</string>
+    <string name="refresh_failed_try">Refresh failed, please try again later</string>
     <string name="refresh_local">Refresh local</string>
     <string name="refresh_preview">Refresh preview</string>
-    <string name="release_does_not_include_apk_asset">Release does not include an APK asset</string>
+    <string name="release_does_not">Release does not include an APK asset</string>
     <string name="release_turn_page">Release to turn page</string>
+    <string name="relevant_content_found">No relevant content found. Please check and try again.</string>
     <string name="remaining" formatted="false">Remaining %1$s</string>
-    <string name="remove" formatted="false">Remove from \\\"%%1%1$s\\\": \\\"%%2%2$s\\\"?</string>
-    <string name="remove_2" formatted="false">Remove \\\"%%2%1$s\\\" from \\\"%%1%2$s\\\"?</string>
+    <string name="remove" formatted="false">Remove from \\\\\\\"%%1%1$s\\\\\\\": \\\\\\\"%%2%2$s\\\\\\\"?</string>
     <string name="remove_album">Remove from album</string>
-    <string name="remove_album_2" formatted="false">Remove album “%1$s” from \\\"%2$s\\\"?</string>
+    <string name="remove_album_fmt" formatted="false">Remove album “%1$s” from \\\\\\\"%2$s\\\\\\\"?</string>
+    <string name="remove_album_local">This will remove the album from the local library and try to delete the local files.</string>
+    <string name="remove_from_group_fmt" formatted="false">Remove \\\\\\\"%%2%1$s\\\\\\\" from \\\\\\\"%%1%2$s\\\\\\\"?</string>
     <string name="remove_group">Remove from group</string>
     <string name="removed_album">Removed from album</string>
     <string name="removed_favorites">Removed from favorites</string>
@@ -539,28 +553,29 @@
     <string name="rename_tag_delete_user_tag">Rename the tag or delete this user tag.</string>
     <string name="renamed" formatted="false">Renamed to: %1$s</string>
     <string name="repeat_one">Repeat one</string>
-    <string name="replace_lyrics_online_audio_download_audio">To replace lyrics for online audio, please download the audio locally first</string>
+    <string name="replace_lyrics_online">To replace lyrics for online audio, please download the audio locally first</string>
     <string name="request_failed">Request failed</string>
-    <string name="request_failed_try_again_later">Request failed, please try again later</string>
-    <string name="request_timed_out_try_again_later">Request timed out, please try again later</string>
+    <string name="request_failed_try">Request failed, please try again later</string>
+    <string name="request_timed_out">Request timed out, please try again later</string>
     <string name="rescan">Rescan</string>
     <string name="rescan_canceled">Rescan canceled</string>
     <string name="rescan_completed">Rescan completed</string>
     <string name="rescan_failed">Rescan failed</string>
-    <string name="rescan_failed_2" formatted="false">Rescan failed: %1$s</string>
-    <string name="rescan_failed_check_directory_try_again">Rescan failed. Please check the directory and try again</string>
+    <string name="rescan_failed_fmt" formatted="false">Rescan failed: %1$s</string>
+    <string name="rescan_failed_hint">Rescan failed. Please check the directory and try again</string>
     <string name="reset">Reset</string>
     <string name="reset_filters">Reset filters</string>
     <string name="resume_all">Resume all</string>
     <string name="retry">Retry</string>
+    <string name="reverb_distance_help">The farther the distance, the softer and slightly more attenuated the sound becomes.</string>
     <string name="reverb_none">None</string>
     <string name="right" formatted="false">Right %1$s%%</string>
     <string name="rj_code_e_g_rj123456">RJ code (e.g. RJ123456)</string>
     <string name="root_directory">Root directory</string>
     <string name="rotate">Rotate</string>
-    <string name="rotate_rotate_your_phone_preview_other">Rotate: rotate your phone to preview other areas of the cover</string>
-    <string name="rotate_your_phone_view_full_cover">Rotate your phone to view the full cover image</string>
-    <string name="s_e_g_s_rj_d">[（(]\\\\s*e\\\\.g\\\\.\\\\s*RJ\\\\d{6,}\\\\s*[)）]</string>
+    <string name="rotate_phone_view">Rotate your phone to view the full cover image</string>
+    <string name="rotate_rotate_phone">Rotate: rotate your phone to preview other areas of the cover</string>
+    <string name="s_e_g_s_rj_d">[（(]\\\\\\\\s*e\\\\\\\\.g\\\\\\\\.\\\\\\\\s*RJ\\\\\\\\d{6,}\\\\\\\\s*[)）]</string>
     <string name="same_voice_actor_works">Same voice actor works</string>
     <string name="sample_audio">Sample audio</string>
     <string name="sample_preview">Sample / preview</string>
@@ -568,31 +583,33 @@
     <string name="save_as_custom_preset">Save as custom preset</string>
     <string name="save_current">Save current</string>
     <string name="save_local_library">Save to local library</string>
+    <string name="saved_local_library" formatted="false">Saved to local library (%1$s items), skipped existing (%2$s items)</string>
     <string name="saved_local_library_items" formatted="false">Saved to local library (%1$s items)</string>
-    <string name="saved_local_library_items_skipped_existing" formatted="false">Saved to local library (%1$s items), skipped existing (%2$s items)</string>
     <string name="scan_cancelled">Scan cancelled</string>
     <string name="scan_complete">Scan complete</string>
     <string name="scan_directory_added">Scan directory added</string>
-    <string name="scan_directory_already_exists">Scan directory already exists</string>
+    <string name="scan_directory_already">Scan directory already exists</string>
     <string name="scan_directory_removed">Scan directory removed</string>
     <string name="scan_failed" formatted="false">Scan failed: %1$s</string>
-    <string name="scan_failed_check_directory_permissions_try">Scan failed. Check directory permissions and try again</string>
+    <string name="scan_failed_check">Scan failed. Check directory permissions and try again</string>
     <string name="scanning" formatted="false">Scanning: %1$s</string>
     <string name="scanning_local_library">Scanning local library</string>
     <string name="scene_effects">Scene effects</string>
     <string name="scene_presets">Scene presets</string>
     <string name="search">Search</string>
     <string name="search_albums_circles_cv">Search albums, circles, CV...</string>
+    <string name="search_and_hint">AND search (space-separated): \\\\\\\"school uniform\\\\\\\" means all specified keywords must be included</string>
+    <string name="search_exact_hint">Exact phrase search (wrapped in English double quotes): e.g. \\\\\\\"simplified chinese ear licking\\\\\\\" searches multiple words as one exact phrase</string>
     <string name="search_existing_tags">Search existing tags</string>
-    <string name="search_failed_try_again_later">Search failed, please try again later</string>
+    <string name="search_failed_try">Search failed, please try again later</string>
     <string name="search_history">Search history</string>
-    <string name="search_separated_by_english_vertical_bars">OR search (separated by English vertical bars): \\\"school|uniform\\\", meaning one or more of the specified keywords may be included</string>
+    <string name="search_quote_suffix"> }}\\\\\\\"?</string>
+    <string name="search_separated_english">OR search (separated by English vertical bars): \\\\\\\"school|uniform\\\\\\\", meaning one or more of the specified keywords may be included</string>
     <string name="search_sort_dl_count">Best selling</string>
     <string name="search_sort_price_high">Highest price</string>
     <string name="search_sort_rating_high">Highest rating</string>
     <string name="search_sort_release_new">Latest releases</string>
     <string name="search_sort_trend">Popularity</string>
-    <string name="search_space_separated_school_uniform_means_all">AND search (space-separated): \\\"school uniform\\\" means all specified keywords must be included</string>
     <string name="search_tags">Search tags</string>
     <string name="select_files_download">Select files to download</string>
     <string name="select_files_save">Select files to save</string>
@@ -600,31 +617,28 @@
     <string name="select_list">Select list</string>
     <string name="selected" formatted="false">Selected %1$s</string>
     <string name="selected_2" formatted="false">Selected %1$s</string>
-    <string name="selected_3" formatted="false">%1$s selected</string>
-    <string name="selected_4" formatted="false">Selected %1$s</string>
+    <string name="selected_count" formatted="false">%1$s selected</string>
+    <string name="selected_items" formatted="false">Selected %1$s</string>
     <string name="selected_items_already" formatted="false">Selected items are already in %1$s</string>
-    <string name="selected_items_already_play_queue">Selected items are already in the play queue</string>
-    <string name="server_taking_break_try_again_later">The server is taking a break, please try again later</string>
+    <string name="selected_items_are">Selected items are already in the play queue</string>
+    <string name="server_taking_break">The server is taking a break, please try again later</string>
     <string name="set">Set to 0</string>
     <string name="set_as_cover">Set as cover</string>
     <string name="set_as_current">Set as current</string>
-    <string name="set_as_default_open_directory">Set as default open directory</string>
     <string name="set_as_end">Set as end</string>
     <string name="set_cover">Set cover</string>
-    <string name="set_successfully_playback_expected_pause" formatted="false">Set successfully, playback is expected to pause at %1$s</string>
+    <string name="set_default_open">Set as default open directory</string>
+    <string name="set_successfully_playback" formatted="false">Set successfully, playback is expected to pause at %1$s</string>
     <string name="settings_app_language">App language</string>
     <string name="settings_language_section">Language</string>
     <string name="sfw_toggle">SFW toggle</string>
-    <string name="shift_overall_sound_toward_left_right">Shift the overall sound toward the left or right channel. Mutually exclusive with \\\"Sound source direction/Auto surround\\\".</string>
+    <string name="shift_overall_sound">Shift the overall sound toward the left or right channel. Mutually exclusive with \\\\\\\"Sound source direction/Auto surround\\\\\\\".</string>
     <string name="show">Show</string>
     <string name="shuffle">Shuffle</string>
     <string name="signed_out">Signed out</string>
     <string name="simplified">Simplified</string>
-    <string name="simplified_2">Simplified</string>
     <string name="simplified_chinese">Simplified Chinese</string>
-    <string name="simplified_chinese_2">Simplified Chinese</string>
-    <string name="simplified_chinese_3">Simplified Chinese</string>
-    <string name="simulates_common_spaces_transmission_media_throu">Simulates common spaces or transmission media through band limiting, soundstage narrowing, and delayed reflections. It is recommended to choose a preset first, then fine-tune the intensity.</string>
+    <string name="simulates_common_spaces">Simulates common spaces or transmission media through band limiting, soundstage narrowing, and delayed reflections. It is recommended to choose a preset first, then fine-tune the intensity.</string>
     <string name="site_status_test">Site status test</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="sleep_timer_not_set">Sleep timer not set</string>
@@ -632,17 +646,16 @@
     <string name="slice_created">Slice created</string>
     <string name="slice_deleted">Slice deleted</string>
     <string name="slice_management">Slice management</string>
-    <string name="slice_overlaps_existing_slice">Slice overlaps with an existing slice</string>
+    <string name="slice_overlaps_existing">Slice overlaps with an existing slice</string>
     <string name="slice_playback">Slice playback</string>
     <string name="slices_cleared">Slices cleared</string>
     <string name="soft_dark">Soft dark</string>
     <string name="sound_source_direction">Sound source direction</string>
     <string name="sound_source_distance">Sound source distance</string>
     <string name="source">Source</string>
-    <string name="speaker_headphones_bluetooth_output_disconnected">If speaker, headphones, or Bluetooth output is disconnected during playback, playback pauses immediately to prevent sound from suddenly playing out loud.</string>
     <string name="speed_pitch">Speed &amp; pitch</string>
     <string name="start_download">Start download</string>
-    <string name="start_point_falls_within_existing_slice">The start point falls within an existing slice</string>
+    <string name="start_point_falls">The start point falls within an existing slice</string>
     <string name="start_point_marked">Start point marked</string>
     <string name="starting_update_download">Starting update download…</string>
     <string name="stereo">Stereo</string>
@@ -650,24 +663,25 @@
     <string name="support_status">Support &amp; status</string>
     <string name="surround_speed">Surround speed</string>
     <string name="swipe">Swipe</string>
-    <string name="swipe_use_two_fingers_drag_preview">Swipe: use two fingers to drag for preview on the player-page cover and lyrics-page background, and the left-side drawer swipe will be temporarily disabled</string>
+    <string name="swipe_use_two">Swipe: use two fingers to drag for preview on the player-page cover and lyrics-page background, and the left-side drawer swipe will be temporarily disabled</string>
     <string name="switch_view">Switch view</string>
     <string name="sync">Sync</string>
     <string name="sync_error" formatted="false">Sync error: %1$s</string>
-    <string name="sync_error_2" formatted="false">Sync error: %1$s</string>
+    <string name="sync_error_fmt" formatted="false">Sync error: %1$s</string>
     <string name="sync_failed">Sync failed</string>
-    <string name="sync_failed_album_information_not_found">Sync failed: album information not found</string>
-    <string name="sync_failed_search_results_not_unique">Sync failed: search results are not unique</string>
+    <string name="sync_failed_album">Sync failed: album information not found</string>
+    <string name="sync_failed_search">Sync failed: search results are not unique</string>
     <string name="sync_failed_try_again_later">Sync failed. Please try again later</string>
-    <string name="sync_task_progress_try_again_later">A sync task is in progress, please try again later</string>
+    <string name="sync_items_remain" formatted="false">Main process completed, %1$s items remain to be confirmed</string>
+    <string name="sync_task_progress">A sync task is in progress, please try again later</string>
     <string name="syncing_cloud">Syncing to cloud</string>
     <string name="synopsis">Synopsis</string>
     <string name="table">Table</string>
     <string name="tag_management">Tag management</string>
-    <string name="tag_will_removed_all_user_annotations">This tag will be removed from all user annotations.</string>
+    <string name="tag_removed_all">This tag will be removed from all user annotations.</string>
     <string name="tags">Tags</string>
-    <string name="tags_2" formatted="false">Tags %1$s</string>
-    <string name="tap_files_add_remove_them_selection">Tap files to add or remove them from the selection</string>
+    <string name="tags_count_fmt" formatted="false">Tags %1$s</string>
+    <string name="tap_files_add">Tap files to add or remove them from the selection</string>
     <string name="tap_rename_delete">Tap to rename or delete</string>
     <string name="tap_user_tag_remove">Tap a user tag to remove it</string>
     <string name="tapping_crisp">Tapping-Crisp</string>
@@ -680,44 +694,41 @@
     <string name="ten_thousand" formatted="false">%1$s ten-thousand</string>
     <string name="test">Test</string>
     <string name="text" formatted="false">, at %1$s</string>
-    <string name="text_2">Text</string>
-    <string name="text_3"> }}\\\"?</string>
     <string name="text_shadow">Text shadow: </string>
     <string name="theme_color">Theme color</string>
     <string name="theme_mode">Theme mode</string>
     <string name="theme_mode_dark">Dark</string>
     <string name="theme_mode_light">Light</string>
-    <string name="there_was_network_connection_problem">There was a network connection problem</string>
+    <string name="there_was_network">There was a network connection problem</string>
     <string name="threshold">Threshold</string>
     <string name="tiled_short_echo">Tiled short echo</string>
     <string name="title">Title</string>
-    <string name="today_s_listening_stats">\"Today\'s listening stats\"</string>
-    <string name="too_many_requests_try_again_later">Too many requests, please try again later</string>
+    <string name="today_s_listening_stats">\\\"Today\\\'s listening stats\\\"</string>
+    <string name="too_many_requests">Too many requests, please try again later</string>
     <string name="total">Total</string>
     <string name="track">Track</string>
+    <string name="track_count_fmt" formatted="false">%1$s audio tracks</string>
     <string name="track_list">Track list</string>
     <string name="tracks_total" formatted="false">%1$s tracks total</string>
     <string name="traditional">Traditional</string>
     <string name="traditional_chinese">Traditional Chinese</string>
-    <string name="traditional_chinese_2">Traditional Chinese</string>
-    <string name="traditional_chinese_3">Traditional Chinese</string>
     <string name="try_again_later" formatted="false">%1$s, please try again later</string>
-    <string name="unable_determine_dlsite_play_work_id">Unable to determine the DLsite Play work ID</string>
+    <string name="unable_determine_dlsite">Unable to determine the DLsite Play work ID</string>
     <string name="unable_open_file">Unable to open this file</string>
-    <string name="unable_open_github_release_page">Unable to open GitHub release page</string>
+    <string name="unable_open_github">Unable to open GitHub release page</string>
     <string name="unable_open_image">Unable to open this image</string>
-    <string name="unable_open_install_permission_page">Unable to open the install permission page</string>
+    <string name="unable_open_install">Unable to open the install permission page</string>
     <string name="unable_open_path_empty">Unable to open: path is empty</string>
     <string name="unable_open_system_installer">Unable to open system installer</string>
     <string name="under_blanket_muffled">Under-blanket muffled</string>
     <string name="unknown">Unknown</string>
     <string name="untitled">Untitled</string>
-    <string name="untitled_2">Untitled</string>
+    <string name="untitled_label">Untitled</string>
     <string name="unused">Unused</string>
     <string name="update_error_network">Network connection failed. Check your network and try again.</string>
     <string name="update_now">Update now</string>
     <string name="upper">Upper 1/4</string>
-    <string name="used_background_playback_controls_lock_screen">Used for background playback controls and the lock screen media panel</string>
+    <string name="use_android_version">Use the Android version for full playback features. The desktop version provides library management and settings sync.</string>
     <string name="user_annotations">User annotations</string>
     <string name="user_tags">User tags</string>
     <string name="vertical_position_y_axis">Vertical position (Y-axis)</string>
@@ -725,25 +736,14 @@
     <string name="view_full_ranking">View full ranking</string>
     <string name="vocal_enhancement_vocal">Vocal enhancement (Vocal)</string>
     <string name="voice_actor">Voice actor</string>
-    <string name="voice_actor_2">Voice Actor</string>
+    <string name="voice_actor_label">Voice Actor</string>
     <string name="voice_actors">Voice actor</string>
-    <string name="volume_about_adjusted_which_exceeds_may" formatted="false">The volume is about to be adjusted to %1$s%%, which exceeds 40%% and may cause hearing damage. After confirmation, this warning will not be shown again during this app launch.</string>
+    <string name="volume_about_adjusted" formatted="false">The volume is about to be adjusted to %1$s%%, which exceeds 40%% and may cause hearing damage. After confirmation, this warning will not be shown again during this app launch.</string>
+    <string name="volume_falls_below">When the volume falls below this value, it will be automatically boosted close to this threshold.</string>
     <string name="volume_threshold">Volume threshold</string>
     <string name="waiting">Waiting</string>
-    <string name="when_enabled_media_control_buttons_system">When enabled, media control buttons on the system lock screen and notification bar will be hidden as much as possible, while keeping the foreground notification required for background playback.</string>
-    <string name="when_enabled_stereo_image_moves_automatically">When enabled, the stereo image moves automatically based on the speed.</string>
-    <string name="when_headphones_bluetooth_headphones_usb_audio">When headphones, Bluetooth headphones, USB audio, HDMI, AUX, or other external outputs are connected, if the player is currently paused it will automatically try to resume playback; the phone speaker does not trigger this.</string>
-    <string name="when_off_mini_player_bar_bottom">When off, the mini player bar at the bottom of the app is hidden, and no extra space is reserved for it at the bottom of pages.</string>
-    <string name="when_pause_tapped_volume_will_gradually">When Pause is tapped, the volume will gradually fade to 0 over the set duration before actually pausing.</string>
-    <string name="when_volume_exceeds_value_will_reduced">When volume exceeds this value, it will be reduced automatically so it does not go over the threshold.</string>
-    <string name="when_volume_falls_below_value_will">When the volume falls below this value, it will be automatically boosted close to this threshold.</string>
-    <string name="when_you_tap_play_volume_will">When you tap play, the volume will smoothly rise from low to normal over the set duration.</string>
     <string name="whisper">Whisper</string>
-    <string name="will_permanently_delete_file_cannot_undone" formatted="false">This will permanently delete the file “%1$s” and cannot be undone.</string>
-    <string name="will_permanently_delete_files_directory_cannot" formatted="false">This will permanently delete files in the “%1$s” directory and cannot be undone.</string>
-    <string name="will_remove_album_local_library_try">This will remove the album from the local library and try to delete the local files.</string>
     <string name="works_blocked" formatted="false">%1$s works blocked</string>
-    <string name="you_need_log_dlsite_first_use">You need to log in to DLsite first to use purchased playback/download</string>
-    <string name="you_sure_you_want_delete_group" formatted="false">Are you sure you want to delete group \\\"%1$s\\\"? This action cannot be undone.</string>
-    <string name="you_sure_you_want_delete_list" formatted="false">Are you sure you want to delete list \\\"%1$s\\\"? This action cannot be undone.</string>
+    <string name="you_need_log">You need to log in to DLsite first to use purchased playback/download</string>
+    <string name="you_tap_play">When you tap play, the volume will smoothly rise from low to normal over the set duration.</string>
 </resources>

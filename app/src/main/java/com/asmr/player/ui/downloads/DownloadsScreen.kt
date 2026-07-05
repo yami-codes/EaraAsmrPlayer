@@ -210,7 +210,7 @@ fun DownloadsScreen(
                     is PendingDeleteAction.Task -> {
                         val task = tasks.firstOrNull { it.taskId == action.taskId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = context.getString(R.string.will_permanently_delete_files_directory_cannot, task.title)
+                            message = context.getString(R.string.permanently_delete_files, task.title)
                         )
                     }
 
@@ -219,7 +219,7 @@ fun DownloadsScreen(
                             .flatMap { it.items.asSequence() }
                             .firstOrNull { it.workId == action.workId } ?: return@remember null
                         ResolvedDeleteText(
-                            message = context.getString(R.string.will_permanently_delete_file_cannot_undone, item.fileName)
+                            message = context.getString(R.string.permanently_delete_file, item.fileName)
                         )
                     }
                 }

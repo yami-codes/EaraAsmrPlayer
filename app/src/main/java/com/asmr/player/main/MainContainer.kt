@@ -853,11 +853,11 @@ fun MainContainer(
             }
             AppUpdateInstallResult.PermissionRequired -> {
                 pendingAutomaticInstallPath = apkPath
-                messageManager.showInfo(R.string.allow_eara_install_apps_unknown_sources)
+                messageManager.showInfo(R.string.allow_unknown_sources)
             }
             AppUpdateInstallResult.FileInvalid -> {
                 pendingAutomaticInstallPath = null
-                messageManager.showError(R.string.downloaded_file_invalid_download_again)
+                messageManager.showError(R.string.invalid_apk_redownload)
             }
             is AppUpdateInstallResult.Failed -> {
                 pendingAutomaticInstallPath = null
@@ -2227,7 +2227,7 @@ fun MainContainer(
                 val albumDetailViewModel: AlbumDetailViewModel = hiltViewModel(navBackStackEntry!!)
                 FlatTextFieldDialog(
                     onDismissRequest = { showManualRjDialog = false },
-                    message = stringResource(R.string.enter_rj_number_cloud_sync_will),
+                    message = stringResource(R.string.enter_number_cloud),
                     value = manualRjInput,
                     onValueChange = { manualRjInput = it },
                     placeholder = stringResource(R.string.rj_code_e_g_rj123456),
@@ -2561,7 +2561,7 @@ fun MainContainer(
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             settingsViewModel.disableAutoUpdateCheck()
-                            messageManager.showInfo(R.string.automatic_update_check_startup_disabled)
+                            messageManager.showInfo(R.string.automatic_update_check)
                         }
                     ),
                     FlatDialogAction(
@@ -2576,7 +2576,7 @@ fun MainContainer(
                         onClick = {
                             automaticUpdateDialogDismissed = true
                             if (!openUpdateReleasePage(context, release)) {
-                                messageManager.showError(R.string.unable_open_github_release_page)
+                                messageManager.showError(R.string.unable_open_github)
                             }
                         }
                     )
