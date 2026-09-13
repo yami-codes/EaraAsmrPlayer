@@ -1,4 +1,6 @@
-﻿package com.asmr.player.ui.library
+package com.asmr.player.ui.library
+
+import com.asmr.player.R
 
 import android.content.Intent
 import android.net.Uri
@@ -46,7 +48,6 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
-import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +65,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -88,6 +89,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.asmr.player.data.local.db.AppDatabaseProvider
 import com.asmr.player.data.local.db.entities.LocalTreeCacheEntity
+import com.asmr.player.data.local.db.entities.OnlineSavedResourceEntity
 import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
 import com.asmr.player.data.remote.scraper.DlsiteRecommendedWork
@@ -95,6 +97,7 @@ import com.asmr.player.data.remote.scraper.DlsiteRecommendations
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.playback.MediaItemFactory
+import com.asmr.player.subtitle.SubtitleGenerationPolicy
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.data.remote.dlsite.DlsiteLanguageEdition
@@ -140,17 +143,21 @@ import com.asmr.player.ui.common.ImagePreviewRequest
 import com.asmr.player.ui.common.CollapsibleHeaderState
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.theme.AsmrColorScheme
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
-import com.asmr.player.R
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
+import com.asmr.player.util.TrackKeyNormalizer
+import com.asmr.player.util.isOnlineTrackPath
+import java.util.ArrayDeque
+
+private const val LOCAL_TREE_CACHE_PARSER_VERSION = 2L
 
 internal sealed class AsmrTreeUiEntry {
     abstract val path: String
@@ -173,9 +180,13 @@ internal sealed class AsmrTreeUiEntry {
     ) : AsmrTreeUiEntry()
 }
 
-private val DirectoryBrowserPanelCornerRadius = 10.dp
-private val DirectoryFolderRowCornerRadius = 10.dp
+private val DirectoryBrowserPanelCornerRadius = 22.dp
+private val DirectoryFileRowCornerRadius = 12.dp
 private val DirectoryBrowserPanelVerticalPadding = 4.dp
+
+internal fun directoryBrowserHeaderBackground(colorScheme: AsmrColorScheme): Color {
+    return colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.72f else 0.9f)
+}
 
 internal enum class DirectoryFolderPosition {
     Single,
@@ -184,21 +195,26 @@ internal enum class DirectoryFolderPosition {
     Last,
 }
 
-private fun directoryFolderPosition(index: Int, total: Int): DirectoryFolderPosition {
+internal fun directorySelectedItemPosition(
+    selected: Boolean,
+    previousSelected: Boolean,
+    nextSelected: Boolean,
+): DirectoryFolderPosition {
+    if (!selected) return DirectoryFolderPosition.Single
     return when {
-        total <= 1 -> DirectoryFolderPosition.Single
-        index == 0 -> DirectoryFolderPosition.First
-        index == total - 1 -> DirectoryFolderPosition.Last
+        !previousSelected && !nextSelected -> DirectoryFolderPosition.Single
+        !previousSelected -> DirectoryFolderPosition.First
+        !nextSelected -> DirectoryFolderPosition.Last
         else -> DirectoryFolderPosition.Middle
     }
 }
 
-private fun directoryFolderShape(position: DirectoryFolderPosition): RoundedCornerShape {
+private fun directoryFileSelectionShape(position: DirectoryFolderPosition): RoundedCornerShape {
     return when (position) {
-        DirectoryFolderPosition.Single -> RoundedCornerShape(DirectoryFolderRowCornerRadius)
+        DirectoryFolderPosition.Single -> RoundedCornerShape(DirectoryFileRowCornerRadius)
         DirectoryFolderPosition.First -> RoundedCornerShape(
-            topStart = DirectoryFolderRowCornerRadius,
-            topEnd = DirectoryFolderRowCornerRadius,
+            topStart = DirectoryFileRowCornerRadius,
+            topEnd = DirectoryFileRowCornerRadius,
             bottomStart = 0.dp,
             bottomEnd = 0.dp,
         )
@@ -206,8 +222,8 @@ private fun directoryFolderShape(position: DirectoryFolderPosition): RoundedCorn
         DirectoryFolderPosition.Last -> RoundedCornerShape(
             topStart = 0.dp,
             topEnd = 0.dp,
-            bottomStart = DirectoryFolderRowCornerRadius,
-            bottomEnd = DirectoryFolderRowCornerRadius,
+            bottomStart = DirectoryFileRowCornerRadius,
+            bottomEnd = DirectoryFileRowCornerRadius,
         )
     }
 }
@@ -271,6 +287,7 @@ internal fun treeFileTypeForNode(title: String, url: String?, remoteType: String
         fromTitle != TreeFileType.Other -> fromTitle
         fromUrl != TreeFileType.Other -> fromUrl
         fromRemoteType != TreeFileType.Other -> fromRemoteType
+        !url.isNullOrBlank() -> TreeFileType.Audio
         else -> TreeFileType.Other
     }
 }
@@ -279,17 +296,26 @@ internal fun isDownloadableTreeFileType(fileType: TreeFileType): Boolean {
     return fileType != TreeFileType.Other && fileType != TreeFileType.Subtitle
 }
 
-internal fun isLibrarySavableTreeFileType(fileType: TreeFileType): Boolean {
+internal fun isLibraryResourceSavableTreeFileType(fileType: TreeFileType): Boolean {
+    return fileType != TreeFileType.Other && fileType != TreeFileType.Subtitle
+}
+
+internal fun isPlayableTreeFileType(fileType: TreeFileType): Boolean {
     return fileType == TreeFileType.Audio || fileType == TreeFileType.Video
 }
 
 private fun fileExtensionFromName(name: String): String {
-    val clean = name
+    val fileName = name
         .trim()
-        .substringBefore('#')
-        .substringBefore('?')
         .substringAfterLast('/')
         .substringAfterLast('\\')
+    val withoutQuery = fileName.substringBefore('?')
+    val fragmentIndex = withoutQuery.indexOf('#')
+    val clean = if (fragmentIndex > 0 && withoutQuery.substring(0, fragmentIndex).contains('.')) {
+        withoutQuery.substring(0, fragmentIndex)
+    } else {
+        withoutQuery
+    }
     val ext = clean.substringAfterLast('.', missingDelimiterValue = "")
         .lowercase()
         .trim()
@@ -416,7 +442,9 @@ internal data class DirectoryBreadcrumbSegment(
 
 internal data class DirectoryFolderItem(
     val path: String,
-    val title: String
+    val title: String,
+    val descendantTrackIds: List<Long> = emptyList(),
+    val hasLocalContent: Boolean = false,
 )
 
 internal data class DirectoryFileItem(
@@ -424,6 +452,7 @@ internal data class DirectoryFileItem(
     val title: String,
     val fileType: TreeFileType,
     val isPlayable: Boolean,
+    val isOnline: Boolean = false,
     val durationSeconds: Double? = null,
     val sizeSource: FileSizeSource = FileSizeSource.None,
     val absolutePath: String = "",
@@ -438,6 +467,21 @@ internal data class DirectoryFileItem(
     val dlsitePlayImageHeight: Int? = null,
     val dlsitePlayOptimizedName: String? = null
 )
+
+internal data class LocalTreeDeletionTarget(
+    val title: String,
+    val relativePath: String,
+    val absolutePath: String? = null,
+    val isDirectory: Boolean,
+    val trackIds: List<Long> = emptyList(),
+    val hasLocalContent: Boolean,
+)
+
+internal fun isOnlineDirectoryAudio(fileType: TreeFileType, absolutePath: String, track: Track?): Boolean {
+    if (fileType != TreeFileType.Audio) return false
+    val path = track?.path?.trim().orEmpty().ifBlank { absolutePath.trim() }
+    return isOnlineTrackPath(path)
+}
 
 internal data class DirectoryBrowserResult(
     val currentPath: String,
@@ -491,6 +535,27 @@ internal fun buildBreadcrumbSegments(currentPath: String): List<DirectoryBreadcr
         out += DirectoryBreadcrumbSegment(label = segment, path = path)
     }
     return out
+}
+
+internal fun normalizeLocalTreeRelativePath(path: String): String? {
+    val segments = path
+        .replace('\\', '/')
+        .trim()
+        .trim('/')
+        .split('/')
+        .filter { it.isNotBlank() }
+    if (segments.isEmpty() || segments.any { it == "." || it == ".." }) return null
+    return segments.joinToString("/")
+}
+
+internal fun localTreePathMatchesTarget(
+    candidatePath: String,
+    targetPath: String,
+    targetIsDirectory: Boolean,
+): Boolean {
+    val candidate = normalizeLocalTreeRelativePath(candidatePath) ?: return false
+    val target = normalizeLocalTreeRelativePath(targetPath) ?: return false
+    return candidate == target || (targetIsDirectory && candidate.startsWith("$target/"))
 }
 
 internal fun albumArtistLabel(album: Album): String {
@@ -549,6 +614,212 @@ internal data class LocalTreeIndex(
     val folderStats: Map<String, LocalFolderStats>
 )
 
+internal data class RemoteSelectionFileRef(
+    val relativePath: String,
+    val url: String
+)
+
+internal data class LocalSelectionFileRef(
+    val relativePath: String,
+    val absolutePath: String,
+    val track: Track?
+)
+
+internal data class LocalIncrementalSelectionPaths(
+    val downloadedPaths: Set<String> = emptySet(),
+    val savedPaths: Set<String> = emptySet()
+)
+
+internal fun collectLocalSelectionFiles(index: LocalTreeIndex): List<LocalSelectionFileRef> {
+    val files = mutableListOf<LocalSelectionFileRef>()
+
+    fun collect(node: LocalTreeNode) {
+        if (node.children.isEmpty()) {
+            val absolutePath = node.absolutePath?.trim().orEmpty()
+            if (node.path.isNotBlank() && absolutePath.isNotBlank()) {
+                files += LocalSelectionFileRef(
+                    relativePath = node.path,
+                    absolutePath = absolutePath,
+                    track = node.track
+                )
+            }
+            return
+        }
+        node.children.values.forEach(::collect)
+    }
+
+    collect(index.root)
+    return files
+}
+
+internal fun resolveExistingRemoteSelectionPaths(
+    remoteFiles: List<RemoteSelectionFileRef>,
+    localFiles: List<LocalSelectionFileRef>,
+    includeOnlineFiles: Boolean
+): Set<String> {
+    data class MatchCandidate(
+        val normalizedRelativePath: String,
+        val canonicalUrl: String,
+        val fileName: String,
+        val trackKey: String,
+        val trackKeyWithoutGroup: String,
+        val extension: String,
+        val fileType: TreeFileType
+    )
+
+    data class RemoteCandidate(
+        val file: RemoteSelectionFileRef,
+        val normalizedRelativePath: String,
+        val canonicalUrl: String,
+        val fileName: String,
+        val trackKey: String,
+        val trackKeyWithoutGroup: String,
+        val extension: String,
+        val fileType: TreeFileType
+    )
+
+    fun normalizeRelativePath(path: String): String {
+        return path.replace('\\', '/').trim().trim('/').lowercase()
+    }
+
+    fun canonicalUrl(value: String): String {
+        val trimmed = value.trim()
+        if (!isOnlineTrackPath(trimmed)) return ""
+        return trimmed.substringBefore('#').substringBefore('?')
+    }
+
+    fun fileName(path: String): String {
+        return normalizeRelativePath(path).substringAfterLast('/')
+    }
+
+    fun remoteTrackKey(path: String, includeGroup: Boolean): String {
+        val normalized = path.replace('\\', '/').trim().trim('/')
+        val title = normalized.substringAfterLast('/').substringBeforeLast('.')
+        val group = if (includeGroup) normalized.substringBeforeLast('/', "") else ""
+        return TrackKeyNormalizer.buildKey(title, group, null)
+    }
+
+    fun resolvedExtension(relativePath: String, sourcePath: String): String {
+        return fileExtensionFromName(relativePath)
+            .ifBlank { fileExtensionFromName(sourcePath) }
+    }
+
+    fun resolvedFileType(relativePath: String, sourcePath: String): TreeFileType {
+        return treeFileTypeForName(relativePath).takeIf { it != TreeFileType.Other }
+            ?: treeFileTypeForName(sourcePath)
+    }
+
+    val candidates = localFiles.asSequence()
+        .filter { local ->
+            includeOnlineFiles || !isOnlineTrackPath(local.track?.path.orEmpty().ifBlank { local.absolutePath })
+        }
+        .map { local ->
+            val track = local.track
+            val fallbackGroup = local.relativePath.replace('\\', '/').substringBeforeLast('/', "")
+            val sourcePath = track?.path.orEmpty().ifBlank { local.absolutePath }
+            MatchCandidate(
+                normalizedRelativePath = normalizeRelativePath(local.relativePath),
+                canonicalUrl = canonicalUrl(sourcePath),
+                fileName = fileName(local.relativePath),
+                trackKey = track?.let {
+                    TrackKeyNormalizer.buildKey(it.title, it.group.ifBlank { fallbackGroup }, null)
+                }.orEmpty(),
+                trackKeyWithoutGroup = track?.let {
+                    TrackKeyNormalizer.buildKey(it.title, "", null)
+                }.orEmpty(),
+                extension = resolvedExtension(local.relativePath, sourcePath),
+                fileType = resolvedFileType(local.relativePath, sourcePath)
+            )
+        }
+        .toList()
+
+    val remotes = remoteFiles.map { remote ->
+        RemoteCandidate(
+            file = remote,
+            normalizedRelativePath = normalizeRelativePath(remote.relativePath),
+            canonicalUrl = canonicalUrl(remote.url),
+            fileName = fileName(remote.relativePath),
+            trackKey = remoteTrackKey(remote.relativePath, includeGroup = true),
+            trackKeyWithoutGroup = remoteTrackKey(remote.relativePath, includeGroup = false),
+            extension = resolvedExtension(remote.relativePath, remote.url),
+            fileType = treeFileTypeForNode(remote.relativePath, remote.url)
+        )
+    }
+
+    fun buildCandidateIndex(key: (MatchCandidate) -> String): Map<String, List<Int>> {
+        val index = linkedMapOf<String, MutableList<Int>>()
+        candidates.forEachIndexed { candidateIndex, candidate ->
+            val value = key(candidate)
+            if (value.isNotBlank()) {
+                index.getOrPut(value) { mutableListOf() }.add(candidateIndex)
+            }
+        }
+        return index
+    }
+
+    val relativePathIndex = buildCandidateIndex(MatchCandidate::normalizedRelativePath)
+    val canonicalUrlIndex = buildCandidateIndex(MatchCandidate::canonicalUrl)
+    val trackKeyIndex = buildCandidateIndex(MatchCandidate::trackKey)
+    val fileNameIndex = buildCandidateIndex(MatchCandidate::fileName)
+    val trackKeyWithoutGroupIndex = buildCandidateIndex(MatchCandidate::trackKeyWithoutGroup)
+    val available = BooleanArray(candidates.size) { true }
+    val unmatchedRemotes = BooleanArray(remotes.size) { true }
+    val matched = linkedSetOf<String>()
+
+    fun consume(
+        remoteIndex: Int,
+        index: Map<String, List<Int>>,
+        key: String,
+        isCompatible: (MatchCandidate) -> Boolean = { true }
+    ) {
+        if (!unmatchedRemotes[remoteIndex] || key.isBlank()) return
+        val candidateIndex = index[key]
+            ?.firstOrNull { available[it] && isCompatible(candidates[it]) }
+            ?: return
+        available[candidateIndex] = false
+        unmatchedRemotes[remoteIndex] = false
+        matched += remotes[remoteIndex].file.relativePath
+    }
+
+    fun consumePass(
+        index: Map<String, List<Int>>,
+        key: (RemoteCandidate) -> String,
+        isCompatible: (RemoteCandidate, MatchCandidate) -> Boolean = { _, _ -> true }
+    ) {
+        remotes.forEachIndexed { remoteIndex, remote ->
+            consume(remoteIndex, index, key(remote)) { local ->
+                isCompatible(remote, local)
+            }
+        }
+    }
+
+    fun hasCompatibleFormat(remote: RemoteCandidate, local: MatchCandidate): Boolean {
+        if (remote.extension.isNotBlank() && local.extension.isNotBlank()) {
+            return remote.extension == local.extension
+        }
+        return remote.fileType != TreeFileType.Other && remote.fileType == local.fileType
+    }
+
+    // 先让所有远端条目完成强身份匹配，避免前面的模糊命中占用后续条目的精确候选。
+    consumePass(relativePathIndex, RemoteCandidate::normalizedRelativePath)
+    consumePass(canonicalUrlIndex, RemoteCandidate::canonicalUrl)
+
+    // 目录与标题仍一致时优先匹配，同时要求具体扩展名兼容。
+    consumePass(trackKeyIndex, RemoteCandidate::trackKey, ::hasCompatibleFormat)
+
+    // 完整文件名包含扩展名，可用于目录结构变化后的精确格式兜底。
+    consumePass(fileNameIndex, RemoteCandidate::fileName)
+
+    // 忽略目录的标题匹配最宽松，最后执行且同样不得跨格式占用候选。
+    consumePass(
+        trackKeyWithoutGroupIndex,
+        RemoteCandidate::trackKeyWithoutGroup,
+        ::hasCompatibleFormat
+    )
+
+    return matched
+}
+
 internal fun findLocalTreeNode(root: LocalTreeNode, folderPath: String): LocalTreeNode? {
     val normalized = folderPath.trim().trimStart('/').trimEnd('/')
     if (normalized.isBlank()) return root
@@ -559,6 +830,21 @@ internal fun findLocalTreeNode(root: LocalTreeNode, folderPath: String): LocalTr
         cur = next
     }
     return cur
+}
+
+private fun collectLocalTreeLeafNodes(root: LocalTreeNode): List<LocalTreeNode> {
+    val leaves = mutableListOf<LocalTreeNode>()
+    val pending = ArrayDeque<LocalTreeNode>()
+    pending.add(root)
+    while (pending.isNotEmpty()) {
+        val node = pending.removeLast()
+        if (node.children.isEmpty()) {
+            if (node.absolutePath != null) leaves += node
+        } else {
+            node.children.values.forEach(pending::addLast)
+        }
+    }
+    return leaves
 }
 
 internal fun siblingAudioTracksForEntry(index: LocalTreeIndex, entryPath: String): List<Track> {
@@ -583,6 +869,75 @@ internal fun siblingPlayableNodesForEntry(index: LocalTreeIndex, entryPath: Stri
         .toList()
 }
 
+internal fun isSupportedSubtitleGenerationAudioName(name: String): Boolean {
+    return SubtitleGenerationPolicy.supportsFileName(name)
+}
+
+internal fun subtitleGenerationTrackForFile(
+    file: DirectoryFileItem,
+    unavailableTrackIds: Set<Long>
+): Track? {
+    val track = file.track ?: return null
+    return track.takeIf {
+        file.fileType == TreeFileType.Audio &&
+            isSupportedSubtitleGenerationAudioName(file.path) &&
+            it.id > 0L &&
+            !file.isOnline &&
+            file.sizeSource is FileSizeSource.Local &&
+            !isOnlineTrackPath(it.path) &&
+            it.id !in unavailableTrackIds
+    }
+}
+
+internal fun collectSubtitleGenerationTracks(
+    index: LocalTreeIndex,
+    currentPath: String,
+    unavailableTrackIds: Set<Long>
+): List<Track> {
+    val currentNode = findLocalTreeNode(index.root, currentPath) ?: return emptyList()
+    val tracks = mutableListOf<Track>()
+
+    fun collect(node: LocalTreeNode) {
+        if (node.children.isEmpty()) {
+            val track = node.track
+            val absolutePath = node.absolutePath.orEmpty()
+            if (
+                node.fileType == TreeFileType.Audio &&
+                isSupportedSubtitleGenerationAudioName(node.name) &&
+                track != null &&
+                track.id > 0L &&
+                !isOnlineTrackPath(track.path) &&
+                !absolutePath.startsWith("http", ignoreCase = true) &&
+                track.id !in unavailableTrackIds
+            ) {
+                tracks += track
+            }
+            return
+        }
+        node.children.values
+            .sortedBy { SmartSortKey.of(it.name) }
+            .forEach(::collect)
+    }
+
+    collect(currentNode)
+    return tracks.distinctBy { it.id }
+}
+
+internal fun subtitleTranslationTrackForFile(
+    file: DirectoryFileItem,
+    localSubtitleTrackIds: Set<Long>
+): Track? {
+    val track = file.track ?: return null
+    return track.takeIf {
+        file.fileType == TreeFileType.Audio &&
+            it.id > 0L &&
+            it.id in localSubtitleTrackIds &&
+            !file.isOnline &&
+            file.sizeSource is FileSizeSource.Local &&
+            !isOnlineTrackPath(it.path)
+    }
+}
+
 internal fun buildLocalDirectoryBrowser(
     index: LocalTreeIndex,
     currentPath: String,
@@ -596,9 +951,16 @@ internal fun buildLocalDirectoryBrowser(
         .filter { it.children.isNotEmpty() }
         .sortedBy { SmartSortKey.of(it.name) }
         .map { child ->
+            val descendantLeaves = collectLocalTreeLeafNodes(child)
             DirectoryFolderItem(
                 path = child.path,
-                title = child.name
+                title = child.name,
+                descendantTrackIds = descendantLeaves
+                    .mapNotNull { it.track?.id?.takeIf { id -> id > 0L } }
+                    .distinct(),
+                hasLocalContent = descendantLeaves.any { node ->
+                    node.absolutePath?.startsWith("http", ignoreCase = true) == false
+                },
             )
         }
         .toList()
@@ -608,6 +970,7 @@ internal fun buildLocalDirectoryBrowser(
         .sortedBy { SmartSortKey.of(it.name) }
         .mapNotNull { child ->
             val absolutePath = child.absolutePath ?: return@mapNotNull null
+            val isRemoteResource = absolutePath.startsWith("http", ignoreCase = true)
             val displayTitle = child.track?.title?.ifBlank { child.name.substringBeforeLast('.') }
                 ?: child.name.substringBeforeLast('.')
             val playlistTarget = when (child.fileType) {
@@ -620,8 +983,13 @@ internal fun buildLocalDirectoryBrowser(
                 title = displayTitle,
                 fileType = child.fileType,
                 isPlayable = child.track != null || child.fileType == TreeFileType.Video,
+                isOnline = isOnlineDirectoryAudio(child.fileType, absolutePath, child.track),
                 durationSeconds = child.track?.duration?.takeIf { it > 0.0 },
-                sizeSource = FileSizeSource.Local(path = absolutePath, sizeBytes = child.sizeBytes),
+                sizeSource = if (isRemoteResource) {
+                    FileSizeSource.Remote(absolutePath)
+                } else {
+                    FileSizeSource.Local(path = absolutePath, sizeBytes = child.sizeBytes)
+                },
                 absolutePath = absolutePath,
                 url = absolutePath,
                 track = child.track,
@@ -637,6 +1005,16 @@ internal fun buildLocalDirectoryBrowser(
         folders = folders,
         files = files
     )
+}
+
+internal fun canSetDirectoryImageAsLocalCover(file: DirectoryFileItem): Boolean {
+    return file.fileType == TreeFileType.Image &&
+        !file.absolutePath.startsWith("http", ignoreCase = true)
+}
+
+internal fun downloadableOnlineAudioTrack(file: DirectoryFileItem): Track? {
+    if (file.fileType != TreeFileType.Audio || !file.isOnline) return null
+    return file.track?.takeIf { isOnlineTrackPath(it.path) }
 }
 
 internal class RemoteTreeNode(
@@ -851,6 +1229,7 @@ internal fun buildRemoteDirectoryBrowser(
                 title = child.name.substringBeforeLast('.'),
                 fileType = child.fileType,
                 isPlayable = child.fileType == TreeFileType.Audio || child.fileType == TreeFileType.Video,
+                isOnline = true,
                 durationSeconds = child.durationSeconds,
                 sizeSource = if (child.url.isNotBlank()) FileSizeSource.Remote(child.url) else FileSizeSource.None,
                 absolutePath = child.url,
@@ -880,23 +1259,89 @@ internal data class LocalTreeLeafCacheEntry(
     val sizeBytes: Long? = null
 )
 
+internal fun onlineSavedResourceTreeLeaf(
+    resource: OnlineSavedResourceEntity
+): LocalTreeLeafCacheEntry? {
+    val relativePath = resource.relativePath.replace('\\', '/').trim().trimStart('/')
+    val url = resource.url.trim()
+    if (relativePath.isBlank() || !url.startsWith("http", ignoreCase = true)) return null
+    val fileType = runCatching { TreeFileType.valueOf(resource.fileType) }
+        .getOrElse { treeFileTypeForNode(relativePath, url) }
+    if (!isLibraryResourceSavableTreeFileType(fileType) || isPlayableTreeFileType(fileType)) return null
+    return LocalTreeLeafCacheEntry(
+        relativePath = relativePath,
+        absolutePath = url,
+        fileType = fileType
+    )
+}
+
 internal data class LocalTreeIndexBuildResult(
     val index: LocalTreeIndex,
     val leaves: List<LocalTreeLeafCacheEntry>
 )
 
+internal enum class LocalTreeSourceKind {
+    Imported,
+    Downloaded,
+}
+
+internal data class LocalTreeSource(
+    val path: String,
+    val kind: LocalTreeSourceKind,
+)
+
+internal fun localTreeSourcesForAlbum(album: Album): List<LocalTreeSource> {
+    val imported = buildList {
+        val path = album.path.trim()
+        if (path.isNotBlank() && !path.startsWith("http", ignoreCase = true) && !path.startsWith("web://", ignoreCase = true)) {
+            add(path)
+        }
+        album.localPath?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+    }.distinctBy(::localTreeSourceIdentity)
+    val downloaded = listOfNotNull(album.downloadPath?.trim()?.takeIf { it.isNotBlank() })
+    val importedIdentities = imported.map(::localTreeSourceIdentity).toSet()
+    return buildList {
+        imported.forEach { add(LocalTreeSource(it, LocalTreeSourceKind.Imported)) }
+        downloaded.filterNot { localTreeSourceIdentity(it) in importedIdentities }
+            .forEach { add(LocalTreeSource(it, LocalTreeSourceKind.Downloaded)) }
+    }.distinctBy { localTreeSourceIdentity(it.path) }
+}
+
+private fun localTreeSourceIdentity(path: String): String {
+    val trimmed = path.trim()
+    if (!trimmed.startsWith("content://", ignoreCase = true)) {
+        return runCatching { File(trimmed).canonicalPath }.getOrDefault(File(trimmed).absolutePath)
+    }
+    val uri = runCatching { Uri.parse(trimmed) }.getOrNull() ?: return trimmed
+    val documentId = runCatching { DocumentsContract.getDocumentId(uri) }.getOrNull()
+        ?: runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+        ?: return trimmed
+    return "${uri.authority.orEmpty()}:${documentId.replace('\\', '/').trimEnd('/')}"
+}
+
 internal suspend fun loadOrBuildLocalTreeIndex(
     context: android.content.Context,
     albumId: Long,
     albumPaths: List<String>,
-    tracks: List<Track>
+    tracks: List<Track>,
+    onlineSavedResources: List<OnlineSavedResourceEntity> = emptyList(),
+    sources: List<LocalTreeSource> = albumPaths.map { LocalTreeSource(it, LocalTreeSourceKind.Imported) },
 ): LocalTreeIndex {
     val gson = Gson()
-    val cacheKey = albumPaths.map { it.trim() }.filter { it.isNotBlank() }.sorted().joinToString("|")
-    val stamp = computeAlbumPathsStamp(context, albumPaths)
+    val normalizedSources = sources.filter { it.path.isNotBlank() }.distinctBy { localTreeSourceIdentity(it.path) }
+    val cacheKey = normalizedSources
+        .map { "${it.kind.name}:${it.path.trim()}" }
+        .sorted()
+        .joinToString("|")
+    val stamp = computeLocalTreeCacheStamp(context, albumPaths, tracks)
     val dao = AppDatabaseProvider.get(context).localTreeCacheDao()
     val onlineTracks = tracks.filter { it.path.trim().startsWith("http", ignoreCase = true) }
     val onlineUrlSet = onlineTracks.map { it.path.trim() }.filter { it.isNotBlank() }.toSet()
+    val savedResourceKeys = onlineSavedResources.mapNotNull { resource ->
+        val relativePath = resource.relativePath.replace('\\', '/').trim().trimStart('/')
+        val url = resource.url.trim()
+        if (relativePath.isBlank() || url.isBlank()) null else relativePath to url
+    }.toSet()
 
     fun sanitizeSeg(name: String): String {
         return name.trim().ifEmpty { "item" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
@@ -937,14 +1382,27 @@ internal suspend fun loadOrBuildLocalTreeIndex(
         }
     }
 
-    fun mergeLeaves(localLeaves: List<LocalTreeLeafCacheEntry>, onlineLeaves: List<LocalTreeLeafCacheEntry>): List<LocalTreeLeafCacheEntry> {
+    fun buildSavedResourceLeaves(): List<LocalTreeLeafCacheEntry> {
+        return onlineSavedResources.mapNotNull(::onlineSavedResourceTreeLeaf)
+    }
+
+    fun mergeLeaves(
+        localLeaves: List<LocalTreeLeafCacheEntry>,
+        onlineLeaves: List<LocalTreeLeafCacheEntry>,
+        savedResourceLeaves: List<LocalTreeLeafCacheEntry>
+    ): List<LocalTreeLeafCacheEntry> {
         val filteredLocal = localLeaves.filter { leaf ->
             val abs = leaf.absolutePath.trim()
-            !(abs.startsWith("http", ignoreCase = true) && !onlineUrlSet.contains(abs))
+            !(
+                abs.startsWith("http", ignoreCase = true) &&
+                    !onlineUrlSet.contains(abs) &&
+                    !savedResourceKeys.contains(leaf.relativePath to abs)
+            )
         }
         val byRel = linkedMapOf<String, LocalTreeLeafCacheEntry>()
         filteredLocal.forEach { byRel[it.relativePath] = it }
-        onlineLeaves.forEach { leaf ->
+
+        fun mergeRemoteLeaf(leaf: LocalTreeLeafCacheEntry) {
             val existing = byRel[leaf.relativePath]
             if (existing == null) {
                 byRel[leaf.relativePath] = leaf
@@ -953,16 +1411,24 @@ internal suspend fun loadOrBuildLocalTreeIndex(
                 if (abs.startsWith("http", ignoreCase = true)) byRel[leaf.relativePath] = leaf
             }
         }
+
+        onlineLeaves.forEach(::mergeRemoteLeaf)
+        savedResourceLeaves.forEach(::mergeRemoteLeaf)
         return byRel.values.toList()
     }
     val onlineLeaves = buildOnlineLeaves()
+    val savedResourceLeaves = buildSavedResourceLeaves()
 
     val cached = dao.getByAlbumAndKey(albumId = albumId, cacheKey = cacheKey)
     if (cached != null && cached.stamp == stamp && cached.payloadJson.isNotBlank()) {
         val type = object : TypeToken<List<LocalTreeLeafCacheEntry>>() {}.type
         val leaves = runCatching { gson.fromJson<List<LocalTreeLeafCacheEntry>>(cached.payloadJson, type) }
             .getOrDefault(emptyList())
-        val merged = mergeLeaves(localLeaves = leaves, onlineLeaves = onlineLeaves)
+        val merged = mergeLeaves(
+            localLeaves = leaves,
+            onlineLeaves = onlineLeaves,
+            savedResourceLeaves = savedResourceLeaves
+        )
         val missingLocalSizeMetadata = leaves.any { leaf ->
             val abs = leaf.absolutePath.trim()
             abs.isNotBlank() &&
@@ -974,8 +1440,16 @@ internal suspend fun loadOrBuildLocalTreeIndex(
         }
     }
 
-    val built = buildLocalTreeIndexByScanning(context = context, albumPaths = albumPaths, tracks = tracks)
-    val merged = mergeLeaves(localLeaves = built.leaves, onlineLeaves = onlineLeaves)
+    val built = buildLocalTreeIndexByScanningSources(
+        context = context,
+        sources = normalizedSources,
+        tracks = tracks,
+    )
+    val merged = mergeLeaves(
+        localLeaves = built.leaves,
+        onlineLeaves = onlineLeaves,
+        savedResourceLeaves = savedResourceLeaves
+    )
     dao.upsert(
         LocalTreeCacheEntity(
             albumId = albumId,
@@ -986,6 +1460,42 @@ internal suspend fun loadOrBuildLocalTreeIndex(
         )
     )
     return buildLocalTreeIndexFromLeaves(leaves = merged, tracks = tracks)
+}
+
+private fun buildLocalTreeIndexByScanningSources(
+    context: android.content.Context,
+    sources: List<LocalTreeSource>,
+    tracks: List<Track>,
+): LocalTreeIndexBuildResult {
+    val hasImported = sources.any { it.kind == LocalTreeSourceKind.Imported }
+    val hasDownloaded = sources.any { it.kind == LocalTreeSourceKind.Downloaded }
+    val separateSources = hasImported && hasDownloaded &&
+        sources.map { localTreeSourceIdentity(it.path) }.distinct().size > 1
+    if (!separateSources) {
+        return buildLocalTreeIndexByScanning(
+            context = context,
+            albumPaths = sources.map { it.path },
+            tracks = tracks,
+        )
+    }
+
+    val leaves = sources.flatMap { source ->
+        val prefix = when (source.kind) {
+            LocalTreeSourceKind.Imported -> "导入内容"
+            LocalTreeSourceKind.Downloaded -> "下载内容"
+        }
+        buildLocalTreeIndexByScanning(
+            context = context,
+            albumPaths = listOf(source.path),
+            tracks = tracks,
+        ).leaves.map { leaf ->
+            leaf.copy(relativePath = "$prefix/${leaf.relativePath}")
+        }
+    }
+    return LocalTreeIndexBuildResult(
+        index = buildLocalTreeIndexFromLeaves(leaves, tracks),
+        leaves = leaves,
+    )
 }
 
 internal fun computeAlbumPathsStamp(context: android.content.Context, albumPaths: List<String>): Long {
@@ -999,6 +1509,28 @@ internal fun computeAlbumPathsStamp(context: android.content.Context, albumPaths
         }
         acc = (acc xor v) * 1099511628211L
     }
+    return acc
+}
+
+internal fun computeLocalTreeCacheStamp(
+    context: android.content.Context,
+    albumPaths: List<String>,
+    tracks: List<Track>
+): Long {
+    return combineLocalTreeCacheStamp(computeAlbumPathsStamp(context, albumPaths), tracks)
+}
+
+internal fun combineLocalTreeCacheStamp(albumPathsStamp: Long, tracks: List<Track>): Long {
+    var acc = (albumPathsStamp xor LOCAL_TREE_CACHE_PARSER_VERSION) * 1099511628211L
+    val localTrackPaths = tracks.asSequence()
+        .map { it.path.trim() }
+        .filter { it.isNotBlank() && !it.startsWith("http", ignoreCase = true) }
+        .sorted()
+        .toList()
+    localTrackPaths.forEach { path ->
+        acc = (acc xor path.hashCode().toLong()) * 1099511628211L
+    }
+    acc = (acc xor localTrackPaths.size.toLong()) * 1099511628211L
     return acc
 }
 
@@ -1485,23 +2017,30 @@ internal fun flattenAsmrOneTreeForUi(
     return AsmrTreeUiResult(entries = out)
 }
 
-@Composable
 internal fun fileTypeLabel(fileType: TreeFileType): String = when (fileType) {
-    TreeFileType.Audio -> stringResource(R.string.audio)
-    TreeFileType.Video -> stringResource(R.string.video)
-    TreeFileType.Image -> stringResource(R.string.image)
-    TreeFileType.Subtitle -> stringResource(R.string.subtitle_chip)
-    TreeFileType.Text -> stringResource(R.string.file_type_text)
+    TreeFileType.Audio -> "音频"
+    TreeFileType.Video -> "视频"
+    TreeFileType.Image -> "图片"
+    TreeFileType.Subtitle -> "字幕"
+    TreeFileType.Text -> "文本"
     TreeFileType.Pdf -> "PDF"
-    TreeFileType.Archive -> stringResource(R.string.archive)
-    TreeFileType.Document -> stringResource(R.string.document)
-    TreeFileType.Spreadsheet -> stringResource(R.string.table)
-    TreeFileType.Presentation -> stringResource(R.string.presentation)
-    TreeFileType.Code -> stringResource(R.string.code)
-    TreeFileType.Ebook -> stringResource(R.string.e_book)
-    TreeFileType.Font -> stringResource(R.string.font)
-    TreeFileType.AppPackage -> stringResource(R.string.installer)
-    TreeFileType.Other -> stringResource(R.string.file)
+    TreeFileType.Archive -> "压缩包"
+    TreeFileType.Document -> "文档"
+    TreeFileType.Spreadsheet -> "表格"
+    TreeFileType.Presentation -> "演示文稿"
+    TreeFileType.Code -> "代码"
+    TreeFileType.Ebook -> "电子书"
+    TreeFileType.Font -> "字体"
+    TreeFileType.AppPackage -> "安装包"
+    TreeFileType.Other -> "文件"
+}
+
+internal fun directoryFileTypeLabel(file: DirectoryFileItem): String {
+    return if (file.fileType == TreeFileType.Audio) {
+        if (file.isOnline) "在线音频" else "本地音频"
+    } else {
+        fileTypeLabel(file.fileType)
+    }
 }
 
 internal fun treeFileTypeIcon(fileType: TreeFileType): ImageVector = when (fileType) {
@@ -1691,9 +2230,8 @@ internal fun CompactBreadcrumbNode(
     val colorScheme = AsmrTheme.colorScheme
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 2.dp, vertical = 2.dp),
+            .padding(horizontal = 4.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1788,7 +2326,7 @@ internal fun DirectoryBrowserPanel(
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String? = null,
+    emptyText: String = "当前目录暂无文件",
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
@@ -1797,7 +2335,6 @@ internal fun DirectoryBrowserPanel(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -1810,10 +2347,8 @@ internal fun DirectoryBrowserPanel(
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_count, selectedPaths.size)
-    } else {
-        stringResource(R.string.media_items, batchTargets.size)
+    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
+        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -1859,8 +2394,8 @@ internal fun DirectoryBrowserPanel(
                 state = browserListState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = maxHeight)
-                    .thinScrollbar(browserListState),
+                    .heightIn(max = maxHeight),
+                flingBehavior = rememberCalmScrollableFlingBehavior(),
                 contentPadding = PaddingValues(vertical = 6.dp)
             ) {
                 if (folders.isEmpty() && files.isEmpty()) {
@@ -1872,7 +2407,7 @@ internal fun DirectoryBrowserPanel(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = resolvedEmptyText,
+                                text = emptyText,
                                 color = AsmrTheme.colorScheme.textSecondary
                             )
                         }
@@ -1959,7 +2494,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.Rounded.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.action_favorite), style = MaterialTheme.typography.labelMedium)
+                Text("收藏", style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onOpenBatchPlaylistPicker(mediaItems) },
@@ -1969,7 +2504,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.list), style = MaterialTheme.typography.labelMedium)
+                Text("列表", style = MaterialTheme.typography.labelMedium)
             }
             OutlinedButton(
                 onClick = { onAddMediaItemsToQueue(mediaItems) },
@@ -1979,7 +2514,7 @@ internal fun DirectoryBatchBarEmbeddedV2(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.queue), style = MaterialTheme.typography.labelMedium)
+                Text("队列", style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -2083,13 +2618,22 @@ internal fun DirectoryActionGroupButton(
     icon: ImageVector,
     enabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDisabledClick: (() -> Unit)? = null
 ) {
+    val colorScheme = AsmrTheme.colorScheme
     TextButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.height(34.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        onClick = {
+            if (enabled) onClick() else onDisabledClick?.invoke()
+        },
+        enabled = enabled || onDisabledClick != null,
+        modifier = modifier.height(32.dp),
+        shape = RoundedCornerShape(10.dp),
+        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = colorScheme.primary,
+            disabledContentColor = colorScheme.textTertiary
+        )
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
         Spacer(modifier = Modifier.width(4.dp))
@@ -2137,7 +2681,10 @@ internal fun DirectoryBatchBarEmbeddedV3(
             )
         }
         if (showActions) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
@@ -2185,7 +2732,7 @@ internal fun DirectoryBrowserPanelV2(
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String? = null,
+    emptyText: String = "当前目录暂无文件",
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
@@ -2194,7 +2741,6 @@ internal fun DirectoryBrowserPanelV2(
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel-v2:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2207,15 +2753,11 @@ internal fun DirectoryBrowserPanelV2(
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_count, selectedPaths.size)
-    } else {
-        stringResource(R.string.media_items, batchTargets.size)
+    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
+        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
     }
-    val batchHintText = if (selectionMode) {
-        stringResource(R.string.tap_files_add)
-    } else {
-        stringResource(R.string.long_press_batch_actions)
+    val batchHintText = remember(selectionMode) {
+        if (selectionMode) "点击文件可增减选择" else "长按可批量操作"
     }
     val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
     val maxHeight = remember(screenHeight) {
@@ -2261,8 +2803,8 @@ internal fun DirectoryBrowserPanelV2(
                 state = browserListState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = maxHeight)
-                    .thinScrollbar(browserListState),
+                    .heightIn(max = maxHeight),
+                flingBehavior = rememberCalmScrollableFlingBehavior(),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 if (folders.isEmpty() && files.isEmpty()) {
@@ -2274,7 +2816,7 @@ internal fun DirectoryBrowserPanelV2(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = resolvedEmptyText,
+                                text = emptyText,
                                 color = AsmrTheme.colorScheme.textSecondary
                             )
                         }
@@ -2375,7 +2917,8 @@ internal fun DirectoryFolderRow(
 internal fun CompactDirectoryBreadcrumbContentV3(
     currentPath: String,
     breadcrumbs: List<DirectoryBreadcrumbSegment>,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val displayedCrumbs = remember(breadcrumbs) {
@@ -2389,11 +2932,11 @@ internal fun CompactDirectoryBreadcrumbContentV3(
         }
     }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         CompactBreadcrumbNode(
             text = stringResource(R.string.root_directory),
@@ -2402,10 +2945,11 @@ internal fun CompactDirectoryBreadcrumbContentV3(
             onClick = { onNavigate("") }
         )
         displayedCrumbs.forEach { crumb ->
-            Text(
-                text = "/",
-                style = MaterialTheme.typography.labelLarge,
-                color = colorScheme.textTertiary
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = colorScheme.textTertiary.copy(alpha = 0.72f),
+                modifier = Modifier.size(14.dp)
             )
             if (crumb.label == "..." && crumb.path.isBlank()) {
                 Text(
@@ -2429,40 +2973,88 @@ internal fun CompactDirectoryBreadcrumbContentV3(
 internal fun DirectoryFolderRowV3(
     title: String,
     onClick: () -> Unit,
-    position: DirectoryFolderPosition = DirectoryFolderPosition.Single,
+    onDelete: (() -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
+    val materialColorScheme = MaterialTheme.colorScheme
+    val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
-            .clip(directoryFolderShape(position))
-            .background(colorScheme.primary.copy(alpha = 0.08f))
+            .defaultMinSize(minHeight = 52.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Folder,
-            contentDescription = null,
-            tint = colorScheme.primary,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
+        Box(
+            modifier = Modifier.size(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Folder,
+                contentDescription = null,
+                tint = colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(11.dp))
         Text(
             text = title,
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
             color = colorScheme.textPrimary
         )
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
-            tint = colorScheme.textSecondary,
-            modifier = Modifier.size(18.dp)
+            tint = colorScheme.textTertiary,
+            modifier = Modifier.size(17.dp)
         )
+        if (onDelete != null) {
+            var showMenuExpanded by rememberSaveable(title) { mutableStateOf(false) }
+            Box {
+                IconButton(
+                    onClick = { showMenuExpanded = true },
+                    modifier = Modifier.size(AudioItemMenuButtonSize)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = "目录操作",
+                        tint = colorScheme.textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                MaterialTheme(
+                    colorScheme = materialColorScheme.copy(
+                        surface = dynamicContainerColor,
+                        surfaceContainer = dynamicContainerColor
+                    )
+                ) {
+                    DropdownMenu(
+                        expanded = showMenuExpanded,
+                        onDismissRequest = { showMenuExpanded = false },
+                        modifier = Modifier.background(dynamicContainerColor)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("删除目录", color = materialColorScheme.error) },
+                            onClick = {
+                                showMenuExpanded = false
+                                onDelete()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Rounded.Delete,
+                                    contentDescription = null,
+                                    tint = materialColorScheme.error
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -2505,21 +3097,22 @@ internal fun DirectoryBatchBarEmbeddedV4(
             )
         }
         if (showActions) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
-                Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.list),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                     enabled = hasMediaItems,
                     onClick = { onOpenBatchPlaylistPicker(mediaItems) }
                 )
-                Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.queue),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
@@ -2540,14 +3133,18 @@ internal fun DirectoryBatchBarEmbeddedV5(
     modifier: Modifier = Modifier,
     onAddToFavorites: (List<MediaItem>) -> Unit,
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
-    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit
+    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
+    showTranslateAction: Boolean = false,
+    subtitleGenerationText: String = "生成并翻译字幕",
+    subtitleGenerationEnabled: Boolean = false,
+    onGenerateSubtitles: () -> Unit = {},
+    onSubtitleGenerationUnavailable: (() -> Unit)? = null
 ) {
     val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
     val hasMediaItems = mediaItems.isNotEmpty()
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -2557,7 +3154,10 @@ internal fun DirectoryBatchBarEmbeddedV5(
         ) {
             Text(
                 text = summaryText,
-                style = MaterialTheme.typography.titleSmall.copy(lineHeight = 18.sp),
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 16.sp
+                ),
                 color = AsmrTheme.colorScheme.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -2571,14 +3171,16 @@ internal fun DirectoryBatchBarEmbeddedV5(
             )
         }
         if (showActions) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.action_favorite),
                     icon = Icons.Rounded.FavoriteBorder,
                     enabled = hasMediaItems,
                     onClick = { onAddToFavorites(mediaItems) }
                 )
-                Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.list),
                     icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
@@ -2589,14 +3191,30 @@ internal fun DirectoryBatchBarEmbeddedV5(
                         }
                     }
                 )
-                Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
                 DirectoryActionGroupButton(
                     text = stringResource(R.string.queue),
                     icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
                 )
+                if (showTranslateAction) {
+                    DirectoryActionGroupButton(
+                        text = subtitleGenerationText,
+                        icon = Icons.Rounded.Translate,
+                        enabled = subtitleGenerationEnabled,
+                        onClick = onGenerateSubtitles,
+                        onDisabledClick = onSubtitleGenerationUnavailable
+                    )
+                }
             }
+        } else if (showTranslateAction) {
+            DirectoryActionGroupButton(
+                text = subtitleGenerationText,
+                icon = Icons.Rounded.Translate,
+                enabled = subtitleGenerationEnabled,
+                onClick = onGenerateSubtitles,
+                onDisabledClick = onSubtitleGenerationUnavailable
+            )
         }
     }
 }
@@ -2610,25 +3228,32 @@ internal fun DirectoryBrowserPanelV4(
     folders: List<DirectoryFolderItem>,
     files: List<DirectoryFileItem>,
     onNavigate: (String) -> Unit,
+    onDeleteFolder: ((DirectoryFolderItem) -> Unit)? = null,
     onAddToFavorites: (List<MediaItem>) -> Unit,
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
+    onGenerateSubtitlesForCurrentDirectory: (() -> Unit)? = null,
+    subtitleGenerationForCurrentDirectoryEnabled: Boolean = false,
+    onGenerateSubtitlesForSelectedFiles: ((List<DirectoryFileItem>) -> Unit)? = null,
+    canGenerateSubtitleForSelectedFile: ((DirectoryFileItem) -> Boolean)? = null,
+    subtitleModelAvailable: Boolean = true,
+    onSubtitleGenerationUnavailable: (() -> Unit)? = null,
     animateIntro: Boolean = true,
     parentChromeState: CollapsibleHeaderState? = null,
     preferredPath: String = "",
     onTogglePreferredPath: ((Boolean) -> Unit)? = null,
     folderKeyPrefix: String,
     fileKeyPrefix: String,
-    emptyText: String? = null,
+    emptyText: String = "当前目录暂无文件",
     fileContent: @Composable (
         file: DirectoryFileItem,
         selectionMode: Boolean,
         selected: Boolean,
+        selectedPosition: DirectoryFolderPosition,
         enterSelectionMode: () -> Unit,
         onSelectedChange: (Boolean) -> Unit
     ) -> Unit
 ) {
-    val resolvedEmptyText = emptyText ?: stringResource(R.string.no_files_current_directory)
     val browserListState = rememberSaveable("dir-panel-v4:$panelKey", saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -2664,22 +3289,38 @@ internal fun DirectoryBrowserPanelV4(
     var selectionMode by remember(panelKey, currentPath) { mutableStateOf(false) }
     var preferredPathState by rememberSaveable(panelKey) { mutableStateOf(preferredPath.trim().trim('/')) }
     val selectedPaths = remember(panelKey, currentPath) { mutableStateListOf<String>() }
-    val selectedFiles = remember(files, selectedPaths.toList()) {
-        val selectedSet = selectedPaths.toSet()
-        files.filter { selectedSet.contains(it.path) }
+    val selectedPathSet = remember(selectedPaths.toList()) { selectedPaths.toSet() }
+    val selectedFiles = remember(files, selectedPathSet) {
+        files.filter { selectedPathSet.contains(it.path) }
     }
     val activeTargets = remember(selectionMode, batchTargets, selectedFiles) {
         if (selectionMode) selectedFiles.mapNotNull { it.playlistTarget } else batchTargets
     }
-    val batchSummaryText = if (selectionMode) {
-        stringResource(R.string.selected_count, selectedPaths.size)
-    } else {
-        stringResource(R.string.media_items, batchTargets.size)
+    val batchSummaryText = remember(selectionMode, selectedPaths.size, batchTargets.size) {
+        if (selectionMode) "已选 ${selectedPaths.size} 项" else "媒体 ${batchTargets.size} 项"
     }
-    val batchHintText = if (selectionMode) {
-        stringResource(R.string.tap_files_add)
+    val batchHintText = remember(selectionMode) {
+        if (selectionMode) "点击文件可增减选择" else "长按可批量操作"
+    }
+    val showTranslateAction = if (selectionMode) {
+        onGenerateSubtitlesForSelectedFiles != null
     } else {
-        stringResource(R.string.long_press_batch_actions)
+        onGenerateSubtitlesForCurrentDirectory != null
+    }
+    val hasSubtitleGenerationTargets = if (selectionMode) {
+        val predicate = canGenerateSubtitleForSelectedFile
+        predicate != null && selectedFiles.any(predicate)
+    } else {
+        subtitleGenerationForCurrentDirectoryEnabled
+    }
+    val subtitleGenerationEnabled = hasSubtitleGenerationTargets && subtitleModelAvailable
+    val onGenerateSubtitles: () -> Unit = {
+        if (selectionMode) {
+            onGenerateSubtitlesForSelectedFiles?.invoke(selectedFiles)
+        } else {
+            onGenerateSubtitlesForCurrentDirectory?.invoke()
+        }
+        Unit
     }
     LaunchedEffect(preferredPath) {
         preferredPathState = preferredPath.trim().trim('/')
@@ -2692,6 +3333,8 @@ internal fun DirectoryBrowserPanelV4(
     val fixedHeight = remember(screenHeight) {
         (screenHeight * 0.48f).coerceIn(240.dp, 460.dp)
     }
+    val colorScheme = AsmrTheme.colorScheme
+    val sectionDividerColor = colorScheme.textTertiary.copy(alpha = if (colorScheme.isDark) 0.14f else 0.09f)
 
     LaunchedEffect(panelKey, currentPath) {
         browserListState.scrollToItem(0)
@@ -2699,22 +3342,25 @@ internal fun DirectoryBrowserPanelV4(
 
     Surface(
         shape = RoundedCornerShape(DirectoryBrowserPanelCornerRadius),
-        tonalElevation = 1.dp,
-        color = AsmrTheme.colorScheme.surface.copy(alpha = 0.44f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        color = Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AlbumDetailHorizontalPadding, vertical = DirectoryBrowserPanelVerticalPadding)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
             CompactDirectoryBreadcrumbContentV3(
                 currentPath = currentPath,
                 breadcrumbs = breadcrumbs,
-                onNavigate = onNavigate
+                onNavigate = onNavigate,
+                modifier = Modifier.fillMaxWidth()
             )
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp),
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
+                color = sectionDividerColor
             )
             Row(
                 modifier = dlsiteSectionRevealModifier(
@@ -2734,41 +3380,31 @@ internal fun DirectoryBrowserPanelV4(
                     modifier = Modifier.weight(1f),
                     onAddToFavorites = onAddToFavorites,
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
-                    onAddMediaItemsToQueue = onAddMediaItemsToQueue
+                    onAddMediaItemsToQueue = onAddMediaItemsToQueue,
+                    showTranslateAction = showTranslateAction,
+                    subtitleGenerationText = if (selectionMode) "翻译选中" else "批量翻译",
+                    subtitleGenerationEnabled = subtitleGenerationEnabled,
+                    onGenerateSubtitles = onGenerateSubtitles,
+                    onSubtitleGenerationUnavailable = onSubtitleGenerationUnavailable.takeIf {
+                        hasSubtitleGenerationTargets && !subtitleModelAvailable
+                    }
                 )
                 if (onTogglePreferredPath != null && !selectionMode) {
                     val preferredIcon = if (isPreferredPath) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder
-                    val preferredTextColor = if (isPreferredPath) AsmrTheme.colorScheme.primary else AsmrTheme.colorScheme.textSecondary
-                    val preferredContainerColor = AsmrTheme.colorScheme.primary.copy(alpha = if (AsmrTheme.colorScheme.isDark) 0.24f else 0.14f)
-                    val preferredButton: @Composable (@Composable () -> Unit) -> Unit = { content ->
-                        if (isPreferredPath) {
-                            FilledTonalButton(
-                                onClick = {
-                                    preferredPathState = ""
-                                    onTogglePreferredPath(false)
-                                },
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = preferredContainerColor,
-                                    contentColor = preferredTextColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(34.dp)
-                            ) { content() }
-                        } else {
-                            TextButton(
-                                onClick = {
-                                    preferredPathState = normalizedCurrentPath
-                                    onTogglePreferredPath(true)
-                                },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = preferredTextColor
-                                ),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                modifier = Modifier.height(34.dp)
-                            ) { content() }
-                        }
-                    }
-                    preferredButton {
+                    val preferredTextColor = if (isPreferredPath) colorScheme.primary else colorScheme.textSecondary
+                    TextButton(
+                        onClick = {
+                            val enable = !isPreferredPath
+                            preferredPathState = if (enable) normalizedCurrentPath else ""
+                            onTogglePreferredPath(enable)
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = preferredTextColor
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
                         Icon(
                             imageVector = preferredIcon,
                             contentDescription = null,
@@ -2785,82 +3421,127 @@ internal fun DirectoryBrowserPanelV4(
                 }
             }
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 12.dp),
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
+                color = sectionDividerColor
             )
             LazyColumn(
                 state = browserListState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(fixedHeight)
-                    .nestedScroll(listNestedScrollConnection)
-                    .thinScrollbar(browserListState),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    .nestedScroll(listNestedScrollConnection),
+                flingBehavior = rememberCalmScrollableFlingBehavior(),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 9.dp)
             ) {
-                if (folders.isEmpty() && files.isEmpty()) {
-                    item(key = "empty") {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(fixedHeight - 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = resolvedEmptyText,
-                                color = AsmrTheme.colorScheme.textSecondary
-                            )
-                        }
-                    }
-                } else {
-                    items(
-                        items = folders,
-                        key = { folder -> "$folderKeyPrefix:${folder.path}" },
-                        contentType = { "folder" }
-                    ) { folder ->
-                        val position = directoryFolderPosition(
-                            index = folders.indexOf(folder),
-                            total = folders.size,
-                        )
-                        DirectoryFolderRowV3(
-                            title = folder.title,
-                            onClick = { onNavigate(folder.path) },
-                            position = position,
-                        )
-                    }
-                    items(
-                        items = files,
-                        key = { file -> "$fileKeyPrefix:${file.path}" },
-                        contentType = { "file" }
-                    ) { file ->
-                        val isSelected = selectedPaths.contains(file.path)
-                        fileContent(
-                            file,
-                            selectionMode,
-                            isSelected,
-                            {
-                                selectionMode = true
-                                if (!selectedPaths.contains(file.path)) {
-                                    selectedPaths.add(file.path)
-                                }
-                            },
-                            { checked ->
-                                if (checked) {
-                                    if (!selectedPaths.contains(file.path)) {
-                                        selectedPaths.add(file.path)
+                    if (folders.isEmpty() && files.isEmpty()) {
+                        item(key = "empty") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(fixedHeight - 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(
+                                                colorScheme.primary.copy(
+                                                    alpha = if (colorScheme.isDark) 0.17f else 0.09f
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.FolderOpen,
+                                            contentDescription = null,
+                                            tint = colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
                                     }
-                                    selectionMode = true
-                                } else {
-                                    selectedPaths.remove(file.path)
-                                    if (selectedPaths.isEmpty()) {
-                                        selectionMode = false
-                                    }
+                                    Text(
+                                        text = emptyText,
+                                        color = colorScheme.textSecondary,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                                    )
                                 }
                             }
-                        )
+                        }
+                    } else {
+                        itemsIndexed(
+                            items = folders,
+                            key = { _, folder -> "$folderKeyPrefix:${folder.path}" },
+                            contentType = { _, _ -> "folder" }
+                        ) { index, folder ->
+                            Column {
+                                DirectoryFolderRowV3(
+                                    title = folder.title,
+                                    onClick = { onNavigate(folder.path) },
+                                    onDelete = onDeleteFolder?.let { deleteFolder ->
+                                        { deleteFolder(folder) }
+                                    },
+                                )
+                                if (index < folders.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 55.dp, end = 12.dp),
+                                        thickness = 0.5.dp,
+                                        color = sectionDividerColor
+                                    )
+                                }
+                            }
+                        }
+                        itemsIndexed(
+                            items = files,
+                            key = { _, file -> "$fileKeyPrefix:${file.path}" },
+                            contentType = { _, _ -> "file" }
+                        ) { index, file ->
+                            val isSelected = selectedPathSet.contains(file.path)
+                            val selectedPosition = directorySelectedItemPosition(
+                                selected = isSelected,
+                                previousSelected = index > 0 && selectedPathSet.contains(files[index - 1].path),
+                                nextSelected = index < files.lastIndex && selectedPathSet.contains(files[index + 1].path),
+                            )
+                            Column {
+                                fileContent(
+                                    file,
+                                    selectionMode,
+                                    isSelected,
+                                    selectedPosition,
+                                    {
+                                        selectionMode = true
+                                        if (!selectedPaths.contains(file.path)) {
+                                            selectedPaths.add(file.path)
+                                        }
+                                    },
+                                    { checked ->
+                                        if (checked) {
+                                            if (!selectedPaths.contains(file.path)) {
+                                                selectedPaths.add(file.path)
+                                            }
+                                            selectionMode = true
+                                        } else {
+                                            selectedPaths.remove(file.path)
+                                            if (selectedPaths.isEmpty()) {
+                                                selectionMode = false
+                                            }
+                                        }
+                                    }
+                                )
+                                if (index < files.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 50.dp, end = 12.dp),
+                                        thickness = 0.5.dp,
+                                        color = sectionDividerColor
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
         }
     }
 }
@@ -2873,14 +3554,18 @@ internal fun DirectoryFileRow(
     onPrimary: () -> Unit,
     selectionMode: Boolean = false,
     selected: Boolean = false,
+    selectedPosition: DirectoryFolderPosition = DirectoryFolderPosition.Single,
     onEnterSelectionMode: (() -> Unit)? = null,
     onSelectedChange: ((Boolean) -> Unit)? = null,
     onSetAsCover: (() -> Unit)? = null,
     onDownload: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
+    onGenerateSubtitles: (() -> Unit)? = null,
+    subtitleGenerationEnabled: Boolean = true,
     onManageTags: (() -> Unit)? = null,
-    onRemoveFromAlbum: (() -> Unit)? = null
+    onRemoveFromAlbum: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val materialColorScheme = MaterialTheme.colorScheme
@@ -2897,21 +3582,26 @@ internal fun DirectoryFileRow(
             is FileSizeSource.Remote -> loadRemoteFileSize(sizeSource.url)?.let(Formatting::formatFileSize)
         }
     }
-    val fileTypeText = fileTypeLabel(file.fileType)
-    val metaLine = remember(file.fileType, file.durationSeconds, sizeText, fileTypeText) {
+    val metaLine = remember(file.fileType, file.isOnline, file.durationSeconds, sizeText) {
         listOf(
-            fileTypeText,
+            directoryFileTypeLabel(file),
             Formatting.formatTrackSeconds(file.durationSeconds).takeIf { it.isNotBlank() },
             sizeText
         ).filterNotNull().joinToString(" · ")
     }
 
     val showPrimaryAction = file.isPlayable
-    val showMenu = showPrimaryAction || onDownload != null || onAddToQueue != null || onAddToPlaylist != null || onManageTags != null || onRemoveFromAlbum != null
+    val showMenu = showPrimaryAction || onDownload != null || onAddToQueue != null || onAddToPlaylist != null || onGenerateSubtitles != null || onManageTags != null || onRemoveFromAlbum != null || onDelete != null
     val showTrailing = selectionMode || onSetAsCover != null || file.showSubtitleStamp || showMenu
+    val rowContainerColor = if (selected) {
+        colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.18f else 0.09f)
+    } else {
+        Color.Transparent
+    }
 
     Surface(
-        color = Color.Transparent,
+        shape = if (selected) directoryFileSelectionShape(selectedPosition) else RoundedCornerShape(DirectoryFileRowCornerRadius),
+        color = rowContainerColor,
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -2930,26 +3620,19 @@ internal fun DirectoryFileRow(
                 }
             )
     ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = file.title,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = colorScheme.textPrimary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-            },
-            supportingContent = {
-                if (metaLine.isNotBlank()) {
-                    Text(
-                        text = metaLine,
-                        color = colorScheme.textSecondary,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            },
-            leadingContent = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 58.dp)
+                .padding(start = 8.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(
+                    if (file.fileType == TreeFileType.Image && file.thumbnailModel != null) 42.dp else 32.dp
+                ),
+                contentAlignment = Alignment.Center
+            ) {
                 if (file.fileType == TreeFileType.Image && file.thumbnailModel != null) {
                     AsmrAsyncImage(
                         model = file.thumbnailModel,
@@ -2961,144 +3644,224 @@ internal fun DirectoryFileRow(
                         placeholderCornerRadius = 8
                     )
                 } else {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(22.dp)
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = file.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = colorScheme.textPrimary,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                if (metaLine.isNotBlank()) {
+                    Text(
+                        text = metaLine,
+                        color = colorScheme.textSecondary,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
-            },
-            trailingContent = if (showTrailing) {
-                {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (file.showSubtitleStamp) {
-                            SubtitleStamp(modifier = Modifier.padding(end = AudioItemSubtitleStampSpacing))
+            }
+            if (showTrailing) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (file.showSubtitleStamp) {
+                        SubtitleStamp(modifier = Modifier.padding(end = AudioItemSubtitleStampSpacing))
+                    }
+                    if (selectionMode && onSelectedChange != null) {
+                        Box(
+                            modifier = Modifier.size(AudioItemMenuButtonSize),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = if (selected) colorScheme.primary else colorScheme.textTertiary,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { onSelectedChange(!selected) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = "已选择",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.size(18.dp))
+                                }
+                            }
                         }
-                        if (selectionMode && onSelectedChange != null) {
-                            Checkbox(
-                                checked = selected,
-                                onCheckedChange = { checked -> onSelectedChange(checked) }
+                    } else if (onSetAsCover != null) {
+                        IconButton(
+                            onClick = onSetAsCover,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Photo,
+                                contentDescription = stringResource(R.string.set_as_cover),
+                                tint = colorScheme.textSecondary,
+                                modifier = Modifier.size(20.dp)
                             )
-                        } else if (onSetAsCover != null) {
+                        }
+                    }
+                    if (!selectionMode && showMenu) {
+                        var showMenuExpanded by rememberSaveable(file.path) { mutableStateOf(false) }
+                        Box {
                             IconButton(
-                                onClick = onSetAsCover,
-                                modifier = Modifier.size(32.dp)
+                                onClick = { showMenuExpanded = true },
+                                modifier = Modifier.size(AudioItemMenuButtonSize)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Photo,
-                                    contentDescription = stringResource(R.string.set_as_cover),
+                                    imageVector = Icons.Rounded.MoreVert,
+                                    contentDescription = stringResource(R.string.more_actions),
                                     tint = colorScheme.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                        }
-                        if (!selectionMode && showMenu) {
-                            var showMenuExpanded by rememberSaveable(file.path) { mutableStateOf(false) }
-                            Box {
-                                IconButton(
-                                    onClick = { showMenuExpanded = true },
-                                    modifier = Modifier.size(AudioItemMenuButtonSize)
+                            MaterialTheme(
+                                colorScheme = materialColorScheme.copy(
+                                    surface = dynamicContainerColor,
+                                    surfaceContainer = dynamicContainerColor
+                                )
+                            ) {
+                                DropdownMenu(
+                                    expanded = showMenuExpanded,
+                                    onDismissRequest = { showMenuExpanded = false },
+                                    modifier = Modifier.background(dynamicContainerColor)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.MoreVert,
-                                        contentDescription = stringResource(R.string.more_actions),
-                                        tint = colorScheme.textSecondary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                MaterialTheme(
-                                    colorScheme = materialColorScheme.copy(
-                                        surface = dynamicContainerColor,
-                                        surfaceContainer = dynamicContainerColor
-                                    )
-                                ) {
-                                    DropdownMenu(
-                                        expanded = showMenuExpanded,
-                                        onDismissRequest = { showMenuExpanded = false },
-                                        modifier = Modifier.background(dynamicContainerColor)
-                                    ) {
-                                        if (showPrimaryAction) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.playback)) },
-                                                onClick = {
-                                                    onPrimary()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
-                                                }
-                                            )
+                                    if (showPrimaryAction) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.playback)) },
+                                            onClick = {
+                                                onPrimary()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = colorScheme.primary)
+                                            }
+                                        )
+                                    }
+                                    if (onDownload != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.download_confirm)) },
+                                            onClick = {
+                                                onDownload()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Rounded.Download, contentDescription = null, tint = colorScheme.textSecondary)
+                                            }
+                                        )
+                                    }
+                                    if (onAddToQueue != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.add_play_queue)) },
+                                            onClick = {
+                                                onAddToQueue()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, tint = colorScheme.textSecondary)
+                                            }
+                                        )
+                                    }
+                                    if (onAddToPlaylist != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.add_my_list)) },
+                                            onClick = {
+                                                onAddToPlaylist()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.textSecondary)
+                                            }
+                                        )
+                                    }
+                                    if (onGenerateSubtitles != null) {
+                                        val subtitleGenerationColor = if (subtitleGenerationEnabled) {
+                                            colorScheme.textSecondary
+                                        } else {
+                                            colorScheme.textTertiary
                                         }
-                                        if (onDownload != null) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.download_confirm)) },
-                                                onClick = {
-                                                    onDownload()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.Rounded.Download, contentDescription = null, tint = colorScheme.textSecondary)
-                                                }
-                                            )
-                                        }
-                                        if (onAddToQueue != null) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.add_play_queue)) },
-                                                onClick = {
-                                                    onAddToQueue()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, tint = colorScheme.textSecondary)
-                                                }
-                                            )
-                                        }
-                                        if (onAddToPlaylist != null) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.add_my_list)) },
-                                                onClick = {
-                                                    onAddToPlaylist()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.textSecondary)
-                                                }
-                                            )
-                                        }
-                                        if (onManageTags != null) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.tag_management)) },
-                                                onClick = {
-                                                    onManageTags()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null, tint = colorScheme.textSecondary)
-                                                }
-                                            )
-                                        }
-                                        if (onRemoveFromAlbum != null) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.remove_album)) },
-                                                onClick = {
-                                                    onRemoveFromAlbum()
-                                                    showMenuExpanded = false
-                                                },
-                                                leadingIcon = {
-                                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = colorScheme.textSecondary)
-                                                }
-                                            )
-                                        }
+                                        DropdownMenuItem(
+                                            text = { Text("生成并翻译字幕", color = subtitleGenerationColor) },
+                                            onClick = {
+                                                onGenerateSubtitles()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Rounded.Subtitles, contentDescription = null, tint = subtitleGenerationColor)
+                                            }
+                                        )
+                                    }
+                                    if (onManageTags != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.tag_management)) },
+                                            onClick = {
+                                                onManageTags()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null, tint = colorScheme.textSecondary)
+                                            }
+                                        )
+                                    }
+                                    if (onRemoveFromAlbum != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.remove_album)) },
+                                            onClick = {
+                                                onRemoveFromAlbum()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Rounded.Delete, contentDescription = null, tint = colorScheme.textSecondary)
+                                            }
+                                        )
+                                    }
+                                    if (onDelete != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("删除", color = materialColorScheme.error) },
+                                            onClick = {
+                                                onDelete()
+                                                showMenuExpanded = false
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Rounded.Delete,
+                                                    contentDescription = null,
+                                                    tint = materialColorScheme.error
+                                                )
+                                            }
+                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
-            } else null,
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-        )
+            }
+        }
     }
 }
 
@@ -3156,6 +3919,7 @@ internal fun TreeFileRow(
     depth: Int,
     fileType: TreeFileType,
     isPlayable: Boolean,
+    isOnline: Boolean = true,
     showSubtitleStamp: Boolean = false,
     thumbnailModel: Any? = null,
     onPrimary: () -> Unit,
@@ -3181,6 +3945,11 @@ internal fun TreeFileRow(
         val showPrimaryAction = isPlayable
         val showMenu = showPrimaryAction || onDownload != null || onAddToQueue != null || onAddToPlaylist != null || onManageTags != null || onRemoveFromAlbum != null
         val showTrailing = onSetAsCover != null || showMenu
+        val metaLine = if (fileType == TreeFileType.Audio) {
+            if (isOnline) "在线音频" else "本地音频"
+        } else {
+            fileTypeLabel(fileType)
+        }
         ListItem(
             headlineContent = { 
                 Text(
@@ -3190,6 +3959,13 @@ internal fun TreeFileRow(
                     color = colorScheme.textSecondary,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                 ) 
+            },
+            supportingContent = {
+                Text(
+                    text = metaLine,
+                    color = colorScheme.textTertiary,
+                    style = MaterialTheme.typography.bodySmall
+                )
             },
             leadingContent = {
                 Row(verticalAlignment = Alignment.CenterVertically) {

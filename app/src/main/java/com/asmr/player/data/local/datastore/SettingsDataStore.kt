@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.preferences.core.*
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
+import com.asmr.player.data.settings.NowPlayingHomeLayoutMode
+import com.asmr.player.data.settings.NowPlayingLyricsSettings
 import com.asmr.player.data.settings.settingsDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +40,9 @@ class SettingsDataStore @Inject constructor(
     private val coverBackgroundEnabledKey = booleanPreferencesKey("cover_background_enabled")
     private val coverBackgroundClarityKey = floatPreferencesKey("cover_background_clarity")
     private val coverPreviewModeKey = stringPreferencesKey("cover_preview_mode")
+    private val nowPlayingHomeLayoutModeKey = stringPreferencesKey("now_playing_home_layout_mode")
+    private val nowPlayingHomeLayoutHintDismissedKey = booleanPreferencesKey("now_playing_home_layout_hint_dismissed")
+    private val nowPlayingLyricsHighlightFontSizeKey = floatPreferencesKey("now_playing_lyrics_highlight_font_size")
     private val lyricsPageFontSizeKey = floatPreferencesKey("lyrics_page_font_size")
     private val lyricsPageStrokeWidthKey = floatPreferencesKey("lyrics_page_stroke_width")
     private val lyricsPageLineHeightMultiplierKey = floatPreferencesKey("lyrics_page_line_height_multiplier")
@@ -47,6 +52,7 @@ class SettingsDataStore @Inject constructor(
     private val miniPlayerDisplayModeKey = stringPreferencesKey("mini_player_display_mode")
     private val bottomChromePinnedRouteKey = stringPreferencesKey("bottom_chrome_pinned_route")
     private val autoUpdateCheckEnabledKey = booleanPreferencesKey("auto_update_check_enabled")
+    private val lastHandledClipboardEventKey = stringPreferencesKey("last_handled_clipboard_event")
 
     val theme: Flow<String> = context.settingsDataStore.data.map { it[themeKey] ?: "system" }
     val sfwMode: Flow<Boolean> = context.settingsDataStore.data.map { it[sfwModeKey] ?: false }
@@ -85,6 +91,17 @@ class SettingsDataStore @Inject constructor(
     val coverPreviewMode: Flow<CoverPreviewMode> = context.settingsDataStore.data.map {
         CoverPreviewMode.fromStorageValue(it[coverPreviewModeKey])
     }
+    val nowPlayingHomeLayoutMode: Flow<NowPlayingHomeLayoutMode> = context.settingsDataStore.data.map {
+        NowPlayingHomeLayoutMode.fromStorageValue(it[nowPlayingHomeLayoutModeKey])
+    }
+    val nowPlayingHomeLayoutHintDismissed: Flow<Boolean> = context.settingsDataStore.data.map {
+        it[nowPlayingHomeLayoutHintDismissedKey] ?: false
+    }
+    val nowPlayingLyricsSettings: Flow<NowPlayingLyricsSettings> = context.settingsDataStore.data.map { prefs ->
+        NowPlayingLyricsSettings(
+            highlightFontSizeSp = prefs[nowPlayingLyricsHighlightFontSizeKey] ?: 24f
+        )
+    }
     val lyricsPageSettings: Flow<LyricsPageSettings> = context.settingsDataStore.data.map { prefs ->
         LyricsPageSettings(
             fontSizeSp = prefs[lyricsPageFontSizeKey] ?: 21f,
@@ -103,6 +120,9 @@ class SettingsDataStore @Inject constructor(
     }
     val autoUpdateCheckEnabled: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
         prefs[autoUpdateCheckEnabledKey] ?: true
+    }
+    val lastHandledClipboardEvent: Flow<String?> = context.settingsDataStore.data.map { prefs ->
+        prefs[lastHandledClipboardEventKey]
     }
 
     suspend fun setTheme(theme: String) {
@@ -164,6 +184,18 @@ class SettingsDataStore @Inject constructor(
         context.settingsDataStore.edit { it[coverPreviewModeKey] = mode.storageValue }
     }
 
+    suspend fun setNowPlayingHomeLayoutMode(
+        mode: NowPlayingHomeLayoutMode,
+        dismissHint: Boolean = false
+    ) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[nowPlayingHomeLayoutModeKey] = mode.storageValue
+            if (dismissHint) {
+                prefs[nowPlayingHomeLayoutHintDismissedKey] = true
+            }
+        }
+    }
+
     suspend fun setLyricsPageSettings(settings: LyricsPageSettings) {
         context.settingsDataStore.edit {
             it[lyricsPageFontSizeKey] = settings.fontSizeSp
@@ -171,6 +203,12 @@ class SettingsDataStore @Inject constructor(
             it[lyricsPageLineHeightMultiplierKey] = settings.lineHeightMultiplier
             it[lyricsPageAlignKey] = settings.align
             it[lyricsPageDisplayAreaModeKey] = settings.displayAreaMode
+        }
+    }
+
+    suspend fun setNowPlayingLyricsSettings(settings: NowPlayingLyricsSettings) {
+        context.settingsDataStore.edit {
+            it[nowPlayingLyricsHighlightFontSizeKey] = settings.highlightFontSizeSp
         }
     }
 
@@ -195,6 +233,14 @@ class SettingsDataStore @Inject constructor(
     suspend fun setAutoUpdateCheckEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { prefs ->
             prefs[autoUpdateCheckEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setLastHandledClipboardEvent(eventKey: String) {
+        val normalized = eventKey.trim()
+        if (normalized.isBlank()) return
+        context.settingsDataStore.edit { prefs ->
+            prefs[lastHandledClipboardEventKey] = normalized
         }
     }
 

@@ -51,11 +51,22 @@ interface AlbumDao {
     @Query("SELECT * FROM albums WHERE workId = :workId COLLATE NOCASE OR rjCode = :workId COLLATE NOCASE ORDER BY id ASC")
     suspend fun getAlbumsByWorkIdOnce(workId: String): List<AlbumEntity>
 
+    @Query(
+        "SELECT * FROM albums WHERE " +
+            "REPLACE(REPLACE(UPPER(TRIM(workId)), ' ', ''), char(9), '') = UPPER(:workId) OR " +
+            "REPLACE(REPLACE(UPPER(TRIM(rjCode)), ' ', ''), char(9), '') = UPPER(:workId) " +
+            "ORDER BY id ASC"
+    )
+    suspend fun getAlbumsByNormalizedWorkIdOnce(workId: String): List<AlbumEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAlbum(album: AlbumEntity): Long
 
     @Update
     suspend fun updateAlbum(album: AlbumEntity)
+
+    @Query("UPDATE albums SET displayTitle = :displayTitle WHERE id = :albumId")
+    suspend fun updateAlbumDisplayTitle(albumId: Long, displayTitle: String)
 
     @Delete
     suspend fun deleteAlbum(album: AlbumEntity)

@@ -746,4 +746,26 @@
     <string name="works_blocked" formatted="false">%1$s ผลงานถูกบล็อก</string>
     <string name="you_need_log">คุณต้องเข้าสู่ระบบ DLsite ก่อน จึงจะใช้การเล่น/ดาวน์โหลดที่ซื้อแล้วได้</string>
     <string name="you_tap_play">เมื่อแตะเล่น ระดับเสียงจะค่อยๆ เพิ่มจากเบาไปเป็นปกติอย่างนุ่มนวลภายในระยะเวลาที่กำหนด</string>
+    <string name="all_works">ผลงานทั้งหมด</string>
+    <string name="search_sort_collected_new">เพิ่งบันทึกล่าสุด</string>
+    <string name="nav_listening_calendar">แดชบอร์ด ASMR</string>
+    <string name="search_pull_down_refresh">ดึงลงเพื่อรีเฟรช</string>
+    <string name="search_release_refresh">ปล่อยเพื่อรีเฟรช</string>
+    <string name="search_refreshing">กำลังรีเฟรช</string>
+    <string name="search_pull_up_next_page">ดึงขึ้นสำหรับหน้าถัดไป</string>
+    <string name="search_refreshing_page">กำลังเปลี่ยนหน้า</string>
+    <string name="search_work_filters">ตัวกรองผลงาน</string>
+    <string name="search_work_language">ภาษาผลงาน</string>
+    <string name="search_has_subtitle">มีซับไตเติล</string>
+    <string name="search_all_ages">ทุกวัย</string>
+    <string name="search_scope_no_work_filters">ไม่รองรับตัวกรองผลงานในขอบเขตนี้</string>
+    <string name="search_work_filters_disabled">ยังไม่ได้เปิดตัวกรองผลงาน</string>
+    <string name="search_work_filters_one_enabled">เปิดตัวกรองผลงาน 1 รายการ</string>
+    <string name="search_work_filters_two_enabled">เปิดตัวกรองผลงาน 2 รายการ</string>
+    <string name="search_filtered">กรองแล้ว</string>
+    <string name="search_not_filtered">ยังไม่ได้กรอง</string>
+    <string name="search_in_progress_retry_later">กำลังค้นหา โปรดลองอีกครั้งในภายหลัง</string>
+    <string name="blocked_keyword_exists" formatted="false">มีคำที่บล็อกอยู่แล้ว: %1$s</string>
+    <string name="blocked_keyword_added" formatted="false">เพิ่มคำที่บล็อกแล้ว: %1$s</string>
+    <string name="content_label">เนื้อหา</string>
 </resources>

@@ -26,8 +26,14 @@ object EqualizerPresets {
         "deep" to R.string.ear_licking,
         "bright" to R.string.tapping_crisp,
         "soft" to R.string.tapping_dull,
+        "vocal" to R.string.vocal_enhancement_vocal,
         "custom" to R.string.custom,
         "默认" to R.string.eq_preset_default,
+        "清亮 (Bright)" to R.string.tapping_crisp,
+        "低音增强 (Bass Boost)" to R.string.ear_licking,
+        "拍打-清脆 (Tapping-Crisp)" to R.string.tapping_crisp,
+        "拍打-沉闷 (Tapping-Dull)" to R.string.tapping_dull,
+        "人声增强 (Vocal)" to R.string.vocal_enhancement_vocal,
         "耳语增强" to R.string.whisper,
         "低沉氛围" to R.string.ear_licking,
         "明亮清晰" to R.string.tapping_crisp,
@@ -39,32 +45,32 @@ object EqualizerPresets {
 
     val DefaultPresets = listOf(
         AsmrPreset(
-            name = "default",
+            name = "默认",
             bandLevels = listOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
             virtualizerStrength = 0
         ),
         AsmrPreset(
-            name = "whisper",
+            name = "清亮 (Bright)",
             bandLevels = listOf(-400, -300, -200, -100, 0, 200, 400, 700, 900, 800),
             virtualizerStrength = 200
         ),
         AsmrPreset(
-            name = "deep",
+            name = "低音增强 (Bass Boost)",
             bandLevels = listOf(300, 250, 200, 150, 100, 0, -100, -250, -400, -500),
             virtualizerStrength = 500
         ),
         AsmrPreset(
-            name = "bright",
+            name = "拍打-清脆 (Tapping-Crisp)",
             bandLevels = listOf(-300, -200, -100, 0, 150, 300, 650, 900, 1000, 800),
             virtualizerStrength = 100
         ),
         AsmrPreset(
-            name = "soft",
+            name = "拍打-沉闷 (Tapping-Dull)",
             bandLevels = listOf(400, 500, 600, 400, 150, -200, -500, -800, -1100, -1200),
             virtualizerStrength = 150
         ),
         AsmrPreset(
-            name = "vocal",
+            name = "人声增强 (Vocal)",
             bandLevels = listOf(-300, -200, -100, 100, 300, 700, 900, 650, 200, -150),
             virtualizerStrength = 0
         )

@@ -746,4 +746,26 @@
     <string name="works_blocked" formatted="false">%1$s works blocked</string>
     <string name="you_need_log">You need to log in to DLsite first to use purchased playback/download</string>
     <string name="you_tap_play">When you tap play, the volume will smoothly rise from low to normal over the set duration.</string>
+    <string name="all_works">All works</string>
+    <string name="search_sort_collected_new">Recently collected</string>
+    <string name="nav_listening_calendar">ASMR Dashboard</string>
+    <string name="search_pull_down_refresh">Pull down to refresh</string>
+    <string name="search_release_refresh">Release to refresh</string>
+    <string name="search_refreshing">Refreshing</string>
+    <string name="search_pull_up_next_page">Pull up for next page</string>
+    <string name="search_refreshing_page">Turning page</string>
+    <string name="search_work_filters">Work filters</string>
+    <string name="search_work_language">Work language</string>
+    <string name="search_has_subtitle">With subtitles</string>
+    <string name="search_all_ages">All ages</string>
+    <string name="search_scope_no_work_filters">Work filters are not supported in this scope</string>
+    <string name="search_work_filters_disabled">No work filters enabled</string>
+    <string name="search_work_filters_one_enabled">1 work filter enabled</string>
+    <string name="search_work_filters_two_enabled">2 work filters enabled</string>
+    <string name="search_filtered">Filtered</string>
+    <string name="search_not_filtered">Not filtered</string>
+    <string name="search_in_progress_retry_later">Search is in progress, please try again later</string>
+    <string name="blocked_keyword_exists" formatted="false">Blocked keyword already exists: %1$s</string>
+    <string name="blocked_keyword_added" formatted="false">Blocked keyword added: %1$s</string>
+    <string name="content_label">Content</string>
 </resources>

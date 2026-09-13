@@ -183,21 +183,16 @@ class SearchCollectedLatencyBenchmarkTest {
             val normalizedOrder = order.trim().ifBlank { "trend" }
             val o = URLEncoder.encode(normalizedOrder, "UTF-8")
             val p = page.coerceAtLeast(1)
-            val modernBase =
-                "https://www.dlsite.com/maniax/fsr/=/language/cn/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/" +
-                    "order%5B0%5D/$o/work_type_category%5B0%5D/audio/per_page/30/show_type/3/from/fsr.again"
-            val modern = "$modernBase/keyword/$encodedKeyword/page/$p"
-            val legacyBase =
-                "https://www.dlsite.com/maniax/fsr/=/language/cn/sex_category%5B0%5D/male/work_category%5B0%5D/doujin/work_type_category%5B0%5D/audio/per_page/30/show_type/1/keyword/"
-            val legacy = "$legacyBase$encodedKeyword/page/$p/without_order/1/order/$o"
-
-            val urls = listOf(modern, legacy)
+            val searchUrl =
+                "https://www.dlsite.com/maniax/fsr/=/work_category%5B0%5D/doujin/order/$o/" +
+                    "work_type%5B0%5D/SOU/keyword/$encodedKeyword/page/$p/from/left_pain.work_type/?locale=ja_JP"
+            val urls = listOf(searchUrl)
             var last: List<DlsiteItem> = emptyList()
             for (u in urls) {
                 val doc = Jsoup.connect(u)
                     .userAgent(NetworkHeaders.USER_AGENT)
-                    .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7")
-                    .header("Cookie", "locale=zh_CN; adultchecked=1")
+                    .header("Accept-Language", "ja-JP,ja;q=0.9,en;q=0.8")
+                    .header("Cookie", "locale=ja_JP; adultchecked=1")
                     .ignoreHttpErrors(true)
                     .timeout(15000)
                     .get()
@@ -280,13 +275,13 @@ class SearchCollectedLatencyBenchmarkTest {
             if (code == 404) continue
             if (code !in 200..299) return CollectedResult.Unknown
             if (body.isBlank()) return CollectedResult.Unknown
-            val obj = runCatching { Gson().fromJson(body, Map::class.java) as? Map<*, *> }.getOrNull() ?: return CollectedResult.Unknown
+            val obj = runCatching { Gson().fromJson(body, Map::class.java) }.getOrNull() ?: return CollectedResult.Unknown
             val sourceId = (obj["source_id"] as? String).orEmpty().trim().uppercase()
             val original = (obj["original_workno"] as? String).orEmpty().trim().uppercase()
             if (sourceId == normalized || original == normalized) return CollectedResult.Collected
             val editions = obj["language_editions"] as? List<*> ?: emptyList<Any>()
-            val hitEdition = editions.any { e ->
-                val em = e as? Map<*, *> ?: return@any false
+            val hitEdition = editions.any edition@ { e ->
+                val em = e as? Map<*, *> ?: return@edition false
                 (em["workno"] as? String).orEmpty().trim().uppercase() == normalized
             }
             return if (hitEdition) CollectedResult.Collected else CollectedResult.Unknown
@@ -308,16 +303,16 @@ class SearchCollectedLatencyBenchmarkTest {
             resp.body?.string().orEmpty()
         }
         if (body.isBlank()) return CollectedResult.Unknown
-        val obj = runCatching { Gson().fromJson(body, Map::class.java) as? Map<*, *> }.getOrNull() ?: return CollectedResult.Unknown
+        val obj = runCatching { Gson().fromJson(body, Map::class.java) }.getOrNull() ?: return CollectedResult.Unknown
         val works = obj["works"] as? List<*> ?: return CollectedResult.Unknown
-        val hit = works.any { w ->
-            val m = w as? Map<*, *> ?: return@any false
+        val hit = works.any work@ { w ->
+            val m = w as? Map<*, *> ?: return@work false
             val sourceId = (m["source_id"] as? String).orEmpty().trim().uppercase()
             val original = (m["original_workno"] as? String).orEmpty().trim().uppercase()
-            if (sourceId == normalized || original == normalized) return@any true
-            val editions = m["language_editions"] as? List<*> ?: return@any false
-            editions.any { e ->
-                val em = e as? Map<*, *> ?: return@any false
+            if (sourceId == normalized || original == normalized) return@work true
+            val editions = m["language_editions"] as? List<*> ?: return@work false
+            editions.any edition@ { e ->
+                val em = e as? Map<*, *> ?: return@edition false
                 (em["workno"] as? String).orEmpty().trim().uppercase() == normalized
             }
         }

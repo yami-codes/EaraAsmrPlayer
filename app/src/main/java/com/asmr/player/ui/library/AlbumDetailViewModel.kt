@@ -1,10 +1,22 @@
 package com.asmr.player.ui.library
 
+import com.asmr.player.R
+
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.SystemClock
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import com.asmr.player.BuildConfig
+import com.asmr.player.cache.AppCacheManager
 import com.asmr.player.data.local.db.AppDatabase
 import com.asmr.player.data.local.db.dao.AlbumDao
 import com.asmr.player.data.local.db.dao.TagWithCount
@@ -13,36 +25,48 @@ import com.asmr.player.data.local.db.entities.AlbumEntity
 import com.asmr.player.data.local.db.entities.AlbumFtsEntity
 import com.asmr.player.data.local.db.entities.AlbumTagEntity
 import com.asmr.player.data.local.db.entities.RemoteSubtitleSourceEntity
-import com.asmr.player.data.local.db.entities.TrackEntity
+import com.asmr.player.data.local.db.entities.OnlineSavedResourceEntity
 import com.asmr.player.data.local.db.entities.TagEntity
 import com.asmr.player.data.local.db.entities.TagSource
+import com.asmr.player.data.local.db.entities.TrackEntity
 import com.asmr.player.data.local.db.entities.TrackTagEntity
-import com.asmr.player.data.remote.api.AsmrOneOtherLanguageEditionInDb
-import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
+import com.asmr.player.data.local.db.entities.titleForDisplay
+import com.asmr.player.data.lyrics.LyricsLoader
+import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
+import com.asmr.player.data.remote.NetworkHeaders
+import com.asmr.player.data.remote.ONLINE_DIRECTORY_REQUEST_TIMEOUT_MS
 import com.asmr.player.data.remote.api.AsmrOneAvailabilityApi
+import com.asmr.player.data.remote.api.AsmrOneEndpoint
+import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
+import com.asmr.player.data.remote.api.AsmrOneRecommendationSeedFeatures
+import com.asmr.player.data.remote.api.WorkDetailsResponse
+import com.asmr.player.data.remote.auth.DlsiteAuthStore
+import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
 import com.asmr.player.data.remote.crawler.AsmrOneCrawler
+import com.asmr.player.data.remote.crawler.AsmrOneSearchResult
+import com.asmr.player.data.remote.crawler.AsmrOneTracksResult
+import com.asmr.player.data.remote.crawler.selectAsmrOneWorkForRj
+import com.asmr.player.data.remote.dlsite.DLSITE_PLAY_PREVIEW_CACHE_VERSION
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncCandidate
 import com.asmr.player.data.remote.dlsite.DlsiteCloudSyncResolveResult
-import com.asmr.player.data.remote.dlsite.DLSITE_PLAY_PREVIEW_CACHE_VERSION
-import com.asmr.player.data.remote.dlsite.DlsitePlayLoadStatus
-import com.asmr.player.data.remote.dlsite.DlsitePlayWorkClient
-import com.asmr.player.data.remote.dlsite.DlsitePlayTreeResult
 import com.asmr.player.data.remote.dlsite.DlsiteLanguageEdition
+import com.asmr.player.data.remote.dlsite.DlsitePlayLoadStatus
+import com.asmr.player.data.remote.dlsite.DlsitePlayTreeResult
+import com.asmr.player.data.remote.dlsite.DlsitePlayWorkClient
 import com.asmr.player.data.remote.dlsite.DlsiteProductInfoClient
 import com.asmr.player.data.remote.dlsite.descrambleDlsitePlayBitmap
 import com.asmr.player.data.remote.dlsite.parseDlsitePlayImageSeed
 import com.asmr.player.data.remote.dlsite.resolveCloudSyncWorkId
 import com.asmr.player.data.remote.dlsite.resolveDlsiteCloudSync
 import com.asmr.player.data.remote.dlsite.resolveSelectedDlsiteCloudSync
-import com.asmr.player.data.remote.auth.DlsiteAuthStore
-import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
 import com.asmr.player.data.remote.download.DownloadManager
+import com.asmr.player.data.remote.download.DownloadBatchRequest
+import com.asmr.player.data.remote.download.EnqueueDownloadBatchResult
+import com.asmr.player.data.remote.download.RelativeDownloadItem
 import com.asmr.player.data.remote.scraper.DLSiteScraper
 import com.asmr.player.data.remote.scraper.DlsiteRecommendedWork
 import com.asmr.player.data.remote.scraper.DlsiteRecommendations
-import com.asmr.player.data.remote.NetworkHeaders
-import com.asmr.player.data.lyrics.LyricsLoader
-import com.asmr.player.data.lyrics.deriveLyricsRelativePathNoExt
+import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.listentogether.ListenTogetherRepository
@@ -50,64 +74,69 @@ import com.asmr.player.ui.common.queryTrackFileSize
 import com.asmr.player.ui.nav.AlbumCoverHint
 import com.asmr.player.ui.nav.AlbumCoverHintStore
 import com.asmr.player.ui.nav.albumFromCoverHint
+import com.asmr.player.util.DlsiteWorkNo
+import com.asmr.player.util.ASMR_ONE_SITE_FAILURE_MESSAGE
+import com.asmr.player.util.MessageManager
 import com.asmr.player.util.OnlineLyricsStore
 import com.asmr.player.util.RemoteSubtitleSource
 import com.asmr.player.util.SubtitleMatchSupport
 import com.asmr.player.util.SyncCoordinator
+import com.asmr.player.util.TagNormalizer
 import com.asmr.player.util.TrackKeyNormalizer
-import com.asmr.player.util.DlsiteWorkNo
-import com.asmr.player.data.remote.crawler.asmrOneWorkMatchesRj
+import com.asmr.player.util.isOnlineTrackPath
+import com.asmr.player.work.AlbumCoverThumbWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
-
-import com.asmr.player.util.MessageManager
-import com.asmr.player.util.TagNormalizer
+import javax.inject.Named
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.SystemClock
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import javax.inject.Named
-import com.asmr.player.BuildConfig
-import com.asmr.player.R
-import com.asmr.player.work.AlbumCoverThumbWorker
+
+private const val LISTEN_TOGETHER_RJ_SUMMARY_POLL_INTERVAL_MS = 60_000L
+
+internal fun albumDetailAsmrOneFailureMessage(isLocalLibraryDetail: Boolean): String? {
+    return if (isLocalLibraryDetail) null else ASMR_ONE_SITE_FAILURE_MESSAGE
+}
 
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val database: AppDatabase,
     private val albumDao: AlbumDao,
     private val trackDao: TrackDao,
     private val asmrOneCrawler: AsmrOneCrawler,
     private val asmrOneAvailabilityApi: AsmrOneAvailabilityApi,
+    private val settingsRepository: SettingsRepository,
     private val dlsiteScraper: DLSiteScraper,
     private val dlsiteProductInfoClient: DlsiteProductInfoClient,
     private val dlsitePlayWorkClient: DlsitePlayWorkClient,
@@ -115,10 +144,13 @@ class AlbumDetailViewModel @Inject constructor(
     private val lyricsLoader: LyricsLoader,
     private val syncCoordinator: SyncCoordinator,
     private val listenTogetherRepository: ListenTogetherRepository,
+    private val appCacheManager: AppCacheManager,
     @Named("image") private val imageOkHttpClient: OkHttpClient,
     val messageManager: MessageManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val isLocalLibraryDetail = savedStateHandle.get<Long>("albumId")?.let { it > 0L } == true
 
     private data class AlbumAudioAggregate(
         val trackCount: Int,
@@ -153,8 +185,12 @@ class AlbumDetailViewModel @Inject constructor(
         )
     }
 
-    private val _uiState = MutableStateFlow<AlbumDetailUiState>(AlbumDetailUiState.Loading)
+    private val _uiState = MutableStateFlow<AlbumDetailUiState>(
+        createRouteInitialUiState(savedStateHandle)
+    )
     val uiState = _uiState.asStateFlow()
+    private val _similarWorksState = MutableStateFlow(AlbumDetailSimilarWorksState())
+    internal val similarWorksState: StateFlow<AlbumDetailSimilarWorksState> = _similarWorksState.asStateFlow()
     private val _cloudSyncSelectionDialogState = MutableStateFlow<CloudSyncSelectionDialogState?>(null)
     internal val cloudSyncSelectionDialogState: StateFlow<CloudSyncSelectionDialogState?> = _cloudSyncSelectionDialogState.asStateFlow()
     private var pendingCloudSyncSelection: CompletableDeferred<String?>? = null
@@ -181,13 +217,24 @@ class AlbumDetailViewModel @Inject constructor(
     private var dlsiteTrialLoadToken: Int = 0
     private var asmrOneLoadToken: Int = 0
     private var lastAlbumKey: String? = null
+    private var completedAlbumKey: String? = null
+    private var initialIntroSettled: Boolean = false
+    private var albumLoadJob: Job? = null
+    private var dlsiteLoadJob: Job? = null
+    private var dlsiteRecommendationEnrichJob: Job? = null
+    private var dlsiteTrialLoadJob: Job? = null
+    private var asmrOneLoadJob: Job? = null
+    private var dlsitePlayLoadJob: Job? = null
+    private var similarWorksLoadJob: Job? = null
+    private var similarWorksRequestFeatures: AsmrOneRecommendationSeedFeatures? = null
+    private var similarWorksLoadToken: Int = 0
     private var localTracksObserveJob: Job? = null
     private val asmrOneAttemptedRj = linkedSetOf<String>()
     private val dlsitePlayAttemptedRj = linkedSetOf<String>()
-    private val asmrOneCollectedCache = linkedMapOf<String, Pair<Long, Boolean?>>()
-    private val asmrOneResolvedCache = linkedMapOf<String, Pair<Long, Pair<String, Int?>>>()
-    private val asmrOneTracksCache = linkedMapOf<String, Pair<Long, List<AsmrOneTrackNodeResponse>>>()
-    private val autoFallbackToJpnOnceByKey = linkedSetOf<String>()
+    private val asmrOneResolvedCache = linkedMapOf<String, Pair<Long, Pair<String, Int?>?>>()
+    private val asmrOneResolvedDetailsCache = linkedMapOf<String, WorkDetailsResponse>()
+    private val asmrOneResolutionInFlight = mutableMapOf<String, Deferred<Pair<String, Int?>?>>()
+    private val asmrOneTracksCache = linkedMapOf<String, Pair<Long, AsmrOneTracksResult>>()
 
     private val treeExpandedByKey = linkedMapOf<String, List<String>>()
     private val treeInitializedKeys = linkedSetOf<String>()
@@ -196,14 +243,21 @@ class AlbumDetailViewModel @Inject constructor(
     private val remoteFileSizeCache = linkedMapOf<String, Long?>()
     private var listenTogetherRjSummaryJob: Job? = null
     private val listenTogetherRjSummaryInFlight = AtomicBoolean(false)
+    private val listenTogetherRjSummaryPollingEnabled = MutableStateFlow(false)
     private val preferredTreePathPrefs by lazy {
         context.getSharedPreferences("album_detail_tree_prefs", Context.MODE_PRIVATE)
     }
 
     init {
         viewModelScope.launch {
-            uiState
-                .map { (it as? AlbumDetailUiState.Success)?.model?.rjCode?.trim().orEmpty().uppercase() }
+            combine(
+                uiState.map {
+                    (it as? AlbumDetailUiState.Success)?.model?.listenTogetherSummaryRj().orEmpty()
+                },
+                listenTogetherRjSummaryPollingEnabled,
+            ) { rj, enabled ->
+                rj.takeIf { enabled }.orEmpty()
+            }
                 .distinctUntilChanged()
                 .collect { rj ->
                     listenTogetherRjSummaryJob?.cancel()
@@ -213,11 +267,26 @@ class AlbumDetailViewModel @Inject constructor(
                         viewModelScope.launch {
                             while (true) {
                                 refreshListenTogetherRjSummary(rj)
-                                delay(15_000L)
+                                delay(LISTEN_TOGETHER_RJ_SUMMARY_POLL_INTERVAL_MS)
                             }
                         }
                     }
                 }
+        }
+        viewModelScope.launch {
+            settingsRepository.asmrOneSite
+                .map(AsmrOneEndpoint::normalize)
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { invalidateAsmrOneEndpointState() }
+        }
+    }
+
+    fun setListenTogetherRjSummaryPollingEnabled(enabled: Boolean) {
+        listenTogetherRjSummaryPollingEnabled.value = enabled
+        if (!enabled) {
+            listenTogetherRjSummaryJob?.cancel()
+            listenTogetherRjSummaryJob = null
         }
     }
 
@@ -231,7 +300,7 @@ class AlbumDetailViewModel @Inject constructor(
             }.getOrNull() ?: return
             val listenerCount = summary.listenerCount.coerceAtLeast(0)
             val current = _uiState.value as? AlbumDetailUiState.Success ?: return
-            if (!current.model.rjCode.trim().uppercase().equals(normalizedRj, ignoreCase = true)) return
+            if (!current.model.listenTogetherSummaryRj().equals(normalizedRj, ignoreCase = true)) return
             if (current.model.listenTogetherRjListenerCount == listenerCount) return
             _uiState.value = AlbumDetailUiState.Success(
                 model = current.model.copy(listenTogetherRjListenerCount = listenerCount)
@@ -241,75 +310,144 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-    private suspend fun isAsmrOneCollected(rj: String, timeoutMs: Long = 1_200L): Boolean? {
-        val key = rj.trim().uppercase()
-        if (key.isBlank()) return null
-        val now = SystemClock.elapsedRealtime()
-        val cached = asmrOneCollectedCache[key]
-        if (cached != null && (now - cached.first) <= 60_000L) return cached.second
-        val result = runCatching { asmrOneCrawler.hasWorkFast(key, timeoutMs = timeoutMs) }.getOrNull()
-        asmrOneCollectedCache[key] = now to result
-        if (asmrOneCollectedCache.size > 300) {
-            val firstKey = asmrOneCollectedCache.entries.firstOrNull()?.key
-            if (firstKey != null) asmrOneCollectedCache.remove(firstKey)
+    private fun cacheAsmrOneResolution(
+        key: String,
+        result: AsmrOneSearchResult
+    ): Pair<String, Int?>? {
+        val found = selectAsmrOneWorkForRj(result.response.works, key)
+        val workId = found?.id?.toString()?.trim().orEmpty()
+        if (found == null) {
+            asmrOneResolvedDetailsCache.remove(key)
+        } else {
+            asmrOneResolvedDetailsCache[key] = found
         }
-        return result
+        val resolved = workId
+            .takeIf { it.isNotBlank() }
+            ?.let { it to result.trace.site }
+        asmrOneResolvedCache[key] = SystemClock.elapsedRealtime() to resolved
+        if (asmrOneResolvedCache.size > 500) {
+            val firstKey = asmrOneResolvedCache.entries.firstOrNull()?.key
+            if (firstKey != null) {
+                asmrOneResolvedCache.remove(firstKey)
+                asmrOneResolvedDetailsCache.remove(firstKey)
+            }
+        }
+        return resolved
     }
 
-    private fun asmrOneTracksCacheKey(site: Int?, workId: String): String {
-        return "${site ?: 0}|${workId.trim()}"
+    private suspend fun resolveAsmrOneWorkUncached(
+        key: String,
+        throwOnRequestFailure: Boolean
+    ): Pair<String, Int?>? {
+        return cacheAsmrOneResolution(
+            key = key,
+            result = asmrOneCrawler.searchWithTrace(key, throwOnFailure = throwOnRequestFailure)
+        )
     }
 
     private suspend fun resolveAsmrOneWork(
         workNo: String,
-        timeoutMs: Long = 1_800L
+        timeoutMs: Long = 12_000L,
+        throwOnRequestFailure: Boolean = false
     ): Pair<String, Int?>? {
         val key = workNo.trim().uppercase()
         if (key.isBlank()) return null
         val now = SystemClock.elapsedRealtime()
         val cached = asmrOneResolvedCache[key]
-        if (cached != null && (now - cached.first) <= 10 * 60_000L) return cached.second
-
-        val result = runCatching { withTimeoutOrNull(timeoutMs) { asmrOneCrawler.searchWithTrace(key) } }.getOrNull()
-        val found = result
-            ?.response
-            ?.works
-            ?.firstOrNull { w -> asmrOneWorkMatchesRj(w, key) }
-        val workId = found?.id?.toString()?.trim().orEmpty()
-        if (workId.isBlank()) return null
-        val site = result?.trace?.takeIf { it.fallbackUsed }?.fallbackSite
-        val resolved = workId to site
-        asmrOneResolvedCache[key] = now to resolved
-        if (asmrOneResolvedCache.size > 500) {
-            val firstKey = asmrOneResolvedCache.entries.firstOrNull()?.key
-            if (firstKey != null) asmrOneResolvedCache.remove(firstKey)
+        if (cached != null) {
+            val ttlMs = if (cached.second == null) 5_000L else 10 * 60_000L
+            if ((now - cached.first) <= ttlMs && (!throwOnRequestFailure || cached.second != null)) {
+                return cached.second
+            }
         }
-        return resolved
+
+        if (throwOnRequestFailure) {
+            return withTimeout(timeoutMs) {
+                resolveAsmrOneWorkUncached(key, throwOnRequestFailure = true)
+            }
+        }
+
+        val request = asmrOneResolutionInFlight[key] ?: viewModelScope.async {
+            runCatching { resolveAsmrOneWorkUncached(key, throwOnRequestFailure = false) }.getOrNull()
+        }.also { deferred ->
+            asmrOneResolutionInFlight[key] = deferred
+            deferred.invokeOnCompletion {
+                asmrOneResolutionInFlight.remove(key, deferred)
+            }
+        }
+        return withTimeoutOrNull(timeoutMs) { request.await() }
     }
 
-    private suspend fun getAsmrOneTracksCached(site: Int?, workId: String): List<AsmrOneTrackNodeResponse> {
+    private suspend fun getAsmrOneTracksCached(
+        workId: String,
+        throwOnRequestFailure: Boolean = false
+    ): AsmrOneTracksResult {
         val normalizedId = workId.trim()
-        if (normalizedId.isBlank()) return emptyList()
-        val cacheKey = asmrOneTracksCacheKey(site, normalizedId)
+        if (normalizedId.isBlank()) return AsmrOneTracksResult(emptyList(), null)
+        val selectedSite = asmrOneCrawler.selectedEndpoint()
+        val cacheKey = asmrOneTracksCacheKey(selectedSite, normalizedId)
         val now = SystemClock.elapsedRealtime()
         val cached = asmrOneTracksCache[cacheKey]
         if (cached != null && (now - cached.first) <= 10 * 60_000L) return cached.second
-        val tree = runCatching {
-            if (site != null) asmrOneCrawler.getTracksFromSite(site, normalizedId) else asmrOneCrawler.getTracks(normalizedId)
-        }.getOrDefault(emptyList())
-        asmrOneTracksCache[cacheKey] = now to tree
-        if (asmrOneTracksCache.size > 200) {
-            val firstKey = asmrOneTracksCache.entries.firstOrNull()?.key
-            if (firstKey != null) asmrOneTracksCache.remove(firstKey)
+        val result = if (throwOnRequestFailure) {
+            asmrOneCrawler.getTracksWithTrace(normalizedId)
+        } else {
+            runCatching {
+                asmrOneCrawler.getTracksWithTrace(normalizedId)
+            }.getOrDefault(AsmrOneTracksResult(emptyList(), null))
         }
-        return tree
+        if (result.tree.isNotEmpty()) {
+            val resultCacheKey = asmrOneTracksCacheKey(result.site, normalizedId)
+            asmrOneTracksCache[resultCacheKey] = now to result
+            if (asmrOneTracksCache.size > 200) {
+                val firstKey = asmrOneTracksCache.entries.firstOrNull()?.key
+                if (firstKey != null) asmrOneTracksCache.remove(firstKey)
+            }
+        }
+        return result
     }
 
-    private suspend fun fetchBackendAsmrOneTracksByRj(rj: String): Pair<String, List<AsmrOneTrackNodeResponse>>? {
-        val normalizedRj = rj.trim().uppercase()
-        if (!RJ_CODE_REGEX.matches(normalizedRj)) return null
-        val result = runCatching { asmrOneAvailabilityApi.getTrackTreeByRj(normalizedRj) }.getOrNull()
-            ?: return null
+    private fun invalidateAsmrOneEndpointState() {
+        asmrOneLoadToken++
+        asmrOneLoadJob?.cancel()
+        asmrOneLoadJob = null
+        asmrOneAttemptedRj.clear()
+        asmrOneResolvedCache.clear()
+        asmrOneResolvedDetailsCache.clear()
+        asmrOneResolutionInFlight.values.forEach { it.cancel() }
+        asmrOneResolutionInFlight.clear()
+        asmrOneTracksCache.clear()
+
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        val keyRj = current.model.rjCode.trim().uppercase()
+        if (keyRj.isBlank()) return
+        val shouldReload = current.model.isLoadingAsmrOne ||
+            current.model.hasResolvedAsmrOneContent ||
+            current.model.asmrOneTree.isNotEmpty()
+        _uiState.value = AlbumDetailUiState.Success(
+            model = current.model.copy(
+                asmrOneWorkId = null,
+                asmrOneSite = null,
+                asmrOneTree = emptyList(),
+                hasResolvedAsmrOneContent = false,
+                isLoadingAsmrOne = false
+            )
+        )
+        if (shouldReload) ensureAsmrOneLoaded()
+    }
+
+    private suspend fun fetchBackupAsmrOneTracksByRj(
+        rj: String,
+        throwOnRequestFailure: Boolean = false
+    ): Pair<String, List<AsmrOneTrackNodeResponse>>? {
+        val normalizedRj = DlsiteWorkNo.normalizeWorkNo(rj, minimumDigits = 6)
+        if (normalizedRj.isBlank()) return null
+        val result = if (throwOnRequestFailure) {
+            asmrOneAvailabilityApi.getTrackTreeByRj(normalizedRj)
+        } else {
+            runCatching { asmrOneAvailabilityApi.getTrackTreeByRj(normalizedRj) }.getOrNull()
+                ?: return null
+        }
         val tree = result.trackTree.orEmpty()
         if (tree.isEmpty()) return null
         val workId = result.workId.takeIf { it > 0 }?.toString().orEmpty()
@@ -366,6 +504,188 @@ class AlbumDetailViewModel @Inject constructor(
         return lyricsLoader.fetchTextForPreview(u)
     }
 
+    fun cancelActiveLoads() {
+        setListenTogetherRjSummaryPollingEnabled(false)
+        // 保留已完成的页面数据与推荐结果，仅将被中断的 loading 标志收口。
+        // 返回时已完成的部分直接复用，未完成的部分仍可以重试。
+        cancelPendingOnlineJobs(resetLoadingState = true)
+        albumLoadJob?.cancel()
+        albumLoadJob = null
+        localTracksObserveJob?.cancel()
+        localTracksObserveJob = null
+        cancelSimilarWorksLoad()
+    }
+
+    internal fun hasCachedAlbum(albumId: Long?, rjCode: String?): Boolean {
+        val requestKey = albumDetailRequestKey(albumId, rjCode)
+        return shouldReuseAlbumDetailModel(
+            force = false,
+            hasCurrentModel = _uiState.value is AlbumDetailUiState.Success,
+            requestKey = requestKey,
+            activeRequestKey = lastAlbumKey,
+            completedRequestKey = completedAlbumKey
+        )
+    }
+
+    internal fun isInitialIntroSettled(): Boolean = initialIntroSettled
+
+    internal fun markInitialIntroSettled() {
+        initialIntroSettled = true
+    }
+
+    fun ensureSimilarWorksLoaded(
+        seedRjCode: String,
+        seedFeatures: AsmrOneRecommendationSeedFeatures? = null,
+        force: Boolean = false
+    ) {
+        val normalizedSeed = DlsiteWorkNo.normalizeWorkNo(seedRjCode, minimumDigits = 6)
+        if (normalizedSeed.isBlank()) {
+            similarWorksLoadToken++
+            similarWorksLoadJob?.cancel()
+            similarWorksLoadJob = null
+            similarWorksRequestFeatures = null
+            _similarWorksState.value = AlbumDetailSimilarWorksState(hasLoaded = true)
+            return
+        }
+
+        val normalizedFeatures = seedFeatures?.takeIf {
+            DlsiteWorkNo.normalizeWorkNo(it.rj, minimumDigits = 6)
+                .equals(normalizedSeed, ignoreCase = true)
+        }?.copy(rj = normalizedSeed)
+        val current = _similarWorksState.value
+        val isSameSeed = current.seedRjCode.equals(normalizedSeed, ignoreCase = true)
+        val isSameRequest = isSameSeed && similarWorksRequestFeatures == normalizedFeatures
+        if (!force && isSameRequest && (current.isLoading || current.hasLoaded)) return
+        if (!force && isSameSeed && current.hasLoaded && current.works.isNotEmpty()) return
+
+        val token = ++similarWorksLoadToken
+        similarWorksLoadJob?.cancel()
+        similarWorksRequestFeatures = normalizedFeatures
+        if (!asmrOneAvailabilityApi.isBackendConfigured) {
+            _similarWorksState.value = AlbumDetailSimilarWorksState(
+                seedRjCode = normalizedSeed,
+                hasLoaded = true
+            )
+            return
+        }
+
+        _similarWorksState.value = AlbumDetailSimilarWorksState(
+            seedRjCode = normalizedSeed,
+            works = current.works.takeIf { isSameSeed }.orEmpty(),
+            isLoading = true
+        )
+        similarWorksLoadJob = viewModelScope.launch {
+            try {
+                val response = asmrOneAvailabilityApi.getRecommendations(
+                    seedRjs = listOf(normalizedSeed),
+                    seedFeatures = listOfNotNull(normalizedFeatures),
+                    excludeRjs = listOf(normalizedSeed),
+                    limit = ALBUM_DETAIL_SIMILAR_WORK_LIMIT
+                )
+                if (
+                    token != similarWorksLoadToken ||
+                    !_similarWorksState.value.seedRjCode.equals(normalizedSeed, ignoreCase = true) ||
+                    similarWorksRequestFeatures != normalizedFeatures
+                ) {
+                    return@launch
+                }
+                _similarWorksState.value = AlbumDetailSimilarWorksState(
+                    seedRjCode = normalizedSeed,
+                    works = buildAlbumDetailSimilarWorks(
+                        seedRjCode = normalizedSeed,
+                        items = response.items.orEmpty()
+                    ),
+                    hasLoaded = true
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                val latest = _similarWorksState.value
+                if (
+                    token == similarWorksLoadToken &&
+                    latest.seedRjCode.equals(normalizedSeed, ignoreCase = true) &&
+                    similarWorksRequestFeatures == normalizedFeatures
+                ) {
+                    _similarWorksState.value = latest.copy(
+                        isLoading = false,
+                        hasLoaded = true,
+                        failed = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun cancelSimilarWorksLoad() {
+        similarWorksLoadToken++
+        similarWorksLoadJob?.cancel()
+        similarWorksLoadJob = null
+        val current = _similarWorksState.value
+        if (current.isLoading) {
+            _similarWorksState.value = current.copy(
+                isLoading = false,
+                hasLoaded = false
+            )
+        }
+    }
+
+    fun cancelOnlineLoadsForExit() {
+        cancelPendingOnlineJobs(resetLoadingState = false)
+    }
+
+    private fun cancelPendingOnlineJobs(resetLoadingState: Boolean) {
+        dlsiteLoadToken++
+        dlsiteTrialLoadToken++
+        asmrOneLoadToken++
+
+        dlsiteLoadJob?.cancel()
+        dlsiteLoadJob = null
+        dlsiteRecommendationEnrichJob?.cancel()
+        dlsiteRecommendationEnrichJob = null
+        dlsiteTrialLoadJob?.cancel()
+        dlsiteTrialLoadJob = null
+        asmrOneLoadJob?.cancel()
+        asmrOneLoadJob = null
+        asmrOneResolutionInFlight.values.forEach { it.cancel() }
+        asmrOneResolutionInFlight.clear()
+        dlsitePlayLoadJob?.cancel()
+        dlsitePlayLoadJob = null
+
+        asmrOneAttemptedRj.clear()
+        dlsitePlayAttemptedRj.clear()
+
+        if (!resetLoadingState) return
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        _uiState.value = AlbumDetailUiState.Success(
+            model = current.model.copy(
+                isLoadingDlsite = false,
+                isLoadingDlsiteTrial = false,
+                isLoadingAsmrOne = false,
+                isLoadingDlsitePlay = false
+            )
+        )
+    }
+
+    internal fun invalidateDlsitePlayAccess() {
+        dlsitePlayLoadJob?.cancel()
+        dlsitePlayLoadJob = null
+        dlsitePlayAttemptedRj.clear()
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        if (
+            current.model.dlsitePlayTree.isEmpty() &&
+            !current.model.hasResolvedDlsitePlayContent &&
+            !current.model.isLoadingDlsitePlay
+        ) return
+        _uiState.value = AlbumDetailUiState.Success(
+            model = current.model.copy(
+                dlsitePlayWorkno = "",
+                dlsitePlayTree = emptyList(),
+                hasResolvedDlsitePlayContent = false,
+                isLoadingDlsitePlay = false
+            )
+        )
+    }
+
     suspend fun prepareDlsitePlayImagePreview(
         url: String,
         optimizedName: String?,
@@ -384,7 +704,9 @@ class AlbumDetailViewModel @Inject constructor(
         }
         val seed = parseDlsitePlayImageSeed(name) ?: return@withContext null
 
-        val previewDir = File(context.cacheDir, "dlsite_play_preview").apply { if (!exists()) mkdirs() }
+        val previewDir = File(context.cacheDir, AppCacheManager.DLSITE_PREVIEW_CACHE_DIR_NAME).apply {
+            if (!exists()) mkdirs()
+        }
         val previewKey = listOf(
             DLSITE_PLAY_PREVIEW_CACHE_VERSION.toString(),
             normalizedUrl,
@@ -419,6 +741,7 @@ class AlbumDetailViewModel @Inject constructor(
         }
         if (descrambled !== scrambled && !descrambled.isRecycled) descrambled.recycle()
         if (!scrambled.isRecycled) scrambled.recycle()
+        appCacheManager.onPreviewCacheChanged(previewFile)
         previewFile.absolutePath
     }
 
@@ -562,24 +885,54 @@ class AlbumDetailViewModel @Inject constructor(
         return resolvedWorkno
     }
 
+    suspend fun loadAlbumAndAwait(albumId: Long?, rjCode: String?, force: Boolean = false) {
+        loadAlbum(albumId, rjCode, force)
+        albumLoadJob?.join()
+    }
+
     fun loadAlbum(albumId: Long?, rjCode: String?, force: Boolean = false) {
         val normalizedRj = rjCode?.trim().orEmpty().uppercase()
-        val key = if (normalizedRj.isNotBlank()) "rj:$normalizedRj" else "id:${albumId ?: 0L}"
+        val key = albumDetailRequestKey(albumId, normalizedRj)
         val current = _uiState.value as? AlbumDetailUiState.Success
-        if (!force && current != null && lastAlbumKey == key) return
+        val isAlbumSwitch = lastAlbumKey != key
+        if (
+            shouldReuseAlbumDetailModel(
+                force = force,
+                hasCurrentModel = current != null,
+                requestKey = key,
+                activeRequestKey = lastAlbumKey,
+                completedRequestKey = completedAlbumKey
+            )
+        ) {
+            observeLocalTracks(current?.model?.localAlbum?.id ?: 0L)
+            return
+        }
+        cancelPendingOnlineJobs(resetLoadingState = false)
+        if (force || isAlbumSwitch) {
+            completedAlbumKey = null
+            similarWorksLoadToken++
+            similarWorksLoadJob?.cancel()
+            similarWorksLoadJob = null
+            _similarWorksState.value = AlbumDetailSimilarWorksState()
+        }
+        albumLoadJob?.cancel()
+        localTracksObserveJob?.cancel()
+        localTracksObserveJob = null
         lastAlbumKey = key
         val initialHint = AlbumCoverHintStore.peekHint(albumId, normalizedRj)
         val initialRj = normalizedRj.ifBlank { initialHint?.rjCode.orEmpty() }
         val initialHintAlbum = albumFromInitialHint(initialRj, initialHint)
-        _uiState.value = AlbumDetailUiState.Success(
-            model = createInitialAlbumDetailModel(
-                rj = initialRj,
-                displayAlbum = initialHintAlbum,
-                dlsiteInfo = initialHintAlbum.takeIf { initialHint?.hasResolvedDlsiteInfo == true },
-                preserveHeaderAlbumMetadata = initialHint != null
+        if (force || current == null || isAlbumSwitch) {
+            _uiState.value = AlbumDetailUiState.Success(
+                model = createInitialAlbumDetailModel(
+                    rj = initialRj,
+                    displayAlbum = initialHintAlbum,
+                    dlsiteInfo = initialHintAlbum.takeIf { shouldPreserveHeaderAlbumMetadata(initialHint) },
+                    preserveHeaderAlbumMetadata = shouldPreserveHeaderAlbumMetadata(initialHint)
+                )
             )
-        )
-        viewModelScope.launch {
+        }
+        albumLoadJob = viewModelScope.launch {
             try {
                 val localAlbum = if (albumId != null && albumId > 0) {
                     loadLocalAlbumById(albumId)
@@ -589,57 +942,68 @@ class AlbumDetailViewModel @Inject constructor(
                     null
                 }
 
-                val rj = rjCode?.trim().orEmpty().ifBlank {
-                    localAlbum?.rjCode?.trim().orEmpty().ifBlank { localAlbum?.workId?.trim().orEmpty() }
-                }.uppercase()
+                val rj = resolveAlbumDetailRj(rjCode, localAlbum)
 
                 val hint = AlbumCoverHintStore.peekHint(albumId, rj) ?: initialHint
                 val hintAlbum = albumFromInitialHint(rj, hint)
-                val dlsiteInfo = hintAlbum.takeIf { hint?.hasResolvedDlsiteInfo == true }
+                val preserveHeaderAlbumMetadata = shouldPreserveHeaderAlbumMetadata(hint)
+                val dlsiteInfo = hintAlbum.takeIf { preserveHeaderAlbumMetadata }
                 // 种入列表点击时记录的封面与元信息：让 hero 与列表卡片使用相同图片 model，
                 // 在网络解析完成前即可命中跨尺寸内存缓存，避免重复请求封面。
                 val displayAlbum = if (hint != null) hintAlbum else localAlbum ?: hintAlbum
-                _uiState.value = AlbumDetailUiState.Success(
-                    model = createInitialAlbumDetailModel(
-                        rj = rj,
-                        displayAlbum = displayAlbum,
-                        localAlbum = localAlbum,
-                        dlsiteInfo = dlsiteInfo,
-                        preserveHeaderAlbumMetadata = hint != null
-                    )
+                val initialLoadedModel = createInitialAlbumDetailModel(
+                    rj = rj,
+                    displayAlbum = displayAlbum,
+                    localAlbum = localAlbum,
+                    dlsiteInfo = dlsiteInfo,
+                    preserveHeaderAlbumMetadata = preserveHeaderAlbumMetadata
                 )
-                localTracksObserveJob?.cancel()
-                localTracksObserveJob = null
-                val localId = localAlbum?.id ?: 0L
-                if (localId > 0L) {
-                    localTracksObserveJob = viewModelScope.launch {
-                        trackDao.getTracksForAlbum(localId)
-                            .map { entities -> entities.map { it.toDomain() } }
-                            .flowOn(Dispatchers.Default)
-                            .distinctUntilChanged()
-                            .collect { tracks ->
-                                val cur = _uiState.value as? AlbumDetailUiState.Success ?: return@collect
-                                val curLocal = cur.model.localAlbum ?: return@collect
-                                if (curLocal.id != localId) return@collect
-
-                                val updatedLocal = curLocal.copy(tracks = tracks)
-                                val updatedDisplay = if (cur.model.displayAlbum.id == localId) {
-                                    cur.model.displayAlbum.copy(tracks = tracks)
-                                } else {
-                                    cur.model.displayAlbum
-                                }
-                                _uiState.value = AlbumDetailUiState.Success(
-                                    model = cur.model.copy(
-                                        localAlbum = updatedLocal,
-                                        displayAlbum = updatedDisplay
-                                    )
-                                )
-                            }
-                    }
+                val currentModel = (_uiState.value as? AlbumDetailUiState.Success)?.model
+                val loadedModel = initialLoadedModel.withPreservedListenTogetherListenerCount(currentModel)
+                if (loadedModel != currentModel) {
+                    _uiState.value = AlbumDetailUiState.Success(
+                        model = loadedModel
+                    )
                 }
+                val localId = localAlbum?.id ?: 0L
+                observeLocalTracks(localId)
+                completedAlbumKey = key
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.value = AlbumDetailUiState.Error(e.message ?: context.getString(R.string.load_failed))
+                _uiState.value = AlbumDetailUiState.Error(e.message ?: "加载失败")
             }
+        }
+    }
+
+    private fun observeLocalTracks(localId: Long) {
+        localTracksObserveJob?.cancel()
+        localTracksObserveJob = null
+        if (localId <= 0L) return
+
+        localTracksObserveJob = viewModelScope.launch {
+            trackDao.getTracksForAlbum(localId)
+                .map { entities -> entities.map { it.toDomain() } }
+                .flowOn(Dispatchers.Default)
+                .distinctUntilChanged()
+                .collect { tracks ->
+                    val current = _uiState.value as? AlbumDetailUiState.Success ?: return@collect
+                    val currentLocal = current.model.localAlbum ?: return@collect
+                    if (currentLocal.id != localId) return@collect
+
+                    val updatedLocal = currentLocal.copy(tracks = tracks)
+                    val updatedDisplay = if (current.model.displayAlbum.id == localId) {
+                        current.model.displayAlbum.copy(tracks = tracks)
+                    } else {
+                        current.model.displayAlbum
+                    }
+                    _uiState.value = AlbumDetailUiState.Success(
+                        model = current.model.copy(
+                            localAlbum = updatedLocal,
+                            displayAlbum = updatedDisplay
+                        )
+                    )
+                }
         }
     }
 
@@ -676,32 +1040,27 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     fun manualSetRjAndSync(input: String) {
-        val normalized = Regex("""RJ\d+""", RegexOption.IGNORE_CASE).find(input.trim())?.value?.uppercase().orEmpty()
+        val normalized = DlsiteWorkNo.extractWorkNo(input)
         if (normalized.isBlank()) {
-            messageManager.showError(R.string.enter_valid_work_id)
+            messageManager.showError("请输入有效的作品编号")
             return
         }
         val current = _uiState.value as? AlbumDetailUiState.Success
         val local = current?.model?.localAlbum
         if (local == null || local.id <= 0L) {
-            messageManager.showError(R.string.manual_rj_bind_hint)
+            messageManager.showError("仅支持本地库专辑手动绑定作品编号")
             return
         }
 
         viewModelScope.launch {
-            val token = syncCoordinator.tryBegin(context.getString(R.string.bind_rj_cloud_sync)) ?: run {
-                val currentLabel = syncCoordinator.state.value?.label
-                if (currentLabel.isNullOrBlank()) {
-                    messageManager.showInfo(R.string.sync_task_progress)
-                } else {
-                    messageManager.showInfo(R.string.progress_wait_finish_2, currentLabel)
-                }
+            val token = syncCoordinator.tryBegin() ?: run {
+                messageManager.showInfo("同步任务进行中，请等待完成或取消后再同步")
                 return@launch
             }
             _uiState.value = AlbumDetailUiState.Loading
             try {
                 val entity = withContext(Dispatchers.IO) { albumDao.getAlbumById(local.id) } ?: run {
-                    messageManager.showError(R.string.album_not_found)
+                    messageManager.showError("专辑不存在")
                     loadAlbum(local.id, normalized, force = true)
                     return@launch
                 }
@@ -720,7 +1079,7 @@ class AlbumDetailViewModel @Inject constructor(
                         val resolvedWorkno = withContext(Dispatchers.IO) {
                             applyManualCloudSyncSuccess(entity, updatedWorkId, result)
                         }
-                        messageManager.showSuccess(R.string.bound_cloud_sync_completed, resolvedWorkno)
+                        messageManager.showSuccess("已绑定 $resolvedWorkno 并完成云同步")
                         loadAlbum(local.id, resolvedWorkno, force = true)
                     }
 
@@ -740,19 +1099,19 @@ class AlbumDetailViewModel @Inject constructor(
                                 val resolvedWorkno = withContext(Dispatchers.IO) {
                                     applyManualCloudSyncSuccess(entity, updatedWorkId, selectedResult)
                                 }
-                                messageManager.showSuccess(R.string.bound_cloud_sync_completed, resolvedWorkno)
+                                messageManager.showSuccess("已绑定 $resolvedWorkno 并完成云同步")
                                 loadAlbum(local.id, resolvedWorkno, force = true)
                                 return@launch
                             }
 
                             is DlsiteCloudSyncResolveResult.Ambiguous -> {
-                                messageManager.showError(R.string.sync_failed_search)
+                                messageManager.showError("同步失败：搜索结果不唯一")
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
 
                             DlsiteCloudSyncResolveResult.NotFound -> {
-                                messageManager.showError(R.string.sync_failed_album)
+                                messageManager.showError("同步失败：未找到专辑信息")
                                 loadAlbum(local.id, normalized, force = true)
                                 return@launch
                             }
@@ -760,12 +1119,12 @@ class AlbumDetailViewModel @Inject constructor(
                     }
 
                     DlsiteCloudSyncResolveResult.NotFound -> {
-                        messageManager.showError(R.string.sync_failed_album)
+                        messageManager.showError("同步失败：未找到专辑信息")
                         loadAlbum(local.id, normalized, force = true)
                     }
                 }
             } catch (e: Exception) {
-                messageManager.showError(R.string.sync_failed_try_again_later)
+                messageManager.showError("同步失败，请稍后重试")
                 loadAlbum(local.id, normalized, force = true)
             } finally {
                 syncCoordinator.end(token)
@@ -785,15 +1144,26 @@ class AlbumDetailViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     val entity = albumDao.getAlbumById(local.id) ?: return@withContext
                     albumDao.updateAlbum(entity.copy(coverPath = value, coverThumbPath = ""))
+                    runCatching { database.localTreeCacheDao().deleteByAlbum(entity.id) }
                 }
+                updateCurrentCoverState(local.id, value, "")
                 enqueueAlbumCoverThumbWork(local.id)
-                messageManager.showSuccess(R.string.cover_set)
-                val rj = current.model.rjCode.ifBlank { local.rjCode.ifBlank { local.workId } }
-                loadAlbum(local.id, rj, force = true)
+                messageManager.showSuccess("已设置封面")
             } catch (e: Exception) {
-                messageManager.showError(R.string.failed_set_cover)
+                messageManager.showError("设置封面失败，请检查后重试")
             }
         }
+    }
+
+    private fun updateCurrentCoverState(albumId: Long, coverPath: String, coverThumbPath: String) {
+        val cur = _uiState.value as? AlbumDetailUiState.Success ?: return
+        _uiState.value = AlbumDetailUiState.Success(
+            model = cur.model.withUpdatedLocalCover(
+                albumId = albumId,
+                coverPath = coverPath,
+                coverThumbPath = coverThumbPath
+            )
+        )
     }
 
     private fun enqueueAlbumCoverThumbWork(albumId: Long) {
@@ -870,159 +1240,6 @@ class AlbumDetailViewModel @Inject constructor(
         if (refs.isNotEmpty()) tagDao.insertAlbumTags(refs)
     }
 
-    private fun defaultDlsiteEditions(rj: String): List<DlsiteLanguageEdition> {
-        val clean = rj.trim().uppercase()
-        if (clean.isBlank()) return emptyList()
-        return listOf(DlsiteLanguageEdition(workno = clean, lang = "JPN", label = "日本語", displayOrder = 1))
-    }
-
-    private fun fetchDlsiteEditions(baseRj: String) {
-        val clean = baseRj.trim().uppercase()
-        if (clean.isBlank()) return
-        viewModelScope.launch {
-            val editions = runCatching { dlsiteProductInfoClient.fetchLanguageEditions(clean) }.getOrDefault(emptyList())
-            val merged = buildList {
-                val hasJpn = editions.any { it.lang == "JPN" }
-                if (!hasJpn) addAll(defaultDlsiteEditions(clean))
-                addAll(editions)
-            }.distinctBy { it.lang }.sortedWith(compareBy({ it.displayOrder }, { it.lang }))
-
-            val current = _uiState.value as? AlbumDetailUiState.Success ?: return@launch
-            if (!current.model.baseRjCode.equals(clean, ignoreCase = true)) return@launch
-
-            val isFirstLangFetch = current.model.dlsiteEditions.size <= 1
-            val currentSelectedLang = current.model.dlsiteSelectedLang.trim().uppercase().ifBlank { "JPN" }
-            if (isFirstLangFetch && currentSelectedLang == "JPN") {
-                _uiState.value = AlbumDetailUiState.Success(model = current.model.copy(dlsiteEditions = merged))
-                val hasHansEdition = merged.any { it.lang.equals("CHI_HANS", ignoreCase = true) }
-                val hasHantEdition = merged.any { it.lang.equals("CHI_HANT", ignoreCase = true) }
-                val jpnWorkno = merged.firstOrNull { it.lang.equals("JPN", ignoreCase = true) }
-                    ?.workno
-                    ?.trim()
-                    ?.uppercase()
-                    .orEmpty()
-                    .ifBlank { clean }
-
-                val resolved = resolveAsmrOneWork(jpnWorkno, timeoutMs = 1_200L) ?: resolveAsmrOneWork(clean, timeoutMs = 1_200L)
-                val picked = if (resolved != null) {
-                    val (workId, site) = resolved
-                    val details = withTimeoutOrNull(1_500L) {
-                        if (site != null) asmrOneCrawler.getDetailsFromSite(site, workId) else asmrOneCrawler.getDetails(workId)
-                    }
-                    val other = details?.other_language_editions_in_db.orEmpty()
-                    val hasHans = other.any { it.lang.orEmpty().contains("简体") || it.lang.orEmpty().contains("簡体") }
-                    val hasHant = other.any { it.lang.orEmpty().contains("繁体") || it.lang.orEmpty().contains("繁體") }
-                    when {
-                        hasHansEdition && hasHans -> "CHI_HANS"
-                        hasHantEdition && hasHant -> "CHI_HANT"
-                        else -> "JPN"
-                    }
-                } else {
-                    when {
-                        hasHansEdition -> "CHI_HANS"
-                        hasHantEdition -> "CHI_HANT"
-                        else -> "JPN"
-                    }
-                }
-                if (picked != "JPN") {
-                    selectDlsiteLanguage(picked)
-                }
-                return@launch
-            }
-
-            val selectedByWorkno = merged.firstOrNull { it.workno.trim().equals(clean, ignoreCase = true) }
-            val selectedLang = current.model.dlsiteSelectedLang.trim().uppercase().ifBlank { "JPN" }
-            val selected = selectedByWorkno
-                ?: merged.firstOrNull { it.lang == selectedLang }
-                ?: merged.firstOrNull { it.lang == "JPN" }
-                ?: merged.firstOrNull()
-            val selectedWorkno = selected?.workno?.trim()?.uppercase().orEmpty().ifBlank { clean }
-            _uiState.value = AlbumDetailUiState.Success(
-                model = current.model.copy(
-                    dlsiteEditions = merged,
-                    dlsiteSelectedLang = selected?.lang ?: "JPN",
-                    dlsiteWorkno = selectedWorkno
-                )
-            )
-        }
-    }
-
-    private fun matchesAsmrOneChineseEdition(
-        edition: AsmrOneOtherLanguageEditionInDb,
-        workno: String,
-        langCode: String,
-        titleKeywords: List<String>
-    ): Boolean {
-        val normalizedWorkno = workno.trim().uppercase()
-        val normalizedLang = edition.lang.orEmpty().trim().uppercase()
-        val normalizedTitle = edition.title.orEmpty().trim()
-        val normalizedSourceId = edition.source_id.orEmpty().trim().uppercase()
-        return (normalizedWorkno.isNotBlank() && normalizedSourceId == normalizedWorkno) ||
-            normalizedLang.contains(langCode) ||
-            titleKeywords.any { keyword ->
-                normalizedLang.contains(keyword, ignoreCase = true) ||
-                    normalizedTitle.contains(keyword, ignoreCase = true)
-            }
-    }
-
-    private suspend fun resolveInitialDlsiteChinesePreference(
-        baseRj: String,
-        editions: List<DlsiteLanguageEdition>
-    ): DlsiteChinesePreference {
-        val clean = baseRj.trim().uppercase()
-        if (clean.isBlank()) return DlsiteChinesePreference.None
-        val hasHansEdition = editions.any { it.lang.equals("CHI_HANS", ignoreCase = true) }
-        val hasHantEdition = editions.any { it.lang.equals("CHI_HANT", ignoreCase = true) }
-        if (!hasHansEdition && !hasHantEdition) return DlsiteChinesePreference.None
-
-        val jpnWorkno = editions.firstOrNull { it.lang.equals("JPN", ignoreCase = true) }
-            ?.workno
-            ?.trim()
-            ?.uppercase()
-            .orEmpty()
-            .ifBlank { clean }
-        val resolved = resolveAsmrOneWork(jpnWorkno, timeoutMs = 1_200L)
-            ?: resolveAsmrOneWork(clean, timeoutMs = 1_200L)
-            ?: return DlsiteChinesePreference.None
-        val (workId, site) = resolved
-        val details = withTimeoutOrNull(1_500L) {
-            if (site != null) {
-                asmrOneCrawler.getDetailsFromSite(site, workId)
-            } else {
-                asmrOneCrawler.getDetails(workId)
-            }
-        } ?: return DlsiteChinesePreference.None
-        val otherEditions = details.other_language_editions_in_db.orEmpty()
-        val hansWorkno = editions.firstOrNull { it.lang.equals("CHI_HANS", ignoreCase = true) }
-            ?.workno
-            .orEmpty()
-        val hantWorkno = editions.firstOrNull { it.lang.equals("CHI_HANT", ignoreCase = true) }
-            ?.workno
-            .orEmpty()
-
-        return when {
-            hasHansEdition && otherEditions.any {
-                matchesAsmrOneChineseEdition(
-                    edition = it,
-                    workno = hansWorkno,
-                    langCode = "CHI_HANS",
-                    titleKeywords = listOf("简", "簡")
-                )
-            } -> DlsiteChinesePreference.Hans
-
-            hasHantEdition && otherEditions.any {
-                matchesAsmrOneChineseEdition(
-                    edition = it,
-                    workno = hantWorkno,
-                    langCode = "CHI_HANT",
-                    titleKeywords = listOf("繁")
-                )
-            } -> DlsiteChinesePreference.Hant
-
-            else -> DlsiteChinesePreference.None
-        }
-    }
-
     private suspend fun resolveInitialDlsiteLoadTarget(
         model: AlbumDetailModel
     ): ResolvedDlsiteLoadTarget {
@@ -1036,14 +1253,9 @@ class AlbumDetailViewModel @Inject constructor(
         }
         val editions = runCatching { dlsiteProductInfoClient.fetchLanguageEditions(clean) }
             .getOrDefault(emptyList())
-        val merged = mergeDlsiteEditions(clean, editions)
-        val chinesePreference = resolveInitialDlsiteChinesePreference(clean, merged)
         return resolveInitialDlsiteLoadTarget(
-            baseRj = clean,
-            editions = merged,
-            currentSelectedLang = model.dlsiteSelectedLang,
-            preserveCurrentSelection = model.isDlsiteLanguageUserSelected,
-            chinesePreference = chinesePreference
+            entryRjCode = clean,
+            editions = editions
         )
     }
 
@@ -1058,7 +1270,7 @@ class AlbumDetailViewModel @Inject constructor(
     private suspend fun enrichRecommendationsWithAsmrOne(recommendations: DlsiteRecommendations): DlsiteRecommendations {
         val candidates = (recommendations.circleWorks + recommendations.sameVoiceWorks + recommendations.alsoBoughtWorks)
             .asSequence()
-            .map { it.rjCode.trim().uppercase() }
+            .map { DlsiteWorkNo.normalizeWorkNo(it.rjCode, minimumDigits = 6) }
             .filter { it.isNotBlank() }
             .distinct()
             .take(MAX_RECOMMENDATION_ASMR_ONE_ENRICH)
@@ -1102,9 +1314,11 @@ class AlbumDetailViewModel @Inject constructor(
         if (current.model.hasLoadedInitialDlsiteContent) return
         if (current.model.isLoadingDlsite) return
         
+        dlsiteLoadJob?.cancel()
+        dlsiteRecommendationEnrichJob?.cancel()
         // 如果还没有拉取过多语言列表，先拉取一次
         val token = ++dlsiteLoadToken
-        viewModelScope.launch {
+        dlsiteLoadJob = viewModelScope.launch {
             val latestBefore = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
             _uiState.value = AlbumDetailUiState.Success(
                 model = latestBefore.copy(
@@ -1119,9 +1333,14 @@ class AlbumDetailViewModel @Inject constructor(
                     val latestResolved = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                     if (token != dlsiteLoadToken) return@launch
                     val targetWorkno = resolvedTarget.workno.trim().uppercase()
-                    val targetChanged = targetWorkno.isNotBlank() &&
-                        !targetWorkno.equals(latestResolved.rjCode.trim().uppercase(), ignoreCase = true)
-                    if (targetChanged) {
+                    val targetChanged = shouldReloadAsmrOneForResolvedInitialTarget(
+                        currentRj = latestResolved.rjCode,
+                        resolvedWorkno = targetWorkno
+                    )
+                    val mustReloadAsmrOne = targetChanged
+                    val keepAsmrOneContentDuringTargetSwitch = targetChanged &&
+                        latestResolved.asmrOneTree.isNotEmpty()
+                    if (mustReloadAsmrOne) {
                         asmrOneLoadToken++
                         asmrOneAttemptedRj.clear()
                     }
@@ -1132,19 +1351,31 @@ class AlbumDetailViewModel @Inject constructor(
                             localAlbum = latestResolved.localAlbum,
                             fetchedDlsiteInfo = latestResolved.dlsiteInfo,
                             rjCode = resolvedTarget.workno,
-                            asmrOneWorkId = if (targetChanged) null else latestResolved.asmrOneWorkId,
+                            asmrOneWorkId = if (mustReloadAsmrOne) null else latestResolved.asmrOneWorkId,
                             preserveHeaderAlbumMetadata = latestResolved.preserveHeaderAlbumMetadata
                         ),
                         dlsiteWorkno = resolvedTarget.workno,
                         dlsiteEditions = resolvedTarget.editions,
                         dlsiteSelectedLang = resolvedTarget.selectedLang,
                         hasResolvedInitialDlsiteTarget = true,
-                        hasResolvedAsmrOneContent = if (targetChanged) false else latestResolved.hasResolvedAsmrOneContent,
-                        asmrOneWorkId = if (targetChanged) null else latestResolved.asmrOneWorkId,
-                        asmrOneSite = if (targetChanged) null else latestResolved.asmrOneSite,
-                        asmrOneTree = if (targetChanged) emptyList() else latestResolved.asmrOneTree,
+                        hasResolvedAsmrOneContent = if (mustReloadAsmrOne) false else latestResolved.hasResolvedAsmrOneContent,
+                        asmrOneWorkId = if (mustReloadAsmrOne && !keepAsmrOneContentDuringTargetSwitch) {
+                            null
+                        } else {
+                            latestResolved.asmrOneWorkId
+                        },
+                        asmrOneSite = if (mustReloadAsmrOne && !keepAsmrOneContentDuringTargetSwitch) {
+                            null
+                        } else {
+                            latestResolved.asmrOneSite
+                        },
+                        asmrOneTree = if (mustReloadAsmrOne && !keepAsmrOneContentDuringTargetSwitch) {
+                            emptyList()
+                        } else {
+                            latestResolved.asmrOneTree
+                        },
                         isLoadingDlsite = true,
-                        isLoadingAsmrOne = if (targetChanged) false else latestResolved.isLoadingAsmrOne,
+                        isLoadingAsmrOne = if (mustReloadAsmrOne) false else latestResolved.isLoadingAsmrOne,
                         isLoadingDlsiteTrial = false
                     )
                     _uiState.value = AlbumDetailUiState.Success(model = loadModel)
@@ -1246,7 +1477,8 @@ class AlbumDetailViewModel @Inject constructor(
                     )
                 )
 
-                viewModelScope.launch enrichLaunch@{
+                dlsiteRecommendationEnrichJob?.cancel()
+                dlsiteRecommendationEnrichJob = viewModelScope.launch enrichLaunch@{
                     val current2 = _uiState.value as? AlbumDetailUiState.Success ?: return@enrichLaunch
                     if (token != dlsiteLoadToken) return@enrichLaunch
                     val recs = current2.model.dlsiteRecommendations
@@ -1257,6 +1489,8 @@ class AlbumDetailViewModel @Inject constructor(
                     if (token != dlsiteLoadToken) return@enrichLaunch
                     _uiState.value = AlbumDetailUiState.Success(model = updated2.copy(dlsiteRecommendations = enriched))
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingDlsite = false))
@@ -1265,10 +1499,6 @@ class AlbumDetailViewModel @Inject constructor(
     }
 
     fun selectDlsiteLanguage(lang: String) {
-        selectDlsiteLanguageInternal(lang, isUserSelection = true)
-    }
-
-    private fun selectDlsiteLanguageInternal(lang: String, isUserSelection: Boolean) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         val normalized = lang.trim().uppercase()
         if (normalized.isBlank()) return
@@ -1278,13 +1508,14 @@ class AlbumDetailViewModel @Inject constructor(
             ?: if (normalized == "JPN") DlsiteLanguageEdition(
                 workno = current.model.baseRjCode.trim().uppercase(),
                 lang = "JPN",
-                label = "日本語",
+                label = context.getString(R.string.japanese),
                 displayOrder = 1
             ) else null
         val workno = target?.workno?.trim()?.uppercase().orEmpty().ifBlank { current.model.baseRjCode.trim().uppercase() }
         if (workno.isBlank()) return
         if (normalized == current.model.dlsiteSelectedLang.trim().uppercase() && workno == current.model.dlsiteWorkno.trim().uppercase()) return
 
+        cancelPendingOnlineJobs(resetLoadingState = false)
         dlsiteLoadToken++
         asmrOneLoadToken++
         asmrOneAttemptedRj.clear()
@@ -1310,7 +1541,8 @@ class AlbumDetailViewModel @Inject constructor(
                 hasResolvedInitialDlsiteTarget = true,
                 hasLoadedInitialDlsiteContent = false,
                 hasResolvedAsmrOneContent = false,
-                isDlsiteLanguageUserSelected = current.model.isDlsiteLanguageUserSelected || isUserSelection,
+                hasResolvedDlsitePlayContent = false,
+                isDlsiteLanguageUserSelected = true,
                 asmrOneWorkId = null,
                 asmrOneSite = null,
                 asmrOneTree = emptyList(),
@@ -1325,11 +1557,7 @@ class AlbumDetailViewModel @Inject constructor(
         clearTreeState("tree:dlsitePlay:$workno")
         clearTreeState("localTree:rj:$workno")
         viewModelScope.launch {
-            val local = if (isUserSelection) {
-                runCatching { loadLocalAlbumByRj(workno) }.getOrNull() ?: current.model.localAlbum
-            } else {
-                current.model.localAlbum
-            }
+            val local = runCatching { loadLocalAlbumByRj(workno) }.getOrNull() ?: current.model.localAlbum
             val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
             if (!updated.rjCode.equals(workno, ignoreCase = true)) return@launch
             val displayAlbum = mergeDetailHeaderAlbum(
@@ -1357,8 +1585,9 @@ class AlbumDetailViewModel @Inject constructor(
         if (keyRj.isBlank() || current.model.isLoadingAsmrOne) return
 
         asmrOneAttemptedRj.remove(keyRj)
-        asmrOneCollectedCache.remove(keyRj)
         asmrOneResolvedCache.remove(keyRj)
+        asmrOneResolvedDetailsCache.remove(keyRj)
+        asmrOneResolutionInFlight.remove(keyRj)?.cancel()
 
         val oldWorkId = current.model.asmrOneWorkId?.trim().orEmpty()
         if (oldWorkId.isNotBlank()) {
@@ -1383,7 +1612,8 @@ class AlbumDetailViewModel @Inject constructor(
         val updatedKey = updated.rjCode.trim().uppercase()
         if (updatedKey.equals(keyRj, ignoreCase = true)) {
             if (showFailureMessage && updated.asmrOneTree.isEmpty()) {
-                messageManager.showError(R.string.online_resources_failed)
+                albumDetailAsmrOneFailureMessage(isLocalLibraryDetail)
+                    ?.let(messageManager::showError)
             }
             _uiState.value = AlbumDetailUiState.Success(
                 model = updated.copy(
@@ -1401,7 +1631,8 @@ class AlbumDetailViewModel @Inject constructor(
 
         val token = ++dlsiteTrialLoadToken
         val locale = dlsiteLocaleForLang(current.model.dlsiteSelectedLang)
-        viewModelScope.launch {
+        dlsiteTrialLoadJob?.cancel()
+        dlsiteTrialLoadJob = viewModelScope.launch {
             val latestBefore = _uiState.value as? AlbumDetailUiState.Success ?: return@launch
             val latestWorkno = latestBefore.model.dlsiteWorkno.trim().uppercase().ifBlank { latestBefore.model.rjCode.trim().uppercase() }
             if (!latestWorkno.equals(workno, ignoreCase = true)) return@launch
@@ -1418,11 +1649,13 @@ class AlbumDetailViewModel @Inject constructor(
                         isLoadingDlsiteTrial = false
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 val updatedWorkno = updated.dlsiteWorkno.trim().uppercase().ifBlank { updated.rjCode.trim().uppercase() }
                 if (token != dlsiteTrialLoadToken || !updatedWorkno.equals(workno, ignoreCase = true)) return@launch
-                messageManager.showError(R.string.preview_refresh_failed)
+                messageManager.showError("试听刷新失败，请稍后重试")
                 _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingDlsiteTrial = false))
             }
         }
@@ -1431,12 +1664,7 @@ class AlbumDetailViewModel @Inject constructor(
     fun ensureAsmrOneLoaded() {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         val keyRj = current.model.rjCode.trim().uppercase()
-        if (current.model.asmrOneTree.isNotEmpty()) {
-            if (!current.model.hasResolvedAsmrOneContent) {
-                _uiState.value = AlbumDetailUiState.Success(
-                    model = current.model.copy(hasResolvedAsmrOneContent = true)
-                )
-            }
+        if (current.model.asmrOneTree.isNotEmpty() && current.model.hasResolvedAsmrOneContent) {
             return
         }
         if (
@@ -1447,7 +1675,8 @@ class AlbumDetailViewModel @Inject constructor(
         ) return
         asmrOneAttemptedRj.add(keyRj)
         val token = ++asmrOneLoadToken
-        viewModelScope.launch {
+        asmrOneLoadJob?.cancel()
+        asmrOneLoadJob = viewModelScope.launch {
             val latestBefore = _uiState.value as? AlbumDetailUiState.Success ?: return@launch
             val latestKey = latestBefore.model.rjCode.trim().uppercase()
             if (!latestKey.equals(keyRj, ignoreCase = true)) {
@@ -1471,153 +1700,209 @@ class AlbumDetailViewModel @Inject constructor(
                     ?.uppercase()
                     .orEmpty()
                 val originalRj = jpnWorkno.ifBlank { latestBase.ifBlank { keyRj } }
-                val backendRjs = listOf(keyRj, originalRj, latest.dlsiteWorkno, latestBase)
-                    .map { it.trim().uppercase() }
-                    .filter { RJ_CODE_REGEX.matches(it) }
-                    .distinct()
-                val backendFirst = fetchAsmrOneTracksBackendFirst(
-                    backendRjs = backendRjs,
-                    fetchBackend = { fetchBackendAsmrOneTracksByRj(it) },
-                    fetchFallback = { Triple(null, null, emptyList()) }
+                // 只有选中日语时才允许用入口 RJ 直接解析目录树。其他语言版本必须走
+                // 语言匹配解析，未收录时应显示“暂未收录”，而不是降级到日文目录树。
+                val preferInitialRj = !latest.isDlsiteLanguageUserSelected &&
+                    selectedLang == "JPN" &&
+                    DlsiteWorkNo.normalizeWorkNo(latestBase, minimumDigits = 6).isNotBlank()
+                val directoryRjs = asmrOneTrackRjCandidates(
+                    baseRj = latestBase,
+                    currentRj = keyRj,
+                    dlsiteWorkno = latest.dlsiteWorkno,
+                    originalRj = originalRj,
+                    selectedLang = selectedLang,
+                    preferInitialRj = preferInitialRj
                 )
-                if (backendFirst.third.isNotEmpty()) {
-                    val backendWorkId = backendFirst.first.orEmpty()
+                fun finishWithResolvedAsmrOneTree(
+                    workId: String?,
+                    site: Int?,
+                    tree: List<AsmrOneTrackNodeResponse>,
+                    resolvedDetails: WorkDetailsResponse? = null
+                ): Boolean {
+                    val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return true
+                    if (token != asmrOneLoadToken) {
+                        asmrOneAttemptedRj.remove(keyRj)
+                        finishAsmrOneLoad(keyRj, resolved = false)
+                        return true
+                    }
+                    val resolvedWorkId = workId?.trim().orEmpty().ifBlank { updated.asmrOneWorkId.orEmpty() }
+                    val displayAlbum = mergeAsmrOneHeaderAlbum(
+                        currentDisplayAlbum = updated.displayAlbum,
+                        localAlbum = updated.localAlbum,
+                        fetchedDlsiteInfo = updated.dlsiteInfo,
+                        resolvedAsmrOneDetails = resolvedDetails,
+                        rjCode = updated.rjCode,
+                        asmrOneWorkId = resolvedWorkId.takeIf { it.isNotBlank() } ?: updated.asmrOneWorkId,
+                        preserveHeaderAlbumMetadata = updated.preserveHeaderAlbumMetadata
+                    )
+                    _uiState.value = AlbumDetailUiState.Success(
+                        model = updated.copy(
+                            displayAlbum = displayAlbum,
+                            asmrOneWorkId = resolvedWorkId.takeIf { it.isNotBlank() } ?: updated.asmrOneWorkId,
+                            asmrOneSite = site,
+                            asmrOneTree = tree,
+                            hasResolvedAsmrOneContent = true,
+                            isLoadingAsmrOne = false
+                        )
+                    )
+                    return true
+                }
+
+                if (asmrOneCrawler.selectedEndpoint() == AsmrOneEndpoint.BACKUP) {
+                    val metadataRj = latestBase.ifBlank { keyRj }
+                    val metadataDeferred = async {
+                        runCatching {
+                            val resolution = resolveAsmrOneWork(metadataRj, timeoutMs = 2_500L)
+                            resolution to asmrOneResolvedDetailsCache[metadataRj]
+                        }.getOrNull()
+                    }
+                    val backupResult = fetchAsmrOneTracksFromBackup(
+                        candidateRjs = directoryRjs,
+                        throwWhenAllRequestsFail = true,
+                        fetchBackup = { fetchBackupAsmrOneTracksByRj(it, throwOnRequestFailure = true) }
+                    )
+                    if (backupResult.second.isNotEmpty()) {
+                        finishWithResolvedAsmrOneTree(
+                            workId = backupResult.first,
+                            site = AsmrOneEndpoint.BACKUP,
+                            tree = backupResult.second
+                        )
+                    } else {
+                        asmrOneAttemptedRj.remove(keyRj)
+                        finishAsmrOneLoad(keyRj, resolved = true)
+                    }
+                    val metadataResult = metadataDeferred.await()
+                    val metadataResolution = metadataResult?.first
+                    val metadataDetails = metadataResult?.second
+                    if (metadataResolution != null || metadataDetails != null) {
+                        finishWithResolvedAsmrOneTree(
+                            workId = backupResult.first.orEmpty()
+                                .ifBlank { metadataResolution?.first.orEmpty() },
+                            site = AsmrOneEndpoint.BACKUP,
+                            tree = backupResult.second,
+                            resolvedDetails = metadataDetails
+                        )
+                    }
+                    return@launch
+                }
+
+                var preferredInitialResolution: Pair<String, Int?>? = null
+                var preferredInitialDetails: WorkDetailsResponse? = null
+                if (preferInitialRj) {
+                    val preferredInitial = resolveAsmrOneWork(latestBase, throwOnRequestFailure = true)
+                    if (preferredInitial != null) {
+                        preferredInitialResolution = preferredInitial
+                        val preferredWorkId = preferredInitial.first
+                        val searchDetails = asmrOneResolvedDetailsCache[latestBase]
+                        val (preferredResult, preferredDetails) = coroutineScope {
+                            val tracksDeferred = async {
+                                getAsmrOneTracksCached(preferredWorkId, throwOnRequestFailure = true)
+                            }
+                            val detailsDeferred = async {
+                                searchDetails
+                                    ?: runCatching { asmrOneCrawler.getDetails(preferredWorkId) }.getOrNull()
+                            }
+                            tracksDeferred.await() to detailsDeferred.await()
+                        }
+                        preferredInitialDetails = preferredDetails
+                        if (preferredResult.tree.isNotEmpty()) {
+                            finishWithResolvedAsmrOneTree(
+                                workId = preferredWorkId,
+                                site = preferredResult.site,
+                                tree = preferredResult.tree,
+                                resolvedDetails = preferredDetails
+                            )
+                            return@launch
+                        }
+                    }
+                }
+
+                var resolvedOriginal = preferredInitialResolution.takeIf {
+                    latestBase.equals(originalRj, ignoreCase = true) ||
+                        latestBase.equals(keyRj, ignoreCase = true)
+                }
+                if (resolvedOriginal == null) {
+                    val directRjs = listOf(originalRj, keyRj)
+                        .map { DlsiteWorkNo.normalizeWorkNo(it, minimumDigits = 6) }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                    for (candidateRj in directRjs) {
+                        val resolved = resolveAsmrOneWork(
+                            candidateRj,
+                            throwOnRequestFailure = true
+                        ) ?: continue
+                        resolvedOriginal = resolved
+                        preferredInitialDetails = asmrOneResolvedDetailsCache[candidateRj]
+                        break
+                    }
+                }
+                if (resolvedOriginal == null) {
+                    asmrOneAttemptedRj.remove(keyRj)
+                    if (token != asmrOneLoadToken) {
+                        finishAsmrOneLoad(keyRj, resolved = false)
+                    } else {
+                        finishAsmrOneLoad(keyRj, resolved = true)
+                    }
+                    return@launch
+                }
+                val originalWorkId = resolvedOriginal.first
+
+                val originalDetails = preferredInitialDetails
+                    ?.takeIf { preferredInitialResolution?.first == originalWorkId }
+                    ?: runCatching { asmrOneCrawler.getDetails(originalWorkId) }.getOrNull()
+
+                if (originalDetails != null) {
                     val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                     if (token != asmrOneLoadToken) {
                         asmrOneAttemptedRj.remove(keyRj)
                         finishAsmrOneLoad(keyRj, resolved = false)
                         return@launch
                     }
-                    val displayAlbum = mergeDetailHeaderAlbum(
-                        currentDisplayAlbum = updated.displayAlbum,
-                        localAlbum = updated.localAlbum,
-                        fetchedDlsiteInfo = updated.dlsiteInfo,
-                        rjCode = updated.rjCode,
-                        asmrOneWorkId = backendWorkId.ifBlank { updated.asmrOneWorkId },
-                        preserveHeaderAlbumMetadata = updated.preserveHeaderAlbumMetadata
-                    )
                     _uiState.value = AlbumDetailUiState.Success(
                         model = updated.copy(
-                            displayAlbum = displayAlbum,
-                            asmrOneWorkId = backendWorkId.ifBlank { updated.asmrOneWorkId },
-                            asmrOneSite = null,
-                            asmrOneTree = backendFirst.third,
-                            hasResolvedAsmrOneContent = true,
-                            isLoadingAsmrOne = false
+                            displayAlbum = mergeAsmrOneHeaderAlbum(
+                                currentDisplayAlbum = updated.displayAlbum,
+                                localAlbum = updated.localAlbum,
+                                fetchedDlsiteInfo = updated.dlsiteInfo,
+                                resolvedAsmrOneDetails = originalDetails,
+                                rjCode = updated.rjCode,
+                                asmrOneWorkId = originalWorkId,
+                                preserveHeaderAlbumMetadata = updated.preserveHeaderAlbumMetadata
+                            ),
+                            asmrOneWorkId = originalWorkId
                         )
                     )
-                    return@launch
                 }
 
-                val collected = isAsmrOneCollected(originalRj, timeoutMs = 1_200L)
-                if (collected == false) {
-                    val baseKey = originalRj
-                    val preferred = listOf("CHI_HANS", "CHI_HANT", "JPN")
-                    val candidates = preferred.mapNotNull { lang ->
-                        val workno = latest.dlsiteEditions.firstOrNull { it.lang.equals(lang, ignoreCase = true) }
-                            ?.workno
-                            ?.trim()
-                            ?.uppercase()
-                            .orEmpty()
-                            .ifBlank {
-                                if (lang == "JPN") baseKey else ""
-                            }
-                        if (workno.isBlank() || workno.equals(keyRj, ignoreCase = true)) return@mapNotNull null
-                        lang to workno
-                    }
-                    val results = coroutineScope {
-                        candidates.map { (lang, workno) ->
-                            async {
-                                lang to isAsmrOneCollected(workno, timeoutMs = 1_200L)
-                            }
-                        }.mapNotNull { runCatching { it.await() }.getOrNull() }.toMap()
-                    }
-                    val fallbackLang = preferred.firstOrNull { lang -> results[lang] == true }
-                    val fallbackKey = "base:$baseKey|cur:$keyRj|to:${fallbackLang.orEmpty()}"
-                    if (
-                        !latest.isDlsiteLanguageUserSelected &&
-                        !fallbackLang.isNullOrBlank() &&
-                        !autoFallbackToJpnOnceByKey.contains(fallbackKey)
-                    ) {
-                        autoFallbackToJpnOnceByKey.add(fallbackKey)
-                        val updated0 = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                        val updatedKey0 = updated0.rjCode.trim().uppercase()
-                        if (updatedKey0.equals(keyRj, ignoreCase = true) && updated0.isLoadingAsmrOne) {
-                            _uiState.value = AlbumDetailUiState.Success(model = updated0.copy(isLoadingAsmrOne = false))
-                        }
-                        selectDlsiteLanguageInternal(fallbackLang, isUserSelection = false)
-                        return@launch
-                    }
-                    asmrOneAttemptedRj.remove(keyRj)
-                    finishAsmrOneLoad(keyRj, resolved = true)
-                    return@launch
-                }
-
-                val resolvedOriginal = resolveAsmrOneWork(originalRj)
-                    ?: resolveAsmrOneWork(keyRj)
-                    ?: run {
-                        asmrOneAttemptedRj.remove(keyRj)
-                        if (token != asmrOneLoadToken) {
-                            finishAsmrOneLoad(keyRj, resolved = false)
-                        } else {
-                            finishAsmrOneLoad(keyRj, resolved = true)
-                        }
-                        return@launch
-                    }
-                val (originalWorkId, site) = resolvedOriginal
-
-                val originalDetails = runCatching {
-                    if (site != null) asmrOneCrawler.getDetailsFromSite(site, originalWorkId) else asmrOneCrawler.getDetails(originalWorkId)
-                }.getOrNull()
-
-                val otherId = if (selectedLang == "JPN") {
-                    null
-                } else {
-                    val other = originalDetails?.other_language_editions_in_db.orEmpty()
-                    other.firstOrNull { it.source_id.orEmpty().trim().equals(keyRj, ignoreCase = true) }?.id
-                        ?: when (selectedLang) {
-                            "CHI_HANS" -> other.firstOrNull { it.lang.orEmpty().contains("简体") }?.id
-                            "CHI_HANT" -> other.firstOrNull { it.lang.orEmpty().contains("繁體") }?.id
-                            "KO_KR" -> other.firstOrNull { it.lang.orEmpty().contains("韩") || it.lang.orEmpty().contains("韓") }?.id
-                            else -> null
-                        }
-                }
-
-                val finalWorkId = otherId?.toString()?.trim().orEmpty().ifBlank { originalWorkId }
-                val tree = getAsmrOneTracksCached(site, finalWorkId).ifEmpty {
-                    if (finalWorkId != originalWorkId) getAsmrOneTracksCached(site, originalWorkId) else emptyList()
-                }
-                val workId = finalWorkId
-                val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
+                val workId = resolveAsmrOneTrackWorkId(
+                    resolvedWorkId = originalWorkId,
+                    resolvedDetails = originalDetails,
+                    selectedLang = selectedLang,
+                    selectedRjs = directoryRjs
+                )
+                val trackResult = workId
+                    ?.let { getAsmrOneTracksCached(it, throwOnRequestFailure = true) }
+                    ?: AsmrOneTracksResult(emptyList(), null)
                 if (token != asmrOneLoadToken) {
                     asmrOneAttemptedRj.remove(keyRj)
                     finishAsmrOneLoad(keyRj, resolved = false)
                     return@launch
                 }
-                if (workId.isBlank()) {
+                if (workId.isNullOrBlank()) {
                     asmrOneAttemptedRj.remove(keyRj)
                     finishAsmrOneLoad(keyRj, resolved = true)
                     return@launch
                 }
-                val displayAlbum = mergeDetailHeaderAlbum(
-                    currentDisplayAlbum = updated.displayAlbum,
-                    localAlbum = updated.localAlbum,
-                    fetchedDlsiteInfo = updated.dlsiteInfo,
-                    rjCode = updated.rjCode,
-                    asmrOneWorkId = workId,
-                    preserveHeaderAlbumMetadata = updated.preserveHeaderAlbumMetadata
+                finishWithResolvedAsmrOneTree(
+                    workId = workId,
+                    site = trackResult.site,
+                    tree = trackResult.tree,
+                    resolvedDetails = originalDetails
                 )
-                _uiState.value = AlbumDetailUiState.Success(
-                    model = updated.copy(
-                        displayAlbum = displayAlbum,
-                        asmrOneWorkId = workId,
-                        asmrOneSite = site,
-                        asmrOneTree = tree,
-                        hasResolvedAsmrOneContent = true,
-                        isLoadingAsmrOne = false
-                    )
-                )
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: TimeoutCancellationException) {
+                asmrOneAttemptedRj.remove(keyRj)
+                finishAsmrOneLoad(keyRj, resolved = true, showFailureMessage = true)
+            } catch (e: CancellationException) {
                 asmrOneAttemptedRj.remove(keyRj)
                 finishAsmrOneLoad(keyRj, resolved = false)
             } catch (e: Exception) {
@@ -1627,7 +1912,7 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-    fun ensureDlsitePlayLoaded() {
+    fun ensureDlsitePlayLoaded(showFailureMessage: Boolean = true) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         val baseRj = current.model.baseRjCode.trim().uppercase()
         val candidates0 = DlsiteWorkNo.normalizeCandidates(
@@ -1648,8 +1933,14 @@ class AlbumDetailViewModel @Inject constructor(
             dlsitePlayAttemptedRj.contains(attemptKey)
         ) return
         dlsitePlayAttemptedRj.add(attemptKey)
-        viewModelScope.launch {
-            _uiState.value = AlbumDetailUiState.Success(model = current.model.copy(isLoadingDlsitePlay = true))
+        dlsitePlayLoadJob?.cancel()
+        dlsitePlayLoadJob = viewModelScope.launch {
+            _uiState.value = AlbumDetailUiState.Success(
+                model = current.model.copy(
+                    isLoadingDlsitePlay = true,
+                    hasResolvedDlsitePlayContent = false
+                )
+            )
             try {
                 val editions = runCatching {
                     if (current.model.dlsiteEditions.size > 1) {
@@ -1675,7 +1966,14 @@ class AlbumDetailViewModel @Inject constructor(
                 var sawNotAvailable = false
                 for (workno in candidates) {
                     val res = try {
-                        dlsitePlayWorkClient.fetchPlayableTree(workno)
+                        withTimeout(ONLINE_DIRECTORY_REQUEST_TIMEOUT_MS) {
+                            dlsitePlayWorkClient.fetchPlayableTree(workno)
+                        }
+                    } catch (e: TimeoutCancellationException) {
+                        lastError = e
+                        continue
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         lastError = e
                         continue
@@ -1701,51 +1999,56 @@ class AlbumDetailViewModel @Inject constructor(
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
                 if (pickedResult == null && lastError != null && !sawNotAvailable) {
                     dlsitePlayAttemptedRj.remove(attemptKey)
-                    messageManager.showError(R.string.dlsite_play_failed_2)
+                    if (showFailureMessage) {
+                        messageManager.showError("DLsite Play 加载失败，请稍后重试")
+                    }
                 }
                 _uiState.value = AlbumDetailUiState.Success(
                     model = updated.copy(
                         dlsitePlayTree = result.tree,
                         dlsitePlayWorkno = pickedWorkno?.trim().orEmpty(),
+                        hasResolvedDlsitePlayContent = true,
                         isLoadingDlsitePlay = false
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 dlsitePlayAttemptedRj.remove(attemptKey)
                 val updated = (_uiState.value as? AlbumDetailUiState.Success)?.model ?: return@launch
-                _uiState.value = AlbumDetailUiState.Success(model = updated.copy(isLoadingDlsitePlay = false))
+                _uiState.value = AlbumDetailUiState.Success(
+                    model = updated.copy(
+                        hasResolvedDlsitePlayContent = true,
+                        isLoadingDlsitePlay = false
+                    )
+                )
             }
         }
     }
 
-    private suspend fun fetchAsmrOneWithFallback(
-        primaryRj: String,
-        fallbackRj: String
-    ): Triple<String?, Int?, List<AsmrOneTrackNodeResponse>> {
-        suspend fun pickExact(workNo: String): Triple<String?, Int?, List<AsmrOneTrackNodeResponse>> {
-            val normalized = workNo.trim().uppercase()
-            if (normalized.isBlank()) return Triple(null, null, emptyList())
-            val resolved = resolveAsmrOneWork(normalized) ?: return Triple(null, null, emptyList())
-            val (workId, site) = resolved
-            val tree = getAsmrOneTracksCached(site, workId)
-            return Triple(workId, site, tree)
-        }
-
-        val primary = pickExact(primaryRj)
-        if (primary.first != null) return primary
-
-        val normalizedFallback = fallbackRj.trim()
-        val normalizedPrimary = primaryRj.trim()
-        if (normalizedFallback.isNotBlank() && !normalizedFallback.equals(normalizedPrimary, ignoreCase = true)) {
-            val fallback = pickExact(normalizedFallback)
-            if (fallback.first != null) return fallback
-        }
-
-        return Triple(null, null, emptyList())
-    }
-
     private fun albumFromInitialHint(rj: String, hint: AlbumCoverHint?): Album {
         return albumFromCoverHint(context, rj, hint)
+    }
+
+    private fun createRouteInitialUiState(savedStateHandle: SavedStateHandle): AlbumDetailUiState {
+        val albumId = savedStateHandle.get<Long>("albumId")?.takeIf { it > 0L }
+        val routeRj = savedStateHandle.get<String>("rjCode")
+            ?.trim()
+            .orEmpty()
+            .ifBlank { savedStateHandle.get<String>("rj")?.trim().orEmpty() }
+            .uppercase()
+        val hint = AlbumCoverHintStore.peekHint(albumId, routeRj)
+        val initialRj = routeRj.ifBlank { hint?.rjCode.orEmpty() }
+        val hintAlbum = albumFromInitialHint(initialRj, hint)
+        val preserveHeaderMetadata = shouldPreserveHeaderAlbumMetadata(hint)
+        return AlbumDetailUiState.Success(
+            model = createInitialAlbumDetailModel(
+                rj = initialRj,
+                displayAlbum = hintAlbum,
+                dlsiteInfo = hintAlbum.takeIf { preserveHeaderMetadata },
+                preserveHeaderAlbumMetadata = preserveHeaderMetadata
+            )
+        )
     }
 
     private fun createInitialAlbumDetailModel(
@@ -1772,6 +2075,7 @@ class AlbumDetailViewModel @Inject constructor(
             hasResolvedInitialDlsiteTarget = false,
             hasLoadedInitialDlsiteContent = false,
             hasResolvedAsmrOneContent = false,
+            hasResolvedDlsitePlayContent = false,
             preserveHeaderAlbumMetadata = preserveHeaderAlbumMetadata,
             isDlsiteLanguageUserSelected = false,
             asmrOneWorkId = null,
@@ -1802,7 +2106,8 @@ class AlbumDetailViewModel @Inject constructor(
         val tracks = loadLocalTracks(entity)
         return Album(
             id = entity.id,
-            title = entity.title,
+            title = entity.titleForDisplay,
+            displayTitle = entity.displayTitle,
             path = entity.path,
             localPath = entity.localPath,
             downloadPath = entity.downloadPath,
@@ -1833,33 +2138,12 @@ class AlbumDetailViewModel @Inject constructor(
                 existingLocalKeysNoGroup.add(TrackKeyNormalizer.buildKey(t.title, "", null))
             }
         
-        messageManager.showInfo(R.string.adding_download_queue, album.title)
-        
         val folderName = safeFolderName(album.rjCode.ifBlank { album.workId }.ifBlank { album.title })
-        val baseDir = File(context.getExternalFilesDir(null), "albums")
-        val targetDir = File(baseDir, folderName)
-        if (!targetDir.exists()) targetDir.mkdirs()
-
+        val items = mutableListOf<RelativeDownloadItem>()
         val coverUrl = album.coverUrl.trim()
         if (coverUrl.startsWith("http", ignoreCase = true)) {
             val ext = coverUrl.substringBefore('?').substringAfterLast('.', "").takeIf { it.length in 2..5 } ?: "jpg"
-            val coverFileName = "cover.$ext"
-            downloadManager.enqueueDownload(
-                url = coverUrl,
-                fileName = coverFileName,
-                targetDir = targetDir.absolutePath,
-                taskRootDir = targetDir.absolutePath,
-                relativePath = coverFileName,
-                taskSubtitle = album.title,
-                tags = listOf("album:$folderName"),
-                albumTitle = album.title,
-                albumCircle = album.circle,
-                albumCv = album.cv,
-                albumTagsCsv = album.tags.joinToString(","),
-                albumCoverUrl = album.coverUrl,
-                albumWorkId = album.workId,
-                albumRjCode = album.rjCode
-            )
+            items += RelativeDownloadItem(url = coverUrl, relativePath = "cover.$ext")
         }
 
         album.tracks.forEachIndexed { index, track ->
@@ -1872,20 +2156,26 @@ class AlbumDetailViewModel @Inject constructor(
             }
             val ext = url.substringBefore('?').substringAfterLast('.', "").takeIf { it.length in 2..6 } ?: "mp3"
             val fileName = "${(index + 1).toString().padStart(2, '0')}_${safeFileName(track.title)}.$ext"
-            downloadManager.enqueueDownload(
-                url = url,
-                fileName = fileName,
-                targetDir = targetDir.absolutePath,
-                taskRootDir = targetDir.absolutePath,
-                relativePath = fileName,
-                tags = listOf("album:$folderName"),
-                albumTitle = album.title,
-                albumCircle = album.circle,
-                albumCv = album.cv,
-                albumTagsCsv = album.tags.joinToString(","),
-                albumCoverUrl = album.coverUrl,
-                albumWorkId = album.workId,
-                albumRjCode = album.rjCode
+            items += RelativeDownloadItem(url = url, relativePath = fileName)
+        }
+        if (items.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            showEnqueueBatchResult(
+                downloadManager.enqueueBatch(
+                    DownloadBatchRequest(
+                        albumDirectoryName = folderName,
+                        logicalTaskKey = "album:$folderName",
+                        items = items,
+                        taskSubtitle = album.title,
+                        albumTitle = album.title,
+                        albumCircle = album.circle,
+                        albumCv = album.cv,
+                        albumTagsCsv = album.tags.joinToString(","),
+                        albumCoverUrl = album.coverUrl,
+                        albumWorkId = album.workId,
+                        albumRjCode = album.rjCode,
+                    ),
+                ),
             )
         }
     }
@@ -1893,7 +2183,7 @@ class AlbumDetailViewModel @Inject constructor(
     fun downloadAsmrOneSelected(selectedLeafPaths: Set<String>) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         enqueueRemoteTreeSelectionDownload(
-            album = current.model.displayAlbum,
+            model = current.model,
             tree = current.model.asmrOneTree,
             selectedLeafPaths = selectedLeafPaths,
             relativeBaseDir = ""
@@ -1903,7 +2193,7 @@ class AlbumDetailViewModel @Inject constructor(
     fun downloadDlsitePlaySelected(selectedLeafPaths: Set<String>) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         enqueueRemoteTreeSelectionDownload(
-            album = current.model.displayAlbum,
+            model = current.model,
             tree = current.model.dlsitePlayTree,
             selectedLeafPaths = selectedLeafPaths,
             relativeBaseDir = ""
@@ -1916,47 +2206,49 @@ class AlbumDetailViewModel @Inject constructor(
         if (model.dlsitePlayTree.isEmpty()) return
 
         val album = model.displayAlbum
-        val workno = normalizeRj(
+        val workno = normalizeWorkNo(
             model.dlsitePlayWorkno
                 .ifBlank { model.dlsiteWorkno }
                 .ifBlank { model.rjCode }
                 .ifBlank { album.rjCode.ifBlank { album.workId } }
         )
         if (workno.isBlank()) {
-            messageManager.showError(R.string.unable_determine_dlsite)
+            messageManager.showError("无法确定 DLsite Play 作品编号")
             return
         }
 
         val folderName = safeFolderName(album.rjCode.ifBlank { album.workId }.ifBlank { workno }.ifBlank { album.title })
-        val baseDir = File(context.getExternalFilesDir(null), "albums")
-        val targetDir = File(baseDir, folderName)
-        if (!targetDir.exists()) targetDir.mkdirs()
-
-        enqueueRemoteDownloadCover(
-            album = album,
-            targetRootDir = targetDir,
-            taskKey = "album:$folderName",
-            taskSubtitle = album.title
+        val items = mutableListOf(
+            RelativeDownloadItem(
+                url = "https://play.dlsite.com/api/v3/download?workno=$workno",
+                relativePath = "dlsite_lossless_archive.zip",
+            ),
         )
-
-        downloadManager.enqueueDownload(
-            url = "https://play.dlsite.com/api/v3/download?workno=$workno",
-            fileName = "dlsite_lossless_archive.zip",
-            targetDir = targetDir.absolutePath,
-            taskRootDir = targetDir.absolutePath,
-            relativePath = "dlsite_lossless_archive.zip",
-            taskSubtitle = album.title,
-            tags = listOf("album:$folderName"),
-            albumTitle = album.title,
-            albumCircle = album.circle,
-            albumCv = album.cv,
-            albumTagsCsv = album.tags.joinToString(","),
-            albumCoverUrl = album.coverUrl,
-            albumWorkId = album.workId,
-            albumRjCode = album.rjCode
-        )
-
-        messageManager.showInfo(R.string.adding_lossless_download, album.title)
+        val coverUrl = album.coverUrl.trim()
+        if (coverUrl.startsWith("http", ignoreCase = true)) {
+            val ext = coverUrl.substringBefore('?').substringAfterLast('.', "")
+                .takeIf { it.length in 2..5 } ?: "jpg"
+            items.add(0, RelativeDownloadItem(url = coverUrl, relativePath = "cover.$ext"))
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            showEnqueueBatchResult(
+                downloadManager.enqueueBatch(
+                    DownloadBatchRequest(
+                        albumDirectoryName = folderName,
+                        logicalTaskKey = "album:$folderName",
+                        items = items,
+                        taskSubtitle = album.title,
+                        albumTitle = album.title,
+                        albumCircle = album.circle,
+                        albumCv = album.cv,
+                        albumTagsCsv = album.tags.joinToString(","),
+                        albumCoverUrl = album.coverUrl,
+                        albumWorkId = album.workId,
+                        albumRjCode = album.rjCode,
+                    ),
+                ),
+            )
+        }
     }
 
     fun downloadDlsiteTrialSelected(selectedLeafPaths: Set<String>) {
@@ -1968,11 +2260,89 @@ class AlbumDetailViewModel @Inject constructor(
             relativeBaseDir = DlsiteTrialDownloadDirectoryName
         )
     }
-    fun saveOnlineSelectedToLibrary(selectedLeafPaths: Set<String>) {
+
+    fun downloadSavedOnlineTrack(track: Track, relativePath: String) {
+        val current = _uiState.value as? AlbumDetailUiState.Success ?: return
+        val url = track.path.trim()
+        if (!isOnlineTrackPath(url)) return
+
+        val normalizedRelativePath = relativePath
+            .replace('\\', '/')
+            .trim()
+            .trimStart('/')
+            .ifBlank { safeFileName(track.title) }
+        if (treeFileTypeForNode(normalizedRelativePath, url) != TreeFileType.Audio) return
+
+        enqueueRemoteLeafDownloads(
+            album = current.model.displayAlbum,
+            selected = listOf(
+                AsmrOneLeafDownload(
+                    url = url,
+                    relativePath = normalizedRelativePath,
+                    duration = track.duration
+                )
+            ),
+            relativeBaseDir = "",
+            includeCover = false
+        )
+    }
+
+    internal suspend fun resolveLocalIncrementalSelectionPaths(
+        tree: List<AsmrOneTrackNodeResponse>
+    ): LocalIncrementalSelectionPaths {
+        val current = _uiState.value as? AlbumDetailUiState.Success
+            ?: return LocalIncrementalSelectionPaths()
+        val localAlbum = current.model.localAlbum ?: return LocalIncrementalSelectionPaths()
+        if (localAlbum.id <= 0L || tree.isEmpty()) return LocalIncrementalSelectionPaths()
+
+        return withContext(Dispatchers.IO) {
+            val savedResources = database.onlineSavedResourceDao().getForAlbumOnce(localAlbum.id)
+            val localIndex = loadOrBuildLocalTreeIndex(
+                context = context,
+                albumId = localAlbum.id,
+                albumPaths = localAlbum.getAllLocalPaths(),
+                tracks = localAlbum.tracks,
+                onlineSavedResources = savedResources,
+                sources = localTreeSourcesForAlbum(localAlbum),
+            )
+            val localFiles = collectLocalSelectionFiles(localIndex)
+            val remoteFiles = flattenAsmrOneLeafDownloads(tree)
+                .filter { leaf ->
+                    isLibraryResourceSavableTreeFileType(
+                        treeFileTypeForNode(leaf.relativePath, leaf.url)
+                    )
+                }
+                .map { leaf ->
+                    RemoteSelectionFileRef(
+                        relativePath = leaf.relativePath,
+                        url = leaf.url
+                    )
+                }
+
+            LocalIncrementalSelectionPaths(
+                downloadedPaths = resolveExistingRemoteSelectionPaths(
+                    remoteFiles = remoteFiles,
+                    localFiles = localFiles,
+                    includeOnlineFiles = false
+                ),
+                savedPaths = resolveExistingRemoteSelectionPaths(
+                    remoteFiles = remoteFiles,
+                    localFiles = localFiles,
+                    includeOnlineFiles = true
+                )
+            )
+        }
+    }
+
+    fun saveOnlineSelectedToLibrary(
+        selectedLeafPaths: Set<String>,
+        useDlsitePlayTree: Boolean = false
+    ) {
         val current = _uiState.value as? AlbumDetailUiState.Success ?: return
         val model = current.model
-        val displayAlbum = model.displayAlbum
-        val tree = if (model.dlsitePlayTree.isNotEmpty()) model.dlsitePlayTree else model.asmrOneTree
+        val displayAlbum = resolvedOnlineActionAlbum(model)
+        val targetLocalAlbumId = model.localAlbum?.id?.takeIf { it > 0L }
+        val tree = if (useDlsitePlayTree) model.dlsitePlayTree else model.asmrOneTree
         if (tree.isEmpty()) return
 
         viewModelScope.launch {
@@ -1983,35 +2353,42 @@ class AlbumDetailViewModel @Inject constructor(
                     return@withContext SaveOnlineToLibraryResult(
                         selectedCount = 0,
                         insertedCount = 0,
-                        albumId = 0L,
-                        coverUrl = "",
-                        coverPath = ""
+                        resourceSavedCount = 0
                     )
                 }
 
-                val rj = normalizeRj(displayAlbum.rjCode.ifBlank { displayAlbum.workId }.ifBlank { model.rjCode })
+                val rj = normalizeWorkNo(displayAlbum.rjCode.ifBlank { displayAlbum.workId }.ifBlank { model.rjCode })
                 val workKey = rj.ifBlank { displayAlbum.workId.trim().ifBlank { displayAlbum.title.trim() } }
                 val onlinePath = "web://rj/${workKey.uppercase()}"
+                val albumDir = onlineSaveAlbumDir(displayAlbum, workKey).apply {
+                    mkdirs()
+                    ensureNoMediaMarkers(this)
+                }
+                val playableSelected = selected.filter { isPlayableTreeFileType(it.fileType) }
+                val resourceSelected = selected.filter { !isPlayableTreeFileType(it.fileType) }
 
                 fun canonicalUrl(url: String): String {
                     return url.trim().substringBefore('#').substringBefore('?')
                 }
 
                 var insertedCount = 0
+                var resourceSavedCount = 0
                 var albumIdResult = 0L
-                var coverUrlResult = ""
-                var coverPathResult = ""
                 database.withTransaction {
-                    val existing = if (workKey.isNotBlank()) {
-                        runCatching { albumDao.getAlbumByWorkIdOnce(workKey) }.getOrNull()
-                    } else null
+                    val existing = targetLocalAlbumId
+                        ?.let { albumDao.getAlbumById(it) }
+                        ?: if (workKey.isNotBlank()) {
+                            albumDao.getAlbumByWorkIdOnce(workKey)
+                        } else {
+                            null
+                        }
 
                     val tagsCsv = displayAlbum.tags.joinToString(",")
                     val entity = AlbumEntity(
                         id = existing?.id ?: 0L,
                         title = existing?.title?.takeIf { it.isNotBlank() } ?: displayAlbum.title,
                         path = existing?.path?.takeIf { it.isNotBlank() } ?: onlinePath,
-                        localPath = existing?.localPath,
+                        localPath = existing?.localPath?.takeIf { it.isNotBlank() } ?: albumDir.absolutePath,
                         downloadPath = existing?.downloadPath,
                         circle = existing?.circle?.takeIf { it.isNotBlank() } ?: displayAlbum.circle,
                         cv = existing?.cv?.takeIf { it.isNotBlank() } ?: displayAlbum.cv,
@@ -2027,8 +2404,7 @@ class AlbumDetailViewModel @Inject constructor(
                     val albumId = if (insertedId > 0L) insertedId else (existing?.id ?: 0L)
                     if (albumId <= 0L) return@withTransaction
                     albumIdResult = albumId
-                    coverUrlResult = entity.coverUrl.trim().takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }.orEmpty()
-                    coverPathResult = entity.coverPath.trim().takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }.orEmpty()
+                    runCatching { database.localTreeCacheDao().deleteByAlbum(albumId) }
 
                     val fts = AlbumFtsEntity(
                         albumId = albumId,
@@ -2049,7 +2425,7 @@ class AlbumDetailViewModel @Inject constructor(
                         .toSet()
 
                     val seenUrlKeys = linkedSetOf<String>()
-                    val newLeaves = selected.filter { leaf ->
+                    val newLeaves = playableSelected.filter { leaf ->
                         val urlKey = canonicalUrl(leaf.url)
                         val duplicate = urlKey.isBlank() ||
                             existingUrlKeys.contains(urlKey) ||
@@ -2062,14 +2438,14 @@ class AlbumDetailViewModel @Inject constructor(
                         }
                     }
                     val newTracks = newLeaves.map { leaf ->
-                            TrackEntity(
-                                albumId = albumId,
-                                title = leaf.title,
-                                path = leaf.url.trim(),
-                                duration = leaf.duration,
-                                group = leaf.group
-                            )
-                        }
+                        TrackEntity(
+                            albumId = albumId,
+                            title = leaf.title,
+                            path = leaf.url.trim(),
+                            duration = leaf.duration,
+                            group = leaf.group
+                        )
+                    }
                     if (newTracks.isNotEmpty()) {
                         val insertedTrackIds = runCatching { trackDao.insertTracks(newTracks) }.getOrDefault(emptyList())
                         insertedCount = insertedTrackIds.count { it > 0L }
@@ -2088,40 +2464,56 @@ class AlbumDetailViewModel @Inject constructor(
                         if (sources.isNotEmpty()) {
                             runCatching { database.remoteSubtitleSourceDao().insertAll(sources) }
                         }
+                    }
+
+                    val resourceDao = database.onlineSavedResourceDao()
+                    val existingResourcesByPath = resourceDao.getForAlbumOnce(albumId)
+                        .associateBy { it.relativePath }
+                    val changedResources = resourceSelected.mapNotNull { leaf ->
+                        val relativePath = leaf.relativePath.replace('\\', '/').trim().trimStart('/')
+                        val url = leaf.url.trim()
+                        if (relativePath.isBlank() || !url.startsWith("http", ignoreCase = true)) {
+                            return@mapNotNull null
+                        }
+                        val existingResource = existingResourcesByPath[relativePath]
+                        val resource = OnlineSavedResourceEntity(
+                            id = existingResource?.id ?: 0L,
+                            albumId = albumId,
+                            relativePath = relativePath,
+                            url = url,
+                            fileType = leaf.fileType.name
+                        )
+                        resource.takeUnless { it == existingResource }
+                    }.distinctBy { it.relativePath }
+                    if (changedResources.isNotEmpty()) {
+                        resourceDao.insertAll(changedResources)
+                        resourceSavedCount = changedResources.size
+                    }
                 }
-            }
 
-            if (albumIdResult > 0L) {
-                refreshAlbumAudioAggregate(albumIdResult)
-            }
+                if (albumIdResult > 0L) {
+                    refreshAlbumAudioAggregate(albumIdResult)
+                }
 
-            SaveOnlineToLibraryResult(
-                selectedCount = selected.size,
+                SaveOnlineToLibraryResult(
+                    selectedCount = selected.size,
                     insertedCount = insertedCount,
-                    albumId = albumIdResult,
-                    coverUrl = coverUrlResult,
-                    coverPath = coverPathResult
+                    resourceSavedCount = resourceSavedCount
                 )
             }
 
             val selectedCount = result.selectedCount
-            val insertedCount = result.insertedCount
+            val changedCount = result.insertedCount + result.resourceSavedCount
+            val skippedCount = selectedCount - changedCount
 
-            if (result.albumId > 0L) {
-                try {
-                    ensureAlbumCoverSaved(result.albumId, result.coverPath, result.coverUrl)
-                } catch (_: Exception) {
-                }
-            }
             if (selectedCount <= 0) {
-                messageManager.showInfo(R.string.no_audio_video_files_save)
-            } else if (insertedCount <= 0) {
-                messageManager.showInfo(R.string.already_exists_local)
-            } else if (insertedCount < selectedCount) {
-                val skipped = selectedCount - insertedCount
-                messageManager.showSuccess(R.string.saved_local_library, insertedCount, skipped)
+                messageManager.showInfo("没有可保存文件")
+            } else if (changedCount <= 0) {
+                messageManager.showInfo("本地已存在，未重复保存")
+            } else if (skippedCount > 0) {
+                messageManager.showSuccess("已保存到本地库（${changedCount}项），跳过已存在（${skippedCount}项）")
             } else {
-                messageManager.showSuccess(R.string.saved_local_library_items, insertedCount)
+                messageManager.showSuccess("已保存到本地库（${changedCount}项）")
             }
         }
     }
@@ -2129,9 +2521,7 @@ class AlbumDetailViewModel @Inject constructor(
     private data class SaveOnlineToLibraryResult(
         val selectedCount: Int,
         val insertedCount: Int,
-        val albumId: Long,
-        val coverUrl: String,
-        val coverPath: String
+        val resourceSavedCount: Int
     )
 
     private fun isLikelyPlaceholderCover(url: String): Boolean {
@@ -2307,27 +2697,26 @@ class AlbumDetailViewModel @Inject constructor(
         val url: String,
         val duration: Double,
         val group: String,
+        val fileType: TreeFileType,
         val subtitleSources: List<RemoteSubtitleSource>
     )
 
     private fun flattenOnlineSaveLeaves(tree: List<AsmrOneTrackNodeResponse>): List<OnlineSaveLeaf> {
         val out = mutableListOf<OnlineSaveLeaf>()
         fun sanitize(name: String): String = name.trim().ifEmpty { "item" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
-        val audioExts = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
-        val videoExts = setOf("mp4", "mkv", "webm")
         val subtitleExts = setOf("lrc", "srt", "vtt")
 
         data class LeafFile(
             val rawTitle: String,
             val safeTitle: String,
             val url: String,
-            val duration: Double?
+            val duration: Double?,
+            val fileType: TreeFileType
         ) {
             val ext: String = run {
                 val ext0 = rawTitle.substringAfterLast('.', "").lowercase()
                 if (ext0.isNotBlank()) ext0 else url.substringBefore('?').substringAfterLast('.', "").lowercase()
             }
-            val baseName: String = safeTitle.substringBeforeLast('.')
         }
 
         val subtitleCandidates = mutableListOf<Pair<com.asmr.player.util.SubtitleMatchCandidate, LeafFile>>()
@@ -2343,7 +2732,14 @@ class AlbumDetailViewModel @Inject constructor(
                     if (children.isNotEmpty()) collectSubtitleCandidates(children, path)
                     return@forEach
                 }
-                val leaf = LeafFile(rawTitle = rawTitle, safeTitle = safeTitle, url = url, duration = node.duration)
+                val fileType = treeFileTypeForNode(rawTitle, url, node.type)
+                val leaf = LeafFile(
+                    rawTitle = rawTitle,
+                    safeTitle = safeTitle,
+                    url = url,
+                    duration = node.duration,
+                    fileType = fileType
+                )
                 if (subtitleExts.contains(leaf.ext)) {
                     val candidate = SubtitleMatchSupport.inferCandidate(path, leaf.url)
                     if (candidate != null) subtitleCandidates += candidate to leaf
@@ -2358,14 +2754,22 @@ class AlbumDetailViewModel @Inject constructor(
                 val url = node.mediaDownloadUrl ?: node.streamUrl
                 if (children.isNotEmpty() || url.isNullOrBlank()) return@mapNotNull null
                 val safeTitle = sanitize(rawTitle)
-                LeafFile(rawTitle = rawTitle, safeTitle = safeTitle, url = url, duration = node.duration)
+                val fileType = treeFileTypeForNode(rawTitle, url, node.type)
+                if (!isLibraryResourceSavableTreeFileType(fileType)) return@mapNotNull null
+                LeafFile(
+                    rawTitle = rawTitle,
+                    safeTitle = safeTitle,
+                    url = url,
+                    duration = node.duration,
+                    fileType = fileType
+                )
             }
 
-            leafFiles.filter { audioExts.contains(it.ext) || videoExts.contains(it.ext) }.forEach { leaf ->
+            leafFiles.forEach { leaf ->
                 val path = if (parentPath.isBlank()) leaf.safeTitle else "$parentPath/${leaf.safeTitle}"
                 val relDir = path.substringBeforeLast('/', "")
                 val group = relDir
-                val subsRaw = if (audioExts.contains(leaf.ext)) {
+                val subsRaw = if (leaf.fileType == TreeFileType.Audio) {
                     val matched = SubtitleMatchSupport.matchBest(path.substringBeforeLast('.'), subtitleCandidates.map { it.first })
                     if (matched != null) {
                         subtitleCandidates.firstOrNull { it.first.sourceRef == matched.sourceRef }?.second?.let { subtitleLeaf ->
@@ -2375,7 +2779,13 @@ class AlbumDetailViewModel @Inject constructor(
                         emptyList()
                     }
                 } else emptyList()
-                val subs = if (subsRaw.isNotEmpty()) subsRaw else OnlineLyricsStore.get(leaf.url)
+                val subs = if (leaf.fileType == TreeFileType.Audio && subsRaw.isNotEmpty()) {
+                    subsRaw
+                } else if (leaf.fileType == TreeFileType.Audio) {
+                    OnlineLyricsStore.get(leaf.url)
+                } else {
+                    emptyList()
+                }
                 out.add(
                     OnlineSaveLeaf(
                         relativePath = path,
@@ -2383,6 +2793,7 @@ class AlbumDetailViewModel @Inject constructor(
                         url = leaf.url,
                         duration = leaf.duration ?: 0.0,
                         group = group,
+                        fileType = leaf.fileType,
                         subtitleSources = subs
                     )
                 )
@@ -2400,8 +2811,7 @@ class AlbumDetailViewModel @Inject constructor(
         collectSubtitleCandidates(tree, "")
         walk(tree, "")
         return out.map { leaf ->
-            if (!(audioExts.contains(leaf.url.substringBefore('?').substringAfterLast('.', "").lowercase()) ||
-                    videoExts.contains(leaf.url.substringBefore('?').substringAfterLast('.', "").lowercase()))) {
+            if (leaf.fileType != TreeFileType.Audio) {
                 return@map leaf
             }
             val matched = SubtitleMatchSupport.matchBest(leaf.relativePath.substringBeforeLast('.'), subtitleCandidates.map { it.first })
@@ -2416,8 +2826,28 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-    private fun normalizeRj(raw: String): String {
-        return Regex("""RJ\d+""", RegexOption.IGNORE_CASE).find(raw)?.value?.uppercase().orEmpty()
+    private fun onlineSaveAlbumDir(album: Album, workKey: String): File {
+        val baseDir = File(context.getExternalFilesDir(null), "albums")
+        val folderName = safeFolderName(
+            album.rjCode.ifBlank { album.workId }.ifBlank { workKey }.ifBlank { album.title }
+        )
+        return File(baseDir, folderName)
+    }
+
+    private fun ensureNoMediaMarkers(dir: File) {
+        runCatching {
+            if (!dir.exists()) dir.mkdirs()
+            val albumsRoot = File(context.getExternalFilesDir(null), "albums")
+            if (!albumsRoot.exists()) albumsRoot.mkdirs()
+            val rootMarker = File(albumsRoot, ".nomedia")
+            if (!rootMarker.exists()) rootMarker.createNewFile()
+            val marker = File(dir, ".nomedia")
+            if (!marker.exists()) marker.createNewFile()
+        }
+    }
+
+    private fun normalizeWorkNo(raw: String): String {
+        return DlsiteWorkNo.extractWorkNo(raw)
     }
 
     private suspend fun loadLocalTracks(albumEntity: AlbumEntity): List<Track> {
@@ -2428,94 +2858,11 @@ class AlbumDetailViewModel @Inject constructor(
         return emptyList()
     }
 
-    private fun scanDocumentTreeTracks(albumId: Long, albumPath: String): List<Track> {
-        val uri = runCatching { android.net.Uri.parse(albumPath) }.getOrNull() ?: return emptyList()
-        val resolver = context.contentResolver
-        val treeId = runCatching { android.provider.DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: ""
-        val documentId = runCatching { android.provider.DocumentsContract.getDocumentId(uri) }.getOrNull() ?: treeId
-        val treeUri = if (treeId.isNotBlank()) android.provider.DocumentsContract.buildTreeDocumentUri(uri.authority, treeId) else uri
-        
-        val audioExtensions = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
-        val result = mutableListOf<Track>()
-        
-        fun walk(parentDocId: String, parentRelativePath: String) {
-            val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
-            val projection = arrayOf(
-                android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE
-            )
-            
-            runCatching {
-                resolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
-                    val idIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                    val nameIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                    val mimeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
-                    
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getString(idIndex)
-                        val name = cursor.getString(nameIndex).orEmpty()
-                        val mime = cursor.getString(mimeIndex).orEmpty()
-                        
-                        if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
-                            val relPath = if (parentRelativePath.isEmpty()) name else "$parentRelativePath/$name"
-                            walk(id, relPath)
-                        } else if (audioExtensions.contains(name.substringAfterLast('.', "").lowercase())) {
-                            val trackUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, id)
-                            val group = if (parentRelativePath.contains("/")) parentRelativePath.substringAfterLast('/') else parentRelativePath
-                            result.add(
-                                Track(
-                                    albumId = albumId,
-                                    title = name.substringBeforeLast('.'),
-                                    path = trackUri.toString(),
-                                    duration = 0.0,
-                                    group = group,
-                                    lyricsRelativePathNoExt = if (parentRelativePath.isEmpty()) {
-                                        name.substringBeforeLast('.')
-                                    } else {
-                                        "$parentRelativePath/${name.substringBeforeLast('.')}"
-                                    }
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (documentId.isNotBlank()) {
-            walk(documentId, "")
-        }
-        return result.sortedBy { it.path }
-    }
-
-    private fun scanLocalTracks(albumId: Long, albumPath: String): List<Track> {
-        val root = File(albumPath)
-        if (!root.exists() || !root.isDirectory) return emptyList()
-        val audioExtensions = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
-        val files = root.walkTopDown()
-            .filter { it.isFile && audioExtensions.contains(it.extension.lowercase()) }
-            .toList()
-            .sortedBy { it.absolutePath }
-        return files.map { file ->
-            val parent = file.parentFile
-            val group = if (parent != null && parent != root) parent.name else ""
-            Track(
-                albumId = albumId,
-                title = file.nameWithoutExtension,
-                path = file.absolutePath,
-                duration = 0.0,
-                group = group,
-                lyricsRelativePathNoExt = deriveLyricsRelativePathNoExt(file.absolutePath, listOf(root.absolutePath))
-            )
-        }
-    }
-
     private fun TrackEntity.toDomain(): Track {
         return Track(
             id = id,
             albumId = albumId,
-            title = title,
+            title = titleForDisplay,
             path = path,
             duration = duration,
             group = group,
@@ -2529,6 +2876,53 @@ class AlbumDetailViewModel @Inject constructor(
 
     private fun safeFileName(input: String): String {
         return input.trim().ifEmpty { "track" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
+    }
+
+    private fun resolvedOnlineActionAlbum(model: AlbumDetailModel): Album {
+        val resolvedRj = resolveAlbumDetailRj(
+            routeRj = model.rjCode.ifBlank { model.baseRjCode },
+            localAlbum = model.localAlbum
+        )
+        return model.displayAlbum.withResolvedWorkIdentity(
+            rjCode = resolvedRj,
+            asmrOneWorkId = model.asmrOneWorkId
+        )
+    }
+
+    private fun enqueueRemoteTreeSelectionDownload(
+        model: AlbumDetailModel,
+        tree: List<AsmrOneTrackNodeResponse>,
+        selectedLeafPaths: Set<String>,
+        relativeBaseDir: String
+    ) {
+        val album = resolvedOnlineActionAlbum(model)
+        val localAlbum = model.localAlbum
+        val localAlbumId = localAlbum?.id ?: 0L
+        val shouldBindLocalIdentity = localAlbumId > 0L &&
+            album.rjCode.isNotBlank() &&
+            (localAlbum?.rjCode.isNullOrBlank() || localAlbum?.workId.isNullOrBlank())
+        if (!shouldBindLocalIdentity) {
+            enqueueRemoteTreeSelectionDownload(album, tree, selectedLeafPaths, relativeBaseDir)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val entity = albumDao.getAlbumById(localAlbumId) ?: return@withContext
+                    val updated = entity.copy(
+                        workId = entity.workId.ifBlank { album.workId.ifBlank { album.rjCode } },
+                        rjCode = entity.rjCode.ifBlank { album.rjCode }
+                    )
+                    if (updated != entity) albumDao.updateAlbum(updated)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // 下载任务仍可通过自身的作品元信息在完成后合并进本地库。
+            }
+            enqueueRemoteTreeSelectionDownload(album, tree, selectedLeafPaths, relativeBaseDir)
+        }
     }
 
     private fun enqueueRemoteTreeSelectionDownload(
@@ -2574,28 +2968,40 @@ class AlbumDetailViewModel @Inject constructor(
             }
         }
 
+        enqueueRemoteLeafDownloads(
+            album = album,
+            selected = selected,
+            relativeBaseDir = relativeBaseDir,
+            includeCover = true
+        )
+    }
+
+    private fun enqueueRemoteLeafDownloads(
+        album: Album,
+        selected: Collection<AsmrOneLeafDownload>,
+        relativeBaseDir: String,
+        includeCover: Boolean
+    ) {
         if (selected.isEmpty()) return
 
         val rjOrWorkId = album.rjCode.ifBlank { album.workId }
         val folderName = safeFolderName(rjOrWorkId.ifBlank { album.title })
-        val baseDir = File(context.getExternalFilesDir(null), "albums")
-        val albumDir = File(baseDir, folderName)
         val normalizedBaseDir = relativeBaseDir.trim().trim('/', '\\')
-        val targetRootDir = if (normalizedBaseDir.isBlank()) albumDir else File(albumDir, normalizedBaseDir)
-        if (!targetRootDir.exists()) targetRootDir.mkdirs()
-
         val taskKey = buildRemoteDownloadTaskKey(folderName, normalizedBaseDir)
         val taskSubtitle = album.title
+        val batchItems = mutableListOf<RelativeDownloadItem>()
+        if (includeCover) {
+            val coverUrl = album.coverUrl.trim()
+            if (coverUrl.startsWith("http", ignoreCase = true)) {
+                val ext = coverUrl.substringBefore('?').substringAfterLast('.', "")
+                    .takeIf { it.length in 2..5 } ?: "jpg"
+                val relativeCover = listOf(normalizedBaseDir, "cover.$ext")
+                    .filter { it.isNotBlank() }
+                    .joinToString("/")
+                batchItems += RelativeDownloadItem(url = coverUrl, relativePath = relativeCover)
+            }
+        }
 
-        enqueueRemoteDownloadCover(
-            album = album,
-            targetRootDir = targetRootDir,
-            taskKey = taskKey,
-            taskSubtitle = taskSubtitle
-        )
-
-        var skipped = 0
-        var enqueued = 0
         selected.forEach { item ->
             val relPath = item.relativePath.replace('\\', '/')
             val rawName = relPath.substringAfterLast('/', relPath)
@@ -2628,47 +3034,51 @@ class AlbumDetailViewModel @Inject constructor(
             }
 
             val relDir = relPath.substringBeforeLast('/', "")
-            val dir = if (relDir.isBlank()) targetRootDir else File(targetRootDir, relDir)
-            if (!dir.exists()) dir.mkdirs()
-            val outFile = File(dir, fileName)
-            if (outFile.exists() && outFile.isFile) {
-                skipped += 1
-                return@forEach
-            }
-
-            val relativeFilePath = buildString {
-                if (relDir.isNotBlank()) {
-                    append(relDir)
-                    append('/')
-                }
-                append(fileName)
-            }
-
-            downloadManager.enqueueDownload(
+            val relativeFilePath = listOf(normalizedBaseDir, relDir, fileName)
+                .filter { it.isNotBlank() }
+                .joinToString("/")
+            batchItems += RelativeDownloadItem(
                 url = url,
-                fileName = fileName,
-                targetDir = dir.absolutePath,
-                taskRootDir = targetRootDir.absolutePath,
                 relativePath = relativeFilePath,
-                taskSubtitle = taskSubtitle,
-                tags = listOf(taskKey),
-                albumTitle = album.title,
-                albumCircle = album.circle,
-                albumCv = album.cv,
-                albumTagsCsv = album.tags.joinToString(","),
-                albumCoverUrl = album.coverUrl,
-                albumWorkId = album.workId,
-                albumRjCode = album.rjCode
+                dlsitePlayImageSeed = item.dlsitePlayImageSeed,
+                dlsitePlayImageWidth = item.dlsitePlayImageWidth,
+                dlsitePlayImageHeight = item.dlsitePlayImageHeight,
             )
-            enqueued += 1
         }
+        if (batchItems.isEmpty()) return
 
-        if (skipped > 0 && enqueued == 0) {
-            messageManager.showInfo(R.string.already_exists_locally, skipped, album.title)
-        } else if (skipped > 0) {
-            messageManager.showInfo(R.string.added_download_queue, enqueued, skipped, album.title)
-        } else if (enqueued > 0) {
-            messageManager.showInfo(R.string.adding_download_queue_items, enqueued, album.title)
+        viewModelScope.launch(Dispatchers.IO) {
+            showEnqueueBatchResult(
+                downloadManager.enqueueBatch(
+                    DownloadBatchRequest(
+                        albumDirectoryName = folderName,
+                        logicalTaskKey = taskKey,
+                        items = batchItems,
+                        taskSubtitle = taskSubtitle,
+                        albumTitle = album.title,
+                        albumCircle = album.circle,
+                        albumCv = album.cv,
+                        albumTagsCsv = album.tags.joinToString(","),
+                        albumCoverUrl = album.coverUrl,
+                        albumWorkId = album.workId,
+                        albumRjCode = album.rjCode,
+                    ),
+                ),
+            )
+        }
+    }
+
+    private fun showEnqueueBatchResult(result: EnqueueDownloadBatchResult) {
+        when (result) {
+            is EnqueueDownloadBatchResult.Accepted -> {
+                messageManager.showInfo("正在加入下载队列（${result.itemCount}项）")
+            }
+            EnqueueDownloadBatchResult.DirectoryUnavailable -> {
+                messageManager.showError("下载目录不可用，请重新选择或重置为默认目录")
+            }
+            EnqueueDownloadBatchResult.TaskBlocked -> {
+                messageManager.showInfo("相同作品已有下载任务正在处理")
+            }
         }
     }
 
@@ -2680,42 +3090,13 @@ class AlbumDetailViewModel @Inject constructor(
         }
     }
 
-    private fun enqueueRemoteDownloadCover(
-        album: Album,
-        targetRootDir: File,
-        taskKey: String,
-        taskSubtitle: String
-    ) {
-        val coverUrl = album.coverUrl.trim()
-        if (!coverUrl.startsWith("http", ignoreCase = true)) return
-
-        val ext = coverUrl.substringBefore('?').substringAfterLast('.', "").takeIf { it.length in 2..5 } ?: "jpg"
-        val coverFileName = "cover.$ext"
-        downloadManager.enqueueDownload(
-            url = coverUrl,
-            fileName = coverFileName,
-            targetDir = targetRootDir.absolutePath,
-            taskRootDir = targetRootDir.absolutePath,
-            relativePath = coverFileName,
-            taskSubtitle = taskSubtitle,
-            tags = listOf(taskKey),
-            albumTitle = album.title,
-            albumCircle = album.circle,
-            albumCv = album.cv,
-            albumTagsCsv = album.tags.joinToString(","),
-            albumCoverUrl = album.coverUrl,
-            albumWorkId = album.workId,
-            albumRjCode = album.rjCode
-        )
-    }
-
     override fun onCleared() {
+        cancelActiveLoads()
         cancelCloudSyncSelection()
         super.onCleared()
     }
 
     private companion object {
-        val RJ_CODE_REGEX = Regex("""RJ\d{6,}""")
         const val MAX_RECOMMENDATION_ASMR_ONE_ENRICH = 12
         const val RECOMMENDATION_ASMR_ONE_ENRICH_CONCURRENCY = 4
     }

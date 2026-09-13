@@ -1,30 +1,32 @@
 package com.asmr.player.data.settings
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import com.asmr.player.cache.AppCacheLimits
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
-import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.flow.first
 
-@RunWith(RobolectricTestRunner::class)
 class SettingsRepositoryTest {
-    private val context = RuntimeEnvironment.getApplication()
-    private val repository = SettingsRepository(context)
+    private lateinit var dataStore: DataStore<Preferences>
+    private lateinit var repository: SettingsRepository
+    private lateinit var proxyPasswordStorage: InMemoryProxyPasswordStorage
 
     @Before
-    fun setUp() = runBlocking {
-        context.settingsDataStore.edit { it.clear() }
-    }
-
-    @After
-    fun tearDown() = runBlocking {
-        context.settingsDataStore.edit { it.clear() }
+    fun setUp() {
+        dataStore = InMemoryPreferencesDataStore()
+        proxyPasswordStorage = InMemoryProxyPasswordStorage()
+        repository = SettingsRepository(dataStore, proxyPasswordStorage)
     }
 
     @Test
@@ -34,7 +36,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun loadPlaybackRuntimeSettings_returnsStoredValues() = runBlocking {
-        context.settingsDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             prefs[SettingsKeys.PAUSE_ON_OUTPUT_DISCONNECT] = false
             prefs[SettingsKeys.RESUME_ON_OUTPUT_CONNECT] = true
             prefs[SettingsKeys.PAUSE_ON_OTHER_AUDIO] = false
@@ -56,6 +58,13 @@ class SettingsRepositoryTest {
             ),
             repository.loadPlaybackRuntimeSettings()
         )
+    }
+
+    @Test
+    fun setAsmrOneSite_persistsBackupSelection() = runBlocking {
+        repository.setAsmrOneSite(-1)
+
+        assertEquals(-1, repository.asmrOneSite.first())
     }
 
     @Test
@@ -91,6 +100,82 @@ class SettingsRepositoryTest {
         repository.setAppVolumePercent(48)
 
         assertEquals(false, repository.consumePendingSystemVolumeSync(32))
+    }
+
+    @Test
+    fun appCacheMaxSizeMb_defaultsTo150() = runBlocking {
+        assertEquals(AppCacheLimits.DefaultSizeMb, repository.appCacheMaxSizeMb.first())
+    }
+
+    @Test
+    fun setAppCacheMaxSizeMb_clampsToSupportedRange() = runBlocking {
+        repository.setAppCacheMaxSizeMb(1)
+        assertEquals(AppCacheLimits.MinSizeMb, repository.appCacheMaxSizeMb.first())
+
+        repository.setAppCacheMaxSizeMb(2_000)
+        assertEquals(AppCacheLimits.MaxSizeMb, repository.appCacheMaxSizeMb.first())
+    }
+
+    @Test
+    fun clearSleepTimer_skipsDataStoreWriteWhenAlreadyCleared() = runBlocking {
+        val inMemoryDataStore = dataStore as InMemoryPreferencesDataStore
+
+        repository.clearSleepTimer()
+
+        assertEquals(0, inMemoryDataStore.updateCount)
+
+        repository.setSleepTimerEndAtMs(1_000L)
+        repository.clearSleepTimer()
+
+        assertEquals(0L, repository.sleepTimerEndAtMs.first())
+        assertEquals(2, inMemoryDataStore.updateCount)
+    }
+
+    @Test
+    fun deepSeekTranslationSettings_defaultToThinkingDisabled() = runBlocking {
+        val defaults = repository.loadDeepSeekTranslationSettings()
+        assertFalse(defaults.thinkingEnabled)
+        assertEquals(DeepSeekTranslationSettings(), defaults)
+        assertEquals(
+            listOf("low", "high", "max"),
+            DeepSeekReasoningEffort.entries.map { it.wireValue }
+        )
+    }
+
+    @Test
+    fun deepSeekTranslationSettings_persistToggleAndMaxEffort() = runBlocking {
+        repository.setDeepSeekThinkingEnabled(false)
+        repository.setDeepSeekReasoningEffort(DeepSeekReasoningEffort.MAX)
+
+        assertEquals(
+            DeepSeekTranslationSettings(
+                thinkingEnabled = false,
+                reasoningEffort = DeepSeekReasoningEffort.MAX
+            ),
+            repository.deepSeekTranslationSettings.first()
+        )
+    }
+
+    @Test
+    fun deepSeekTranslationSettings_persistLowEffort() = runBlocking {
+        repository.setDeepSeekReasoningEffort(DeepSeekReasoningEffort.LOW)
+
+        assertEquals(
+            DeepSeekReasoningEffort.LOW,
+            repository.loadDeepSeekTranslationSettings().reasoningEffort
+        )
+    }
+
+    @Test
+    fun deepSeekTranslationSettings_fallBackToHighForUnknownEffort() = runBlocking {
+        dataStore.edit { prefs ->
+            prefs[SettingsKeys.DEEPSEEK_REASONING_EFFORT] = "unknown"
+        }
+
+        assertEquals(
+            DeepSeekReasoningEffort.HIGH,
+            repository.loadDeepSeekTranslationSettings().reasoningEffort
+        )
     }
 
     @Test
@@ -143,7 +228,116 @@ class SettingsRepositoryTest {
         assertEquals(listOf("言语侵犯"), repository.searchBlockedKeywords.first())
     }
 
+    @Test
+    fun networkRouteSettings_defaultToSystemNetwork() = runBlocking {
+        assertEquals(NetworkRouteSettings(), repository.networkRouteSettings.first())
+    }
+
+    @Test
+    fun advancedProxy_persistsNormalizedManualRoute() = runBlocking {
+        assertEquals(
+            true,
+            repository.setAdvancedProxy(
+                mode = AppProxyMode.SOCKS5,
+                host = " [::1] ",
+                port = 1080,
+                authenticationEnabled = false,
+                username = "",
+                password = ""
+            )
+        )
+
+        val settings = repository.networkRouteSettings.first()
+        assertEquals(AppProxyMode.SOCKS5, settings.proxyMode)
+        assertEquals("::1", settings.proxyHost)
+        assertEquals(1080, settings.proxyPort)
+    }
+
+    @Test
+    fun advancedProxy_encryptsCredentialsAndRetainsSavedPasswordWhenBlank() = runBlocking {
+        assertEquals(
+            true,
+            repository.setAdvancedProxy(
+                mode = AppProxyMode.HTTP,
+                host = "proxy.example.com",
+                port = 8080,
+                authenticationEnabled = true,
+                username = " user ",
+                password = "secret password"
+            )
+        )
+
+        val first = repository.networkRouteSettings.first()
+        assertTrue(first.proxyAuthenticationEnabled)
+        assertEquals("user", first.proxyUsername)
+        assertTrue(first.proxyPasswordConfigured)
+        assertEquals("secret password", proxyPasswordStorage.read())
+
+        assertEquals(
+            true,
+            repository.setAdvancedProxy(
+                mode = AppProxyMode.HTTP,
+                host = "proxy.example.com",
+                port = 8080,
+                authenticationEnabled = true,
+                username = "user",
+                password = ""
+            )
+        )
+        assertEquals("secret password", proxyPasswordStorage.read())
+        assertEquals(2L, repository.networkRouteSettings.first().proxyCredentialVersion)
+    }
+
+    @Test
+    fun advancedProxy_disablingAuthenticationClearsSavedPassword() = runBlocking {
+        repository.setAdvancedProxy(
+            AppProxyMode.HTTP,
+            "proxy.example.com",
+            8080,
+            true,
+            "user",
+            "secret"
+        )
+
+        repository.setAdvancedProxy(
+            AppProxyMode.HTTP,
+            "proxy.example.com",
+            8080,
+            false,
+            "",
+            ""
+        )
+
+        assertFalse(repository.networkRouteSettings.first().proxyAuthenticationEnabled)
+        assertEquals("", proxyPasswordStorage.read())
+    }
+
+    @Test
+    fun dnsServer_persistsNormalizedAddressAndCanReturnToSystem() = runBlocking {
+        assertEquals(true, repository.setCustomDnsServer(" 223.005.5.5 "))
+        assertEquals("223.5.5.5", repository.networkRouteSettings.first().customDnsServer)
+
+        repository.useSystemDns()
+        assertEquals("", repository.networkRouteSettings.first().customDnsServer)
+    }
+
     private suspend fun SettingsRepository.appVolumePercentValue(): Int {
         return appVolumePercent.first()
+    }
+
+    private class InMemoryPreferencesDataStore : DataStore<Preferences> {
+        private val state = MutableStateFlow(emptyPreferences())
+        private val updateMutex = Mutex()
+        var updateCount: Int = 0
+            private set
+
+        override val data: StateFlow<Preferences> = state
+
+        override suspend fun updateData(
+            transform: suspend (t: Preferences) -> Preferences
+        ): Preferences = updateMutex.withLock {
+            updateCount += 1
+            transform(state.value).also { state.value = it }
+        }
     }
 }

@@ -1,9 +1,11 @@
 package com.asmr.player.data.settings
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.asmr.player.cache.AppCacheLimits
 import com.asmr.player.playback.AppVolume
 import com.asmr.player.hotlistening.HotListeningSortMode
-import com.asmr.player.i18n.AppLanguage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -25,15 +27,58 @@ data class PlaybackRuntimeSettings(
     val floatingLyricsEnabled: Boolean = false
 )
 
+enum class DeepSeekReasoningEffort(val wireValue: String) {
+    LOW("low"),
+    HIGH("high"),
+    MAX("max");
+
+    companion object {
+        fun fromWireValue(value: String?): DeepSeekReasoningEffort =
+            entries.firstOrNull { it.wireValue == value } ?: HIGH
+    }
+}
+
+data class DeepSeekTranslationSettings(
+    val thinkingEnabled: Boolean = false,
+    val reasoningEffort: DeepSeekReasoningEffort = DeepSeekReasoningEffort.HIGH,
+    val finalPolishEnabled: Boolean = false
+)
+
+private class SettingsStoreOwner(
+    val settingsDataStore: DataStore<Preferences>,
+    val proxyPasswordStorage: ProxyPasswordStorage
+)
+
 @Singleton
-class SettingsRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+class SettingsRepository private constructor(
+    private val context: SettingsStoreOwner
 ) {
+    @Inject
+    constructor(@ApplicationContext context: Context) : this(
+        SettingsStoreOwner(
+            settingsDataStore = context.settingsDataStore,
+            proxyPasswordStorage = ProxyPasswordStore.get(context)
+        )
+    )
+
+    internal constructor(
+        dataStore: DataStore<Preferences>,
+        proxyPasswordStorage: ProxyPasswordStorage = InMemoryProxyPasswordStorage()
+    ) : this(
+        SettingsStoreOwner(dataStore, proxyPasswordStorage)
+    )
+
     private val systemVolumeSyncLock = Any()
     private var pendingSystemVolumeSyncPercent: Int? = null
 
     val appVolumePercent: Flow<Int> = context.settingsDataStore.data.map { prefs ->
         AppVolume.clampPercent(prefs[SettingsKeys.APP_VOLUME_PERCENT] ?: AppVolume.DefaultPercent)
+    }
+
+    val appCacheMaxSizeMb: Flow<Int> = context.settingsDataStore.data.map { prefs ->
+        AppCacheLimits.clampSizeMb(
+            prefs[SettingsKeys.APP_CACHE_MAX_SIZE_MB] ?: AppCacheLimits.DefaultSizeMb
+        )
     }
 
     val libraryViewMode: Flow<Int> = context.settingsDataStore.data.map { prefs ->
@@ -64,6 +109,19 @@ class SettingsRepository @Inject constructor(
         prefs[SettingsKeys.ASMR_ONE_SITE] ?: 200
     }
 
+    val networkRouteSettings: Flow<NetworkRouteSettings> = context.settingsDataStore.data.map { prefs ->
+        NetworkRouteSettings(
+            proxyMode = AppProxyMode.fromStorageValue(prefs[SettingsKeys.NETWORK_PROXY_MODE]),
+            proxyHost = prefs[SettingsKeys.NETWORK_PROXY_HOST].orEmpty(),
+            proxyPort = prefs[SettingsKeys.NETWORK_PROXY_PORT] ?: 0,
+            proxyAuthenticationEnabled = prefs[SettingsKeys.NETWORK_PROXY_AUTHENTICATION_ENABLED] ?: false,
+            proxyUsername = prefs[SettingsKeys.NETWORK_PROXY_USERNAME].orEmpty(),
+            proxyPasswordConfigured = prefs[SettingsKeys.NETWORK_PROXY_PASSWORD_CONFIGURED] ?: false,
+            proxyCredentialVersion = prefs[SettingsKeys.NETWORK_PROXY_CREDENTIAL_VERSION] ?: 0L,
+            customDnsServer = prefs[SettingsKeys.CUSTOM_DNS_SERVER].orEmpty()
+        )
+    }
+
     val floatingLyricsEnabled: Flow<Boolean> = context.settingsDataStore.data.map { prefs ->
         prefs[SettingsKeys.FLOATING_LYRICS_ENABLED] ?: false
     }
@@ -73,6 +131,7 @@ class SettingsRepository @Inject constructor(
             color = prefs[SettingsKeys.FLOATING_LYRICS_COLOR] ?: 0xFFFFFFFF.toInt(),
             size = prefs[SettingsKeys.FLOATING_LYRICS_SIZE] ?: 16f,
             opacity = prefs[SettingsKeys.FLOATING_LYRICS_OPACITY] ?: 0.7f,
+            xOffset = prefs[SettingsKeys.FLOATING_LYRICS_X] ?: 0,
             yOffset = prefs[SettingsKeys.FLOATING_LYRICS_Y] ?: 120,
             align = prefs[SettingsKeys.FLOATING_LYRICS_ALIGN] ?: 1, // 0:Left, 1:Center, 2:Right
             touchable = prefs[SettingsKeys.FLOATING_LYRICS_TOUCHABLE] ?: true
@@ -84,10 +143,10 @@ class SettingsRepository @Inject constructor(
         val levels = (0 until 10).map { idx -> prefs[SettingsKeys.eqBandLevel(idx)] ?: 0 }
         val virt = prefs[SettingsKeys.EQ_VIRTUALIZER_STRENGTH] ?: 0
         val bal = prefs[SettingsKeys.EQ_BALANCE] ?: 0f
-        val preset = prefs[SettingsKeys.EQ_PRESET_NAME] ?: "default"
+        val preset = prefs[SettingsKeys.EQ_PRESET_NAME] ?: "默认"
         val gain = prefs[SettingsKeys.FX_ORIGINAL_GAIN] ?: 1f
         val reverbEnabled = prefs[SettingsKeys.FX_REVERB_ENABLED] ?: false
-        val reverbPreset = prefs[SettingsKeys.FX_REVERB_PRESET] ?: "none"
+        val reverbPreset = prefs[SettingsKeys.FX_REVERB_PRESET] ?: "无"
         val reverbWet = prefs[SettingsKeys.FX_REVERB_WET] ?: 0
         val orbitEnabled = prefs[SettingsKeys.FX_ORBIT_ENABLED] ?: false
         val orbitSpeed = prefs[SettingsKeys.FX_ORBIT_SPEED] ?: 25f
@@ -186,9 +245,16 @@ class SettingsRepository @Inject constructor(
         prefs[SettingsKeys.SHOW_MINI_PLAYER_BAR] ?: true
     }
 
-    val appLanguage: Flow<AppLanguage> = context.settingsDataStore.data.map { prefs ->
-        AppLanguage.fromWireValue(prefs[SettingsKeys.APP_LANGUAGE])
-    }
+    val deepSeekTranslationSettings: Flow<DeepSeekTranslationSettings> =
+        context.settingsDataStore.data.map { prefs ->
+            DeepSeekTranslationSettings(
+                thinkingEnabled = prefs[SettingsKeys.DEEPSEEK_THINKING_ENABLED] ?: false,
+                reasoningEffort = DeepSeekReasoningEffort.fromWireValue(
+                    prefs[SettingsKeys.DEEPSEEK_REASONING_EFFORT]
+                ),
+                finalPolishEnabled = prefs[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] ?: false
+            )
+        }
 
     suspend fun loadPlaybackRuntimeSettings(): PlaybackRuntimeSettings {
         return withContext(Dispatchers.IO) {
@@ -205,6 +271,18 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun loadDeepSeekTranslationSettings(): DeepSeekTranslationSettings =
+        withContext(Dispatchers.IO) {
+            val prefs = context.settingsDataStore.data.first()
+            DeepSeekTranslationSettings(
+                thinkingEnabled = prefs[SettingsKeys.DEEPSEEK_THINKING_ENABLED] ?: false,
+                reasoningEffort = DeepSeekReasoningEffort.fromWireValue(
+                    prefs[SettingsKeys.DEEPSEEK_REASONING_EFFORT]
+                ),
+                finalPolishEnabled = prefs[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] ?: false
+            )
+        }
+
     suspend fun setSleepTimerEndAtMs(endAtMs: Long) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.SLEEP_TIMER_END_AT_MS] = endAtMs }
@@ -212,7 +290,9 @@ class SettingsRepository @Inject constructor(
     }
 
     suspend fun clearSleepTimer() {
-        setSleepTimerEndAtMs(0L)
+        if (sleepTimerEndAtMs.first() != 0L) {
+            setSleepTimerEndAtMs(0L)
+        }
     }
 
     suspend fun setSleepTimerLastDurationMin(minutes: Int) {
@@ -263,9 +343,23 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    suspend fun setAppLanguage(language: AppLanguage) {
+    suspend fun setDeepSeekThinkingEnabled(enabled: Boolean) {
         withContext(Dispatchers.IO) {
-            context.settingsDataStore.edit { it[SettingsKeys.APP_LANGUAGE] = language.wireValue }
+            context.settingsDataStore.edit { it[SettingsKeys.DEEPSEEK_THINKING_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun setDeepSeekReasoningEffort(effort: DeepSeekReasoningEffort) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit {
+                it[SettingsKeys.DEEPSEEK_REASONING_EFFORT] = effort.wireValue
+            }
+        }
+    }
+
+    suspend fun setDeepSeekFinalPolishEnabled(enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] = enabled }
         }
     }
 
@@ -281,6 +375,7 @@ class SettingsRepository @Inject constructor(
                 it[SettingsKeys.FLOATING_LYRICS_COLOR] = settings.color
                 it[SettingsKeys.FLOATING_LYRICS_SIZE] = settings.size
                 it[SettingsKeys.FLOATING_LYRICS_OPACITY] = settings.opacity
+                it[SettingsKeys.FLOATING_LYRICS_X] = settings.xOffset
                 it[SettingsKeys.FLOATING_LYRICS_Y] = settings.yOffset
                 it[SettingsKeys.FLOATING_LYRICS_ALIGN] = settings.align
                 it[SettingsKeys.FLOATING_LYRICS_TOUCHABLE] = settings.touchable
@@ -429,6 +524,14 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setAppCacheMaxSizeMb(sizeMb: Int) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit {
+                it[SettingsKeys.APP_CACHE_MAX_SIZE_MB] = AppCacheLimits.clampSizeMb(sizeMb)
+            }
+        }
+    }
+
     suspend fun syncAppVolumePercentFromSystem(percent: Int) {
         val clampedPercent = AppVolume.clampPercent(percent)
         withContext(Dispatchers.IO) {
@@ -473,6 +576,75 @@ class SettingsRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.ASMR_ONE_SITE] = site }
         }
+    }
+
+    suspend fun useSystemProxy() {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                prefs[SettingsKeys.NETWORK_PROXY_MODE] = AppProxyMode.SYSTEM.storageValue
+            }
+        }
+    }
+
+    suspend fun setAdvancedProxy(
+        mode: AppProxyMode,
+        host: String,
+        port: Int,
+        authenticationEnabled: Boolean,
+        username: String,
+        password: String
+    ): Boolean {
+        val normalizedHost = normalizeProxyHost(host) ?: return false
+        if (!isValidManualProxy(mode, normalizedHost, port)) return false
+        val normalizedUsername = username.trim()
+        if (authenticationEnabled && normalizedUsername.isBlank()) return false
+
+        return withContext(Dispatchers.IO) {
+            val existingPasswordConfigured = context.proxyPasswordStorage.isConfigured()
+            if (authenticationEnabled && password.isEmpty() && !existingPasswordConfigured) {
+                return@withContext false
+            }
+
+            runCatching {
+                when {
+                    !authenticationEnabled -> context.proxyPasswordStorage.clear()
+                    password.isNotEmpty() -> context.proxyPasswordStorage.save(password)
+                }
+                context.settingsDataStore.edit { prefs ->
+                    prefs[SettingsKeys.NETWORK_PROXY_MODE] = mode.storageValue
+                    prefs[SettingsKeys.NETWORK_PROXY_HOST] = normalizedHost
+                    prefs[SettingsKeys.NETWORK_PROXY_PORT] = port
+                    prefs[SettingsKeys.NETWORK_PROXY_AUTHENTICATION_ENABLED] = authenticationEnabled
+                    prefs[SettingsKeys.NETWORK_PROXY_USERNAME] = if (authenticationEnabled) {
+                        normalizedUsername
+                    } else {
+                        ""
+                    }
+                    prefs[SettingsKeys.NETWORK_PROXY_PASSWORD_CONFIGURED] =
+                        authenticationEnabled && context.proxyPasswordStorage.isConfigured()
+                    prefs[SettingsKeys.NETWORK_PROXY_CREDENTIAL_VERSION] =
+                        (prefs[SettingsKeys.NETWORK_PROXY_CREDENTIAL_VERSION] ?: 0L) + 1L
+                }
+            }.isSuccess
+        }
+    }
+
+    suspend fun useSystemDns() {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                prefs.remove(SettingsKeys.CUSTOM_DNS_SERVER)
+            }
+        }
+    }
+
+    suspend fun setCustomDnsServer(address: String): Boolean {
+        val normalizedAddress = normalizeDnsServerAddress(address) ?: return false
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                prefs[SettingsKeys.CUSTOM_DNS_SERVER] = normalizedAddress
+            }
+        }
+        return true
     }
 
     private fun markPendingSystemVolumeSync(percent: Int) {

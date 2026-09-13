@@ -6,31 +6,45 @@ import org.junit.Test
 
 class AlbumHeaderMetaRevealTest {
     @Test
-    fun shouldExpandAlbumHeaderMetaReveal_expandsOnlineHintMeta() {
-        assertTrue(
-            shouldExpandAlbumHeaderMetaReveal(
-                deferMetaRevealExpected = true,
-                presentInitially = true
-            )
-        )
-    }
-
-    @Test
-    fun shouldExpandAlbumHeaderMetaReveal_keepsLocalInitialMetaStable() {
+    fun shouldAnimateAlbumHeaderMetaReveal_keepsInitialMetaStable() {
         assertFalse(
-            shouldExpandAlbumHeaderMetaReveal(
-                deferMetaRevealExpected = false,
-                presentInitially = true
+            shouldAnimateAlbumHeaderMetaReveal(
+                presentInitially = true,
+                hasContent = true,
+                animationsEnabled = true
             )
         )
     }
 
     @Test
-    fun shouldExpandAlbumHeaderMetaReveal_expandsLateMeta() {
+    fun shouldAnimateAlbumHeaderMetaReveal_animatesLateMeta() {
         assertTrue(
-            shouldExpandAlbumHeaderMetaReveal(
-                deferMetaRevealExpected = false,
-                presentInitially = false
+            shouldAnimateAlbumHeaderMetaReveal(
+                presentInitially = false,
+                hasContent = true,
+                animationsEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun shouldAnimateAlbumHeaderMetaReveal_waitsUntilContentArrives() {
+        assertFalse(
+            shouldAnimateAlbumHeaderMetaReveal(
+                presentInitially = false,
+                hasContent = false,
+                animationsEnabled = true
+            )
+        )
+    }
+
+    @Test
+    fun shouldAnimateAlbumHeaderMetaReveal_respectsDisabledAnimations() {
+        assertFalse(
+            shouldAnimateAlbumHeaderMetaReveal(
+                presentInitially = false,
+                hasContent = true,
+                animationsEnabled = false
             )
         )
     }

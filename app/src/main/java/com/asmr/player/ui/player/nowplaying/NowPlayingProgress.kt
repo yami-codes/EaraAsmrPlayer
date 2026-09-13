@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.player
+package com.asmr.player.ui.player
 
 import androidx.compose.ui.res.stringResource
 import android.app.Activity
@@ -79,7 +79,6 @@ import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AudioOutputRouteIcon
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.DismissOutsideBoundsOverlay
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeSlider
@@ -110,13 +109,14 @@ internal fun PlayerProgress(
     durationMs: Long,
     sliceUiState: SliceUiState,
     onSeekTo: (Long) -> Unit,
-    onCutPressed: () -> Unit,
+    onCutPressed: (() -> Unit)? = null,
     onScrubbingChanged: (Boolean) -> Unit,
     onSelectSlice: (Long?) -> Unit,
     onLongPressSlice: (Long) -> Unit,
     onUpdateSliceRange: (sliceId: Long, startMs: Long, endMs: Long) -> Unit,
     activeColor: Color,
-    inactiveColor: Color
+    inactiveColor: Color,
+    compactLayout: Boolean = false
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val safeDuration = durationMs.coerceAtLeast(0L)
@@ -152,7 +152,10 @@ internal fun PlayerProgress(
         effectivePosition
     }
 
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(if (compactLayout) 2.dp else 4.dp)
+    ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             SliceScrubbableSeekBar(
                 enabled = rangeDuration > 0L,
@@ -164,6 +167,8 @@ internal fun PlayerProgress(
                 tempStartMs = sliceUiState.tempStartMs,
                 highlightedSliceId = highlightedSliceId,
                 selectedSliceId = sliceUiState.selectedSliceId,
+                compactLayout = compactLayout,
+                showThumb = isDragging,
                 onSelectSlice = onSelectSlice,
                 onLongPressSlice = onLongPressSlice,
                 onEditCommit = onUpdateSliceRange,
@@ -188,13 +193,19 @@ internal fun PlayerProgress(
                     onScrubbingChanged(false)
                 }
             )
-            IconButton(onClick = onCutPressed, enabled = rangeDuration > 0L) {
-                Icon(
-                    imageVector = Icons.Outlined.ContentCut,
-                    contentDescription = "Cut",
-                    tint = if (sliceUiState.tempStartMs != null) activeColor else colorScheme.onSurface.copy(alpha = 0.85f),
-                    modifier = Modifier.size(22.dp)
-                )
+            if (onCutPressed != null) {
+                IconButton(
+                    onClick = onCutPressed,
+                    enabled = rangeDuration > 0L,
+                    modifier = Modifier.size(if (compactLayout) 40.dp else 48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCut,
+                        contentDescription = "片段裁剪",
+                        tint = if (sliceUiState.tempStartMs != null) activeColor else colorScheme.onSurface.copy(alpha = 0.85f),
+                        modifier = Modifier.size(if (compactLayout) 20.dp else 22.dp)
+                    )
+                }
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -232,6 +243,8 @@ private fun SliceScrubbableSeekBar(
     onLongPressSlice: (Long) -> Unit,
     onEditCommit: (sliceId: Long, startMs: Long, endMs: Long) -> Unit,
     onGestureActiveChanged: (Boolean) -> Unit,
+    compactLayout: Boolean,
+    showThumb: Boolean,
     modifier: Modifier = Modifier,
     onScrubStart: (Float) -> Unit,
     onScrub: (Float) -> Unit,
@@ -239,6 +252,14 @@ private fun SliceScrubbableSeekBar(
 ) {
     val f = fraction.coerceIn(0f, 1f)
     var lastFraction by remember(f) { mutableFloatStateOf(f) }
+    val thumbAlpha by animateFloatAsState(
+        targetValue = if (showThumb) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (showThumb) 120 else 180,
+            easing = FastOutSlowInEasing
+        ),
+        label = "progressThumbAlpha"
+    )
 
     val thumbRadius = 8.dp
     val trackHeight = 4.dp
@@ -278,7 +299,7 @@ private fun SliceScrubbableSeekBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(if (compactLayout) 28.dp else 32.dp)
             .pointerInput(enabled, rangeDurationMs, slices, selectedSliceId) {
                 if (!enabled) return@pointerInput
                 val thumbRadiusPx = thumbRadius.toPx()
@@ -481,16 +502,18 @@ private fun SliceScrubbableSeekBar(
             strokeWidth = trackHeightPx,
             cap = androidx.compose.ui.graphics.StrokeCap.Round
         )
-        drawCircle(
-            color = activeColor,
-            radius = thumbRadiusPx,
-            center = Offset(x, centerY)
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.85f),
-            radius = (thumbRadiusPx * 0.45f).coerceAtLeast(1f),
-            center = Offset(x, centerY)
-        )
+        if (thumbAlpha > 0.001f) {
+            drawCircle(
+                color = activeColor.copy(alpha = activeColor.alpha * thumbAlpha),
+                radius = thumbRadiusPx,
+                center = Offset(x, centerY)
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.85f * thumbAlpha),
+                radius = (thumbRadiusPx * 0.45f).coerceAtLeast(1f),
+                center = Offset(x, centerY)
+            )
+        }
 
         if (tooltipMs >= 0L) {
             val t = Formatting.formatTrackTime(tooltipMs)

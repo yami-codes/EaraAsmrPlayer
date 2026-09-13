@@ -1,4 +1,6 @@
-﻿package com.asmr.player.ui.library
+package com.asmr.player.ui.library
+
+import com.asmr.player.R
 
 import android.content.Intent
 import android.net.Uri
@@ -45,14 +47,12 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
-import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -61,7 +61,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -75,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -125,147 +125,185 @@ import com.asmr.player.ui.common.DiscPlaceholder
 import com.asmr.player.ui.common.AsmrAsyncImage
 import com.asmr.player.ui.common.AsmrShimmerPlaceholder
 import com.asmr.player.ui.common.CvChipsFlow
+import com.asmr.player.ui.common.EdgeToEdgeFullHeightSheet
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
+import com.asmr.player.ui.common.StableWindowInsets
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
-import com.asmr.player.R
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
+
+private val AlbumDetailPickerSheetTopRadius = 28.dp
+private val AlbumDetailPickerSheetTopGap = 11.dp
+private val AlbumDetailPickerSheetContentTopInset = 12.dp
+
+@Composable
+internal fun AlbumDetailPickerSheet(
+    onDismissRequest: () -> Unit,
+    color: Color = MaterialTheme.colorScheme.background,
+    contentColor: Color = MaterialTheme.colorScheme.onBackground,
+    content: @Composable () -> Unit
+) {
+    EdgeToEdgeFullHeightSheet(
+        onDismissRequest = onDismissRequest,
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(top = AlbumDetailPickerSheetTopGap),
+        shape = RoundedCornerShape(
+            topStart = AlbumDetailPickerSheetTopRadius,
+            topEnd = AlbumDetailPickerSheetTopRadius
+        ),
+        containerColor = color,
+        contentColor = contentColor
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = AlbumDetailPickerSheetContentTopInset)
+                .windowInsetsPadding(StableWindowInsets.navigationBars)
+        ) {
+            content()
+        }
+    }
+}
 
 @Composable
 internal fun AsmrOneDownloadDialog(
     albumTitle: String,
     trackTree: List<AsmrOneTrackNodeResponse>,
+    disabledPaths: Set<String> = emptySet(),
     onDismiss: () -> Unit,
     onConfirm: (Set<String>) -> Unit
 ) {
     val mediaTree = remember(trackTree) { filterDownloadableMediaTree(trackTree) }
     val leafPaths = remember(mediaTree) { flattenAsmrOneLeafDownloads(mediaTree).map { it.relativePath } }
+    val selectableLeafPaths = remember(leafPaths, disabledPaths) { leafPaths.filterNot(disabledPaths::contains) }
     val leafPathsByFolder = remember(mediaTree) { buildLeafPathIndex(mediaTree) }
     val expanded = remember { mutableStateListOf<String>() }
-    val selected = remember(trackTree) { mutableStateListOf<String>().apply { addAll(leafPaths) } }
+    val selected = remember(trackTree, disabledPaths) {
+        mutableStateListOf<String>().apply { addAll(selectableLeafPaths) }
+    }
     val listState = rememberLazyListState()
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    AlbumDetailPickerSheet(
+        onDismissRequest = onDismiss
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
-                    }
-                    Text(
-                        text = stringResource(R.string.select_files_download),
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    TextButton(
-                        onClick = { onConfirm(selected.toSet()) },
-                        enabled = leafPaths.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text(stringResource(R.string.start_download)) }
-                }
+        Column(modifier = Modifier.fillMaxSize()) {
+            AlbumDetailSelectionSheetTopBar(
+                title = "选择要下载的文件",
+                confirmText = "开始下载",
+                confirmIcon = Icons.Rounded.Download,
+                confirmEnabled = selected.isNotEmpty(),
+                onDismiss = onDismiss,
+                onConfirm = { onConfirm(selected.toSet()) }
+            )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(albumTitle, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = {
-                            selected.clear()
-                            selected.addAll(leafPaths)
-                        }) { Text(stringResource(R.string.batch_translate_select_all)) }
-                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.deselect_all)) }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AlbumDetailSelectionSummary(
+                    albumTitle = albumTitle,
+                    selectedCount = selected.size,
+                    totalCount = selectableLeafPaths.size,
+                    unavailableCount = leafPaths.size - selectableLeafPaths.size,
+                    unavailableLabel = "已下载",
+                    onSelectAll = {
+                        selected.clear()
+                        selected.addAll(selectableLeafPaths)
+                    },
+                    onClearSelection = { selected.clear() }
+                )
+                if (leafPaths.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(stringResource(R.string.no_files_available_download))
                     }
-                    if (leafPaths.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(stringResource(R.string.no_files_available_download))
-                        }
-                    } else {
-                        val entries = flattenAsmrOneTreeForUi(mediaTree, expanded.toSet()).entries
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize().thinScrollbar(listState)
-                        ) {
-                            itemsIndexed(items = entries, key = { _, it -> it.path }) { index, entry ->
-                                when (entry) {
-                                    is AsmrTreeUiEntry.Folder -> {
-                                        val folderLeafPaths = leafPathsByFolder[entry.path].orEmpty()
-                                        val checkedCount = folderLeafPaths.count { selected.contains(it) }
-                                        val state = when {
-                                            folderLeafPaths.isEmpty() -> ToggleableState.Off
-                                            checkedCount == 0 -> ToggleableState.Off
-                                            checkedCount == folderLeafPaths.size -> ToggleableState.On
-                                            else -> ToggleableState.Indeterminate
+                } else {
+                    val entries = flattenAsmrOneTreeForUi(mediaTree, expanded.toSet()).entries
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        flingBehavior = rememberCalmScrollableFlingBehavior(),
+                        contentPadding = PaddingValues(vertical = 2.dp)
+                    ) {
+                        itemsIndexed(items = entries, key = { _, it -> it.path }) { index, entry ->
+                            when (entry) {
+                                is AsmrTreeUiEntry.Folder -> {
+                                    val allFolderLeafPaths = leafPathsByFolder[entry.path].orEmpty()
+                                    val selectableFolderLeafPaths = allFolderLeafPaths.filterNot(disabledPaths::contains)
+                                    val checkedCount = allFolderLeafPaths.count { path ->
+                                        disabledPaths.contains(path) || selected.contains(path)
+                                    }
+                                    val state = when {
+                                        allFolderLeafPaths.isEmpty() -> ToggleableState.Off
+                                        checkedCount == 0 -> ToggleableState.Off
+                                        checkedCount == allFolderLeafPaths.size -> ToggleableState.On
+                                        else -> ToggleableState.Indeterminate
+                                    }
+                                    AsmrTreeFolderCheckboxRow(
+                                        title = entry.title,
+                                        depth = entry.depth,
+                                        expanded = expanded.contains(entry.path),
+                                        toggleState = state,
+                                        checkboxEnabled = selectableFolderLeafPaths.isNotEmpty(),
+                                        onToggleExpand = {
+                                            if (expanded.contains(entry.path)) expanded.remove(entry.path) else expanded.add(entry.path)
+                                        },
+                                        onToggleCheck = {
+                                            if (selectableFolderLeafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
+                                            val shouldSelectAll = state != ToggleableState.On
+                                            if (shouldSelectAll) {
+                                                selectableFolderLeafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
+                                            } else {
+                                                selected.removeAll(selectableFolderLeafPaths.toSet())
+                                            }
                                         }
-                                        AsmrTreeFolderCheckboxRow(
-                                            title = entry.title,
-                                            depth = entry.depth,
-                                            expanded = expanded.contains(entry.path),
-                                            toggleState = state,
-                                            onToggleExpand = {
-                                                if (expanded.contains(entry.path)) expanded.remove(entry.path) else expanded.add(entry.path)
-                                            },
-                                            onToggleCheck = {
-                                                if (folderLeafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
-                                                val shouldSelectAll = state != ToggleableState.On
-                                                if (shouldSelectAll) {
-                                                    folderLeafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
-                                                } else {
-                                                    selected.removeAll(folderLeafPaths.toSet())
-                                                }
-                                            }
-                                        )
-                                    }
-                                    is AsmrTreeUiEntry.File -> {
-                                        val isChecked = selected.contains(entry.path)
-                                        AsmrTreeFileCheckboxRow(
-                                            title = entry.title,
-                                            depth = entry.depth,
-                                            fileType = entry.fileType,
-                                            checked = isChecked,
-                                            onCheckedChange = { checked ->
-                                                if (checked) {
-                                                    if (!selected.contains(entry.path)) selected.add(entry.path)
-                                                } else {
-                                                    selected.remove(entry.path)
-                                                }
-                                            }
-                                        )
-                                    }
+                                    )
                                 }
-                                if (index < entries.size - 1) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                                is AsmrTreeUiEntry.File -> {
+                                    val enabled = !disabledPaths.contains(entry.path)
+                                    val isChecked = !enabled || selected.contains(entry.path)
+                                    AsmrTreeFileCheckboxRow(
+                                        title = entry.title,
+                                        depth = entry.depth,
+                                        fileType = entry.fileType,
+                                        checked = isChecked,
+                                        enabled = enabled,
+                                        unavailableLabel = "已下载",
+                                        onCheckedChange = { checked ->
+                                            if (!enabled) return@AsmrTreeFileCheckboxRow
+                                            if (checked) {
+                                                if (!selected.contains(entry.path)) selected.add(entry.path)
+                                            } else {
+                                                selected.remove(entry.path)
+                                            }
+                                        }
                                     )
                                 }
                             }
-                            item { Spacer(modifier = Modifier.height(12.dp)) }
+                            if (index < entries.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)
+                                )
+                            }
                         }
+                        item { Spacer(modifier = Modifier.height(12.dp)) }
                     }
                 }
             }
@@ -273,14 +311,14 @@ internal fun AsmrOneDownloadDialog(
     }
 }
 
-private data class OnlineSaveLeafUi(
+internal data class OnlineSaveLeafUi(
     val relativePath: String,
     val title: String,
     val url: String,
     val fileType: TreeFileType
 )
 
-private fun flattenOnlineSaveLeaves(tree: List<AsmrOneTrackNodeResponse>): List<OnlineSaveLeafUi> {
+internal fun flattenOnlineSaveLeaves(tree: List<AsmrOneTrackNodeResponse>): List<OnlineSaveLeafUi> {
     val out = mutableListOf<OnlineSaveLeafUi>()
     fun sanitize(name: String): String = name.trim().ifEmpty { "item" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
 
@@ -294,7 +332,7 @@ private fun flattenOnlineSaveLeaves(tree: List<AsmrOneTrackNodeResponse>): List<
             if (children.isEmpty()) {
                 if (url.isNullOrBlank()) return@forEach
                 val type = treeFileTypeForNode(titleRaw, url, node.type)
-                if (!isLibrarySavableTreeFileType(type)) return@forEach
+                if (!isLibraryResourceSavableTreeFileType(type)) return@forEach
                 out.add(
                     OnlineSaveLeafUi(
                         relativePath = path,
@@ -313,7 +351,7 @@ private fun flattenOnlineSaveLeaves(tree: List<AsmrOneTrackNodeResponse>): List<
     return out
 }
 
-private fun buildMediaLeafPathIndex(tree: List<AsmrOneTrackNodeResponse>): Map<String, List<String>> {
+private fun buildSaveLeafPathIndex(tree: List<AsmrOneTrackNodeResponse>): Map<String, List<String>> {
     val folderToLeaves = linkedMapOf<String, MutableList<String>>()
     fun sanitize(name: String): String = name.trim().ifEmpty { "item" }.replace(Regex("""[\\/:*?"<>|]"""), "_")
     fun walk(nodes: List<AsmrOneTrackNodeResponse>, parentPath: String, folderStack: List<String>) {
@@ -326,7 +364,7 @@ private fun buildMediaLeafPathIndex(tree: List<AsmrOneTrackNodeResponse>): Map<S
             if (children.isEmpty()) {
                 if (url.isNullOrBlank()) return@forEach
                 val type = treeFileTypeForNode(titleRaw, url, node.type)
-                if (!isLibrarySavableTreeFileType(type)) return@forEach
+                if (!isLibraryResourceSavableTreeFileType(type)) return@forEach
                 folderStack.forEach { folder ->
                     folderToLeaves.getOrPut(folder) { mutableListOf() }.add(path)
                 }
@@ -343,7 +381,7 @@ private fun buildMediaLeafPathIndex(tree: List<AsmrOneTrackNodeResponse>): Map<S
     return folderToLeaves
 }
 
-private fun flattenAsmrOneMediaTreeForUi(
+private fun flattenAsmrOneSaveTreeForUi(
     tree: List<AsmrOneTrackNodeResponse>,
     expanded: Set<String>
 ): AsmrTreeUiResult {
@@ -357,7 +395,7 @@ private fun flattenAsmrOneMediaTreeForUi(
         return if (children.isEmpty()) {
             if (url.isNullOrBlank()) return false
             val type = treeFileTypeForNode(titleRaw, url, node.type)
-            isLibrarySavableTreeFileType(type)
+            isLibraryResourceSavableTreeFileType(type)
         } else {
             children.any { nodeHasMedia(it) }
         }
@@ -373,7 +411,7 @@ private fun flattenAsmrOneMediaTreeForUi(
             if (children.isEmpty()) {
                 if (url.isNullOrBlank()) return@forEach
                 val type = treeFileTypeForNode(titleRaw, url, node.type)
-                if (!isLibrarySavableTreeFileType(type)) return@forEach
+                if (!isLibraryResourceSavableTreeFileType(type)) return@forEach
                 out.add(
                     AsmrTreeUiEntry.File(
                         path = path,
@@ -402,128 +440,132 @@ private fun flattenAsmrOneMediaTreeForUi(
 internal fun OnlineSaveDialog(
     albumTitle: String,
     trackTree: List<AsmrOneTrackNodeResponse>,
+    disabledPaths: Set<String> = emptySet(),
     onDismiss: () -> Unit,
     onConfirm: (Set<String>) -> Unit
 ) {
     val leaves = remember(trackTree) { flattenOnlineSaveLeaves(trackTree) }
-    val leafPathsByFolder = remember(trackTree) { buildMediaLeafPathIndex(trackTree) }
+    val leafPaths = remember(leaves) { leaves.map { it.relativePath } }
+    val selectableLeafPaths = remember(leafPaths, disabledPaths) { leafPaths.filterNot(disabledPaths::contains) }
+    val leafPathsByFolder = remember(trackTree) { buildSaveLeafPathIndex(trackTree) }
     val expanded = remember { mutableStateListOf<String>() }
-    val selected = remember(trackTree) { mutableStateListOf<String>().apply { addAll(leaves.map { it.relativePath }) } }
+    val selected = remember(trackTree, disabledPaths) {
+        mutableStateListOf<String>().apply { addAll(selectableLeafPaths) }
+    }
     val listState = rememberLazyListState()
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    AlbumDetailPickerSheet(
+        onDismissRequest = onDismiss
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
-                    }
-                    Text(
-                        text = stringResource(R.string.select_files_save),
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    TextButton(
-                        onClick = { onConfirm(selected.toSet()) },
-                        enabled = leaves.isNotEmpty() && selected.isNotEmpty()
-                    ) { Text(stringResource(R.string.save_local_library)) }
-                }
+        Column(modifier = Modifier.fillMaxSize()) {
+            AlbumDetailSelectionSheetTopBar(
+                title = "选择要保存的文件",
+                confirmText = "保存到本地库",
+                confirmIcon = Icons.Rounded.SaveAlt,
+                confirmEnabled = selected.isNotEmpty(),
+                onDismiss = onDismiss,
+                onConfirm = { onConfirm(selected.toSet()) }
+            )
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(albumTitle, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = {
-                            selected.clear()
-                            selected.addAll(leaves.map { it.relativePath })
-                        }) { Text(stringResource(R.string.batch_translate_select_all)) }
-                        OutlinedButton(onClick = { selected.clear() }) { Text(stringResource(R.string.deselect_all)) }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AlbumDetailSelectionSummary(
+                    albumTitle = albumTitle,
+                    selectedCount = selected.size,
+                    totalCount = selectableLeafPaths.size,
+                    unavailableCount = leaves.size - selectableLeafPaths.size,
+                    unavailableLabel = "已保存",
+                    onSelectAll = {
+                        selected.clear()
+                        selected.addAll(selectableLeafPaths)
+                    },
+                    onClearSelection = { selected.clear() }
+                )
+                if (leaves.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("没有可保存文件")
                     }
-                    if (leaves.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(stringResource(R.string.no_audio_video_files_save))
-                        }
-                    } else {
-                        val entries = flattenAsmrOneMediaTreeForUi(trackTree, expanded.toSet()).entries
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize().thinScrollbar(listState)
-                        ) {
-                            itemsIndexed(items = entries, key = { _, it -> it.path }) { index, entry ->
-                                when (entry) {
-                                    is AsmrTreeUiEntry.Folder -> {
-                                        val leafPaths = leafPathsByFolder[entry.path].orEmpty()
-                                        val checkedCount = leafPaths.count { selected.contains(it) }
-                                        val state = when {
-                                            leafPaths.isEmpty() -> ToggleableState.Off
-                                            checkedCount == 0 -> ToggleableState.Off
-                                            checkedCount == leafPaths.size -> ToggleableState.On
-                                            else -> ToggleableState.Indeterminate
+                } else {
+                    val entries = flattenAsmrOneSaveTreeForUi(trackTree, expanded.toSet()).entries
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        flingBehavior = rememberCalmScrollableFlingBehavior(),
+                        contentPadding = PaddingValues(vertical = 2.dp)
+                    ) {
+                        itemsIndexed(items = entries, key = { _, it -> it.path }) { index, entry ->
+                            when (entry) {
+                                is AsmrTreeUiEntry.Folder -> {
+                                    val allFolderLeafPaths = leafPathsByFolder[entry.path].orEmpty()
+                                    val selectableFolderLeafPaths = allFolderLeafPaths.filterNot(disabledPaths::contains)
+                                    val checkedCount = allFolderLeafPaths.count { path ->
+                                        disabledPaths.contains(path) || selected.contains(path)
+                                    }
+                                    val state = when {
+                                        allFolderLeafPaths.isEmpty() -> ToggleableState.Off
+                                        checkedCount == 0 -> ToggleableState.Off
+                                        checkedCount == allFolderLeafPaths.size -> ToggleableState.On
+                                        else -> ToggleableState.Indeterminate
+                                    }
+                                    AsmrTreeFolderCheckboxRow(
+                                        title = entry.title,
+                                        depth = entry.depth,
+                                        expanded = expanded.contains(entry.path),
+                                        toggleState = state,
+                                        checkboxEnabled = selectableFolderLeafPaths.isNotEmpty(),
+                                        onToggleExpand = {
+                                            if (expanded.contains(entry.path)) expanded.remove(entry.path) else expanded.add(entry.path)
+                                        },
+                                        onToggleCheck = {
+                                            if (selectableFolderLeafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
+                                            val shouldSelectAll = state != ToggleableState.On
+                                            if (shouldSelectAll) {
+                                                selectableFolderLeafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
+                                            } else {
+                                                selected.removeAll(selectableFolderLeafPaths.toSet())
+                                            }
                                         }
-                                        AsmrTreeFolderCheckboxRow(
-                                            title = entry.title,
-                                            depth = entry.depth,
-                                            expanded = expanded.contains(entry.path),
-                                            toggleState = state,
-                                            onToggleExpand = {
-                                                if (expanded.contains(entry.path)) expanded.remove(entry.path) else expanded.add(entry.path)
-                                            },
-                                            onToggleCheck = {
-                                                if (leafPaths.isEmpty()) return@AsmrTreeFolderCheckboxRow
-                                                val shouldSelectAll = state != ToggleableState.On
-                                                if (shouldSelectAll) {
-                                                    leafPaths.forEach { if (!selected.contains(it)) selected.add(it) }
-                                                } else {
-                                                    selected.removeAll(leafPaths.toSet())
-                                                }
-                                            }
-                                        )
-                                    }
-                                    is AsmrTreeUiEntry.File -> {
-                                        val isChecked = selected.contains(entry.path)
-                                        AsmrTreeFileCheckboxRow(
-                                            title = entry.title,
-                                            depth = entry.depth,
-                                            fileType = entry.fileType,
-                                            checked = isChecked,
-                                            onCheckedChange = { checked ->
-                                                if (checked) {
-                                                    if (!selected.contains(entry.path)) selected.add(entry.path)
-                                                } else {
-                                                    selected.remove(entry.path)
-                                                }
-                                            }
-                                        )
-                                    }
+                                    )
                                 }
-                                if (index < entries.size - 1) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                                is AsmrTreeUiEntry.File -> {
+                                    val enabled = !disabledPaths.contains(entry.path)
+                                    val isChecked = !enabled || selected.contains(entry.path)
+                                    AsmrTreeFileCheckboxRow(
+                                        title = entry.title,
+                                        depth = entry.depth,
+                                        fileType = entry.fileType,
+                                        checked = isChecked,
+                                        enabled = enabled,
+                                        unavailableLabel = "已保存",
+                                        onCheckedChange = { checked ->
+                                            if (!enabled) return@AsmrTreeFileCheckboxRow
+                                            if (checked) {
+                                                if (!selected.contains(entry.path)) selected.add(entry.path)
+                                            } else {
+                                                selected.remove(entry.path)
+                                            }
+                                        }
                                     )
                                 }
                             }
-                            item { Spacer(modifier = Modifier.height(12.dp)) }
+                            if (index < entries.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f)
+                                )
+                            }
                         }
+                        item { Spacer(modifier = Modifier.height(12.dp)) }
                     }
                 }
             }
@@ -532,52 +574,182 @@ internal fun OnlineSaveDialog(
 }
 
 @Composable
+private fun AlbumDetailSelectionSheetTopBar(
+    title: String,
+    confirmText: String,
+    confirmIcon: ImageVector,
+    confirmEnabled: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 6.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        IconButton(onClick = onDismiss) {
+            Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null)
+        }
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+        )
+        Button(
+            onClick = onConfirm,
+            enabled = confirmEnabled,
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+            modifier = Modifier.height(40.dp)
+        ) {
+            Icon(imageVector = confirmIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(confirmText, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun AlbumDetailSelectionSummary(
+    albumTitle: String,
+    selectedCount: Int,
+    totalCount: Int,
+    unavailableCount: Int,
+    unavailableLabel: String,
+    onSelectAll: () -> Unit,
+    onClearSelection: () -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = colorScheme.surface.copy(alpha = 0.58f),
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = albumTitle,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colorScheme.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = buildString {
+                        append("已选 $selectedCount / 可选 $totalCount")
+                        if (unavailableCount > 0) {
+                            append(" · $unavailableLabel $unavailableCount")
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                    OutlinedButton(
+                        onClick = onSelectAll,
+                        enabled = totalCount > 0 && selectedCount < totalCount,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("全选", style = MaterialTheme.typography.labelMedium)
+                    }
+                    OutlinedButton(
+                        onClick = onClearSelection,
+                        enabled = selectedCount > 0,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("全不选", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AsmrTreeFolderCheckboxRow(
     title: String,
     depth: Int,
     expanded: Boolean,
     toggleState: ToggleableState,
+    checkboxEnabled: Boolean,
     onToggleExpand: () -> Unit,
     onToggleCheck: () -> Unit
 ) {
+    val colorScheme = AsmrTheme.colorScheme
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(10.dp),
+            .padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(8.dp),
         color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
-                .padding(start = (2 + depth * 14).dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onToggleExpand)
+                .padding(start = (depth * 12).dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TriStateCheckbox(state = toggleState, onClick = onToggleCheck)
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(onClick = onToggleExpand, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+            CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                TriStateCheckbox(
+                    state = toggleState,
+                    onClick = onToggleCheck.takeIf { checkboxEnabled },
+                    enabled = checkboxEnabled,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = colorScheme.primary,
+                        uncheckedColor = colorScheme.textSecondary,
+                        checkmarkColor = colorScheme.onPrimary,
+                        disabledCheckedColor = colorScheme.textTertiary.copy(alpha = 0.58f),
+                        disabledUncheckedColor = colorScheme.textTertiary.copy(alpha = 0.48f),
+                        disabledIndeterminateColor = colorScheme.textTertiary.copy(alpha = 0.58f)
+                    ),
+                    modifier = Modifier.size(30.dp)
                 )
             }
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.KeyboardArrowDown else Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
             )
         }
     }
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AsmrTreeFileCheckboxRow(
     title: String,
     depth: Int,
     fileType: TreeFileType,
     checked: Boolean,
+    enabled: Boolean,
+    unavailableLabel: String,
     onCheckedChange: (Boolean) -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
@@ -586,40 +758,54 @@ private fun AsmrTreeFileCheckboxRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(10.dp),
+            .padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(8.dp),
         color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
-                .padding(start = (38 + depth * 14).dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                .padding(start = (depth * 12).dp, end = 6.dp, top = 3.dp, bottom = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-            Spacer(modifier = Modifier.width(8.dp))
+            CompositionLocalProvider(LocalMinimumInteractiveComponentEnforcement provides false) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange.takeIf { enabled },
+                    enabled = enabled,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = colorScheme.primary,
+                        uncheckedColor = colorScheme.textSecondary,
+                        checkmarkColor = colorScheme.onPrimary,
+                        disabledCheckedColor = colorScheme.textTertiary.copy(alpha = 0.58f),
+                        disabledUncheckedColor = colorScheme.textTertiary.copy(alpha = 0.48f)
+                    ),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(22.dp)
+                tint = if (enabled) iconTint else colorScheme.textTertiary.copy(alpha = 0.58f),
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = colorScheme.textPrimary,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                    text = fileTypeLabel(fileType),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = colorScheme.textSecondary,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (enabled) colorScheme.textPrimary else colorScheme.textTertiary,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = if (enabled) fileTypeLabel(fileType) else unavailableLabel,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (enabled) colorScheme.textSecondary else colorScheme.textTertiary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.widthIn(max = 56.dp)
+            )
         }
     }
 }
@@ -767,7 +953,7 @@ internal fun FilePreviewDialog(
     fun openWithOtherApp() {
         val path = currentPath.trim()
         if (path.isBlank()) {
-            messageManager.showError(R.string.unable_open_path_empty)
+            messageManager.showError("无法打开：路径为空")
             return
         }
 
@@ -796,12 +982,12 @@ internal fun FilePreviewDialog(
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, context.getString(R.string.open_file)))
+            context.startActivity(Intent.createChooser(intent, "打开文件"))
         }.onFailure { t ->
             when (t) {
-                is android.content.ActivityNotFoundException -> messageManager.showInfo(R.string.no_app_found_open)
-                is java.io.FileNotFoundException -> messageManager.showError(R.string.file_does_not_exist)
-                else -> messageManager.showError(R.string.unable_open_file)
+                is android.content.ActivityNotFoundException -> messageManager.showInfo("未找到可打开的应用")
+                is java.io.FileNotFoundException -> messageManager.showError("文件不存在")
+                else -> messageManager.showError("无法打开该文件")
             }
         }
     }
@@ -865,7 +1051,7 @@ internal fun FilePreviewDialog(
                     }
                     if (canFullscreen) {
                         TextButton(onClick = { fullscreen = !fullscreen }) {
-                            Text(if (fullscreen) stringResource(R.string.exit_full_screen) else stringResource(R.string.full_screen))
+                            Text(if (fullscreen) "退出全屏" else "全屏")
                         }
                     }
                     IconButton(onClick = ::openWithOtherApp) {
@@ -892,11 +1078,7 @@ internal fun FilePreviewDialog(
                             )
                         }
                         TreeFileType.Subtitle, TreeFileType.Text -> {
-                            val loadingText = stringResource(R.string.loading)
-                            val textContent by produceState<String?>(initialValue = loadingText, currentPath) {
-                                val emptyContent = context.getString(R.string.content_empty)
-                                val onlineUnsupported = context.getString(R.string.online_files_not)
-                                val readFailed = context.getString(R.string.failed_read)
+                            val textContent by produceState<String?>(initialValue = "加载中...") {
                                 value = withContext(Dispatchers.IO) {
                                     runCatching {
                                         if (currentPath.startsWith("content://")) {
@@ -906,17 +1088,24 @@ internal fun FilePreviewDialog(
                                         } else if (currentPath.startsWith("http")) {
                                             val loader = loadOnlineText
                                             if (loader != null) {
-                                                loader(currentPath)?.takeIf { it.isNotBlank() } ?: emptyContent
+                                                loader(currentPath)?.takeIf { it.isNotBlank() } ?: "内容为空"
                                             } else {
-                                                onlineUnsupported
+                                                "在线文件暂不支持内容预览，请使用外部应用打开"
                                             }
                                         } else {
                                             java.io.File(currentPath).readText()
                                         }
-                                    }.getOrNull() ?: readFailed
+                                    }.getOrNull() ?: "读取失败"
                                 }
                             }
-                            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(
+                                        state = rememberScrollState(),
+                                        flingBehavior = rememberCalmScrollableFlingBehavior()
+                                    )
+                            ) {
                                 Text(
                                     text = textContent ?: "",
                                     style = MaterialTheme.typography.bodySmall,
@@ -933,12 +1122,12 @@ internal fun FilePreviewDialog(
                                     tint = colorScheme.danger
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                Text(stringResource(R.string.pdf_files_not), color = colorScheme.textSecondary)
-                                Text(stringResource(R.string.open_external_app), color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
+                                Text("PDF 文件暂不支持直接预览", color = colorScheme.textSecondary)
+                                Text("请使用外部应用打开", color = colorScheme.textTertiary, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         else -> {
-                            Text(stringResource(R.string.preview_file_type), color = colorScheme.textTertiary)
+                            Text("暂不支持预览该文件类型", color = colorScheme.textTertiary)
                         }
                     }
                 }

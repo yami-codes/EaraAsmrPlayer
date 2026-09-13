@@ -10,6 +10,7 @@ import com.asmr.player.data.local.db.entities.LocalTreeCacheEntity
 import com.asmr.player.data.local.db.entities.RemoteSubtitleSourceEntity
 import com.asmr.player.data.local.db.entities.SubtitleEntity
 import com.asmr.player.data.local.db.entities.TrackEntity
+import com.asmr.player.data.local.db.entities.titleForDisplay
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
@@ -30,7 +31,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-import java.nio.charset.Charset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -73,7 +73,7 @@ class LyricsLoader @Inject constructor(
         val trackByPath = trackDao.getTrackByPathOnce(target.mediaId)
         val trackById = target.trackId.takeIf { it > 0L }?.let { id -> trackDao.getTrackByIdOnce(id) }
         val track = trackByPath ?: trackById
-        val title = track?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle.ifBlank { target.mediaId }
+        val title = track?.titleForDisplay?.takeIf { it.isNotBlank() } ?: fallbackTitle.ifBlank { target.mediaId }
 
         val manualLyrics = loadManualLyrics(target)
         if (manualLyrics.isNotEmpty()) {
@@ -301,15 +301,7 @@ class LyricsLoader @Inject constructor(
                 input.readBytes()
             }
         }.getOrNull() ?: return emptyList()
-        val text = decodeText(content)
-        return SubtitleParser.parseText(extension, text)
-    }
-
-    private fun decodeText(bytes: ByteArray): String {
-        return runCatching { bytes.toString(Charsets.UTF_8) }
-            .recoverCatching { bytes.toString(Charset.forName("GBK")) }
-            .getOrDefault("")
-            .removePrefix("\uFEFF")
+        return SubtitleParser.parseBytes(extension, content)
     }
 
     private fun resolveDisplayName(uri: Uri): String {

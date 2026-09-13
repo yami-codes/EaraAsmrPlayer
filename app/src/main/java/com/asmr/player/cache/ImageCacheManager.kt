@@ -1,5 +1,6 @@
 package com.asmr.player.cache
 
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -18,21 +19,27 @@ import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
+import com.asmr.player.performance.UiFrameWorkCoordinator
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 class ImageCacheManager(
     private val appContext: Context,
@@ -43,14 +50,63 @@ class ImageCacheManager(
     private val stats: CacheStats,
     private val decodeDispatcher: CoroutineDispatcher
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val inFlight = ConcurrentHashMap<String, Deferred<Result<ImageBitmap>>>()
+    companion object {
+        // Android 15 起不再发送这些级别，但旧系统仍会回调对应数值。
+        private const val TrimMemoryRunningLowCompat = 10
+        private const val TrimMemoryRunningCriticalCompat = 15
+        private const val TrimMemoryCompleteCompat = 80
+
+        @Volatile
+        private var initializedInstance: ImageCacheManager? = null
+
+        fun trimMemoryIfInitialized(level: Int) {
+            initializedInstance?.onTrimMemory(level)
+        }
+    }
+
+    private data class InFlightLoad(
+        val deferred: Deferred<Result<ImageBitmap>>,
+        val waiters: AtomicInteger = AtomicInteger(0),
+    )
+
+    private data class InFlightKey(
+        val cacheKey: String,
+        val cachePolicy: CachePolicy,
+    )
+
+    private val scope = CoroutineScope(SupervisorJob() + decodeDispatcher)
+    private val inFlight = ConcurrentHashMap<InFlightKey, InFlightLoad>()
+    private val loadSemaphore = Semaphore(config.loadParallelism)
+    private val preloadSemaphore = Semaphore(config.preloadParallelism)
+    private val diskWriteSemaphore = Semaphore(1)
+    private val memoryStateLock = Any()
+    private var memoryGeneration = 0L
 
     // 数据键(忽略尺寸) -> 最近一次写入内存的完整缓存键。
     // 用于跨尺寸即时复用同一张图片：列表已加载的小图可作为详情大图的瞬时占位。
-    private val dataKeyToLatestFullKey = ConcurrentHashMap<String, String>()
+    private val dataKeyToLatestFullKey = mutableMapOf<String, String>()
 
-    private fun putMemory(fullKey: String, dataKey: String, bmp: Bitmap) {
+    init {
+        initializedInstance = this
+    }
+
+    private fun currentMemoryGeneration(): Long = synchronized(memoryStateLock) {
+        memoryGeneration
+    }
+
+    private fun getMemory(fullKey: String, dataKey: String): Bitmap? = synchronized(memoryStateLock) {
+        memoryCache.get(fullKey)?.also {
+            dataKeyToLatestFullKey[dataKey] = fullKey
+        }
+    }
+
+    private fun putMemory(
+        fullKey: String,
+        dataKey: String,
+        bmp: Bitmap,
+        expectedGeneration: Long,
+    ) = synchronized(memoryStateLock) {
+        if (memoryGeneration != expectedGeneration) return@synchronized
         memoryCache.put(fullKey, bmp)
         dataKeyToLatestFullKey[dataKey] = fullKey
     }
@@ -62,26 +118,43 @@ class ImageCacheManager(
      */
     fun peekAnySize(model: Any): ImageBitmap? {
         val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
-        val fullKey = dataKeyToLatestFullKey[dataKey] ?: return null
-        return memoryCache.get(fullKey)?.asImageBitmap()
+        return synchronized(memoryStateLock) {
+            val fullKey = dataKeyToLatestFullKey[dataKey] ?: return@synchronized null
+            val bitmap = memoryCache.get(fullKey)
+            if (bitmap == null) {
+                dataKeyToLatestFullKey.remove(dataKey)
+            }
+            bitmap?.asImageBitmap()
+        }
     }
 
     suspend fun loadImage(
         model: Any,
         size: IntSize?,
         cachePolicy: CachePolicy = CachePolicy.DEFAULT
-    ): ImageBitmap {
+    ): ImageBitmap = withContext(decodeDispatcher) {
         Trace.beginSection("img.load")
         try {
+            loadImageInternal(model, size, cachePolicy)
+        } finally {
+            Trace.endSection()
+        }
+    }
+
+    private suspend fun loadImageInternal(
+        model: Any,
+        size: IntSize?,
+        cachePolicy: CachePolicy,
+    ): ImageBitmap {
         val key = CacheKeyFactory.createKey(appContext, model, size, config.cacheVersion)
         val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
+        val memoryGenerationAtStart = currentMemoryGeneration()
 
         if (cachePolicy.readMemory) {
             Trace.beginSection("img.mem")
-            val cached = memoryCache.get(key)
+            val cached = getMemory(key, dataKey)
             if (cached != null) {
                 stats.onMemoryHit()
-                dataKeyToLatestFullKey[dataKey] = key
                 Trace.endSection()
                 return cached.asImageBitmap()
             }
@@ -89,61 +162,107 @@ class ImageCacheManager(
             Trace.endSection()
         }
 
-        if (cachePolicy.readDisk) {
-            Trace.beginSection("img.disk")
-            val entry = withContext(Dispatchers.IO) { diskCache.get(key) }
-            if (entry != null) {
-                stats.onDiskHit()
-                Trace.beginSection("img.decodeDisk")
-                val bmp = decodeBytes(entry.bytes)
-                Trace.endSection()
-                if (cachePolicy.writeMemory) putMemory(key, dataKey, bmp)
-                Trace.endSection()
-                return bmp.asImageBitmap()
+        val inFlightKey = InFlightKey(key, cachePolicy)
+        val sharedLoad = inFlight.compute(inFlightKey) { _, existing ->
+            val selected = existing?.takeUnless { it.deferred.isCancelled } ?: InFlightLoad(
+                deferred = scope.async(start = CoroutineStart.LAZY) {
+                    val result = try {
+                        val lateMemoryHit = if (cachePolicy.readMemory) {
+                            getMemory(key, dataKey)
+                        } else {
+                            null
+                        }
+                        if (lateMemoryHit != null) {
+                            stats.onMemoryHit()
+                            Result.success(lateMemoryHit.asImageBitmap())
+                        } else {
+                            val diskBitmap = loadImageFromDisk(
+                                key = key,
+                                dataKey = dataKey,
+                                cachePolicy = cachePolicy,
+                                memoryGenerationAtStart = memoryGenerationAtStart,
+                            )
+                            if (diskBitmap != null) {
+                                Result.success(diskBitmap)
+                            } else {
+                                Result.success(loadSemaphore.withPermit {
+                                    stats.onNetworkFetch()
+                                    Trace.beginSection("img.net")
+                                    val bmp = try {
+                                        loaderFacade.loadBitmap(model, size)
+                                    } finally {
+                                        Trace.endSection()
+                                    }
+                                    stats.onDecode()
+                                    if (cachePolicy.writeMemory) {
+                                        putMemory(key, dataKey, bmp, memoryGenerationAtStart)
+                                    }
+                                    if (cachePolicy.writeDisk) {
+                                        writeDiskCacheAsync(key, bmp)
+                                    }
+                                    bmp.asImageBitmap()
+                                })
+                            }
+                        }
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        Result.failure(error)
+                    }
+                    if (config.logStats) {
+                        val s = stats.snapshot()
+                        Log.d("ImageCacheManager", "stats mem=${s.memoryHitRate} disk=${s.diskHitRate} net=${s.networkFetches} dec=${s.decodeCount}")
+                    }
+                    result
+                }
+            )
+            selected.waiters.incrementAndGet()
+            selected
+        } ?: error("Unable to create image load")
+        sharedLoad.deferred.start()
+        try {
+            return sharedLoad.deferred.await().getOrThrow()
+        } finally {
+            var orphanedLoad: InFlightLoad? = null
+            inFlight.computeIfPresent(inFlightKey) { _, current ->
+                if (current !== sharedLoad) {
+                    current
+                } else if (current.waiters.decrementAndGet() == 0) {
+                    orphanedLoad = current
+                    null
+                } else {
+                    current
+                }
             }
-            stats.onDiskMiss()
-            Trace.endSection()
+            orphanedLoad?.deferred?.takeIf { it.isActive }?.cancel()
         }
+    }
 
-        val existing = inFlight[key]
-        if (existing != null) {
-            return existing.await().getOrThrow()
-        }
-
-        val created = scope.async {
-            runCatching {
-                stats.onNetworkFetch()
-                Trace.beginSection("img.net")
-                val bmp = loaderFacade.loadBitmap(model, size)
-                Trace.endSection()
-                stats.onDecode()
-                if (cachePolicy.writeDisk) {
-                    Trace.beginSection("img.encode")
-                    val bytes = encodeBitmapForDisk(bmp)
-                    Trace.endSection()
-                    diskCache.put(
-                        key,
-                        DiskCache.Entry(
-                            bytes = bytes,
-                            width = bmp.width,
-                            height = bmp.height
-                        )
-                    )
-                }
-                if (cachePolicy.writeMemory) {
-                    putMemory(key, dataKey, bmp)
-                }
-                bmp.asImageBitmap()
-            }.also {
-                if (config.logStats) {
-                    val s = stats.snapshot()
-                    Log.d("ImageCacheManager", "stats mem=${s.memoryHitRate} disk=${s.diskHitRate} net=${s.networkFetches} dec=${s.decodeCount}")
-                }
+    private suspend fun loadImageFromDisk(
+        key: String,
+        dataKey: String,
+        cachePolicy: CachePolicy,
+        memoryGenerationAtStart: Long,
+    ): ImageBitmap? {
+        if (!cachePolicy.readDisk) return null
+        Trace.beginSection("img.disk")
+        try {
+            val entry = diskCache.get(key)
+            if (entry == null) {
+                stats.onDiskMiss()
+                return null
             }
-        }
-        inFlight[key] = created
-        created.invokeOnCompletion { inFlight.remove(key, created) }
-        return created.await().getOrThrow()
+            stats.onDiskHit()
+            Trace.beginSection("img.decodeDisk")
+            val bmp = try {
+                decodeBytes(entry.bytes)
+            } finally {
+                Trace.endSection()
+            }
+            if (cachePolicy.writeMemory) {
+                putMemory(key, dataKey, bmp, memoryGenerationAtStart)
+            }
+            return bmp.asImageBitmap()
         } finally {
             Trace.endSection()
         }
@@ -153,83 +272,177 @@ class ImageCacheManager(
         model: Any,
         size: IntSize?,
         cachePolicy: CachePolicy = CachePolicy.DEFAULT
-    ): ImageBitmap? {
+    ): ImageBitmap? = withContext(decodeDispatcher) {
         val key = CacheKeyFactory.createKey(appContext, model, size, config.cacheVersion)
         val dataKey = CacheKeyFactory.createDataKey(appContext, model, config.cacheVersion)
+        val memoryGenerationAtStart = currentMemoryGeneration()
 
         if (cachePolicy.readMemory) {
-            val cached = memoryCache.get(key)
+            val cached = getMemory(key, dataKey)
             if (cached != null) {
                 stats.onMemoryHit()
-                dataKeyToLatestFullKey[dataKey] = key
-                return cached.asImageBitmap()
+                return@withContext cached.asImageBitmap()
             }
             stats.onMemoryMiss()
         }
 
         if (cachePolicy.readDisk) {
-            val entry = withContext(Dispatchers.IO) { diskCache.get(key) }
+            val entry = diskCache.get(key)
             if (entry != null) {
                 stats.onDiskHit()
                 val bmp = decodeBytes(entry.bytes)
-                if (cachePolicy.writeMemory) putMemory(key, dataKey, bmp)
-                return bmp.asImageBitmap()
+                if (cachePolicy.writeMemory) {
+                    putMemory(key, dataKey, bmp, memoryGenerationAtStart)
+                }
+                return@withContext bmp.asImageBitmap()
             }
             stats.onDiskMiss()
         }
-        return null
+        null
     }
 
     fun preload(models: List<Any>) {
         if (models.isEmpty()) return
-        models.forEach { m ->
-            scope.launch {
-                runCatching { loadImage(model = m, size = null, cachePolicy = CachePolicy.DEFAULT) }
-            }
-        }
+        preload(models, size = null)
     }
 
     fun preload(models: List<Any>, size: IntSize?) {
         if (models.isEmpty()) return
         models.forEach { m ->
             scope.launch {
-                runCatching { loadImage(model = m, size = size, cachePolicy = CachePolicy.DEFAULT) }
+                preloadSemaphore.withPermit {
+                    preloadModel(model = m, size = size)
+                }
             }
         }
     }
 
     fun preload(scope: CoroutineScope, models: List<Any>): Job {
-        return scope.launch(Dispatchers.IO) {
-            models.forEach { m ->
-                runCatching { loadImage(model = m, size = null, cachePolicy = CachePolicy.DEFAULT) }
+        return preload(scope, models, size = null)
+    }
+
+    fun preload(
+        scope: CoroutineScope,
+        models: List<Any>,
+        size: IntSize?,
+        maxConcurrency: Int? = null,
+    ): Job {
+        return scope.launch(decodeDispatcher) {
+            val requestSemaphore = Semaphore(
+                permits = (maxConcurrency ?: models.size).coerceAtLeast(1)
+            )
+            coroutineScope {
+                models.forEach { model ->
+                    launch {
+                        requestSemaphore.withPermit {
+                            preloadSemaphore.withPermit {
+                                preloadModel(model = model, size = size)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    fun preload(scope: CoroutineScope, models: List<Any>, size: IntSize?): Job {
-        return scope.launch(Dispatchers.IO) {
-            models.forEach { m ->
-                runCatching { loadImage(model = m, size = size, cachePolicy = CachePolicy.DEFAULT) }
-            }
+    private suspend fun preloadModel(model: Any, size: IntSize?) {
+        try {
+            loadImage(model = model, size = size, cachePolicy = CachePolicy.CACHE_WARMUP)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            // 预取失败不影响可见图片按正常路径重试。
         }
     }
 
     fun statsSnapshot(): CacheStats.Snapshot = stats.snapshot()
 
+    fun updateDiskMaxSizeBytes(maxSizeBytes: Long) {
+        diskCache.updateMaxSizeBytes(maxSizeBytes)
+    }
+
+    fun diskSizeBytes(): Long = diskCache.sizeBytes()
+
+    fun clearCaches() {
+        synchronized(memoryStateLock) {
+            memoryGeneration += 1L
+            memoryCache.clear()
+            dataKeyToLatestFullKey.clear()
+        }
+        diskCache.clear()
+    }
+
+    fun onTrimMemory(level: Int) {
+        val maxSize = memoryCache.maxSizeBytes()
+        val targetSize = when {
+            level >= TrimMemoryCompleteCompat -> 0
+            level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> maxSize / 4
+            level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> maxSize / 2
+            level >= TrimMemoryRunningCriticalCompat -> maxSize / 4
+            level >= TrimMemoryRunningLowCompat -> maxSize / 2
+            else -> return
+        }
+        synchronized(memoryStateLock) {
+            memoryGeneration += 1L
+            memoryCache.trimToSize(targetSize)
+            val retainedKeys = memoryCache.snapshotKeys()
+            val iterator = dataKeyToLatestFullKey.iterator()
+            while (iterator.hasNext()) {
+                if (iterator.next().value !in retainedKeys) {
+                    iterator.remove()
+                }
+            }
+        }
+    }
+
     private suspend fun decodeBytes(bytes: ByteArray): Bitmap = withContext(decodeDispatcher) {
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            ?.also { it.prepareToDraw() }
             ?: throw IllegalStateException("Disk cache decode failed")
     }
 
     private suspend fun encodeBitmapForDisk(bitmap: Bitmap): ByteArray = withContext(decodeDispatcher) {
-        val out = ByteArrayOutputStream()
-        val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Bitmap.CompressFormat.WEBP_LOSSLESS
-        } else {
-            Bitmap.CompressFormat.PNG
+        Trace.beginSection("img.encode")
+        try {
+            val out = ByteArrayOutputStream()
+            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Bitmap.CompressFormat.WEBP_LOSSLESS
+            } else {
+                Bitmap.CompressFormat.PNG
+            }
+            bitmap.compress(format, 100, out)
+            out.toByteArray()
+        } finally {
+            Trace.endSection()
         }
-        bitmap.compress(format, 100, out)
-        out.toByteArray()
+    }
+
+    private fun writeDiskCacheAsync(key: String, bitmap: Bitmap) {
+        val width = bitmap.width
+        val height = bitmap.height
+        // 先占用唯一写槽，滚动突发期间其余图片留在内存缓存即可，避免为每张图片都
+        // 创建一个持有 Bitmap、等待静默窗口的协程。
+        if (!diskWriteSemaphore.tryAcquire()) return
+        scope.launch {
+            // WEBP lossless 压缩会持续占用 CPU 与内存带宽；等滚动/转场帧完全安静后再做，
+            // 图片已先写入内存缓存，因此不会延迟可见内容。
+            try {
+                UiFrameWorkCoordinator.awaitFrameQuiet()
+                runCatching {
+                    val bytes = encodeBitmapForDisk(bitmap)
+                    diskCache.put(
+                        key,
+                        DiskCache.Entry(
+                            bytes = bytes,
+                            width = width,
+                            height = height
+                        )
+                    )
+                }
+            } finally {
+                diskWriteSemaphore.release()
+            }
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-﻿package com.asmr.player
+package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -26,6 +26,7 @@ import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.net.Uri
+import com.asmr.player.data.local.db.entities.PlaylistItemEntity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -91,7 +92,6 @@ import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
-import com.asmr.player.ui.drawer.StatisticsViewModel
 import com.asmr.player.ui.drawer.SiteStatus
 import com.asmr.player.ui.drawer.SiteStatusType
 import com.asmr.player.ui.nav.AppNavigator
@@ -259,8 +259,25 @@ internal fun resolvePrimaryPagerApproachPage(
     return targetPage + if (targetPage > currentPage) -1 else 1
 }
 
+internal fun shouldSyncPrimaryPagerToRoute(
+    targetPage: Int,
+    settledPage: Int
+): Boolean = targetPage >= 0 && settledPage != targetPage
+
+internal fun shouldClearPendingPrimaryNavigationRoute(
+    currentRoute: String?,
+    pendingRoute: String?,
+    navigationInProgress: Boolean,
+    pendingPage: Int,
+    settledPage: Int
+): Boolean {
+    if (pendingRoute.isNullOrBlank()) return false
+    if (currentRoute != pendingRoute || navigationInProgress) return false
+    return pendingPage >= 0 && settledPage == pendingPage
+}
+
 internal fun resolvePrimaryPagerBeyondBoundsPageCount(pageCount: Int): Int {
-    return (pageCount - 1).coerceAtLeast(0)
+    return (pageCount - 1).coerceIn(0, 1)
 }
 
 internal fun resolveCurrentPrimaryDestinationRoute(
@@ -274,7 +291,7 @@ internal fun resolveCurrentPrimaryDestinationRoute(
         currentRoute == "playlists" -> "playlists"
         currentRoute == "groups" -> "groups"
         currentRoute == "settings" -> "settings"
-        currentRoute == "dlsite_login" -> "dlsite_login"
+        currentRoute == "listening_calendar" -> "listening_calendar"
         currentRoute == "playlist_system/{type}" && playlistSystemType == "favorites" -> "playlist_system/favorites"
         else -> null
     }
@@ -285,7 +302,18 @@ internal fun shouldHideStatusBarForImmersivePage(
     nowPlayingVisible: Boolean
 ): Boolean {
     if (nowPlayingVisible) return true
-    return currentRoute?.startsWith("album_detail") == true
+    return isAlbumDetailRoute(currentRoute)
+}
+
+internal fun isAlbumDetailRoute(route: String?): Boolean {
+    return route?.startsWith("album_detail") == true
+}
+
+internal fun isAlbumDetailStackTransition(
+    initialRoute: String?,
+    targetRoute: String?
+): Boolean {
+    return isAlbumDetailRoute(initialRoute) && isAlbumDetailRoute(targetRoute)
 }
 
 internal fun NavHostController.navigateSingleTop(route: String, popUpToRoute: String? = null) {
@@ -318,9 +346,23 @@ internal fun shouldScrollPrimaryRouteToTop(
     requestedRoute: String,
     activePrimaryRoute: String,
     currentPrimaryRoute: String?
-): Boolean = requestedRoute == activePrimaryRoute && currentPrimaryRoute == requestedRoute
+): Boolean = requestedRoute == activePrimaryRoute &&
+    (currentPrimaryRoute == requestedRoute || currentPrimaryRoute == null)
 
-@OptIn(ExperimentalMaterial3Api::class)
+internal fun shouldTriggerPrimaryRouteScrollToTop(
+    requestedRoute: String,
+    visualPrimaryRoute: String,
+    activePrimaryRoute: String,
+    currentPrimaryRoute: String?
+): Boolean {
+    if (requestedRoute == visualPrimaryRoute) return true
+    return shouldScrollPrimaryRouteToTop(
+        requestedRoute = requestedRoute,
+        activePrimaryRoute = activePrimaryRoute,
+        currentPrimaryRoute = currentPrimaryRoute
+    )
+}
+
 @Composable
 internal fun PrimaryTopBarBrand(
     appName: String,
@@ -357,17 +399,18 @@ internal fun PrimaryTopBarBrand(
 
     Row(
         modifier = modifier
-            .fillMaxHeight()
-            .padding(start = 10.dp)
-            .then(clickModifier),
+            .padding(start = 6.dp)
+            .height(44.dp)
+            .then(clickModifier)
+            .padding(start = 2.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(42.dp)
+            modifier = Modifier.size(38.dp)
         )
         Text(
             text = appName,
@@ -395,6 +438,61 @@ internal data class ThemeMediaSource(
     val isVideo: Boolean = false
 )
 
+private val VideoPlaybackExtensions = setOf("mp4", "m4v", "webm", "mkv", "mov")
+
+private fun isVideoPlaybackSource(
+    uriText: String,
+    mimeType: String,
+    metadataFlag: Boolean
+): Boolean {
+    val fileExtension = uriText
+        .substringBefore('#')
+        .substringBefore('?')
+        .substringAfterLast('.', "")
+        .lowercase()
+    return metadataFlag || mimeType.startsWith("video/") || fileExtension in VideoPlaybackExtensions
+}
+
+internal fun MediaItem?.isVideoPlaybackItem(): Boolean {
+    val item = this ?: return false
+    return isVideoPlaybackSource(
+        uriText = item.localConfiguration?.uri?.toString().orEmpty(),
+        mimeType = item.localConfiguration?.mimeType.orEmpty(),
+        metadataFlag = item.mediaMetadata.extras?.getBoolean("is_video") == true
+    )
+}
+
+internal fun PlaylistItemEntity?.isVideoPlaybackItem(): Boolean {
+    val item = this ?: return false
+    return isVideoPlaybackSource(
+        uriText = item.uri,
+        mimeType = item.mimeType,
+        metadataFlag = item.isVideo
+    )
+}
+
+internal fun resolveMainRequestedOrientation(
+    isPhone: Boolean,
+    nowPlayingVisible: Boolean,
+    videoFullscreen: Boolean,
+    portraitExitPending: Boolean
+): Int = when {
+    isPhone && portraitExitPending -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    nowPlayingVisible && videoFullscreen -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    isPhone && nowPlayingVisible -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+    isPhone -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    else -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+}
+
+internal fun shouldKeepVideoOutputEnabled(
+    currentItemIsVideo: Boolean,
+    miniPlayerEnabled: Boolean,
+    nowPlayingVisible: Boolean
+): Boolean {
+    return currentItemIsVideo &&
+        (miniPlayerEnabled || nowPlayingVisible)
+}
+
 internal fun MediaItem?.toThemeMediaSource(): ThemeMediaSource {
     val item = this ?: return ThemeMediaSource()
     val metadata = item.mediaMetadata
@@ -404,20 +502,10 @@ internal fun MediaItem?.toThemeMediaSource(): ThemeMediaSource {
             uriTextValue.contains("ic_placeholder", ignoreCase = true)
     }
     val videoUri = item.localConfiguration?.uri
-    val mimeType = item.localConfiguration?.mimeType.orEmpty()
-    val uriText = videoUri?.toString().orEmpty()
-    val fileExtension = uriText
-        .substringBefore('#')
-        .substringBefore('?')
-        .substringAfterLast('.', "")
-        .lowercase()
-    val isVideo = metadata.extras?.getBoolean("is_video") == true ||
-        mimeType.startsWith("video/") ||
-        fileExtension in setOf("mp4", "m4v", "webm", "mkv", "mov")
     return ThemeMediaSource(
         artworkUri = artworkUri,
         videoUri = videoUri,
-        isVideo = isVideo
+        isVideo = item.isVideoPlaybackItem()
     )
 }
 

@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.dlsite
+package com.asmr.player.ui.dlsite
 
 import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -20,7 +21,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.Alignment
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
-import com.asmr.player.ui.common.StableWindowInsets
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,7 +32,7 @@ fun DlsiteLoginScreen(
     onDone: () -> Unit,
     viewModel: DlsiteLoginViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var loginId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showDlsiteCookie by remember { mutableStateOf(false) }
@@ -50,8 +50,7 @@ fun DlsiteLoginScreen(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(StableWindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+            .fillMaxSize(),
         contentAlignment = Alignment.TopCenter // 仅用于平板适配：居中显示内容
     ) {
         Column(

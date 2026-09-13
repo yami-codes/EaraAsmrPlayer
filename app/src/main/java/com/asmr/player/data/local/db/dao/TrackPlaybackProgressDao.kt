@@ -15,6 +15,18 @@ interface TrackPlaybackProgressDao {
     @Query("SELECT * FROM track_playback_progress WHERE mediaId = :mediaId")
     suspend fun getByMediaId(mediaId: String): TrackPlaybackProgressEntity?
 
+    @Query("UPDATE track_playback_progress SET albumId = :toAlbumId WHERE albumId = :fromAlbumId")
+    suspend fun moveToAlbum(fromAlbumId: Long, toAlbumId: Long)
+
+    @Query("UPDATE track_playback_progress SET trackId = :toTrackId, albumId = :albumId WHERE trackId = :fromTrackId")
+    suspend fun moveToTrack(fromTrackId: Long, toTrackId: Long, albumId: Long)
+
+    @Query("DELETE FROM track_playback_progress WHERE trackId IN (:trackIds)")
+    suspend fun deleteByTrackIds(trackIds: List<Long>)
+
+    @Query("DELETE FROM track_playback_progress WHERE albumId = :albumId")
+    suspend fun deleteByAlbumId(albumId: Long)
+
     @Query("SELECT * FROM track_playback_progress WHERE albumId IN (:albumIds) ORDER BY albumId ASC, updatedAt DESC")
     fun observeProgressForAlbums(albumIds: List<Long>): Flow<List<TrackPlaybackProgressEntity>>
 
@@ -25,7 +37,7 @@ interface TrackPlaybackProgressDao {
             p.mediaId AS mediaId,
             p.positionMs AS positionMs,
             p.updatedAt AS updatedAt,
-            t.title AS trackTitle
+            COALESCE(NULLIF(t.displayTitle, ''), t.title) AS trackTitle
         FROM track_playback_progress p
         LEFT JOIN tracks t ON t.path = p.mediaId
         WHERE p.albumId IN (:albumIds)

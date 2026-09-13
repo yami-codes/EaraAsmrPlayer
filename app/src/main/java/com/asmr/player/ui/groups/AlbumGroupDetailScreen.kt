@@ -1,7 +1,7 @@
 package com.asmr.player.ui.groups
 
-import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
+
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -13,17 +13,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -43,7 +40,9 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,13 +74,12 @@ import com.asmr.player.ui.common.FlatActionDialog
 import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.StableWindowInsets
-import com.asmr.player.ui.common.queryTrackFileSize
+import com.asmr.player.ui.common.queryCachedTrackFileSize
 import com.asmr.player.ui.common.rememberAudioMeta
 import com.asmr.player.ui.common.rememberAudioMetaText
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.common.SubtitleStamp
 import com.asmr.player.ui.common.smoothScrollToTop
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.rememberTrackMetaLine
 import com.asmr.player.ui.common.reorderable.ItemPosition
 import com.asmr.player.ui.common.reorderable.ReorderableItem
@@ -146,7 +144,7 @@ fun AlbumGroupDetailScreen(
     LaunchedEffect(groupId) {
         viewModel.setGroupId(groupId)
     }
-    val tracks by viewModel.tracks.collectAsState()
+    val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     AlbumGroupDetailContent(
         windowSizeClass = windowSizeClass,
         title = title,
@@ -212,11 +210,15 @@ internal fun AlbumGroupDetailContent(
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         listState.smoothScrollToTop()
     }
+    val tracksByAlbumId by remember {
+        derivedStateOf {
+            localRows.tracksByAlbumId()
+        }
+    }
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(StableWindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+            .fillMaxSize(),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
@@ -231,7 +233,7 @@ internal fun AlbumGroupDetailContent(
         ) {
             if (tracks.isEmpty()) {
                 EaraBrandedEmptyState(
-                    sectionTitle = title.ifBlank { stringResource(R.string.nav_groups) },
+                    sectionTitle = title.ifBlank { "我的分组" },
                     headline = stringResource(R.string.group_empty),
                     sectionIcon = Icons.Rounded.Folder,
                     modifier = Modifier.fillMaxSize(),
@@ -242,14 +244,23 @@ internal fun AlbumGroupDetailContent(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .reorderable(reorderState)
-                        .thinScrollbar(listState),
+                        .reorderable(reorderState),
+                    flingBehavior = rememberCalmScrollableFlingBehavior(),
                     contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current)
                 ) {
                     item(key = GROUP_DETAIL_REORDER_SENTINEL_KEY) {
                         Spacer(modifier = Modifier.height(1.dp))
                     }
-                    itemsIndexed(localRows, key = { _, row -> row.key }) { index, row ->
+                    itemsIndexed(
+                        items = localRows,
+                        key = { _, row -> row.key },
+                        contentType = { _, row ->
+                            when (row) {
+                                is GroupDetailHeaderRow -> "groupHeader"
+                                is GroupDetailTrackRow -> "groupTrack"
+                            }
+                        }
+                    ) { index, row ->
                         when (row) {
                             is GroupDetailHeaderRow -> {
                                 AlbumSectionHeader(
@@ -258,6 +269,7 @@ internal fun AlbumGroupDetailContent(
                                     rjCode = row.rjCode,
                                     coverModel = row.coverModel,
                                     tracks = row.tracks,
+                                    loadFileSizes = !listState.isScrollInProgress,
                                     onToggle = {
                                         expandedAlbumIds.value = if (row.expanded) {
                                             expandedAlbumIds.value - row.albumId
@@ -281,7 +293,7 @@ internal fun AlbumGroupDetailContent(
                                         .clip(draggedTrackShape)
                                         .background(draggedTrackContainerColor)
                                 ) { isDragging ->
-                                    val albumTracks = localRows.tracksForAlbum(row.albumId)
+                                    val albumTracks = tracksByAlbumId[row.albumId].orEmpty()
                                     val startIndex = albumTracks.indexOfFirst { it.mediaId == row.track.mediaId }
                                         .coerceAtLeast(0)
                                     GroupTrackRow(
@@ -289,6 +301,7 @@ internal fun AlbumGroupDetailContent(
                                         coverModel = row.coverModel,
                                         showTopDivider = index > 0 && localRows[index - 1] is GroupDetailTrackRow,
                                         isDragging = isDragging,
+                                        loadFileSize = !listState.isScrollInProgress,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .testTag("$GROUP_DETAIL_TRACK_TAG_PREFIX:${row.track.mediaId}")
@@ -313,10 +326,9 @@ internal fun AlbumGroupDetailContent(
     }
 
     pendingRemoveTrack?.let { track ->
-        val trackTitle = track.trackTitle.ifBlank { stringResource(R.string.untitled_label) }
         FlatActionDialog(
             onDismissRequest = { pendingRemoveTrack = null },
-            message = stringResource(R.string.remove_from_group_fmt, title, trackTitle),
+            message = "确定从「$title」移除“${track.trackTitle.ifBlank { "未命名" }}”吗？",
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveTrack = null }),
                 FlatDialogAction(
@@ -334,7 +346,7 @@ internal fun AlbumGroupDetailContent(
     pendingRemoveAlbum?.let { album ->
         FlatActionDialog(
             onDismissRequest = { pendingRemoveAlbum = null },
-            message = stringResource(R.string.remove_album_fmt, album.second, title),
+            message = "确定从「$title」移除专辑“${album.second}”吗？",
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingRemoveAlbum = null }),
                 FlatDialogAction(
@@ -358,22 +370,23 @@ private fun AlbumSectionHeader(
     rjCode: String,
     coverModel: Any?,
     tracks: List<AlbumGroupTrackRow>,
+    loadFileSizes: Boolean,
     onToggle: () -> Unit,
     onRemoveAlbum: () -> Unit
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val context = LocalContext.current
-    val totalSizeBytes by androidx.compose.runtime.produceState<Long?>(initialValue = null, tracks) {
+    val totalSizeBytes by androidx.compose.runtime.produceState<Long?>(initialValue = null, tracks, loadFileSizes) {
+        if (!loadFileSizes) return@produceState
         value = withContext(Dispatchers.IO) {
-            tracks.sumOf { row -> queryTrackFileSize(context, row.trackPath) ?: 0L }
+            tracks.sumOf { row -> queryCachedTrackFileSize(context, row.trackPath) ?: 0L }
                 .takeIf { it > 0L }
         }
     }
-    val tracksLabel = stringResource(R.string.track_count_fmt, tracks.size)
-    val footerSegments = remember(rjCode, tracks, totalSizeBytes, tracksLabel) {
+    val footerSegments = remember(rjCode, tracks, totalSizeBytes) {
         buildList {
             if (rjCode.isNotBlank()) add(rjCode)
-            add(tracksLabel)
+            add("${tracks.size} 音频")
             Formatting.formatTrackSeconds(tracks.sumOf { it.trackDuration }).takeIf { it.isNotBlank() }?.let(::add)
             totalSizeBytes?.let(Formatting::formatFileSize)?.let(::add)
         }
@@ -393,6 +406,7 @@ private fun AlbumSectionHeader(
             contentDescription = null,
             contentScale = ContentScale.Crop,
             placeholderCornerRadius = 8,
+            peekAnySizeForInitial = true,
             modifier = Modifier
                 .size(50.dp)
                 .clip(RoundedCornerShape(8.dp))
@@ -400,7 +414,7 @@ private fun AlbumSectionHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = albumTitle.ifBlank { rjCode.ifBlank { stringResource(R.string.album_label) } },
+                text = albumTitle.ifBlank { rjCode.ifBlank { "专辑" } },
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = colorScheme.textPrimary,
                 maxLines = 2,
@@ -431,6 +445,7 @@ private fun GroupTrackRow(
     coverModel: Any?,
     showTopDivider: Boolean,
     isDragging: Boolean,
+    loadFileSize: Boolean,
     modifier: Modifier = Modifier,
     onPlay: () -> Unit,
     onMoveToTop: () -> Unit,
@@ -450,13 +465,41 @@ private fun GroupTrackRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             )
         }
+        val prefixSegments = remember(item.albumCv) {
+            listOf(item.albumCv.orEmpty())
+        }
         val meta = rememberAudioMeta(
             sourcePath = item.trackPath,
             durationSeconds = item.trackDuration,
-            prefixSegments = listOf(item.albumCv.orEmpty())
+            prefixSegments = prefixSegments,
+            loadSize = loadFileSize
         )
+        val context = LocalContext.current
+        val actions = remember(onPlay, onMoveToTop, onMoveToBottom, onRemove, context) {
+            listOf(
+                AudioItemMenuAction(
+                    label = context.getString(R.string.playback),
+                    onClick = onPlay
+                ),
+                AudioItemMenuAction(
+                    label = context.getString(R.string.move_top),
+                    onClick = onMoveToTop,
+                    testTag = GROUP_DETAIL_MOVE_TOP_MENU_ITEM_TAG
+                ),
+                AudioItemMenuAction(
+                    label = context.getString(R.string.move_end),
+                    onClick = onMoveToBottom,
+                    testTag = GROUP_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
+                ),
+                AudioItemMenuAction(
+                    label = context.getString(R.string.remove_group),
+                    onClick = onRemove,
+                    showDividerBefore = true
+                )
+            )
+        }
         AudioItemRow(
-            title = item.trackTitle.ifBlank { stringResource(R.string.untitled_label) },
+            title = item.trackTitle.ifBlank { "未命名" },
             subtitle = meta.leadingText,
             fixedTrailingSubtitle = meta.trailingText,
             showSubtitleStamp = item.hasSubtitles,
@@ -473,33 +516,14 @@ private fun GroupTrackRow(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     placeholderCornerRadius = 6,
+                    peekAnySizeForInitial = true,
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(6.dp))
                 )
             },
             titleTextStyle = MaterialTheme.typography.bodyMedium,
-            actions = listOf(
-                AudioItemMenuAction(
-                    label = stringResource(R.string.playback),
-                    onClick = onPlay
-                ),
-                AudioItemMenuAction(
-                    label = stringResource(R.string.move_top),
-                    onClick = onMoveToTop,
-                    testTag = GROUP_DETAIL_MOVE_TOP_MENU_ITEM_TAG
-                ),
-                AudioItemMenuAction(
-                    label = stringResource(R.string.move_end),
-                    onClick = onMoveToBottom,
-                    testTag = GROUP_DETAIL_MOVE_BOTTOM_MENU_ITEM_TAG
-                ),
-                AudioItemMenuAction(
-                    label = stringResource(R.string.remove_group),
-                    onClick = onRemove,
-                    showDividerBefore = true
-                )
-            )
+            actions = actions
         )
     }
 }
@@ -513,7 +537,7 @@ private fun buildGroupDetailRows(
     sections.forEach { (albumId, list) ->
         val first = list.firstOrNull() ?: return@forEach
         val sectionTitle = first.albumTitle.orEmpty().ifBlank {
-            first.albumRjCode.orEmpty()
+            first.albumRjCode.orEmpty().ifBlank { "专辑" }
         }
         val coverModel = first.albumCoverThumbPath.orEmpty()
             .ifBlank { first.albumCoverPath.orEmpty() }
@@ -554,6 +578,16 @@ private fun SnapshotStateList<GroupDetailListRow>.tracksForAlbum(albumId: Long):
     return filterIsInstance<GroupDetailTrackRow>()
         .filter { row -> row.albumId == albumId }
         .map { row -> row.track }
+}
+
+private fun List<GroupDetailListRow>.tracksByAlbumId(): Map<Long, List<AlbumGroupTrackRow>> {
+    val result = linkedMapOf<Long, MutableList<AlbumGroupTrackRow>>()
+    for (row in this) {
+        if (row is GroupDetailTrackRow) {
+            result.getOrPut(row.albumId) { mutableListOf() } += row.track
+        }
+    }
+    return result
 }
 
 private fun SnapshotStateList<GroupDetailListRow>.mediaIdsForAlbum(albumId: Long): List<String> {

@@ -5,14 +5,20 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 
 class DiskCache(
     private val directory: File,
-    private val maxSizeBytes: Long,
+    maxSizeBytes: Long,
     private val ttlMs: Long
 ) {
     private val lock = Any()
     private val magic = byteArrayOf('I'.code.toByte(), 'C'.code.toByte(), 'M'.code.toByte(), '1'.code.toByte())
+    private var currentSizeBytes: Long? = null
+    private var clearGeneration = 0L
+    private val removeGenerations = mutableMapOf<String, Long>()
+    private var directoryReady = false
+    private var maxSizeBytes = maxSizeBytes.coerceAtLeast(0L)
 
     data class Entry(
         val bytes: ByteArray,
@@ -20,11 +26,8 @@ class DiskCache(
         val height: Int
     )
 
-    init {
-        directory.mkdirs()
-    }
-
     fun get(key: String): Entry? = synchronized(lock) {
+        if (!ensureDirectoryReady()) return@synchronized null
         val f = fileForKey(key)
         if (!f.exists()) return@synchronized null
         val now = System.currentTimeMillis()
@@ -37,7 +40,14 @@ class DiskCache(
                 val w = readInt(input)
                 val h = readInt(input)
                 if (ttlMs > 0 && now - createdAt > ttlMs) {
-                    f.delete()
+                    val length = f.length()
+                    if (f.delete()) {
+                        currentSizeBytes = currentSizeBytes?.let { current ->
+                            (current - length).coerceAtLeast(0L)
+                        }
+                    } else if (currentSizeBytes != null) {
+                        currentSizeBytes = calculateSizeBytes()
+                    }
                     return@synchronized null
                 }
                 val bytes = input.readBytes()
@@ -47,11 +57,20 @@ class DiskCache(
         }.getOrNull()
     }
 
-    fun put(key: String, entry: Entry) = synchronized(lock) {
+    fun put(key: String, entry: Entry) {
+        val (clearGenerationAtStart, removeGenerationAtStart) = synchronized(lock) {
+            if (!ensureDirectoryReady()) return
+            ensureSizeInitialized()
+            clearGeneration to (removeGenerations[key] ?: 0L)
+        }
         val f = fileForKey(key)
-        val tmp = File(directory, "${f.name}.tmp")
+        val threadKey = System.identityHashCode(Thread.currentThread())
+        val tmp = File(
+            directory,
+            "${f.name}.$threadKey.${System.nanoTime()}.tmp"
+        )
         val now = System.currentTimeMillis()
-        runCatching {
+        val writeSucceeded = runCatching {
             BufferedOutputStream(FileOutputStream(tmp)).use { out ->
                 out.write(magic)
                 writeLong(out, now)
@@ -59,21 +78,69 @@ class DiskCache(
                 writeInt(out, entry.height)
                 out.write(entry.bytes)
             }
-            if (f.exists()) f.delete()
-            tmp.renameTo(f)
-            f.setLastModified(now)
-            trimToSize()
-        }.onFailure {
+        }.isSuccess
+        if (!writeSucceeded) {
             tmp.delete()
+            return
+        }
+        synchronized(lock) {
+            val invalidated = clearGeneration != clearGenerationAtStart ||
+                (removeGenerations[key] ?: 0L) != removeGenerationAtStart
+            if (invalidated) {
+                tmp.delete()
+                return@synchronized
+            }
+            val previousSize = f.takeIf(File::exists)?.length() ?: 0L
+            runCatching {
+                if (f.exists() && !f.delete()) throw IOException("Unable to replace disk cache entry")
+                if (!tmp.renameTo(f)) throw IOException("Unable to commit disk cache entry")
+                f.setLastModified(now)
+                currentSizeBytes = ((currentSizeBytes ?: 0L) - previousSize).coerceAtLeast(0L) + f.length()
+                trimToSize()
+            }.onFailure {
+                tmp.delete()
+                currentSizeBytes = calculateSizeBytes()
+            }
         }
     }
 
     fun remove(key: String) = synchronized(lock) {
-        fileForKey(key).delete()
+        removeGenerations[key] = (removeGenerations[key] ?: 0L) + 1L
+        if (!ensureDirectoryReady()) return@synchronized
+        val file = fileForKey(key)
+        if (!file.exists()) return@synchronized
+        val length = file.length()
+        if (file.delete()) {
+            currentSizeBytes = currentSizeBytes?.let { current ->
+                (current - length).coerceAtLeast(0L)
+            }
+        } else if (currentSizeBytes != null) {
+            currentSizeBytes = calculateSizeBytes()
+        }
     }
 
     fun clear() = synchronized(lock) {
+        clearGeneration += 1L
+        removeGenerations.clear()
+        if (!ensureDirectoryReady()) {
+            currentSizeBytes = 0L
+            return@synchronized
+        }
         directory.listFiles()?.forEach { it.delete() }
+        currentSizeBytes = calculateSizeBytes()
+    }
+
+    fun updateMaxSizeBytes(maxSizeBytes: Long) = synchronized(lock) {
+        this.maxSizeBytes = maxSizeBytes.coerceAtLeast(0L)
+        if (!ensureDirectoryReady()) return@synchronized
+        ensureSizeInitialized()
+        trimToSize()
+    }
+
+    fun sizeBytes(): Long = synchronized(lock) {
+        if (!ensureDirectoryReady()) return@synchronized 0L
+        ensureSizeInitialized()
+        currentSizeBytes ?: 0L
     }
 
     private fun fileForKey(key: String): File {
@@ -81,15 +148,50 @@ class DiskCache(
     }
 
     private fun trimToSize() {
-        val files = directory.listFiles()?.filter { it.isFile } ?: return
-        var total = files.sumOf { it.length() }
-        if (total <= maxSizeBytes) return
+        val currentSize = currentSizeBytes ?: return
+        if (currentSize <= maxSizeBytes) return
+        val targetSize = (maxSizeBytes - (maxSizeBytes / 10L)).coerceAtLeast(0L)
+        val files = directory.listFiles()
+            ?.filter { it.isFile && it.name.endsWith(".bin") }
+            ?: return
         val sorted = files.sortedBy { it.lastModified() }
         for (f in sorted) {
-            if (total <= maxSizeBytes) break
+            val sizeBeforeDelete = currentSizeBytes ?: break
+            if (sizeBeforeDelete <= targetSize) break
             val len = f.length()
-            if (f.delete()) total -= len
+            if (f.delete()) {
+                currentSizeBytes = (sizeBeforeDelete - len).coerceAtLeast(0L)
+            } else {
+                currentSizeBytes = calculateSizeBytes()
+            }
         }
+    }
+
+    private fun ensureSizeInitialized() {
+        if (currentSizeBytes != null) return
+        var totalSize = 0L
+        directory.listFiles()?.forEach { file ->
+            if (file.name.endsWith(".tmp")) {
+                file.delete()
+            } else if (file.isFile && file.name.endsWith(".bin")) {
+                totalSize += file.length()
+            }
+        }
+        currentSizeBytes = totalSize
+    }
+
+    private fun ensureDirectoryReady(): Boolean {
+        if (directoryReady) return true
+        directoryReady = directory.isDirectory || directory.mkdirs()
+        return directoryReady
+    }
+
+    private fun calculateSizeBytes(): Long {
+        return directory.listFiles()
+            ?.asSequence()
+            ?.filter { it.isFile && it.name.endsWith(".bin") }
+            ?.sumOf(File::length)
+            ?: 0L
     }
 
     private fun readInt(input: BufferedInputStream): Int {

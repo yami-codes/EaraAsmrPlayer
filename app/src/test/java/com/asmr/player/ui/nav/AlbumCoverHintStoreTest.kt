@@ -26,7 +26,8 @@ class AlbumCoverHintStoreTest {
             priceJpy = 990,
             hasAsmrOne = true,
             description = "简介",
-            hasResolvedDlsiteInfo = true
+            hasResolvedDlsiteInfo = true,
+            localAlbum = null
         )
 
         val album = albumFromCoverHint(context, "", hint)

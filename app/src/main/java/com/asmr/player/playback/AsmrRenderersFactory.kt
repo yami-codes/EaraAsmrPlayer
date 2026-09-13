@@ -10,13 +10,13 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 class AsmrRenderersFactory(
     context: Context,
     private val graphicEqualizerAudioProcessor: GraphicEqualizerAudioProcessor,
-    private val gainAudioProcessor: GainAudioProcessor,
     private val balanceAudioProcessor: BalanceAudioProcessor,
     private val stereoOrbitAudioProcessor: StereoOrbitAudioProcessor,
     private val sceneEffectAudioProcessor: SceneEffectAudioProcessor,
     private val channelModeAudioProcessor: ChannelModeAudioProcessor,
     private val volumeThresholdAudioProcessor: VolumeThresholdAudioProcessor,
-    private val spectrumTapAudioProcessor: StereoSpectrumTapAudioProcessor
+    private val spectrumTapAudioProcessor: StereoSpectrumTapAudioProcessor,
+    private val spectrumOutputBufferSizeProvider: DefaultAudioSink.AudioTrackBufferSizeProvider
 ) : DefaultRenderersFactory(context) {
     override fun buildAudioSink(
         context: Context,
@@ -26,16 +26,20 @@ class AsmrRenderersFactory(
         return DefaultAudioSink.Builder(context)
             .setAudioProcessors(
                 arrayOf(
-                    spectrumTapAudioProcessor,
-                    gainAudioProcessor,
-                    graphicEqualizerAudioProcessor,
-                    channelModeAudioProcessor,
-                    stereoOrbitAudioProcessor,
-                    sceneEffectAudioProcessor,
-                    volumeThresholdAudioProcessor,
-                    balanceAudioProcessor
+                    DynamicAudioProcessorChain(
+                        arrayOf(
+                            spectrumTapAudioProcessor,
+                            graphicEqualizerAudioProcessor,
+                            channelModeAudioProcessor,
+                            stereoOrbitAudioProcessor,
+                            sceneEffectAudioProcessor,
+                            volumeThresholdAudioProcessor,
+                            balanceAudioProcessor,
+                        )
+                    )
                 )
             )
+            .setAudioTrackBufferSizeProvider(spectrumOutputBufferSizeProvider)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()

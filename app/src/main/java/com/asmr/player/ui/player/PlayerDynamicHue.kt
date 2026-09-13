@@ -64,6 +64,7 @@ internal fun rememberPlayerDynamicHuePalette(
 }
 
 internal data class PlayerThemeColors(
+    val coverAccentColor: Color,
     val accentColor: Color,
     val onAccentColor: Color,
     val backdropTintColor: Color,
@@ -85,7 +86,6 @@ internal fun rememberPlayerThemeColors(
         transitionDurationMs = transitionDurationMs,
         cachedTransitionDurationMs = cachedTransitionDurationMs
     )
-
     return remember(dynamicHue, colorScheme, coverBackgroundEnabled, artworkBackdropEnabled) {
         resolvePlayerThemeColors(
             dynamicHue = dynamicHue,
@@ -134,6 +134,7 @@ internal fun resolvePlayerThemeColors(
         )
     }
     return PlayerThemeColors(
+        coverAccentColor = dynamicHue.primaryStrong,
         accentColor = accentColor,
         onAccentColor = onAccentColor,
         backdropTintColor = backdropTintColor,

@@ -8,18 +8,24 @@ import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.data.remote.auth.buildDlsiteCookieHeader
 import com.asmr.player.data.remote.auth.mergeDlsiteCookieHeaders
 import com.asmr.player.data.remote.NetworkHeaders
+import com.asmr.player.data.remote.dlsite.descrambleDlsitePlayImageFile
 import com.asmr.player.data.local.db.entities.AlbumEntity
 import com.asmr.player.data.local.db.entities.AlbumFtsEntity
 import com.asmr.player.data.local.db.dao.DownloadDao
 import com.asmr.player.data.local.db.entities.DownloadItemEntity
 import com.asmr.player.data.local.db.entities.DownloadTaskEntity
+import com.asmr.player.data.local.db.entities.RemoteSubtitleSourceEntity
 import com.asmr.player.data.local.db.entities.SubtitleEntity
 import com.asmr.player.data.local.db.entities.TrackEntity
 import com.asmr.player.data.local.db.AppDatabaseProvider
+import com.asmr.player.data.local.library.LocalAlbumMergeService
 import com.asmr.player.util.SubtitleEntry
+import com.asmr.player.util.DlsiteWorkNo
 import com.asmr.player.util.SubtitleMatchSupport
 import com.asmr.player.util.SubtitleParser
 import com.asmr.player.util.TrackKeyNormalizer
+import com.asmr.player.util.isScannableLocalDirectoryName
+import com.asmr.player.util.isScannableLocalStorageEntry
 import com.asmr.player.work.AlbumCoverThumbWorker
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -44,6 +50,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.nio.charset.Charset
@@ -56,6 +63,134 @@ import kotlin.math.max
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val DLSITE_PLAY_SCRAMBLED_PART_SUFFIX = ".dlsite-scrambled.part"
+
+internal fun dlsitePlayImagePartFile(outputFile: File): File {
+    return File(outputFile.parentFile, outputFile.name + DLSITE_PLAY_SCRAMBLED_PART_SUFFIX)
+}
+
+internal fun downloadStagingFile(context: Context, item: DownloadItemEntity): File {
+    val root = File(context.getExternalFilesDir(null), "download-staging")
+    return File(root, "${item.id}_${item.fileName}")
+}
+
+internal fun downloadMimeType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
+    "mp3" -> "audio/mpeg"
+    "flac" -> "audio/flac"
+    "wav" -> "audio/wav"
+    "m4a" -> "audio/mp4"
+    "ogg", "opus" -> "audio/ogg"
+    "mp4" -> "video/mp4"
+    "jpg", "jpeg" -> "image/jpeg"
+    "png" -> "image/png"
+    "webp" -> "image/webp"
+    "lrc" -> "application/octet-stream"
+    "srt" -> "application/x-subrip"
+    "vtt" -> "text/vtt"
+    "txt" -> "text/plain"
+    "pdf" -> "application/pdf"
+    "zip" -> "application/zip"
+    else -> "application/octet-stream"
+}
+
+internal fun parseDownloadedSubtitles(
+    entries: List<DownloadStorageEntry>,
+    readBytes: (DownloadStorageEntry) -> ByteArray,
+): Map<String, List<SubtitleEntry>> {
+    val subtitleCandidates = entries.asSequence()
+        .filter { entry ->
+            !entry.isDirectory && SubtitleMatchSupport.SubtitleExtensions.contains(
+                entry.displayName.substringAfterLast('.', "").lowercase(),
+            )
+        }
+        .mapNotNull { entry ->
+            SubtitleMatchSupport.inferCandidate(entry.relativePath, entry.reference)?.let { candidate ->
+                candidate to entry
+            }
+        }
+        .toList()
+    val candidates = subtitleCandidates.map { it.first }
+    return entries.asSequence()
+        .filter { entry ->
+            !entry.isDirectory && SubtitleMatchSupport.AudioExtensions.contains(
+                entry.displayName.substringAfterLast('.', "").lowercase(),
+            )
+        }
+        .associate { audio ->
+            val matched = SubtitleMatchSupport.matchBest(
+                audio.relativePath.substringBeforeLast('.'),
+                candidates,
+            )
+            val subtitle = matched?.let { hit ->
+                subtitleCandidates.firstOrNull { it.first.sourceRef == hit.sourceRef }?.second
+            }
+            audio.reference to subtitle?.let { entry ->
+                runCatching {
+                    SubtitleParser.parseBytes(
+                        entry.displayName.substringAfterLast('.', ""),
+                        readBytes(entry),
+                    )
+                }.getOrDefault(emptyList())
+            }.orEmpty()
+        }
+}
+
+data class RelativeDownloadItem(
+    val url: String,
+    val relativePath: String,
+    val dlsitePlayImageSeed: Int? = null,
+    val dlsitePlayImageWidth: Int? = null,
+    val dlsitePlayImageHeight: Int? = null,
+)
+
+data class DownloadBatchRequest(
+    val albumDirectoryName: String,
+    val logicalTaskKey: String,
+    val items: List<RelativeDownloadItem>,
+    val taskSubtitle: String = "",
+    val albumTitle: String = "",
+    val albumCircle: String = "",
+    val albumCv: String = "",
+    val albumTagsCsv: String = "",
+    val albumCoverUrl: String = "",
+    val albumDescription: String = "",
+    val albumWorkId: String = "",
+    val albumRjCode: String = "",
+)
+
+sealed interface EnqueueDownloadBatchResult {
+    data class Accepted(val itemCount: Int) : EnqueueDownloadBatchResult
+    data object DirectoryUnavailable : EnqueueDownloadBatchResult
+    data object TaskBlocked : EnqueueDownloadBatchResult
+}
+
+private data class PendingDownloadItemRequest(
+    val url: String,
+    val fileName: String,
+    val targetDir: String,
+    val taskRootDir: String,
+    val relativePath: String,
+    val taskSubtitle: String,
+    val tags: List<String>,
+    val albumTitle: String,
+    val albumCircle: String,
+    val albumCv: String,
+    val albumTagsCsv: String,
+    val albumCoverUrl: String,
+    val albumDescription: String,
+    val albumWorkId: String,
+    val albumRjCode: String,
+    val dlsitePlayImageSeed: Int?,
+    val dlsitePlayImageWidth: Int?,
+    val dlsitePlayImageHeight: Int?,
+)
+
+private fun DownloadItemEntity.hasDlsitePlayImageTransform(): Boolean {
+    return dlsitePlayImageSeed != null &&
+        (dlsitePlayImageWidth ?: 0) > 0 &&
+        (dlsitePlayImageHeight ?: 0) > 0
+}
 
 private class SessionCookieJar : CookieJar {
     private val store = LinkedHashMap<String, MutableList<Cookie>>()
@@ -115,35 +250,113 @@ private class SessionCookieJar : CookieJar {
 class DownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao,
-    private val okHttpClient: OkHttpClient
+    private val directoryCoordinator: DownloadDirectoryCoordinator,
+    private val storage: DownloadStorageGateway,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    suspend fun enqueueBatch(request: DownloadBatchRequest): EnqueueDownloadBatchResult {
+        if (request.items.isEmpty()) return EnqueueDownloadBatchResult.Accepted(0)
+        val albumDirectory = request.albumDirectoryName.replace('\\', '/').trim('/').ifBlank { "download" }
+        if (albumDirectory.contains('/') || albumDirectory == "." || albumDirectory == "..") {
+            return EnqueueDownloadBatchResult.DirectoryUnavailable
+        }
+        val defaultRoot = DownloadDestinationStore(context).defaultDestination().root
+        val taskRoot = File(defaultRoot, albumDirectory)
+        val pendingRequests = request.items.mapNotNull { item ->
+            val relativePath = item.relativePath.replace('\\', '/').trim('/').ifBlank { "download.bin" }
+            val segments = relativePath.split('/').filter { it.isNotBlank() }
+            if (segments.isEmpty() || segments.any { it == "." || it == ".." }) return@mapNotNull null
+            val fileName = relativePath.substringAfterLast('/').ifBlank { "download.bin" }
+            val relativeDirectory = relativePath.substringBeforeLast('/', "")
+            PendingDownloadItemRequest(
+                url = item.url,
+                fileName = fileName,
+                targetDir = if (relativeDirectory.isBlank()) taskRoot.absolutePath else File(taskRoot, relativeDirectory).absolutePath,
+                taskRootDir = taskRoot.absolutePath,
+                relativePath = relativePath,
+                taskSubtitle = request.taskSubtitle,
+                tags = listOf(request.logicalTaskKey),
+                albumTitle = request.albumTitle,
+                albumCircle = request.albumCircle,
+                albumCv = request.albumCv,
+                albumTagsCsv = request.albumTagsCsv,
+                albumCoverUrl = request.albumCoverUrl,
+                albumDescription = request.albumDescription,
+                albumWorkId = request.albumWorkId,
+                albumRjCode = request.albumRjCode,
+                dlsitePlayImageSeed = item.dlsitePlayImageSeed,
+                dlsitePlayImageWidth = item.dlsitePlayImageWidth,
+                dlsitePlayImageHeight = item.dlsitePlayImageHeight,
+            )
+        }
+        if (pendingRequests.size != request.items.size) return EnqueueDownloadBatchResult.DirectoryUnavailable
+        return enqueueRequests(pendingRequests)
+    }
 
-    fun enqueueDownload(
-        url: String,
-        fileName: String,
-        targetDir: String,
-        taskRootDir: String = targetDir,
-        relativePath: String = fileName,
-        taskSubtitle: String = "",
-        tags: List<String> = emptyList(),
-        albumTitle: String = "",
-        albumCircle: String = "",
-        albumCv: String = "",
-        albumTagsCsv: String = "",
-        albumCoverUrl: String = "",
-        albumDescription: String = "",
-        albumWorkId: String = "",
-        albumRjCode: String = ""
-    ) {
-        scope.launch {
+    private suspend fun enqueueRequests(requests: List<PendingDownloadItemRequest>): EnqueueDownloadBatchResult {
+        return directoryCoordinator.withDirectoryLock {
+            try {
+                val destination = directoryCoordinator.currentDestination()
+                if (destination is DownloadDestination.DocumentTree && !storage.hasPersistedWritePermission(destination.root)) {
+                    return@withDirectoryLock EnqueueDownloadBatchResult.DirectoryUnavailable
+                }
+                val destinationKey = storage.stableIdentity(destination.root).hashCode().toUInt().toString(16)
+                val hasBlockedItem = requests.any { request ->
+                    val logicalTaskKey = request.tags.firstOrNull { it.startsWith("album:") }
+                        ?: "dir:${request.taskRootDir}"
+                    val task = downloadDao.getTaskByKey("$logicalTaskKey@$destinationKey")
+                        ?: return@any false
+                    val item = downloadDao.getItemByTaskAndRelativePath(task.id, request.relativePath)
+                        ?: return@any false
+                    item.state in setOf(
+                        WorkInfo.State.RUNNING.name,
+                        WorkInfo.State.ENQUEUED.name,
+                        WorkInfo.State.BLOCKED.name,
+                        DOWNLOAD_STATE_QUEUED,
+                    )
+                }
+                if (hasBlockedItem) return@withDirectoryLock EnqueueDownloadBatchResult.TaskBlocked
+                requests.forEach { request -> enqueueDownloadLocked(request) }
+                EnqueueDownloadBatchResult.Accepted(requests.size)
+            } catch (_: DownloadTaskBlockedException) {
+                EnqueueDownloadBatchResult.TaskBlocked
+            } catch (_: Exception) {
+                EnqueueDownloadBatchResult.DirectoryUnavailable
+            }
+        }
+    }
+
+    private suspend fun enqueueDownloadLocked(request: PendingDownloadItemRequest) {
+            val resolvedPaths = directoryCoordinator.resolveLegacyPaths(request.targetDir, request.taskRootDir)
+            val url = request.url
+            val fileName = request.fileName
+            val targetDir = resolvedPaths.targetDir
+            val taskRootDir = resolvedPaths.taskRootDir
+            val relativePath = request.relativePath
+            val taskSubtitle = request.taskSubtitle
+            val tags = request.tags
+            val albumTitle = request.albumTitle
+            val albumCircle = request.albumCircle
+            val albumCv = request.albumCv
+            val albumTagsCsv = request.albumTagsCsv
+            val albumCoverUrl = request.albumCoverUrl
+            val albumDescription = request.albumDescription
+            val albumWorkId = request.albumWorkId
+            val albumRjCode = request.albumRjCode
+            val dlsitePlayImageSeed = request.dlsitePlayImageSeed
+            val dlsitePlayImageWidth = request.dlsitePlayImageWidth
+            val dlsitePlayImageHeight = request.dlsitePlayImageHeight
             val now = System.currentTimeMillis()
 
-            val taskKey = tags.firstOrNull { it.startsWith("album:") } ?: "dir:$taskRootDir"
-            val taskTitle = taskKey.removePrefix("album:").ifBlank { File(taskRootDir).name.ifBlank { "download" } }
+            val logicalTaskKey = tags.firstOrNull { it.startsWith("album:") } ?: "dir:$taskRootDir"
+            val destinationKey = storage.stableIdentity(resolvedPaths.destinationRoot).hashCode().toUInt().toString(16)
+            val taskKey = "$logicalTaskKey@$destinationKey"
+            val taskTitle = logicalTaskKey.removePrefix("album:").ifBlank { File(taskRootDir).name.ifBlank { "download" } }
             val safeTaskSubtitle = taskSubtitle.trim()
             val safeRelativePath = relativePath.ifBlank { fileName }.replace('\\', '/')
-            val filePath = File(targetDir, fileName).absolutePath
+            val existingDestinationFile = storage.findFile(targetDir, fileName)
+            val filePath = existingDestinationFile.orEmpty().ifBlank {
+                if (storage.isDocumentReference(targetDir)) "" else File(targetDir, fileName).absolutePath
+            }
             val safeAlbumTitle = albumTitle.trim().take(200)
             val safeAlbumCircle = albumCircle.trim().take(200)
             val safeAlbumCv = albumCv.trim().take(400)
@@ -152,11 +365,20 @@ class DownloadManager @Inject constructor(
             val safeAlbumDescription = albumDescription.trim().take(0)
             val safeAlbumWorkId = albumWorkId.trim().take(40)
             val safeAlbumRjCode = albumRjCode.trim().take(40)
+            val hasDlsitePlayImageTransform = dlsitePlayImageSeed != null &&
+                (dlsitePlayImageWidth ?: 0) > 0 &&
+                (dlsitePlayImageHeight ?: 0) > 0
+            val safeDlsitePlayImageSeed = dlsitePlayImageSeed.takeIf { hasDlsitePlayImageTransform }
+            val safeDlsitePlayImageWidth = dlsitePlayImageWidth.takeIf { hasDlsitePlayImageTransform }
+            val safeDlsitePlayImageHeight = dlsitePlayImageHeight.takeIf { hasDlsitePlayImageTransform }
             val taskId = ensureTask(
                 taskKey = taskKey,
+                logicalTaskKey = logicalTaskKey,
                 title = taskTitle,
                 subtitle = safeTaskSubtitle,
                 rootDir = taskRootDir,
+                destinationRoot = resolvedPaths.destinationRoot,
+                albumRootDir = resolvedPaths.albumRootDir,
                 albumTitle = safeAlbumTitle,
                 albumCircle = safeAlbumCircle,
                 albumCv = safeAlbumCv,
@@ -168,10 +390,9 @@ class DownloadManager @Inject constructor(
                 now = now
             )
 
-            val existingFile = File(filePath)
-            if (existingFile.exists() && existingFile.isFile) {
-                val size = existingFile.length().coerceAtLeast(0L)
-                val existingItem = downloadDao.getItemByFilePath(filePath)
+            if (existingDestinationFile != null && storage.exists(existingDestinationFile)) {
+                val size = storage.size(existingDestinationFile)
+                val existingItem = downloadDao.getItemByTaskAndRelativePath(taskId, safeRelativePath)
                 if (existingItem != null) {
                     downloadDao.updateItemProgress(
                         workId = existingItem.workId,
@@ -212,7 +433,7 @@ class DownloadManager @Inject constructor(
                                 upsertDownloadedAlbumToLibrary(
                                     db = db,
                                     appContext = context,
-                                    rootDir = taskRootDir,
+                                    rootDir = resolvedPaths.albumRootDir,
                                     taskTitle = taskTitle,
                                     taskSubtitle = safeTaskSubtitle,
                                     albumTitle = safeAlbumTitle,
@@ -226,21 +447,37 @@ class DownloadManager @Inject constructor(
                                 )
                             }
                             runCatching {
-                                val marker = File(taskRootDir, ".download_complete")
-                                if (!marker.exists()) marker.createNewFile()
+                                if (storage.isDocumentReference(resolvedPaths.albumRootDir)) {
+                                    storage.ensureFile(
+                                        resolvedPaths.albumRootDir,
+                                        ".download_complete",
+                                        "application/octet-stream",
+                                    )
+                                } else {
+                                    val marker = File(resolvedPaths.albumRootDir, ".download_complete")
+                                    if (!marker.exists()) marker.createNewFile()
+                                }
+                                Unit
                             }
                         }
                     }
                 }
-                return@launch
+                return
             }
 
-            val existingItem = downloadDao.getItemByFilePath(filePath)
-            val existingBytes = runCatching { File(filePath).length() }.getOrDefault(0L).coerceAtLeast(0L)
+            val existingItem = downloadDao.getItemByTaskAndRelativePath(taskId, safeRelativePath)
+            val partialFile = existingItem?.let { downloadStagingFile(context, it) }
+            val existingBytes = runCatching {
+                when {
+                    partialFile != null && partialFile.exists() -> partialFile.length()
+                    filePath.isNotBlank() -> storage.size(filePath)
+                    else -> 0L
+                }
+            }.getOrDefault(0L).coerceAtLeast(0L)
             if (existingItem != null) {
-                val file = File(existingItem.filePath.ifBlank { filePath })
-                if (existingItem.state == WorkInfo.State.SUCCEEDED.name && file.exists() && file.isFile) {
-                    return@launch
+                val existingReference = existingItem.filePath.ifBlank { filePath }
+                if (existingItem.state == WorkInfo.State.SUCCEEDED.name && storage.exists(existingReference)) {
+                    return
                 }
                 if (
                     existingItem.state == WorkInfo.State.RUNNING.name ||
@@ -248,15 +485,18 @@ class DownloadManager @Inject constructor(
                     existingItem.state == WorkInfo.State.BLOCKED.name ||
                     existingItem.state == DOWNLOAD_STATE_QUEUED
                 ) {
-                    return@launch
+                    throw DownloadTaskBlockedException()
                 }
-                downloadDao.updateItemProgress(
-                    workId = existingItem.workId,
-                    state = DOWNLOAD_STATE_QUEUED,
-                    downloaded = existingBytes,
-                    total = existingItem.total,
-                    speed = 0L,
-                    updatedAt = now
+                downloadDao.upsertItem(
+                    existingItem.copy(
+                        state = DOWNLOAD_STATE_QUEUED,
+                        downloaded = existingBytes,
+                        speed = 0L,
+                        updatedAt = now,
+                        dlsitePlayImageSeed = safeDlsitePlayImageSeed,
+                        dlsitePlayImageWidth = safeDlsitePlayImageWidth,
+                        dlsitePlayImageHeight = safeDlsitePlayImageHeight
+                    )
                 )
             } else {
                 downloadDao.upsertItem(
@@ -273,19 +513,26 @@ class DownloadManager @Inject constructor(
                         total = -1L,
                         speed = 0L,
                         createdAt = now,
-                        updatedAt = now
+                        updatedAt = now,
+                        dlsitePlayImageSeed = safeDlsitePlayImageSeed,
+                        dlsitePlayImageWidth = safeDlsitePlayImageWidth,
+                        dlsitePlayImageHeight = safeDlsitePlayImageHeight
                     )
                 )
             }
             DownloadQueueCoordinator.requestSchedule(context)
-        }
     }
+
+    private class DownloadTaskBlockedException : IllegalStateException()
 
     private suspend fun ensureTask(
         taskKey: String,
+        logicalTaskKey: String,
         title: String,
         subtitle: String,
         rootDir: String,
+        destinationRoot: String,
+        albumRootDir: String,
         albumTitle: String,
         albumCircle: String,
         albumCv: String,
@@ -339,9 +586,12 @@ class DownloadManager @Inject constructor(
         val created = downloadDao.insertTask(
             DownloadTaskEntity(
                 taskKey = taskKey,
+                logicalTaskKey = logicalTaskKey,
                 title = title,
                 subtitle = subtitle,
                 rootDir = rootDir,
+                destinationRoot = destinationRoot,
+                albumRootDir = albumRootDir,
                 albumTitle = albumTitle,
                 albumCircle = albumCircle,
                 albumCv = albumCv,
@@ -362,6 +612,9 @@ class DownloadManager @Inject constructor(
 object DownloadQueueCoordinator {
     private const val ACTIVE_WORK_RECONCILE_GRACE_MS = 30_000L
     private const val MEMORY_RETRY_DELAY_MS = 15_000L
+    // Android 15 起不再发送运行时内存级别，保留数值以兼容旧系统回调。
+    private const val TRIM_MEMORY_RUNNING_LOW_COMPAT = 10
+    private const val TRIM_MEMORY_RUNNING_CRITICAL_COMPAT = 15
     private const val TRIM_MEMORY_RUNNING_LOW_BACKOFF_MS = 20_000L
     private const val TRIM_MEMORY_RUNNING_CRITICAL_BACKOFF_MS = 45_000L
 
@@ -405,36 +658,37 @@ object DownloadQueueCoordinator {
 
     suspend fun recoverDownloadsOnAppLaunch(context: Context) {
         val appContext = context.applicationContext
+        val dao = AppDatabaseProvider.get(appContext).downloadDao()
+        val recoverableItems = dao.getAllActiveOrPausedItems()
+        if (recoverableItems.isEmpty()) return
         val wm = WorkManager.getInstance(appContext)
         runCatching { wm.cancelAllWorkByTag("download") }
-        val dao = AppDatabaseProvider.get(appContext).downloadDao()
         val now = System.currentTimeMillis()
-        dao.getAllActiveOrPausedItems()
-            .forEach { item ->
-                val resolvedBytes = resolveExistingBytes(item)
-                val resolvedState = when (item.state) {
-                    WorkInfo.State.SUCCEEDED.name -> WorkInfo.State.SUCCEEDED.name
-                    "PAUSED" -> "PAUSED"
-                    else -> "PAUSED"
-                }
-                runCatching {
-                    dao.updateItemProgress(
-                        workId = item.workId,
-                        state = resolvedState,
-                        downloaded = resolvedBytes,
-                        total = item.total,
-                        speed = 0L,
-                        updatedAt = now
-                    )
-                }
+        recoverableItems.forEach { item ->
+            val resolvedBytes = resolveExistingBytes(appContext, item)
+            val resolvedState = when (item.state) {
+                WorkInfo.State.SUCCEEDED.name -> WorkInfo.State.SUCCEEDED.name
+                "PAUSED" -> "PAUSED"
+                else -> "PAUSED"
             }
+            runCatching {
+                dao.updateItemProgress(
+                    workId = item.workId,
+                    state = resolvedState,
+                    downloaded = resolvedBytes,
+                    total = item.total,
+                    speed = 0L,
+                    updatedAt = now
+                )
+            }
+        }
     }
 
     fun onTrimMemory(context: Context, level: Int) {
         val now = System.currentTimeMillis()
         val backoffMs = when {
-            level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> TRIM_MEMORY_RUNNING_CRITICAL_BACKOFF_MS
-            level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> TRIM_MEMORY_RUNNING_LOW_BACKOFF_MS
+            level >= TRIM_MEMORY_RUNNING_CRITICAL_COMPAT -> TRIM_MEMORY_RUNNING_CRITICAL_BACKOFF_MS
+            level >= TRIM_MEMORY_RUNNING_LOW_COMPAT -> TRIM_MEMORY_RUNNING_LOW_BACKOFF_MS
             else -> 0L
         }
         if (backoffMs > 0L) {
@@ -448,7 +702,7 @@ object DownloadQueueCoordinator {
         scheduleMutex.withLock {
             val wm = WorkManager.getInstance(appContext)
             val dao = AppDatabaseProvider.get(appContext).downloadDao()
-            reconcileActiveItems(wm, dao)
+            reconcileActiveItems(appContext, wm, dao)
 
             val availableSlots = DownloadRuntimeConfig.maxConcurrentDownloads(appContext) - dao.countActiveItems()
             if (availableSlots <= 0) return
@@ -476,6 +730,7 @@ object DownloadQueueCoordinator {
                             "fileName" to item.fileName,
                             "targetDir" to item.targetDir,
                             "taskRootDir" to task.rootDir,
+                            "albumRootDir" to task.albumRootDir,
                             "relativePath" to item.relativePath,
                             "taskKey" to task.taskKey,
                             "taskTitle" to task.title,
@@ -487,7 +742,10 @@ object DownloadQueueCoordinator {
                             "albumCoverUrl" to task.albumCoverUrl,
                             "albumDescription" to task.albumDescription,
                             "albumWorkId" to task.albumWorkId,
-                            "albumRjCode" to task.albumRjCode
+                            "albumRjCode" to task.albumRjCode,
+                            "dlsitePlayImageSeed" to (item.dlsitePlayImageSeed ?: -1),
+                            "dlsitePlayImageWidth" to (item.dlsitePlayImageWidth ?: -1),
+                            "dlsitePlayImageHeight" to (item.dlsitePlayImageHeight ?: -1)
                         )
                     )
                     .addTag("download")
@@ -502,7 +760,7 @@ object DownloadQueueCoordinator {
                 wm.enqueue(request)
 
                 val existingBytes = runCatching {
-                    File(item.filePath.ifBlank { File(item.targetDir, item.fileName).absolutePath }).length()
+                    resolveExistingBytes(appContext, item)
                 }.getOrDefault(item.downloaded).coerceAtLeast(0L)
 
                 dao.replaceWorkIdForResume(
@@ -516,7 +774,7 @@ object DownloadQueueCoordinator {
         }
     }
 
-    private suspend fun reconcileActiveItems(workManager: WorkManager, dao: DownloadDao) {
+    private suspend fun reconcileActiveItems(context: Context, workManager: WorkManager, dao: DownloadDao) {
         val now = System.currentTimeMillis()
         dao.getActiveItems().forEach { item ->
             val workId = runCatching { UUID.fromString(item.workId) }.getOrNull()
@@ -524,7 +782,7 @@ object DownloadQueueCoordinator {
                 dao.updateItemProgress(
                     workId = item.workId,
                     state = DOWNLOAD_STATE_QUEUED,
-                    downloaded = resolveExistingBytes(item),
+                    downloaded = resolveExistingBytes(context, item),
                     total = item.total,
                     speed = 0L,
                     updatedAt = now
@@ -540,7 +798,7 @@ object DownloadQueueCoordinator {
                         dao.updateItemProgress(
                             workId = item.workId,
                             state = DOWNLOAD_STATE_QUEUED,
-                            downloaded = resolveExistingBytes(item),
+                            downloaded = resolveExistingBytes(context, item),
                             total = item.total,
                             speed = 0L,
                             updatedAt = now
@@ -548,7 +806,7 @@ object DownloadQueueCoordinator {
                     }
                 }
                 WorkInfo.State.SUCCEEDED -> {
-                    val size = resolveExistingBytes(item)
+                    val size = resolveExistingBytes(context, item)
                     dao.updateItemProgress(
                         workId = item.workId,
                         state = WorkInfo.State.SUCCEEDED.name,
@@ -580,9 +838,22 @@ object DownloadQueueCoordinator {
         }
     }
 
-    private fun resolveExistingBytes(item: DownloadItemEntity): Long {
+    private fun resolveExistingBytes(context: Context, item: DownloadItemEntity): Long {
         return runCatching {
-            File(item.filePath.ifBlank { File(item.targetDir, item.fileName).absolutePath }).length()
+            if (item.targetDir.startsWith("content://")) {
+                val staging = downloadStagingFile(context, item)
+                val scrambled = dlsitePlayImagePartFile(staging)
+                return@runCatching if (item.hasDlsitePlayImageTransform() && scrambled.exists()) {
+                    scrambled.length()
+                } else if (staging.exists()) {
+                    staging.length()
+                } else {
+                    DownloadStorageGateway(context).size(item.filePath)
+                }
+            }
+            val outputFile = File(item.filePath.ifBlank { File(item.targetDir, item.fileName).absolutePath })
+            val partialFile = dlsitePlayImagePartFile(outputFile)
+            if (item.hasDlsitePlayImageTransform() && partialFile.exists()) partialFile.length() else outputFile.length()
         }.getOrDefault(item.downloaded).coerceAtLeast(0L)
     }
 }
@@ -606,6 +877,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
         val taskTitle = inputData.getString("taskTitle").orEmpty()
         val taskSubtitle = inputData.getString("taskSubtitle").orEmpty()
         val taskRootDir = inputData.getString("taskRootDir").orEmpty()
+        val albumRootDir = inputData.getString("albumRootDir").orEmpty()
         val relativePath = inputData.getString("relativePath").orEmpty().ifBlank { fileName }.replace('\\', '/')
         val albumTitle = inputData.getString("albumTitle").orEmpty()
         val albumCircle = inputData.getString("albumCircle").orEmpty()
@@ -615,12 +887,19 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
         val albumDescription = inputData.getString("albumDescription").orEmpty()
         val albumWorkId = inputData.getString("albumWorkId").orEmpty()
         val albumRjCode = inputData.getString("albumRjCode").orEmpty()
+        val dlsitePlayImageSeed = inputData.getInt("dlsitePlayImageSeed", -1).takeIf { it >= 0 }
+        val dlsitePlayImageWidth = inputData.getInt("dlsitePlayImageWidth", -1).takeIf { it > 0 }
+        val dlsitePlayImageHeight = inputData.getInt("dlsitePlayImageHeight", -1).takeIf { it > 0 }
+        val hasDlsitePlayImageTransform = dlsitePlayImageSeed != null &&
+            dlsitePlayImageWidth != null &&
+            dlsitePlayImageHeight != null
 
         return try {
             val workId = id.toString()
             val appDb = AppDatabaseProvider.get(applicationContext)
             val dao = appDb.downloadDao()
             val dailyStatDao = appDb.dailyStatDao()
+            val storage = DownloadStorageGateway(applicationContext)
             val now0 = System.currentTimeMillis()
             val resolvedTaskKey = taskKey.ifBlank { "dir:${taskRootDir.ifBlank { targetDir }}" }
             val resolvedRootDir = taskRootDir.ifBlank { targetDir }
@@ -689,16 +968,31 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 }
             }
 
-            val targetFolder = File(targetDir)
-            val file = File(targetFolder, fileName)
-            if (!targetFolder.exists()) targetFolder.mkdirs()
+            val currentItem = dao.getItemByWorkId(workId)
+                ?: return ListenableWorker.Result.failure()
+            val usesDocumentTree = storage.isDocumentReference(targetDir)
+            val targetFolder = if (usesDocumentTree) null else File(targetDir)
+            val file = if (usesDocumentTree) {
+                downloadStagingFile(applicationContext, currentItem)
+            } else {
+                File(checkNotNull(targetFolder), fileName)
+            }
+            val partialFile = dlsitePlayImagePartFile(file)
+            val transferFile = if (hasDlsitePlayImageTransform) partialFile else file
+            file.parentFile?.mkdirs()
+            if (targetFolder != null && !targetFolder.exists()) targetFolder.mkdirs()
             runCatching {
-                val albumsRoot = File(applicationContext.getExternalFilesDir(null), "albums")
-                if (!albumsRoot.exists()) albumsRoot.mkdirs()
-                val rootMarker = File(albumsRoot, ".nomedia")
-                if (!rootMarker.exists()) rootMarker.createNewFile()
-                val marker = File(targetFolder, ".nomedia")
-                if (!marker.exists()) marker.createNewFile()
+                if (usesDocumentTree) {
+                    storage.ensureFile(targetDir, ".nomedia", "application/octet-stream")
+                } else {
+                    val albumsRoot = File(applicationContext.getExternalFilesDir(null), "albums")
+                    if (!albumsRoot.exists()) albumsRoot.mkdirs()
+                    val rootMarker = File(albumsRoot, ".nomedia")
+                    if (!rootMarker.exists()) rootMarker.createNewFile()
+                    val marker = File(checkNotNull(targetFolder), ".nomedia")
+                    if (!marker.exists()) marker.createNewFile()
+                }
+                Unit
             }
 
             val entryPoint = EntryPointAccessors.fromApplication(applicationContext, DownloadWorkerEntryPoint::class.java)
@@ -707,7 +1001,8 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 .url(url)
                 .header("User-Agent", NetworkHeaders.USER_AGENT)
             
-            var existingBytes = if (file.exists()) file.length().coerceAtLeast(0L) else 0L
+            val transformAlreadyApplied = hasDlsitePlayImageTransform && file.exists() && !partialFile.exists()
+            var existingBytes = if (transferFile.exists()) transferFile.length().coerceAtLeast(0L) else 0L
             val lowerUrl = url.lowercase()
             val sessionCookieJar = SessionCookieJar()
             if (lowerUrl.contains("play.dlsite.com")) {
@@ -744,8 +1039,9 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 requestBuilder.addHeader("Range", "bytes=$existingBytes-")
             }
 
-            var total: Long
-            var downloaded = existingBytes
+            val knownTotal = dao.getItemByWorkId(workId)?.total?.takeIf { it > 0L } ?: -1L
+            var total = knownTotal
+            var downloaded = if (transformAlreadyApplied) knownTotal.coerceAtLeast(file.length()) else existingBytes
             val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(now0))
             var pendingTrafficBytes = 0L
 
@@ -780,7 +1076,9 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 )
             }
 
-            client.newCall(requestBuilder.build()).execute().use { response ->
+            val transferAlreadyComplete = transformAlreadyApplied ||
+                (hasDlsitePlayImageTransform && knownTotal > 0L && existingBytes >= knownTotal)
+            if (!transferAlreadyComplete) client.newCall(requestBuilder.build()).execute().use { response ->
                 if (!response.isSuccessful) {
                     Log.w(TAG, "download failed code=${response.code} url=${response.request.url}")
                     return failCurrentDownload(totalBytes = existingBytes.coerceAtLeast(0L))
@@ -802,25 +1100,20 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 @Suppress("UNUSED_VARIABLE") var progressBaselineTs = System.currentTimeMillis()
 
                 dao.upsertItem(
-                    DownloadItemEntity(
+                    currentItem.copy(
                         taskId = taskId,
                         workId = workId,
-                        url = url,
-                        relativePath = relativePath,
-                        fileName = fileName,
                         targetDir = targetDir,
-                        filePath = file.absolutePath,
                         state = WorkInfo.State.RUNNING.name,
                         downloaded = downloaded,
                         total = total,
                         speed = 0L,
-                        createdAt = now0,
-                        updatedAt = now0
+                        updatedAt = now0,
                     )
                 )
 
                 body.byteStream().use { input ->
-                    FileOutputStream(file, existingBytes > 0L).use { output ->
+                    FileOutputStream(transferFile, existingBytes > 0L).use { output ->
                         while (true) {
                             if (isStopped) {
                                 val now = System.currentTimeMillis()
@@ -864,6 +1157,40 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                     }
                 }
             }
+            if (hasDlsitePlayImageTransform && !transformAlreadyApplied) {
+                descrambleDlsitePlayImageFile(
+                    scrambledFile = partialFile,
+                    outputFile = file,
+                    seed = checkNotNull(dlsitePlayImageSeed),
+                    width = checkNotNull(dlsitePlayImageWidth),
+                    height = checkNotNull(dlsitePlayImageHeight)
+                )
+                if (partialFile.exists() && !partialFile.delete()) {
+                    throw IOException("Unable to remove scrambled DLsite Play image")
+                }
+            }
+            val publishedReference = if (usesDocumentTree) {
+                val destinationReference = storage.ensureFile(
+                    directory = targetDir,
+                    name = fileName,
+                    mimeType = downloadMimeType(fileName),
+                )
+                storage.openOutput(destinationReference).use { output ->
+                    file.inputStream().use { input -> input.copyTo(output) }
+                }
+                dao.updateItemDestination(
+                    workId = workId,
+                    filePath = destinationReference,
+                    targetDir = targetDir,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                if (!fileName.equals("dlsite_lossless_archive.zip", ignoreCase = true)) {
+                    file.delete()
+                }
+                destinationReference
+            } else {
+                file.absolutePath
+            }
             val now = System.currentTimeMillis()
             try {
                 flushTrafficStats()
@@ -884,6 +1211,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                     "taskTitle" to resolvedTitle,
                     "taskSubtitle" to resolvedSubtitle,
                     "taskRootDir" to resolvedRootDir,
+                    "albumRootDir" to albumRootDir,
                     "albumTitle" to albumTitle,
                     "albumCircle" to albumCircle,
                     "albumCv" to albumCv,
@@ -907,7 +1235,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 workDataOf(
                     "fileName" to fileName,
                     "targetDir" to targetDir,
-                    "filePath" to File(targetDir, fileName).absolutePath,
+                    "filePath" to publishedReference,
                     "relativePath" to relativePath,
                     "taskKey" to resolvedTaskKey
                 )
@@ -924,7 +1252,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters) : Coroutine
                 workDataOf(
                     "fileName" to fileName,
                     "targetDir" to targetDir,
-                    "filePath" to File(targetDir, fileName).absolutePath,
+                    "filePath" to if (targetDir.startsWith("content://")) "" else File(targetDir, fileName).absolutePath,
                     "relativePath" to relativePath,
                     "taskKey" to taskKey
                 )
@@ -978,6 +1306,7 @@ class FinalizeDownloadTaskWorker(context: Context, parameters: WorkerParameters)
         val taskTitle = inputData.getString("taskTitle").orEmpty()
         val taskSubtitle = inputData.getString("taskSubtitle").orEmpty()
         val taskRootDir = inputData.getString("taskRootDir").orEmpty()
+        val albumRootDir = inputData.getString("albumRootDir").orEmpty()
         val albumTitle = inputData.getString("albumTitle").orEmpty()
         val albumCircle = inputData.getString("albumCircle").orEmpty()
         val albumCv = inputData.getString("albumCv").orEmpty()
@@ -1003,13 +1332,27 @@ class FinalizeDownloadTaskWorker(context: Context, parameters: WorkerParameters)
                 val done = items.isNotEmpty() && items.all { it.state == WorkInfo.State.SUCCEEDED.name }
                 if (!done) return@withTransaction
 
-                val rootDirFile = File(task.rootDir.ifBlank { taskRootDir })
-                runCatching { finalizeDlsiteLosslessArchiveIfNeeded(rootDirFile, items) }
+                val storage = DownloadStorageGateway(applicationContext)
+                val resolvedAlbumRoot = task.albumRootDir
+                    .ifBlank { albumRootDir }
+                    .ifBlank { task.rootDir.ifBlank { taskRootDir } }
+                if (storage.isDocumentReference(resolvedAlbumRoot)) {
+                    runCatching {
+                        finalizeDlsiteLosslessArchiveInStorageIfNeeded(
+                            context = applicationContext,
+                            rootDir = resolvedAlbumRoot,
+                            items = items,
+                            storage = storage,
+                        )
+                    }
+                } else {
+                    runCatching { finalizeDlsiteLosslessArchiveIfNeeded(File(resolvedAlbumRoot), items) }
+                }
 
                 upsertDownloadedAlbumToLibrary(
                     db = db,
                     appContext = applicationContext,
-                    rootDir = rootDirFile.absolutePath,
+                    rootDir = resolvedAlbumRoot,
                     taskTitle = task.title.ifBlank { taskTitle },
                     taskSubtitle = task.subtitle.ifBlank { taskSubtitle },
                     albumTitle = albumTitle,
@@ -1023,8 +1366,13 @@ class FinalizeDownloadTaskWorker(context: Context, parameters: WorkerParameters)
                 )
 
                 runCatching {
-                    val marker = File(task.rootDir.ifBlank { taskRootDir }, ".download_complete")
-                    if (!marker.exists()) marker.createNewFile()
+                    if (storage.isDocumentReference(resolvedAlbumRoot)) {
+                        storage.ensureFile(resolvedAlbumRoot, ".download_complete", "application/octet-stream")
+                    } else {
+                        val marker = File(resolvedAlbumRoot, ".download_complete")
+                        if (!marker.exists()) marker.createNewFile()
+                    }
+                    Unit
                 }
             }
             ListenableWorker.Result.success()
@@ -1132,6 +1480,7 @@ private fun unzipIntoRootDirectory(zipFile: File, rootDir: File) {
 private fun finalizeDlsiteLosslessArchiveIfNeeded(rootDir: File, items: List<DownloadItemEntity>) {
     if (!rootDir.isDirectory) return
     val archive = items.asSequence()
+        .filter { item -> item.fileName.equals("dlsite_lossless_archive.zip", ignoreCase = true) }
         .map { item -> File(item.filePath.ifBlank { File(item.targetDir, item.fileName).absolutePath }) }
         .firstOrNull { file ->
             file.exists() &&
@@ -1144,6 +1493,41 @@ private fun finalizeDlsiteLosslessArchiveIfNeeded(rootDir: File, items: List<Dow
         unzipIntoRootDirectory(archive, rootDir)
         archive.delete()
     }
+}
+
+private suspend fun finalizeDlsiteLosslessArchiveInStorageIfNeeded(
+    context: Context,
+    rootDir: String,
+    items: List<DownloadItemEntity>,
+    storage: DownloadStorageGateway,
+) {
+    val archiveItem = items.firstOrNull { item ->
+        item.fileName.equals("dlsite_lossless_archive.zip", ignoreCase = true)
+    } ?: return
+    val stagingArchive = downloadStagingFile(context, archiveItem)
+    if (!stagingArchive.isFile) return
+
+    useBestEffortZipFile(stagingArchive) { archive ->
+        archive.entries().asSequence().forEach { entry ->
+            val normalized = entry.name.replace('\\', '/').trimStart('/')
+            val segments = normalized.split('/').filter { it.isNotBlank() }
+            if (segments.isEmpty() || segments.any { it == "." || it == ".." }) return@forEach
+            val parentPath = segments.dropLast(1).joinToString("/")
+            val parent = storage.resolveDirectory(rootDir, parentPath)
+            if (!entry.isDirectory) {
+                val outputReference = storage.ensureFile(
+                    directory = parent,
+                    name = segments.last(),
+                    mimeType = downloadMimeType(segments.last()),
+                )
+                archive.getInputStream(entry).use { input ->
+                    storage.openOutput(outputReference).use { output -> input.copyTo(output) }
+                }
+            }
+        }
+    }
+    storage.delete(archiveItem.filePath)
+    stagingArchive.delete()
 }
 
 private suspend fun upsertDownloadedAlbumToLibrary(
@@ -1161,20 +1545,53 @@ private suspend fun upsertDownloadedAlbumToLibrary(
     albumWorkId: String = "",
     albumRjCode: String = ""
 ) {
+    if (rootDir.startsWith("content://")) {
+        upsertDownloadedDocumentAlbumToLibrary(
+            db = db,
+            appContext = appContext,
+            rootDir = rootDir,
+            taskTitle = taskTitle,
+            taskSubtitle = taskSubtitle,
+            albumTitle = albumTitle,
+            albumCircle = albumCircle,
+            albumCv = albumCv,
+            albumTagsCsv = albumTagsCsv,
+            albumCoverUrl = albumCoverUrl,
+            albumDescription = albumDescription,
+            albumWorkId = albumWorkId,
+            albumRjCode = albumRjCode,
+        )
+        return
+    }
     val dir = File(rootDir)
     if (!dir.exists() || !dir.isDirectory) return
 
     val titleTrimmed = taskTitle.trim()
     val subtitleTrimmed = taskSubtitle.trim()
     val normalizedWorkId = albumRjCode.trim().ifBlank { albumWorkId.trim() }
-    val rj = extractRjCode(normalizedWorkId.ifBlank { titleTrimmed.ifBlank { dir.name } })
+    val rj = DlsiteWorkNo.extractWorkNo(normalizedWorkId.ifBlank { titleTrimmed.ifBlank { dir.name } })
 
     val albumDao = db.albumDao()
     val trackDao = db.trackDao()
     val albumFtsDao = db.albumFtsDao()
 
-    val existing = try {
+    val mergeService = LocalAlbumMergeService(db, DownloadStorageGateway(appContext))
+    val existing = mergeService.resolveAndMerge(
+        rj = rj,
+        fallbackPath = dir.absolutePath,
+        fallbackTitle = subtitleTrimmed.ifBlank { albumTitle.trim() }.ifBlank { titleTrimmed },
+        localPath = null,
+        downloadPath = dir.absolutePath,
+    ) ?: try {
         albumDao.getAlbumByPathOnce(dir.absolutePath)
+    } catch (_: Exception) {
+        null
+    } ?: try {
+        albumDao.getAllAlbumsOnce().firstOrNull { album ->
+            listOfNotNull(album.localPath, album.downloadPath)
+                .map { it.trim() }
+                .any { it.equals(dir.absolutePath, ignoreCase = false) }
+        }
     } catch (_: Exception) {
         null
     } ?: try {
@@ -1184,6 +1601,8 @@ private suspend fun upsertDownloadedAlbumToLibrary(
     }
 
     val cover = pickCoverFileFromAlbumDir(dir)
+    val existingCoverPath = existing?.coverPath
+        ?.takeIf { it.isNotBlank() && it != "null" }
     val entity = AlbumEntity(
         id = existing?.id ?: 0L,
         title = subtitleTrimmed
@@ -1196,8 +1615,11 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         cv = existing?.cv?.takeIf { it.isNotBlank() } ?: albumCv.trim(),
         tags = existing?.tags?.takeIf { it.isNotBlank() } ?: albumTagsCsv.trim(),
         coverUrl = existing?.coverUrl?.takeIf { it.isNotBlank() } ?: albumCoverUrl.trim(),
-        coverPath = cover?.absolutePath ?: existing?.coverPath.orEmpty(),
-        coverThumbPath = existing?.coverThumbPath.orEmpty(),
+        coverPath = resolveDownloadedAlbumCoverPath(
+            existingCoverPath = existingCoverPath,
+            downloadedCoverPath = cover?.absolutePath
+        ),
+        coverThumbPath = if (existingCoverPath != null) existing.coverThumbPath else "",
         workId = existing?.workId?.takeIf { it.isNotBlank() }
             ?: albumWorkId.trim().ifBlank { rj },
         rjCode = existing?.rjCode?.takeIf { it.isNotBlank() }
@@ -1206,7 +1628,12 @@ private suspend fun upsertDownloadedAlbumToLibrary(
     )
 
     val albumId = try {
-        albumDao.insertAlbum(entity)
+        if (existing == null) {
+            albumDao.insertAlbum(entity)
+        } else {
+            albumDao.updateAlbum(entity)
+            entity.id
+        }
     } catch (_: Exception) {
         0L
     }
@@ -1235,10 +1662,12 @@ private suspend fun upsertDownloadedAlbumToLibrary(
 
     val audioExtensions = setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
     val audioFiles = dir.walkTopDown()
+        .onEnter { directory -> directory == dir || isScannableLocalDirectoryName(directory.name) }
         .filter { it.isFile && audioExtensions.contains(it.extension.lowercase()) }
         .toList()
         .sortedBy { it.absolutePath.lowercase() }
     val subtitleCandidates = dir.walkTopDown()
+        .onEnter { directory -> directory == dir || isScannableLocalDirectoryName(directory.name) }
         .filter { it.isFile && SubtitleMatchSupport.SubtitleExtensions.contains(it.extension.lowercase()) }
         .mapNotNull { file ->
             val relative = runCatching { file.relativeTo(dir).path.replace('\\', '/') }.getOrNull().orEmpty()
@@ -1263,15 +1692,25 @@ private suspend fun upsertDownloadedAlbumToLibrary(
         emptyList()
     }
     val prefix = dir.absolutePath.trimEnd('\\', '/') + File.separator
-    val toDelete = existingTracks.filter { it.path.startsWith(dir.absolutePath) }.map { it.id }
+    val audioIdentities = audioFiles.map { file -> runCatching { file.canonicalPath }.getOrDefault(file.absolutePath) }.toSet()
+    val existingIdentities = existingTracks.associateBy { track ->
+        runCatching { File(track.path).canonicalPath }.getOrDefault(track.path)
+    }
+    val toDelete = existingTracks.filter { track ->
+        track.path.startsWith(dir.absolutePath) &&
+            runCatching { File(track.path).canonicalPath }.getOrDefault(track.path) !in audioIdentities
+    }.map { it.id }
     if (toDelete.isNotEmpty()) {
         runCatching { trackDao.deleteSubtitlesForTracks(toDelete) }
+        runCatching { db.remoteSubtitleSourceDao().deleteByTrackIds(toDelete) }
+        runCatching { db.trackTagDao().deleteTrackTagsByTrackIds(toDelete) }
         runCatching { trackDao.deleteTracksByIds(toDelete) }
     }
 
     val filteredAudioFiles = ArrayList<File>(audioFiles.size)
     audioFiles.forEach { f ->
-        filteredAudioFiles += f
+        val identity = runCatching { f.canonicalPath }.getOrDefault(f.absolutePath)
+        if (identity !in existingIdentities) filteredAudioFiles += f
     }
 
     val newTracks = filteredAudioFiles.map { f ->
@@ -1284,75 +1723,289 @@ private suspend fun upsertDownloadedAlbumToLibrary(
             group = group
         )
     }
-    if (newTracks.isNotEmpty()) {
-        val insertedTrackIds = runCatching { trackDao.insertTracks(newTracks) }.getOrDefault(emptyList())
-        if (insertedTrackIds.isNotEmpty()) {
-            val subtitlesToInsert = ArrayList<SubtitleEntity>()
+    if (newTracks.isNotEmpty()) runCatching { trackDao.insertTracks(newTracks) }
 
-            insertedTrackIds.zip(filteredAudioFiles).forEach { (trackId, audio) ->
-                val entries = parseBestSubtitle(audio)
-                entries.forEach { e ->
-                    subtitlesToInsert.add(
-                        SubtitleEntity(
-                            trackId = trackId,
-                            startMs = e.startMs,
-                            endMs = e.endMs,
-                            text = e.text
-                        )
-                    )
-                }
-            }
-
-            if (subtitlesToInsert.isNotEmpty()) {
-                runCatching { trackDao.insertSubtitles(subtitlesToInsert) }
-            }
+    val indexedTracksByIdentity = trackDao.getTracksForAlbumOnce(albumId).associateBy { track ->
+        runCatching { File(track.path).canonicalPath }.getOrDefault(track.path)
+    }
+    audioFiles.forEach { audio ->
+        val entries = parseBestSubtitle(audio)
+        if (entries.isEmpty()) return@forEach
+        val identity = runCatching { audio.canonicalPath }.getOrDefault(audio.absolutePath)
+        val trackId = indexedTracksByIdentity[identity]?.id ?: return@forEach
+        runCatching {
+            trackDao.deleteSubtitlesForTrack(trackId)
+            trackDao.insertSubtitles(entries.map { entry -> entry.toEntity(trackId) })
         }
     }
 
-    val allAfterInsert = runCatching { trackDao.getTracksForAlbumOnce(albumId) }.getOrDefault(emptyList())
-    val localAfterInsert = allAfterInsert.filter { !it.path.trim().startsWith("http", ignoreCase = true) }
-    val localKeyToId = LinkedHashMap<String, Long>()
-    val localKeyToIdNoGroup = LinkedHashMap<String, Long>()
-    localAfterInsert
-        .sortedWith(compareByDescending<TrackEntity> { it.path.startsWith(prefix) }.thenBy { it.id })
-        .forEach { t ->
-            localKeyToId.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, t.group, null), t.id)
-            localKeyToIdNoGroup.putIfAbsent(TrackKeyNormalizer.buildKey(t.title, "", null), t.id)
+    replaceMatchedOnlineTracksWithLocalTracks(db, albumId, prefix)
+    mergeService.deduplicateTracks(albumId)
+    runCatching { db.localTreeCacheDao().deleteByAlbum(albumId) }
+}
+
+private suspend fun upsertDownloadedDocumentAlbumToLibrary(
+    db: com.asmr.player.data.local.db.AppDatabase,
+    appContext: Context,
+    rootDir: String,
+    taskTitle: String,
+    taskSubtitle: String,
+    albumTitle: String,
+    albumCircle: String,
+    albumCv: String,
+    albumTagsCsv: String,
+    albumCoverUrl: String,
+    albumDescription: String,
+    albumWorkId: String,
+    albumRjCode: String,
+) {
+    val storage = DownloadStorageGateway(appContext)
+    val entries = storage.walk(rootDir).filter { entry ->
+        isScannableLocalStorageEntry(entry.relativePath, entry.isDirectory)
+    }
+    if (entries.isEmpty()) return
+
+    val titleTrimmed = taskTitle.trim()
+    val subtitleTrimmed = taskSubtitle.trim()
+    val normalizedWorkId = albumRjCode.trim().ifBlank { albumWorkId.trim() }
+    val rj = DlsiteWorkNo.extractWorkNo(normalizedWorkId.ifBlank { titleTrimmed })
+    val albumDao = db.albumDao()
+    val trackDao = db.trackDao()
+    val albumFtsDao = db.albumFtsDao()
+    val mergeService = LocalAlbumMergeService(db, storage)
+    val existing = mergeService.resolveAndMerge(
+        rj = rj,
+        fallbackPath = rootDir,
+        fallbackTitle = subtitleTrimmed.ifBlank { albumTitle.trim() }.ifBlank { titleTrimmed },
+        localPath = null,
+        downloadPath = rootDir,
+    ) ?: albumDao.getAlbumByPathOnce(rootDir)
+    val cover = entries.firstOrNull { entry ->
+        !entry.isDirectory &&
+            entry.displayName.substringBeforeLast('.').equals("cover", ignoreCase = true) &&
+            entry.displayName.substringAfterLast('.', "").lowercase() in setOf("jpg", "jpeg", "png", "webp")
+    } ?: entries.firstOrNull { entry ->
+        !entry.isDirectory && entry.displayName.substringAfterLast('.', "").lowercase() in setOf("jpg", "jpeg", "png", "webp")
+    }
+    val audioEntries = entries.filter { entry ->
+        !entry.isDirectory && entry.displayName.substringAfterLast('.', "").lowercase() in
+            setOf("mp3", "flac", "wav", "m4a", "ogg", "aac", "opus")
+    }
+    val subtitlesByAudioReference = parseDownloadedSubtitles(entries) { subtitle ->
+        storage.openInput(subtitle.reference).use { input -> input.readBytes() }
+    }
+    val base = existing ?: AlbumEntity(title = "", path = rootDir)
+    val entity = base.copy(
+        title = subtitleTrimmed
+            .ifBlank { albumTitle.trim() }
+            .ifBlank { base.title.ifBlank { titleTrimmed.ifBlank { rj.ifBlank { "album" } } } },
+        path = base.path.takeIf { it.isNotBlank() } ?: rootDir,
+        downloadPath = rootDir,
+        circle = base.circle.ifBlank { albumCircle.trim() },
+        cv = base.cv.ifBlank { albumCv.trim() },
+        tags = base.tags.ifBlank { albumTagsCsv.trim() },
+        coverUrl = base.coverUrl.ifBlank { albumCoverUrl.trim() },
+        coverPath = base.coverPath.ifBlank { cover?.reference.orEmpty() },
+        workId = base.workId.ifBlank { albumWorkId.trim().ifBlank { rj } },
+        rjCode = base.rjCode.ifBlank { albumRjCode.trim().ifBlank { rj } },
+        description = base.description.ifBlank { albumDescription.trim() },
+        audioTrackCount = audioEntries.size,
+        audioTotalSizeBytes = audioEntries.sumOf { it.sizeBytes },
+    )
+    val albumId = if (existing == null) albumDao.insertAlbum(entity) else {
+        albumDao.updateAlbum(entity)
+        entity.id
+    }
+    if (albumId <= 0L) return
+
+    val existingTracks = trackDao.getTracksForAlbumOnce(albumId)
+    val audioIdentities = audioEntries.map { storage.stableIdentity(it.reference) }.toSet()
+    val existingIdentities = existingTracks.associateBy { storage.stableIdentity(it.path) }
+    val staleTracks = existingTracks.filter { track ->
+        storage.isSameOrDescendant(track.path, rootDir) && storage.stableIdentity(track.path) !in audioIdentities
+    }
+    if (staleTracks.isNotEmpty()) {
+        val ids = staleTracks.map { it.id }
+        trackDao.deleteSubtitlesForTracks(ids)
+        db.remoteSubtitleSourceDao().deleteByTrackIds(ids)
+        db.trackTagDao().deleteTrackTagsByTrackIds(ids)
+        trackDao.deleteTracksByIds(ids)
+    }
+
+    val seenReferences = linkedSetOf<String>()
+    val tracksToInsert = mutableListOf<TrackEntity>()
+    val tracksToUpdate = mutableListOf<TrackEntity>()
+    audioEntries.forEach { entry ->
+        val identity = storage.stableIdentity(entry.reference)
+        if (!seenReferences.add(identity)) return@forEach
+        val title = entry.displayName.substringBeforeLast('.').ifBlank { "track" }
+        val group = entry.relativePath.substringBeforeLast('/', "").substringAfterLast('/', "")
+        val existingTrack = existingIdentities[identity]
+        if (existingTrack == null) {
+            tracksToInsert += TrackEntity(
+                albumId = albumId,
+                title = title,
+                path = entry.reference,
+                duration = 0.0,
+                group = group,
+            )
+        } else {
+            tracksToUpdate += existingTrack.copy(title = title, group = group)
+        }
+    }
+    if (tracksToUpdate.isNotEmpty()) trackDao.updateTracks(tracksToUpdate)
+    if (tracksToInsert.isNotEmpty()) trackDao.insertTracks(tracksToInsert)
+
+    val indexedTracksByIdentity = trackDao.getTracksForAlbumOnce(albumId)
+        .associateBy { track -> storage.stableIdentity(track.path) }
+    audioEntries.forEach { audio ->
+        val entriesForTrack = subtitlesByAudioReference[audio.reference].orEmpty()
+        if (entriesForTrack.isEmpty()) return@forEach
+        val trackId = indexedTracksByIdentity[storage.stableIdentity(audio.reference)]?.id ?: return@forEach
+        trackDao.deleteSubtitlesForTrack(trackId)
+        trackDao.insertSubtitles(entriesForTrack.map { entry -> entry.toEntity(trackId) })
+    }
+    replaceMatchedOnlineTracksWithLocalTracks(db, albumId, rootDir)
+    mergeService.deduplicateTracks(albumId)
+    albumFtsDao.upsert(
+        listOf(
+            AlbumFtsEntity(
+                albumId = albumId,
+                title = entity.title,
+                circle = entity.circle,
+                cv = entity.cv,
+                rjCode = entity.rjCode,
+                workId = entity.workId,
+                tagsToken = entity.tags.replace(',', ' ').trim(),
+            )
+        )
+    )
+    db.localTreeCacheDao().deleteByAlbum(albumId)
+    WorkManager.getInstance(appContext)
+        .enqueueUniqueWork(
+            "album_cover_thumb_$albumId",
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<AlbumCoverThumbWorker>()
+                .setInputData(workDataOf(AlbumCoverThumbWorker.KEY_ALBUM_ID to albumId))
+                .addTag("album_cover_thumb")
+                .build(),
+        )
+}
+
+private fun SubtitleEntry.toEntity(trackId: Long): SubtitleEntity = SubtitleEntity(
+    trackId = trackId,
+    startMs = startMs,
+    endMs = endMs,
+    text = text,
+)
+
+internal suspend fun replaceMatchedOnlineTracksWithLocalTracks(
+    db: com.asmr.player.data.local.db.AppDatabase,
+    albumId: Long,
+    preferredLocalPrefix: String
+) {
+    val trackDao = db.trackDao()
+    val remoteSubtitleSourceDao = db.remoteSubtitleSourceDao()
+    val allTracks = runCatching { trackDao.getTracksForAlbumOnce(albumId) }.getOrDefault(emptyList())
+    val localTracks = allTracks.filter { !it.path.trim().startsWith("http", ignoreCase = true) }
+    val orderedLocalTracks = localTracks
+        .sortedWith(compareByDescending<TrackEntity> { it.path.startsWith(preferredLocalPrefix) }.thenBy { it.id })
+    val localTracksByKey = orderedLocalTracks.groupBy { track ->
+        TrackKeyNormalizer.buildKey(track.title, track.group, null)
+    }
+    val localTracksByKeyWithoutGroup = orderedLocalTracks.groupBy { track ->
+        TrackKeyNormalizer.buildKey(track.title, "", null)
+    }
+    val onlineTracks = allTracks.filter { it.path.trim().startsWith("http", ignoreCase = true) }
+    val consumedLocalTrackIds = linkedSetOf<Long>()
+    val matchedOnlineTrackIds = linkedSetOf<Long>()
+    val matchedPairs = mutableListOf<Pair<TrackEntity, TrackEntity>>()
+
+    onlineTracks.forEach { online ->
+        val key = TrackKeyNormalizer.buildKey(online.title, online.group, null)
+        val target = localTracksByKey[key]
+            ?.firstOrNull { local -> local.id !in consumedLocalTrackIds }
+            ?: return@forEach
+        consumedLocalTrackIds += target.id
+        matchedOnlineTrackIds += online.id
+        matchedPairs += online to target
+    }
+
+    onlineTracks
+        .filter { online -> online.id !in matchedOnlineTrackIds }
+        .groupBy { online -> TrackKeyNormalizer.buildKey(online.title, "", null) }
+        .forEach { (keyWithoutGroup, unmatchedOnlineTracks) ->
+            val remainingLocalTracks = localTracksByKeyWithoutGroup[keyWithoutGroup]
+                .orEmpty()
+                .filter { local -> local.id !in consumedLocalTrackIds }
+            if (unmatchedOnlineTracks.size == 1 && remainingLocalTracks.size == 1) {
+                val target = remainingLocalTracks.single()
+                consumedLocalTrackIds += target.id
+                val online = unmatchedOnlineTracks.single()
+                matchedOnlineTrackIds += online.id
+                matchedPairs += online to target
+            }
         }
 
-    allAfterInsert
-        .filter { it.path.trim().startsWith("http", ignoreCase = true) }
-        .forEach { online ->
-            val key = TrackKeyNormalizer.buildKey(online.title, online.group, null)
-            val keyNoGroup = TrackKeyNormalizer.buildKey(online.title, "", null)
-            val targetId = localKeyToId[key] ?: localKeyToIdNoGroup[keyNoGroup]
-            if (targetId != null) {
-                val sourceSubs = runCatching { trackDao.getSubtitlesForTrack(online.id) }.getOrDefault(emptyList())
-                if (sourceSubs.isNotEmpty()) {
-                    val targetHasSubs = runCatching { trackDao.getSubtitlesForTrack(targetId) }.getOrDefault(emptyList()).isNotEmpty()
-                    if (!targetHasSubs) {
-                        runCatching {
-                            trackDao.insertSubtitles(
-                                sourceSubs.map { s ->
-                                    SubtitleEntity(
-                                        trackId = targetId,
-                                        startMs = s.startMs,
-                                        endMs = s.endMs,
-                                        text = s.text
-                                    )
-                                }
+    val onlineIdsToDelete = ArrayList<Long>()
+    matchedPairs.forEach { (online, target) ->
+        val sourceSubs = runCatching { trackDao.getSubtitlesForTrack(online.id) }.getOrDefault(emptyList())
+        if (sourceSubs.isNotEmpty()) {
+            val targetHasSubs = runCatching { trackDao.getSubtitlesForTrack(target.id) }.getOrDefault(emptyList()).isNotEmpty()
+            if (!targetHasSubs) {
+                runCatching {
+                    trackDao.insertSubtitles(
+                        sourceSubs.map { subtitle ->
+                            SubtitleEntity(
+                                trackId = target.id,
+                                startMs = subtitle.startMs,
+                                endMs = subtitle.endMs,
+                                text = subtitle.text
                             )
                         }
-                    }
+                    )
                 }
             }
         }
+
+        val remoteSources = runCatching { remoteSubtitleSourceDao.getSourcesForTrackOnce(online.id) }.getOrDefault(emptyList())
+        if (remoteSources.isNotEmpty()) {
+            val targetHasRemoteSources = runCatching {
+                remoteSubtitleSourceDao.getSourcesForTrackOnce(target.id)
+            }.getOrDefault(emptyList()).isNotEmpty()
+            if (!targetHasRemoteSources) {
+                runCatching {
+                    remoteSubtitleSourceDao.insertAll(
+                        remoteSources.map { source ->
+                            RemoteSubtitleSourceEntity(
+                                trackId = target.id,
+                                url = source.url,
+                                language = source.language,
+                                ext = source.ext
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        onlineIdsToDelete += online.id
+    }
+
+    if (onlineIdsToDelete.isNotEmpty()) {
+        runCatching { trackDao.deleteSubtitlesForTracks(onlineIdsToDelete) }
+        runCatching { remoteSubtitleSourceDao.deleteByTrackIds(onlineIdsToDelete) }
+        runCatching { trackDao.deleteTracksByIds(onlineIdsToDelete) }
+    }
 }
 
-private fun extractRjCode(text: String): String {
-    val raw = text.trim()
-    val m = Regex("""RJ\s*([0-9]{3,})""", RegexOption.IGNORE_CASE).find(raw) ?: return raw.takeIf { it.startsWith("RJ", true) } ?: ""
-    return "RJ" + m.groupValues[1]
+internal fun resolveDownloadedAlbumCoverPath(
+    existingCoverPath: String?,
+    downloadedCoverPath: String?
+): String {
+    return existingCoverPath
+        ?.takeIf { it.isNotBlank() && it != "null" }
+        ?: downloadedCoverPath.orEmpty()
 }
 
 private fun pickCoverFileFromAlbumDir(dir: File): File? {

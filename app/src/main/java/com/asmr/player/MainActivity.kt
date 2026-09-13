@@ -1,4 +1,4 @@
-﻿package com.asmr.player
+package com.asmr.player
 
 import android.os.Bundle
 import android.view.KeyEvent
@@ -14,7 +14,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.rounded.AccessTime
@@ -28,9 +27,6 @@ import android.content.res.Configuration
 import android.media.AudioManager
 import android.net.Uri
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -93,7 +89,6 @@ import com.asmr.player.ui.settings.SettingsScreen
 import com.asmr.player.ui.settings.SettingsViewModel
 import com.asmr.player.ui.common.glassMenu
 import com.asmr.player.ui.drawer.DrawerStatusViewModel
-import com.asmr.player.ui.drawer.StatisticsViewModel
 import com.asmr.player.ui.drawer.SiteStatus
 import com.asmr.player.ui.drawer.SiteStatusType
 import com.asmr.player.ui.nav.AppNavigator
@@ -105,9 +100,12 @@ import com.asmr.player.ui.nav.isPrimaryRoute
 import com.asmr.player.ui.nav.resolvePrimaryPagerRoutes
 import com.asmr.player.ui.nav.resolvePrimaryRoute
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
+import com.asmr.player.ui.common.DiscPlaceholderBitmapCache
 import com.asmr.player.ui.splash.EaraSplashOverlay
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.URLDecoder
 import java.net.URLEncoder
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -121,7 +119,6 @@ import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.theme.PrewarmDynamicHuePalette
 import com.asmr.player.ui.theme.PrewarmDynamicHuePaletteFromVideoFrame
 import androidx.compose.ui.draw.blur
-import android.os.Build
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -148,11 +145,14 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import com.asmr.player.ui.player.QueueSheetContent
 import com.asmr.player.ui.player.SleepTimerSheetContent
 import com.asmr.player.ui.player.MiniPlayerDisplayMode
+import kotlinx.coroutines.flow.first
 
 import com.asmr.player.data.local.datastore.SettingsDataStore
 import com.asmr.player.data.local.datastore.ThemeBootstrapPreferences
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.LyricsPageSettings
+import com.asmr.player.data.settings.NowPlayingHomeLayoutMode
+import com.asmr.player.data.settings.NowPlayingLyricsSettings
 import com.asmr.player.util.MessageManager
 import com.asmr.player.ui.common.NonTouchableAppMessageOverlay
 import com.asmr.player.ui.common.StableWindowInsets
@@ -175,15 +175,15 @@ import com.asmr.player.ui.theme.ThemeTransitionRequest
 import com.asmr.player.ui.theme.ThemeTransitionTriggerRequest
 import com.asmr.player.ui.theme.LocalThemeTransitionTrigger
 import com.asmr.player.ui.theme.ThemeCircularRevealOverlay
-import androidx.compose.ui.graphics.ImageBitmap
-import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import com.asmr.player.ui.theme.captureThemeTransitionBitmap
 import com.asmr.player.ui.common.AppVolumeHearingWarningDialog
 import com.asmr.player.ui.common.AppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberAppVolumeWarningSessionState
 import com.asmr.player.ui.common.rememberCurrentAudioOutputRouteKind
 import com.asmr.player.ui.common.rememberProtectedAppVolumeChangeState
 import com.asmr.player.ui.common.AudioOutputRouteIcon
+import com.asmr.player.ui.common.calmVerticalFling
+import com.asmr.player.ui.common.OledBurnInProtectionBox
 import com.asmr.player.ui.common.DismissOutsideBoundsOverlay
 import com.asmr.player.service.AudioOutputRouteKind
 import javax.inject.Inject
@@ -192,12 +192,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.media3.common.MediaItem
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.playback.AppVolume
 import com.asmr.player.ui.common.AppVolumeVerticalSlider
@@ -232,41 +232,54 @@ class MainActivity : ComponentActivity() {
     private val volumeKeyEventTick = MutableStateFlow(0L)
     private var volumeKeyEventSeq = 0L
 
-    @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initialThemeBootstrapPreferences = runBlocking {
-            settingsDataStore.loadThemeBootstrapPreferences()
+        lifecycleScope.launch {
+            initialThemeBootstrapPreferences = settingsDataStore.loadThemeBootstrapPreferences()
+            if (isFinishing || isDestroyed) return@launch
+            val recentAlbumsPanelExpandedInitial = false
+            val startRouteFromIntent = intent.getStringExtra("start_route")
+            setAppContent(
+                recentAlbumsPanelExpandedInitial = recentAlbumsPanelExpandedInitial,
+                startRouteFromIntent = startRouteFromIntent
+            )
         }
-        val recentAlbumsPanelExpandedInitial = false
-        val startRouteFromIntent = intent.getStringExtra("start_route")
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
+    private fun setAppContent(
+        recentAlbumsPanelExpandedInitial: Boolean,
+        startRouteFromIntent: String?
+    ) {
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             val context = LocalContext.current
             val playerViewModel: PlayerViewModel = hiltViewModel()
             val libraryViewModel: LibraryViewModel = hiltViewModel()
-            val volumeKeyTick by volumeKeyEventTick.asStateFlow().collectAsState()
-            var themeBootstrap by remember {
-                mutableStateOf(initialThemeBootstrapPreferences)
-            }
-            LaunchedEffect(settingsDataStore) {
-                settingsDataStore.themeBootstrapPreferences.collect { value ->
-                    themeBootstrap = value
-                }
-            }
+            val volumeKeyTick by volumeKeyEventTick.asStateFlow().collectAsStateWithLifecycle()
+            val themeBootstrap by settingsDataStore.themeBootstrapPreferences
+                .collectAsStateWithLifecycle(initialValue = initialThemeBootstrapPreferences)
             val themeMediaSource by remember(playerViewModel) {
                 playerViewModel.playback
                     .map { it.currentMediaItem.toThemeMediaSource() }
                     .distinctUntilChanged()
-            }.collectAsState(initial = ThemeMediaSource())
+            }.collectAsStateWithLifecycle(initialValue = ThemeMediaSource())
             val playbackRestoreResolved by remember(playerViewModel) {
                 playerViewModel.playback
                     .map { it.startupRestoreResolved }
                     .distinctUntilChanged()
-            }.collectAsState(initial = false)
+            }.collectAsStateWithLifecycle(initialValue = false)
             val systemDark = isSystemInDarkTheme()
             val themePref = themeBootstrap.theme
             val mode = resolveThemeMode(themePref = themePref, systemDark = systemDark)
+            LaunchedEffect(mode.isDark, context.applicationContext) {
+                withContext(Dispatchers.IO) {
+                    DiscPlaceholderBitmapCache.preload(
+                        resources = context.applicationContext.resources,
+                        darkTheme = mode.isDark
+                    )
+                }
+            }
             val artworkUri = themeMediaSource.artworkUri
             val videoUri = themeMediaSource.videoUri
             val isVideo = themeMediaSource.isVideo
@@ -276,11 +289,20 @@ class MainActivity : ComponentActivity() {
                 staticHueArgbLight = themeBootstrap.staticHueArgbLight,
                 staticHueArgbDark = themeBootstrap.staticHueArgbDark
             )
-            val coverBackgroundEnabled by settingsDataStore.coverBackgroundEnabled.collectAsState(initial = true)
-            val coverBackgroundClarity by settingsDataStore.coverBackgroundClarity.collectAsState(initial = 0.35f)
-            val coverPreviewMode by settingsDataStore.coverPreviewMode.collectAsState(initial = CoverPreviewMode.Disabled)
-            val lyricsPageSettings by settingsDataStore.lyricsPageSettings.collectAsState(initial = LyricsPageSettings())
-            val showMiniPlayerBar by settingsRepository.showMiniPlayerBar.collectAsState(initial = true)
+            val coverBackgroundEnabled by settingsDataStore.coverBackgroundEnabled.collectAsStateWithLifecycle(initialValue = true)
+            val coverBackgroundClarity by settingsDataStore.coverBackgroundClarity.collectAsStateWithLifecycle(initialValue = 0.35f)
+            val coverPreviewMode by settingsDataStore.coverPreviewMode.collectAsStateWithLifecycle(initialValue = CoverPreviewMode.Disabled)
+            val nowPlayingHomeLayoutMode by settingsDataStore.nowPlayingHomeLayoutMode.collectAsStateWithLifecycle(
+                initialValue = NowPlayingHomeLayoutMode.Classic
+            )
+            val nowPlayingHomeLayoutHintDismissed by produceState(initialValue = false, settingsDataStore) {
+                value = settingsDataStore.nowPlayingHomeLayoutHintDismissed.first()
+            }
+            val nowPlayingLyricsSettings by settingsDataStore.nowPlayingLyricsSettings.collectAsStateWithLifecycle(
+                initialValue = NowPlayingLyricsSettings()
+            )
+            val lyricsPageSettings by settingsDataStore.lyricsPageSettings.collectAsStateWithLifecycle(initialValue = LyricsPageSettings())
+            val showMiniPlayerBar by settingsRepository.showMiniPlayerBar.collectAsStateWithLifecycle(initialValue = true)
             val neutral = remember(mode) { neutralPaletteForMode(mode) }
             val cacheManager = remember(context.applicationContext) {
                 dagger.hilt.android.EntryPointAccessors.fromApplication(
@@ -520,29 +542,28 @@ class MainActivity : ComponentActivity() {
             val transitionScope = rememberCoroutineScope()
             var themeTransitionSeq by remember { mutableLongStateOf(0L) }
             var themeTransition by remember { mutableStateOf<ThemeTransitionRequest?>(null) }
+            var themeTransitionCapturePending by remember { mutableStateOf(false) }
             val currentMode by rememberUpdatedState(mode)
             val themeTransitionTrigger: (ThemeTransitionTriggerRequest) -> Unit = remember {
                 { triggerReq ->
-                    if (themeTransition == null) {
-                        val bitmap = runCatching {
-                            val w = this@MainActivity.window.decorView.width
-                            val h = this@MainActivity.window.decorView.height
-                            if (w > 0 && h > 0) {
-                                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                                val canvas = android.graphics.Canvas(bmp)
-                                this@MainActivity.window.decorView.draw(canvas)
-                                bmp.asImageBitmap()
-                            } else null
-                        }.getOrNull()
-                        val bgColor = neutralPaletteForMode(currentMode).background
-                        themeTransition = ThemeTransitionRequest(
-                            origin = triggerReq.origin,
-                            oldContentBitmap = bitmap,
-                            oldBackgroundColor = bgColor,
-                            token = ++themeTransitionSeq
-                        )
+                    if (themeTransition == null && !themeTransitionCapturePending) {
+                        themeTransitionCapturePending = true
                         transitionScope.launch {
-                            settingsDataStore.setTheme(triggerReq.targetPref)
+                            try {
+                                val oldMode = currentMode
+                                val bitmap = captureThemeTransitionBitmap(this@MainActivity.window)
+                                if (themeTransition != null) return@launch
+                                themeTransition = ThemeTransitionRequest(
+                                    origin = triggerReq.origin,
+                                    oldContentBitmap = bitmap,
+                                    oldBackgroundColor = neutralPaletteForMode(oldMode).background,
+                                    targetIsDark = triggerReq.targetPref == "dark",
+                                    token = ++themeTransitionSeq
+                                )
+                                settingsDataStore.setTheme(triggerReq.targetPref)
+                            } finally {
+                                themeTransitionCapturePending = false
+                            }
                         }
                     }
                 }
@@ -552,7 +573,12 @@ class MainActivity : ComponentActivity() {
             AsmrPlayerTheme(mode = mode, hue = globalHue) {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var contentReady by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.fillMaxSize()) {
+                OledBurnInProtectionBox(
+                    backgroundColor = AsmrTheme.colorScheme.background,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .calmVerticalFling()
+                ) {
                     val visibleMessagesSnapshot = visibleMessages.toList()
                     MainContainer(
                         windowSizeClass = windowSizeClass,
@@ -566,15 +592,18 @@ class MainActivity : ComponentActivity() {
                         onShowQueue = { overlaySheet = OverlaySheet.Queue },
                         onShowSleepTimer = { overlaySheet = OverlaySheet.SleepTimer },
                         onContentReady = { contentReady = true },
-                        visibleMessages = visibleMessagesSnapshot,
                         showMiniPlayerBar = showMiniPlayerBar,
                         coverBackgroundEnabled = coverBackgroundEnabled,
                         coverBackgroundClarity = coverBackgroundClarity,
                         coverPreviewMode = coverPreviewMode,
+                        nowPlayingHomeLayoutMode = nowPlayingHomeLayoutMode,
+                        nowPlayingHomeLayoutHintDismissed = nowPlayingHomeLayoutHintDismissed,
+                        nowPlayingLyricsSettings = nowPlayingLyricsSettings,
                         lyricsPageSettings = lyricsPageSettings,
                         forceImmersive = showSplash,
                         volumeKeyEventTick = volumeKeyTick
                     )
+                    NonTouchableAppMessageOverlay(messages = visibleMessagesSnapshot)
 
                     if (showSplash) {
                         EaraSplashOverlay(
@@ -586,6 +615,11 @@ class MainActivity : ComponentActivity() {
                     val overlayConfiguration = LocalConfiguration.current
                     val activeOverlaySheet = overlaySheet
                     if (activeOverlaySheet != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.32f))
+                        )
                         val sheetMaxHeight = overlayConfiguration.screenHeightDp.dp * 3 / 4
                         key(
                             activeOverlaySheet,
@@ -597,12 +631,15 @@ class MainActivity : ComponentActivity() {
                                 onDismissRequest = { overlaySheet = null },
                                 sheetState = sheetState,
                                 containerColor = MaterialTheme.colorScheme.background,
-                                contentColor = MaterialTheme.colorScheme.onBackground
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                                scrimColor = Color.Transparent,
+                                windowInsets = WindowInsets(0, 0, 0, 0)
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(max = sheetMaxHeight)
+                                        .windowInsetsPadding(StableWindowInsets.navigationBars)
                                 ) {
                                     when (activeOverlaySheet) {
                                         OverlaySheet.Queue -> QueueSheetContent(
@@ -630,6 +667,7 @@ class MainActivity : ComponentActivity() {
                         val currentToken = request.token
                         ThemeCircularRevealOverlay(
                             request = request,
+                            targetReady = mode.isDark == request.targetIsDark,
                             onAnimationEnd = {
                                 if (themeTransition?.token == currentToken) {
                                     themeTransition = null

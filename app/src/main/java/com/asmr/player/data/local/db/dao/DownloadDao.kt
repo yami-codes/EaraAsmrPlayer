@@ -15,6 +15,42 @@ interface DownloadDao {
     @Query("SELECT * FROM download_tasks ORDER BY createdAt DESC")
     fun observeTasksWithItems(): Flow<List<DownloadTaskWithItems>>
 
+    @Query("SELECT * FROM download_tasks ORDER BY createdAt DESC")
+    suspend fun getAllTasksOnce(): List<DownloadTaskEntity>
+
+    @Query(
+        """
+        SELECT d.id AS taskId,
+               a.coverUrl AS coverUrl,
+               a.coverPath AS coverPath,
+               a.coverThumbPath AS coverThumbPath
+        FROM download_tasks d
+        INNER JOIN albums a ON
+            (
+                TRIM(d.albumRjCode) != '' AND
+                (
+                    a.rjCode = TRIM(d.albumRjCode) COLLATE NOCASE OR
+                    a.workId = TRIM(d.albumRjCode) COLLATE NOCASE
+                )
+            ) OR (
+                TRIM(d.albumWorkId) != '' AND
+                (
+                    a.rjCode = TRIM(d.albumWorkId) COLLATE NOCASE OR
+                    a.workId = TRIM(d.albumWorkId) COLLATE NOCASE
+                )
+            ) OR (
+                TRIM(d.albumRjCode) = '' AND
+                TRIM(d.albumWorkId) = '' AND
+                (
+                    a.rjCode = TRIM(d.title) COLLATE NOCASE OR
+                    a.workId = TRIM(d.title) COLLATE NOCASE
+                )
+            )
+        ORDER BY a.id DESC
+        """
+    )
+    fun observeTaskAlbumCovers(): Flow<List<DownloadTaskAlbumCoverRow>>
+
     @Query("SELECT * FROM download_tasks WHERE id = :taskId LIMIT 1")
     suspend fun getTaskById(taskId: Long): DownloadTaskEntity?
 
@@ -63,6 +99,12 @@ interface DownloadDao {
 
     @Query("SELECT * FROM download_items WHERE filePath = :filePath LIMIT 1")
     suspend fun getItemByFilePath(filePath: String): DownloadItemEntity?
+
+    @Query("SELECT * FROM download_items WHERE taskId = :taskId AND relativePath = :relativePath LIMIT 1")
+    suspend fun getItemByTaskAndRelativePath(taskId: Long, relativePath: String): DownloadItemEntity?
+
+    @Query("UPDATE download_items SET filePath = :filePath, targetDir = :targetDir, updatedAt = :updatedAt WHERE workId = :workId")
+    suspend fun updateItemDestination(workId: String, filePath: String, targetDir: String, updatedAt: Long)
 
     @Query(
         "SELECT * FROM download_items " +
@@ -136,9 +178,22 @@ interface DownloadDao {
     @Query("SELECT * FROM download_items WHERE state = 'PAUSED' OR state IN ('RUNNING', 'ENQUEUED', 'BLOCKED', 'QUEUED')")
     suspend fun getAllActiveOrPausedItems(): List<DownloadItemEntity>
 
+    @Query("SELECT COUNT(*) FROM download_items WHERE state = 'PAUSED' OR state IN ('RUNNING', 'ENQUEUED', 'BLOCKED', 'QUEUED')")
+    suspend fun countRecoverableItems(): Int
+
     @Query("SELECT COUNT(*) FROM download_items WHERE state IN ('RUNNING', 'ENQUEUED', 'BLOCKED')")
     suspend fun countActiveItems(): Int
 
     @Query("SELECT COUNT(*) FROM download_items WHERE state = 'PAUSED'")
     suspend fun countPausedItems(): Int
+
+    @Query("SELECT COUNT(*) FROM download_items WHERE state != 'SUCCEEDED'")
+    suspend fun countUnfinishedItems(): Int
 }
+
+data class DownloadTaskAlbumCoverRow(
+    val taskId: Long,
+    val coverUrl: String,
+    val coverPath: String,
+    val coverThumbPath: String
+)

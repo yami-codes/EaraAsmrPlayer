@@ -18,6 +18,7 @@ enum class SearchCollectedSortOption(
     val backendSort: String
 ) {
     ReleaseNew(R.string.search_sort_release_new, "release"),
+    CollectedNew(R.string.search_sort_collected_new, "create_date"),
     RatingHigh(R.string.search_sort_rating_high, "rating");
 
     companion object {
