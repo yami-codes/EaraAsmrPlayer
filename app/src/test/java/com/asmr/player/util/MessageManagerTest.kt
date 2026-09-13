@@ -1,11 +1,18 @@
 package com.asmr.player.util
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class MessageManagerTest {
+
+    private val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
     fun errorFormatter_preservesActionableSubtitleFailureDetails() {
@@ -30,7 +37,7 @@ class MessageManagerTest {
 
     @Test
     fun tryConsume_allowsEachMessageOnlyOnce() {
-        val manager = MessageManager()
+        val manager = MessageManager(context)
 
         assertTrue(manager.tryConsume(1L))
         assertFalse(manager.tryConsume(1L))

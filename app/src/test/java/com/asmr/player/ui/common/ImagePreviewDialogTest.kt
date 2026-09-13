@@ -1,6 +1,8 @@
 package com.asmr.player.ui.common
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
+import androidx.test.core.app.ApplicationProvider
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,6 +34,8 @@ class ImagePreviewDialogTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+
     @Test
     fun singleImage_hidesNavigationAndClosesFromButtonsAndOverlay() {
         var dismissCount = 0
@@ -42,7 +46,7 @@ class ImagePreviewDialogTest {
                     request = ImagePreviewRequest(
                         items = listOf(sampleItem("a"))
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = { dismissCount++ },
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())
@@ -71,7 +75,7 @@ class ImagePreviewDialogTest {
                         items = listOf(sampleItem("a"), sampleItem("b")),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())
@@ -109,7 +113,7 @@ class ImagePreviewDialogTest {
                         items = listOf(sampleItem("a"), sampleItem("b")),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { item, _, onStateChange ->
                         LaunchedEffect(item.key) {
@@ -140,7 +144,7 @@ class ImagePreviewDialogTest {
                         ),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())

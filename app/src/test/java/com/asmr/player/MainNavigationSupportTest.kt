@@ -1,10 +1,12 @@
 package com.asmr.player
 
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.test.core.app.ApplicationProvider
 import com.asmr.player.data.local.db.entities.PlaylistItemEntity
 import com.asmr.player.ui.nav.bottomChromeNavItems
 import com.asmr.player.ui.nav.isPrimaryRoute
@@ -246,12 +248,13 @@ class MainNavigationSupportTest {
 
     @Test
     fun bottomChromeNavItems_useListeningCalendarAsPrimaryEntry() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val items = bottomChromeNavItems()
         val routes = items.map { it.route }
 
-        assertEquals("ASMR 看板", items[items.lastIndex - 1].label)
+        assertEquals(context.getString(R.string.nav_listening_calendar), context.getString(items[items.lastIndex - 1].labelRes))
         assertEquals("listening_calendar", items[items.lastIndex - 1].route)
-        assertEquals("设置", items.last().label)
+        assertEquals(context.getString(R.string.nav_settings), context.getString(items.last().labelRes))
         assertEquals("settings", items.last().route)
         assertEquals(true, routes.contains("listening_calendar"))
         assertEquals(false, routes.contains("dlsite_login"))

@@ -196,10 +196,10 @@ class SearchScreenChromeTest {
         composeRule.onNodeWithTag(
             "${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${SearchFilterOption.ChineseTranslated.name}"
         ).assertExists()
-        composeRule.onNodeWithText("已购").assertExists()
-        composeRule.onNodeWithText("预售").assertExists()
-        composeRule.onNodeWithText("已收录").assertExists()
-        composeRule.onNodeWithText("全部作品").assertExists()
+        composeRule.onNodeWithText("Purchased").assertExists()
+        composeRule.onNodeWithText("Pre-order").assertExists()
+        composeRule.onNodeWithText("Included").assertExists()
+        composeRule.onNodeWithText("All works").assertExists()
         composeRule.onNodeWithTag(
             "${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${SearchFilterOption.Standard.name}"
         ).assertExists()
@@ -262,8 +262,8 @@ class SearchScreenChromeTest {
         composeRule.onNodeWithTag(
             "${SEARCH_COLLECTED_SORT_OPTION_TAG_PREFIX}_${SearchCollectedSortOption.ReleaseNew.name}"
         ).assertExists()
-        composeRule.onNodeWithText("最新收录").assertExists()
-        composeRule.onNodeWithText("评分最高").assertExists()
+        composeRule.onNodeWithText("Recently collected").assertExists()
+        composeRule.onNodeWithText("Highest rating").assertExists()
         composeRule.onNodeWithTag("${SEARCH_COLLECTED_SORT_OPTION_TAG_PREFIX}_${SearchCollectedSortOption.ReleaseNew.name}").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)
         )
@@ -271,7 +271,7 @@ class SearchScreenChromeTest {
             SemanticsMatcher.expectValue(SemanticsProperties.Selected, false)
         )
         composeRule.onAllNodesWithText("时长最长").assertCountEquals(0)
-        composeRule.onNodeWithText("最新收录").performClick()
+        composeRule.onNodeWithText("Recently collected").performClick()
 
         composeRule.runOnIdle {
             assertEquals(SearchCollectedSortOption.CollectedNew, selectedSort)
@@ -305,8 +305,8 @@ class SearchScreenChromeTest {
         }
 
         composeRule.onNodeWithTag(SEARCH_SCOPE_BUTTON_TAG).performClick()
-        composeRule.onNodeWithText("有字幕").assertExists()
-        composeRule.onNodeWithText("全年龄").assertExists()
+        composeRule.onNodeWithText("With subtitles").assertExists()
+        composeRule.onNodeWithText("All ages").assertExists()
         composeRule.onAllNodesWithText("带字幕作品").assertCountEquals(0)
         composeRule.onAllNodesWithText("全年龄（含 R15）").assertCountEquals(0)
         composeRule.onNodeWithTag(SEARCH_HAS_SUBTITLE_OPTION_TAG).performClick()

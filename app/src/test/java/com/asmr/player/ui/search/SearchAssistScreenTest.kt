@@ -298,11 +298,11 @@ class SearchAssistScreenTest {
         }
 
         composeRule.onNodeWithTag(SEARCH_ASSIST_HISTORY_CLEAR_TAG).performClick()
-        composeRule.onNodeWithText("是否清空历史搜索记录？").assertExists()
+        composeRule.onNodeWithText("Clear search history?").assertExists()
         composeRule.runOnIdle {
             assertEquals(0, clearHistoryCount)
         }
-        composeRule.onNodeWithText("清空").performClick()
+        composeRule.onNodeWithText("Clear").performClick()
         composeRule.onNodeWithText("猜你喜欢").assertExists()
         composeRule.onNodeWithText("CV A").assertExists()
         composeRule.onAllNodesWithText("Circle A").assertCountEquals(0)

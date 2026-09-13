@@ -58,16 +58,16 @@ class CloudSyncSelectionDialogTest {
         composeRule.onNodeWithTag(CLOUD_SYNC_SELECTION_DIALOG_TAG).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.TestTag, CLOUD_SYNC_SELECTION_DIALOG_TAG)
         )
-        composeRule.onNodeWithText("云同步候选：4 个疑似结果(点击对应作品以确认同步)").assert(existsMatcher)
+        composeRule.onNodeWithText("Cloud sync candidates: 4 possible matches (tap the matching work to confirm sync)").assert(existsMatcher)
         composeRule.onNodeWithText("Album A").assert(existsMatcher)
         composeRule.onNodeWithTag(CLOUD_SYNC_SELECTION_PROGRESS_TAG).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.TestTag, CLOUD_SYNC_SELECTION_PROGRESS_TAG)
         )
-        composeRule.onNodeWithText("待确认 2 / 5").assert(existsMatcher)
+        composeRule.onNodeWithText("Pending confirmation 2 / 5").assert(existsMatcher)
         composeRule.onNodeWithText("Candidate One").assert(existsMatcher)
         composeRule.onNodeWithText("CV A").assert(existsMatcher)
-        composeRule.onNodeWithText("忽略全部").assert(existsMatcher)
-        composeRule.onNodeWithText("取消当前").assert(existsMatcher)
+        composeRule.onNodeWithText("Ignore all").assert(existsMatcher)
+        composeRule.onNodeWithText("Cancel current").assert(existsMatcher)
         assertTrue(composeRule.onAllNodesWithText("RJ000111").fetchSemanticsNodes().isEmpty())
         composeRule.onNodeWithTag(CLOUD_SYNC_SELECTION_LIST_TAG)
             .assertHeightIsEqualTo(CLOUD_SYNC_SELECTION_LIST_HEIGHT)
@@ -118,8 +118,8 @@ class CloudSyncSelectionDialogTest {
             }
         }
 
-        assertTrue(composeRule.onAllNodesWithText("忽略全部").fetchSemanticsNodes().isEmpty())
-        composeRule.onNodeWithText("取消").assert(existsMatcher)
+        assertTrue(composeRule.onAllNodesWithText("Ignore all").fetchSemanticsNodes().isEmpty())
+        composeRule.onNodeWithText("Cancel").assert(existsMatcher)
     }
 
     @Test
@@ -164,9 +164,9 @@ class CloudSyncSelectionDialogTest {
         composeRule.runOnIdle { assertEquals(1, selectionCount) }
         composeRule.onNodeWithText("Album B").assert(existsMatcher)
         composeRule.onNodeWithText("Candidate Two").assert(existsMatcher)
-        composeRule.onNodeWithText("待确认 2 / 2").assert(existsMatcher)
+        composeRule.onNodeWithText("Pending confirmation 2 / 2").assert(existsMatcher)
 
-        composeRule.onNodeWithText("取消当前").performClick()
+        composeRule.onNodeWithText("Cancel current").performClick()
         assertTrue(composeRule.onAllNodesWithTag(CLOUD_SYNC_SELECTION_DIALOG_TAG).fetchSemanticsNodes().isEmpty())
     }
 
