@@ -16,13 +16,22 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.util.MessageManager
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28])
 class ImagePreviewDialogTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @get:Rule
     val composeRule = createComposeRule()
@@ -37,7 +46,7 @@ class ImagePreviewDialogTest {
                     request = ImagePreviewRequest(
                         items = listOf(sampleItem("a"))
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = { dismissCount++ },
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())
@@ -65,7 +74,7 @@ class ImagePreviewDialogTest {
                         items = listOf(sampleItem("a"), sampleItem("b")),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())
@@ -103,7 +112,7 @@ class ImagePreviewDialogTest {
                         items = listOf(sampleItem("a"), sampleItem("b")),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { item, _, onStateChange ->
                         LaunchedEffect(item.key) {
@@ -134,7 +143,7 @@ class ImagePreviewDialogTest {
                         ),
                         initialIndex = 0
                     ),
-                    messageManager = MessageManager(),
+                    messageManager = MessageManager(context),
                     onDismiss = {},
                     pageContent = { _, _, _ ->
                         Box(modifier = androidx.compose.ui.Modifier.fillMaxSize())

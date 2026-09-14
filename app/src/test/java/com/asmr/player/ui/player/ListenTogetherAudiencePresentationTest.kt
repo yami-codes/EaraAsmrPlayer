@@ -7,11 +7,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ListenTogetherAudiencePresentationTest {
+    private val unsupportedLabel = "Unsupported"
 
     @Test
     fun disabledStateHidesAudienceLine() {
         val presentation = resolveListenTogetherAudiencePresentation(
-            ListenTogetherUiState()
+            ListenTogetherUiState(),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertNull(presentation)
@@ -24,7 +26,8 @@ class ListenTogetherAudiencePresentationTest {
                 available = true,
                 listenerCount = 5,
                 status = ListenTogetherStatus.Ready
-            )
+            ),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertEquals(
@@ -40,7 +43,8 @@ class ListenTogetherAudiencePresentationTest {
                 available = true,
                 listenerCount = 1,
                 status = ListenTogetherStatus.Ready
-            )
+            ),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertEquals(
@@ -55,7 +59,8 @@ class ListenTogetherAudiencePresentationTest {
             ListenTogetherUiState(
                 available = false,
                 status = ListenTogetherStatus.Preparing
-            )
+            ),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertNull(presentation)
@@ -67,7 +72,8 @@ class ListenTogetherAudiencePresentationTest {
             ListenTogetherUiState(
                 available = true,
                 status = ListenTogetherStatus.Error
-            )
+            ),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertEquals(
@@ -82,7 +88,8 @@ class ListenTogetherAudiencePresentationTest {
             ListenTogetherUiState(
                 available = true,
                 status = ListenTogetherStatus.BackendUnavailable
-            )
+            ),
+            unsupportedLabel = unsupportedLabel
         )
 
         assertEquals(
