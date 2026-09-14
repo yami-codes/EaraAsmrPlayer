@@ -99,4 +99,18 @@ object SettingsKeys {
     val DEEPSEEK_THINKING_ENABLED = booleanPreferencesKey("deepseek_thinking_enabled")
     val DEEPSEEK_REASONING_EFFORT = stringPreferencesKey("deepseek_reasoning_effort")
     val DEEPSEEK_FINAL_POLISH_ENABLED = booleanPreferencesKey("deepseek_final_polish_enabled")
+
+    val LLM_TRANSLATION_ENABLED = booleanPreferencesKey("llm_translation_enabled")
+    val LLM_API_ENDPOINT = stringPreferencesKey("llm_api_endpoint")
+    val LLM_MODEL = stringPreferencesKey("llm_model")
+    val LLM_LITE_MODEL = stringPreferencesKey("llm_lite_model")
+    val LLM_TARGET_LANGUAGE = stringPreferencesKey("llm_target_language")
+    val LLM_SYSTEM_PROMPT = stringPreferencesKey("llm_system_prompt")
+    val LLM_JAILBREAK_PROMPT = stringPreferencesKey("llm_jailbreak_prompt")
+    val LLM_JAILBREAK_AUTO = booleanPreferencesKey("llm_jailbreak_auto")
+    val LLM_BATCH_SPLIT_MODE = stringPreferencesKey("llm_batch_split_mode")
+    val LLM_MANUAL_BATCH_SIZE = intPreferencesKey("llm_manual_batch_size")
+    val LLM_TRANSLATE_RETRY_COUNT = intPreferencesKey("llm_translate_retry_count")
+    val LLM_STREAMING_ENABLED = booleanPreferencesKey("llm_streaming_enabled")
+    val LLM_SUBTITLE_DISPLAY_MODE = stringPreferencesKey("llm_subtitle_display_mode")
 }

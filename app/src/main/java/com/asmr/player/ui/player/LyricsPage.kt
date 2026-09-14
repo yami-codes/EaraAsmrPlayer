@@ -13,14 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -54,6 +59,7 @@ internal fun LyricsPage(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playback by playerViewModel.playback.collectAsStateWithLifecycle()
+    var showSubtitleMenu by remember { mutableStateOf(false) }
     val position = playback.positionMs
     val colorScheme = AsmrTheme.colorScheme
     val artwork = playback.currentMediaItem?.mediaMetadata?.artworkUri
@@ -138,6 +144,41 @@ internal fun LyricsPage(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                Box {
+                    IconButton(onClick = { showSubtitleMenu = true }) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showSubtitleMenu,
+                        onDismissRequest = { showSubtitleMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.llm_translate_now)) },
+                            onClick = {
+                                showSubtitleMenu = false
+                                viewModel.translateSubtitlesNow()
+                            },
+                            enabled = uiState.lyrics.isNotEmpty() && !uiState.isTranslating
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.llm_show_original)) },
+                            onClick = {
+                                showSubtitleMenu = false
+                                viewModel.restoreOriginalSubtitles()
+                            },
+                            enabled = uiState.isLlmTranslated
+                        )
+                    }
+                }
+            }
+
+            if (uiState.isTranslating) {
+                Text(
+                    text = stringResource(R.string.llm_translating),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.textSecondary
+                )
             }
 
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -155,7 +196,12 @@ internal fun LyricsPage(
                     isLandscape = isLandscape,
                     settings = lyricsPageSettings,
                     contentKey = uiState.contentKey,
-                    contentVisible = !uiState.isLoading
+                    contentVisible = !uiState.isLoading,
+                    secondaryTexts = if (uiState.showDualSubtitles) {
+                        uiState.lyrics.indices.map { index -> viewModel.originalTextAt(index) }
+                    } else {
+                        null
+                    }
                 )
             }
         }

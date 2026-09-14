@@ -314,6 +314,12 @@ fun SettingsScreen(
         },
     )
     var pendingRemoveRoot by remember { mutableStateOf<String?>(null) }
+    var showLlmSettings by rememberSaveable { mutableStateOf(false) }
+
+    if (showLlmSettings) {
+        LlmTranslationSettingsScreen(onBack = { showLlmSettings = false })
+        return
+    }
 
     // 屏幕尺寸判断
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -981,6 +987,26 @@ fun SettingsScreen(
                 if (currentSection == SettingsSection.Translation) {
                     item(key = "group:translation_config") {
                         SettingsDetailCard {
+                        val llmSettings by viewModel.llmSettings.collectAsStateWhileActive(translationDataActive)
+                        Text(
+                            stringResource(R.string.llm_translation_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            stringResource(R.string.llm_translation_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                        SettingsToggleRow(
+                            text = stringResource(R.string.llm_translation_enabled),
+                            checked = llmSettings.translationEnabled,
+                            onCheckedChange = viewModel::setLlmTranslationEnabled
+                        )
+                        TextButton(onClick = { showLlmSettings = true }) {
+                            Text(stringResource(R.string.llm_translation_configure))
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                         SubtitleModelSettingsSection(
                             state = subtitleModelState,
                             selectedSourceIds = subtitleModelSourceIds,
