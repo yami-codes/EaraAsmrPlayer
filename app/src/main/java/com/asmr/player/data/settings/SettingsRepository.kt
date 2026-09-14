@@ -6,6 +6,13 @@ import androidx.datastore.preferences.core.Preferences
 import com.asmr.player.cache.AppCacheLimits
 import com.asmr.player.playback.AppVolume
 import com.asmr.player.hotlistening.HotListeningSortMode
+import com.asmr.player.data.llm.LlmBatchPlanner
+import com.asmr.player.data.llm.LlmBatchSplitMode
+import com.asmr.player.data.llm.LlmDefaults
+import com.asmr.player.data.llm.LlmSettings
+import com.asmr.player.data.llm.LlmSubtitleDisplayMode
+import com.asmr.player.data.llm.LlmSubtitleTargetLanguage
+import com.asmr.player.i18n.AppLanguage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -256,6 +263,10 @@ class SettingsRepository private constructor(
             )
         }
 
+    val llmSettings: Flow<LlmSettings> = context.settingsDataStore.data.map { prefs ->
+        decodeLlmSettings(prefs)
+    }
+
     suspend fun loadPlaybackRuntimeSettings(): PlaybackRuntimeSettings {
         return withContext(Dispatchers.IO) {
             val prefs = context.settingsDataStore.data.first()
@@ -360,6 +371,40 @@ class SettingsRepository private constructor(
     suspend fun setDeepSeekFinalPolishEnabled(enabled: Boolean) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun getAppLanguage(): AppLanguage = withContext(Dispatchers.IO) {
+        AppLanguage.fromWireValue(context.settingsDataStore.data.first()[SettingsKeys.APP_LANGUAGE])
+    }
+
+    suspend fun getLlmSettings(): LlmSettings = withContext(Dispatchers.IO) {
+        decodeLlmSettings(context.settingsDataStore.data.first())
+    }
+
+    suspend fun updateLlmSettings(settings: LlmSettings) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { prefs ->
+                prefs[SettingsKeys.LLM_TRANSLATION_ENABLED] = settings.translationEnabled
+                prefs[SettingsKeys.LLM_API_ENDPOINT] = settings.apiEndpoint
+                prefs[SettingsKeys.LLM_MODEL] = settings.mainModel
+                prefs[SettingsKeys.LLM_LITE_MODEL] = settings.liteModel
+                prefs[SettingsKeys.LLM_TARGET_LANGUAGE] = settings.targetLanguage.wireValue
+                prefs[SettingsKeys.LLM_SYSTEM_PROMPT] = settings.systemPromptOverride
+                prefs[SettingsKeys.LLM_JAILBREAK_PROMPT] = settings.jailbreakPrompt
+                prefs[SettingsKeys.LLM_JAILBREAK_AUTO] = settings.jailbreakAuto
+                prefs[SettingsKeys.LLM_BATCH_SPLIT_MODE] = settings.batchSplitMode.wireValue
+                prefs[SettingsKeys.LLM_MANUAL_BATCH_SIZE] = settings.manualBatchSize
+                prefs[SettingsKeys.LLM_TRANSLATE_RETRY_COUNT] = settings.translateRetryCount
+                prefs[SettingsKeys.LLM_STREAMING_ENABLED] = settings.streamingEnabled
+                prefs[SettingsKeys.LLM_SUBTITLE_DISPLAY_MODE] = settings.subtitleDisplayMode.wireValue
+            }
+        }
+    }
+
+    suspend fun setLlmTranslationEnabled(enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.LLM_TRANSLATION_ENABLED] = enabled }
         }
     }
 
@@ -657,6 +702,26 @@ class SettingsRepository private constructor(
         synchronized(systemVolumeSyncLock) {
             pendingSystemVolumeSyncPercent = null
         }
+    }
+
+    private fun decodeLlmSettings(
+        prefs: androidx.datastore.preferences.core.Preferences
+    ): LlmSettings {
+        return LlmSettings(
+            translationEnabled = prefs[SettingsKeys.LLM_TRANSLATION_ENABLED] ?: false,
+            apiEndpoint = prefs[SettingsKeys.LLM_API_ENDPOINT] ?: LlmDefaults.OPEN_ROUTER_ENDPOINT,
+            mainModel = prefs[SettingsKeys.LLM_MODEL] ?: LlmDefaults.OPEN_ROUTER_MAIN_MODEL,
+            liteModel = prefs[SettingsKeys.LLM_LITE_MODEL] ?: LlmDefaults.OPEN_ROUTER_LITE_MODEL,
+            targetLanguage = LlmSubtitleTargetLanguage.fromWireValue(prefs[SettingsKeys.LLM_TARGET_LANGUAGE]),
+            systemPromptOverride = prefs[SettingsKeys.LLM_SYSTEM_PROMPT] ?: "",
+            jailbreakPrompt = prefs[SettingsKeys.LLM_JAILBREAK_PROMPT] ?: "",
+            jailbreakAuto = prefs[SettingsKeys.LLM_JAILBREAK_AUTO] ?: true,
+            batchSplitMode = LlmBatchSplitMode.fromWireValue(prefs[SettingsKeys.LLM_BATCH_SPLIT_MODE]),
+            manualBatchSize = prefs[SettingsKeys.LLM_MANUAL_BATCH_SIZE] ?: LlmBatchPlanner.DEFAULT_MANUAL_BATCH_SIZE,
+            translateRetryCount = prefs[SettingsKeys.LLM_TRANSLATE_RETRY_COUNT] ?: LlmDefaults.DEFAULT_RETRY_COUNT,
+            streamingEnabled = prefs[SettingsKeys.LLM_STREAMING_ENABLED] ?: true,
+            subtitleDisplayMode = LlmSubtitleDisplayMode.fromWireValue(prefs[SettingsKeys.LLM_SUBTITLE_DISPLAY_MODE])
+        )
     }
 
 }

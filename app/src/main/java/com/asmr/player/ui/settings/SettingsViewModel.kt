@@ -24,6 +24,7 @@ import com.asmr.player.data.settings.FloatingLyricsSettings
 import com.asmr.player.data.settings.LyricsPageSettings
 import com.asmr.player.data.settings.NetworkRouteSettings
 import com.asmr.player.data.settings.NowPlayingLyricsSettings
+import com.asmr.player.data.llm.LlmSettings
 import com.asmr.player.data.settings.SettingsRepository
 import com.asmr.player.subtitle.SubtitleModelDownloadSource
 import com.asmr.player.subtitle.SubtitleModelRepository
@@ -207,6 +208,9 @@ class SettingsViewModel @Inject constructor(
     val showMiniPlayerBar: StateFlow<Boolean> = settingsRepository.showMiniPlayerBar
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val llmSettings: StateFlow<LlmSettings> = settingsRepository.llmSettings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LlmSettings())
+
     val searchBlockedKeywords: StateFlow<List<String>> = settingsRepository.searchBlockedKeywords
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -269,6 +273,12 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: String) {
         viewModelScope.launch { settingsDataStore.setTheme(mode) }
+    }
+
+    fun setLlmTranslationEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setLlmTranslationEnabled(enabled)
+        }
     }
 
     fun setStaticHueArgb(argb: Int?) {

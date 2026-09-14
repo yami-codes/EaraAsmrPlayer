@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -152,7 +153,8 @@ internal fun AppleLyricsView(
     itemInnerHorizontalPadding: Dp = if (isLandscape) 8.dp else 10.dp,
     contentKey: String? = null,
     contentVisible: Boolean = true,
-    expandedHomeVisualEffects: Boolean = false
+    expandedHomeVisualEffects: Boolean = false,
+    secondaryTexts: List<String?>? = null
 ) {
     var displayedLyrics by remember { mutableStateOf(lyrics) }
     var displayedContentKey by remember { mutableStateOf(contentKey) }
@@ -610,23 +612,44 @@ internal fun AppleLyricsView(
                             .padding(horizontal = itemInnerHorizontalPadding, vertical = itemInnerVerticalPadding)
                     ) {
                         val shadowColor = remember(color) { lyricShadowColor(color) }
-                        LyricLineText(
-                            text = entry.text,
-                            color = color,
-                            shadowColor = shadowColor,
-                            strokeWidthPx = strokeWidthPx,
-                            dispersionProgress = focusEffect.dispersionProgress,
-                            dispersionOffsetX = focusEffect.dispersionOffsetXDp.dp,
-                            dispersionOffsetY = focusEffect.dispersionOffsetYDp.dp,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium,
-                                fontSize = fontSize,
-                                lineHeight = wrappedLineHeight,
-                                textAlign = textAlign,
-                                shadow = shadow
-                            ),
-                            textAlign = textAlign
-                        )
+                        val secondary = secondaryTexts?.getOrNull(index)?.takeIf { it.isNotBlank() }
+                        Column {
+                            if (secondary != null) {
+                                LyricLineText(
+                                    text = secondary,
+                                    color = colors.inactiveText,
+                                    shadowColor = shadowColor,
+                                    strokeWidthPx = strokeWidthPx,
+                                    dispersionProgress = focusEffect.dispersionProgress,
+                                    dispersionOffsetX = focusEffect.dispersionOffsetXDp.dp,
+                                    dispersionOffsetY = focusEffect.dispersionOffsetYDp.dp,
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = (settings.fontSizeSp * 0.85f).sp,
+                                        lineHeight = (settings.fontSizeSp * 1.0f).sp,
+                                        textAlign = textAlign
+                                    ),
+                                    textAlign = textAlign
+                                )
+                            }
+                            LyricLineText(
+                                text = entry.text,
+                                color = color,
+                                shadowColor = shadowColor,
+                                strokeWidthPx = strokeWidthPx,
+                                dispersionProgress = focusEffect.dispersionProgress,
+                                dispersionOffsetX = focusEffect.dispersionOffsetXDp.dp,
+                                dispersionOffsetY = focusEffect.dispersionOffsetYDp.dp,
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium,
+                                    fontSize = fontSize,
+                                    lineHeight = wrappedLineHeight,
+                                    textAlign = textAlign,
+                                    shadow = shadow
+                                ),
+                                textAlign = textAlign
+                            )
+                        }
                     }
                 }
             }
