@@ -92,7 +92,8 @@ class LyricsViewModel @Inject constructor(
         if (result.lyrics.isEmpty()) return
         if (!settings.translationEnabled) return
 
-        maybeAutoTranslate(item, result.lyrics, result.title, settings, epoch)
+        val mediaItem = item ?: return
+        maybeAutoTranslate(mediaItem, result.lyrics, result.title, settings, epoch)
     }
 
     private fun maybeAutoTranslate(
