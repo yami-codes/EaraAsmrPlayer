@@ -746,4 +746,79 @@
     <string name="works_blocked" formatted="false">%1$s ผลงานถูกบล็อก</string>
     <string name="you_need_log">คุณต้องเข้าสู่ระบบ DLsite ก่อน จึงจะใช้การเล่น/ดาวน์โหลดที่ซื้อแล้วได้</string>
     <string name="you_tap_play">เมื่อแตะเล่น ระดับเสียงจะค่อยๆ เพิ่มจากเบาไปเป็นปกติอย่างนุ่มนวลภายในระยะเวลาที่กำหนด</string>
+
+    <string name="settings_translation_title">การแปล</string>
+    <string name="deepseek_account_summary" formatted="false">Token %1$s · ยอดคงเหลือ %2$s</string>
+    <string name="deepseek_api_key_placeholder">API Key (sk-…)</string>
+    <string name="deepseek_api_key_configured_cd">ตั้งค่า API Key แล้ว</string>
+    <string name="deepseek_save_key">บันทึก</string>
+    <string name="deepseek_replace_key">แทนที่</string>
+    <string name="deepseek_api_key_save_failed">บันทึก API Key ไม่สำเร็จ</string>
+    <string name="deepseek_thinking_mode">โหมดคิด</string>
+    <string name="deepseek_reasoning_effort">ระดับการคิด</string>
+    <string name="deepseek_final_polish">ขัดเกลาสุดท้าย</string>
+    <string name="deepseek_final_polish_info">หลังแปลเสร็จ สามารถปัดการ์ดผลงานในงานจัดการเพื่อขัดเกลาซับไตเติลจีนที่มีอยู่ การดำเนินการนี้ใช้ Token เพิ่มเติม</string>
+    <string name="subtitle_model_current" formatted="false">%1$s · ปัจจุบัน</string>
+    <string name="subtitle_model_status_active_installed">ใช้งานอยู่</string>
+    <string name="subtitle_model_status_active_not_installed">ปัจจุบัน (ยังไม่ติดตั้ง)</string>
+    <string name="subtitle_model_status_installed">ติดตั้งแล้ว</string>
+    <string name="subtitle_model_status_not_installed">ยังไม่ติดตั้ง</string>
+    <string name="subtitle_model_waiting_download">กำลังรอดาวน์โหลดส่วนประกอบซับไตเติล</string>
+    <string name="subtitle_model_cancel_download">ยกเลิกการดาวน์โหลด</string>
+    <string name="subtitle_model_set_current">ตั้งเป็นปัจจุบัน</string>
+    <string name="subtitle_model_delete">ลบโมเดล</string>
+    <string name="subtitle_model_device_unsupported">อุปกรณ์ไม่รองรับ</string>
+    <string name="subtitle_model_source_unavailable">แหล่งไม่พร้อมใช้งาน</string>
+    <string name="subtitle_model_other_downloading">โมเดลอื่นกำลังดาวน์โหลด</string>
+    <string name="subtitle_model_redownload">ดาวน์โหลดอีกครั้ง</string>
+    <string name="subtitle_model_download">ดาวน์โหลดโมเดล</string>
+    <string name="subtitle_model_download_start_failed">ไม่สามารถเริ่มดาวน์โหลดโมเดล</string>
+    <string name="subtitle_model_delete_confirm" formatted="false">ลบโมเดล “%1$s”? รันไทม์ส่วนกลางประมาณ 29 MiB จะถูกเก็บไว้สำหรับใช้ซ้ำเมื่อดาวน์โหลดโมเดลใดๆ ในภายหลัง</string>
+    <string name="subtitle_model_required">โปรดดาวน์โหลดโมเดลซับไตเติลญี่ปุ่นในการตั้งค่าก่อน</string>
+    <string name="subtitle_generate_and_translate">สร้างและแปลซับไตเติล</string>
+    <string name="subtitle_batch_translate">แปลแบบกลุ่ม</string>
+    <string name="subtitle_translate_selected">แปลที่เลือก</string>
+    <string name="subtitle_gen_queued">เพิ่มในคิวงานซับไตเติลแล้ว</string>
+    <string name="subtitle_gen_queued_existing">มีงานซับไตเติลที่ดำเนินการต่อได้อยู่แล้ว</string>
+    <string name="subtitle_gen_overwrite_notice">มีซับไตเติลอยู่แล้ว จะสร้างใหม่และแปลทับ</string>
+    <string name="subtitle_gen_start_failed">ไม่สามารถเริ่มสร้างซับไตเติล</string>
+    <string name="download_mgmt_downloads_tab">งานดาวน์โหลด</string>
+    <string name="download_mgmt_translations_tab">งานแปล</string>
+    <string name="no_translation_tasks">ยังไม่มีงานแปล</string>
+    <string name="unknown_work_id">รหัสผลงานไม่ทราบ</string>
+    <string name="local_subtitle">ซับไตเติลในเครื่อง</string>
+    <string name="translation_polishing">กำลังขัดเกลาทั้งหมด</string>
+    <string name="translation_subtitle_count" formatted="false">%1$d ซับไตเติล</string>
+    <string name="translation_subtitle_lines" formatted="false">%1$d บรรทัดซับไตเติล</string>
+    <string name="translation_no_subtitles">ยังไม่มีซับไตเติล</string>
+    <string name="translation_polish_album">ขัดเกลาซับไตเติลผลงานนี้</string>
+    <string name="translation_delete_all_subtitles">ลบซับไตเติลทั้งหมดของผลงานนี้</string>
+    <string name="translation_progress_confirmed" formatted="false">ยืนยันแล้ว %1$d/%2$d</string>
+    <string name="delete_subtitle_confirm" formatted="false">ลบซับไตเติล “%1$s”? จะไม่แสดงอีกระหว่างเล่น</string>
+    <string name="delete_subtitle_group_confirm" formatted="false">ลบ %2$d ซับไตเติลภายใต้ “%1$s”? จะไม่แสดงอีกระหว่างเล่น</string>
+    <string name="subtitle_delete_cancel_active_first">ยกเลิกงานซับไตเติลที่กำลังทำอยู่ก่อน ลบอีกครั้งหลังล้างข้อมูลเสร็จ</string>
+    <string name="subtitle_delete_failed">ลบซับไตเติลไม่สำเร็จ</string>
+    <string name="subtitle_deleted_count" formatted="false">ลบ %1$d ซับไตเติลแล้ว</string>
+    <string name="subtitle_translation_reuse_existing">มีงานแปลที่ดำเนินการต่อได้อยู่แล้ว</string>
+    <string name="subtitle_translation_queued">เพิ่มในคิวแปลทั่วทั้งแอปแล้ว</string>
+    <string name="subtitle_translation_retry_failed">ไม่สามารถแปลซับไตเติลใหม่</string>
+    <string name="subtitle_polish_album_not_found">ไม่พบผลงาน ไม่สามารถขัดเกลา</string>
+    <string name="subtitle_task_retry_failed">ไม่สามารถลองงานซับไตเติลใหม่</string>
+    <string name="subtitle_task_pause">หยุดงานซับไตเติลชั่วคราว</string>
+    <string name="subtitle_task_resume">ดำเนินงานซับไตเติลต่อ</string>
+    <string name="subtitle_task_cancel">ยกเลิกงานซับไตเติล</string>
+    <string name="subtitle_stage_queued_transcription">รอคิวถอดเสียง</string>
+    <string name="subtitle_stage_transcribing">กำลังถอดเสียง</string>
+    <string name="subtitle_stage_queued_translation">ภาษาญี่ปุ่นพร้อม รอแปล</string>
+    <string name="subtitle_stage_waiting_slot">รอช่องแปล</string>
+    <string name="subtitle_stage_waiting_network">รอเครือข่าย</string>
+    <string name="subtitle_stage_translating">AI กำลังยืนยันซับไตเติล</string>
+    <string name="subtitle_stage_retry_wait" formatted="false">รอลองใหม่ %1$d/4%2$s</string>
+    <string name="subtitle_stage_pause_requested">กำลังหยุดชั่วคราว</string>
+    <string name="subtitle_stage_paused">หยุดชั่วคราวแล้ว</string>
+    <string name="subtitle_stage_interrupted" formatted="false">หยุดทำงานผิดปกติ%1$s</string>
+    <string name="subtitle_stage_cancel_requested">กำลังยกเลิก</string>
+    <string name="subtitle_stage_failed">ล้มเหลว</string>
+    <string name="subtitle_stage_succeeded">เสร็จสมบูรณ์</string>
+    <string name="subtitle_stage_canceled">ยกเลิกแล้ว</string>
 </resources>

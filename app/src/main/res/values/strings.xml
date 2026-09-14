@@ -746,4 +746,82 @@
     <string name="works_blocked" formatted="false">%1$s works blocked</string>
     <string name="you_need_log">You need to log in to DLsite first to use purchased playback/download</string>
     <string name="you_tap_play">When you tap play, the volume will smoothly rise from low to normal over the set duration.</string>
+
+    <!-- AI subtitle / translation settings -->
+    <string name="settings_translation_title">Translation</string>
+    <string name="deepseek_account_summary" formatted="false">Token %1$s · Balance %2$s</string>
+    <string name="deepseek_api_key_placeholder">API Key (sk-…)</string>
+    <string name="deepseek_api_key_configured_cd">API Key configured</string>
+    <string name="deepseek_save_key">Save</string>
+    <string name="deepseek_replace_key">Replace</string>
+    <string name="deepseek_api_key_save_failed">Failed to save API Key</string>
+    <string name="deepseek_thinking_mode">Thinking mode</string>
+    <string name="deepseek_reasoning_effort">Reasoning effort</string>
+    <string name="deepseek_final_polish">Final polish</string>
+    <string name="deepseek_final_polish_info">After translation completes, swipe a work card in Task Manager to polish existing Chinese subtitles. This uses additional tokens.</string>
+    <string name="subtitle_model_current" formatted="false">%1$s · Current</string>
+    <string name="subtitle_model_status_active_installed">Active</string>
+    <string name="subtitle_model_status_active_not_installed">Active (not installed)</string>
+    <string name="subtitle_model_status_installed">Installed</string>
+    <string name="subtitle_model_status_not_installed">Not installed</string>
+    <string name="subtitle_model_waiting_download">Waiting to download subtitle components</string>
+    <string name="subtitle_model_cancel_download">Cancel download</string>
+    <string name="subtitle_model_set_current">Set as current</string>
+    <string name="subtitle_model_delete">Delete model</string>
+    <string name="subtitle_model_device_unsupported">Device not supported</string>
+    <string name="subtitle_model_source_unavailable">Source unavailable</string>
+    <string name="subtitle_model_other_downloading">Another model is downloading</string>
+    <string name="subtitle_model_redownload">Download again</string>
+    <string name="subtitle_model_download">Download model</string>
+    <string name="subtitle_model_download_start_failed">Unable to start model download</string>
+    <string name="subtitle_model_delete_confirm" formatted="false">Delete the “%1$s” model? About 29 MiB of shared runtime will be kept and reused when downloading any model later.</string>
+    <string name="subtitle_model_required">Download the Japanese subtitle model in Settings first</string>
+    <string name="subtitle_generate_and_translate">Generate &amp; translate subtitles</string>
+    <string name="subtitle_batch_translate">Batch translate</string>
+    <string name="subtitle_translate_selected">Translate selected</string>
+    <string name="subtitle_gen_queued">Added to subtitle task queue</string>
+    <string name="subtitle_gen_queued_existing">An existing subtitle task will continue</string>
+    <string name="subtitle_gen_overwrite_notice">Subtitles already exist; they will be regenerated and translated</string>
+    <string name="subtitle_gen_start_failed">Unable to start subtitle generation</string>
+
+    <!-- Downloads / translation task manager -->
+    <string name="download_mgmt_downloads_tab">Downloads</string>
+    <string name="download_mgmt_translations_tab">Translations</string>
+    <string name="no_translation_tasks">No translation tasks yet</string>
+    <string name="unknown_work_id">Unknown work ID</string>
+    <string name="local_subtitle">Local subtitle</string>
+    <string name="translation_polishing">Polishing all subtitles</string>
+    <string name="translation_subtitle_count" formatted="false">%1$d subtitles</string>
+    <string name="translation_subtitle_lines" formatted="false">%1$d lines</string>
+    <string name="translation_no_subtitles">No subtitles yet</string>
+    <string name="translation_polish_album">Polish album subtitles</string>
+    <string name="translation_delete_all_subtitles">Delete all subtitles for this work</string>
+    <string name="translation_progress_confirmed" formatted="false">Confirmed %1$d/%2$d</string>
+    <string name="delete_subtitle_confirm" formatted="false">Delete subtitle “%1$s”? It will no longer appear during playback.</string>
+    <string name="delete_subtitle_group_confirm" formatted="false">Delete %2$d subtitles under “%1$s”? They will no longer appear during playback.</string>
+    <string name="subtitle_delete_cancel_active_first">Canceled the active subtitle task first. Delete again after cleanup finishes.</string>
+    <string name="subtitle_delete_failed">Failed to delete subtitle</string>
+    <string name="subtitle_deleted_count" formatted="false">Deleted %1$d subtitles</string>
+    <string name="subtitle_translation_reuse_existing">An existing translation task will continue</string>
+    <string name="subtitle_translation_queued">Added to global translation queue</string>
+    <string name="subtitle_translation_retry_failed">Unable to retranslate subtitle</string>
+    <string name="subtitle_polish_album_not_found">Work not found; unable to polish</string>
+    <string name="subtitle_task_retry_failed">Unable to retry subtitle task</string>
+    <string name="subtitle_task_pause">Pause subtitle task</string>
+    <string name="subtitle_task_resume">Resume subtitle task</string>
+    <string name="subtitle_task_cancel">Cancel subtitle task</string>
+    <string name="subtitle_stage_queued_transcription">Queued for transcription</string>
+    <string name="subtitle_stage_transcribing">Transcribing</string>
+    <string name="subtitle_stage_queued_translation">Japanese ready, waiting to translate</string>
+    <string name="subtitle_stage_waiting_slot">Waiting for translation slot</string>
+    <string name="subtitle_stage_waiting_network">Waiting for network</string>
+    <string name="subtitle_stage_translating">AI is confirming subtitles</string>
+    <string name="subtitle_stage_retry_wait" formatted="false">Retry wait %1$d/4%2$s</string>
+    <string name="subtitle_stage_pause_requested">Pausing</string>
+    <string name="subtitle_stage_paused">Paused</string>
+    <string name="subtitle_stage_interrupted" formatted="false">Interrupted%1$s</string>
+    <string name="subtitle_stage_cancel_requested">Canceling</string>
+    <string name="subtitle_stage_failed">Failed</string>
+    <string name="subtitle_stage_succeeded">Completed</string>
+    <string name="subtitle_stage_canceled">Canceled</string>
 </resources>

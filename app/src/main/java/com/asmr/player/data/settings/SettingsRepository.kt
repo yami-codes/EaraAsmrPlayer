@@ -25,6 +25,23 @@ data class PlaybackRuntimeSettings(
     val floatingLyricsEnabled: Boolean = false
 )
 
+enum class DeepSeekReasoningEffort(val wireValue: String) {
+    LOW("low"),
+    HIGH("high"),
+    MAX("max");
+
+    companion object {
+        fun fromWireValue(value: String?): DeepSeekReasoningEffort =
+            entries.firstOrNull { it.wireValue == value } ?: HIGH
+    }
+}
+
+data class DeepSeekTranslationSettings(
+    val thinkingEnabled: Boolean = false,
+    val reasoningEffort: DeepSeekReasoningEffort = DeepSeekReasoningEffort.HIGH,
+    val finalPolishEnabled: Boolean = false
+)
+
 @Singleton
 class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context
@@ -190,6 +207,17 @@ class SettingsRepository @Inject constructor(
         AppLanguage.fromWireValue(prefs[SettingsKeys.APP_LANGUAGE])
     }
 
+    val deepSeekTranslationSettings: Flow<DeepSeekTranslationSettings> =
+        context.settingsDataStore.data.map { prefs ->
+            DeepSeekTranslationSettings(
+                thinkingEnabled = prefs[SettingsKeys.DEEPSEEK_THINKING_ENABLED] ?: false,
+                reasoningEffort = DeepSeekReasoningEffort.fromWireValue(
+                    prefs[SettingsKeys.DEEPSEEK_REASONING_EFFORT]
+                ),
+                finalPolishEnabled = prefs[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] ?: false
+            )
+        }
+
     suspend fun loadPlaybackRuntimeSettings(): PlaybackRuntimeSettings {
         return withContext(Dispatchers.IO) {
             val prefs = context.settingsDataStore.data.first()
@@ -266,6 +294,38 @@ class SettingsRepository @Inject constructor(
     suspend fun setAppLanguage(language: AppLanguage) {
         withContext(Dispatchers.IO) {
             context.settingsDataStore.edit { it[SettingsKeys.APP_LANGUAGE] = language.wireValue }
+        }
+    }
+
+    suspend fun loadDeepSeekTranslationSettings(): DeepSeekTranslationSettings =
+        withContext(Dispatchers.IO) {
+            val prefs = context.settingsDataStore.data.first()
+            DeepSeekTranslationSettings(
+                thinkingEnabled = prefs[SettingsKeys.DEEPSEEK_THINKING_ENABLED] ?: false,
+                reasoningEffort = DeepSeekReasoningEffort.fromWireValue(
+                    prefs[SettingsKeys.DEEPSEEK_REASONING_EFFORT]
+                ),
+                finalPolishEnabled = prefs[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] ?: false
+            )
+        }
+
+    suspend fun setDeepSeekThinkingEnabled(enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.DEEPSEEK_THINKING_ENABLED] = enabled }
+        }
+    }
+
+    suspend fun setDeepSeekReasoningEffort(effort: DeepSeekReasoningEffort) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit {
+                it[SettingsKeys.DEEPSEEK_REASONING_EFFORT] = effort.wireValue
+            }
+        }
+    }
+
+    suspend fun setDeepSeekFinalPolishEnabled(enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.settingsDataStore.edit { it[SettingsKeys.DEEPSEEK_FINAL_POLISH_ENABLED] = enabled }
         }
     }
 

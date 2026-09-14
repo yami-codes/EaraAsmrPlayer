@@ -10,8 +10,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
 import com.asmr.player.data.local.db.AppDatabaseProvider
+import com.asmr.player.data.local.db.dao.AlbumDao
 import com.asmr.player.data.local.db.dao.DownloadDao
+import com.asmr.player.data.local.db.dao.TrackDao
 import com.asmr.player.data.remote.download.DOWNLOAD_STATE_QUEUED
+import com.asmr.player.subtitle.SubtitleFailureMessages
+import com.asmr.player.subtitle.SubtitleItemState
+import com.asmr.player.subtitle.SubtitleTaskRepository
+import com.asmr.player.subtitle.SubtitleTaskUi
+import com.asmr.player.subtitle.SubtitleTranslationTarget
 import com.asmr.player.data.remote.download.DownloadQueueCoordinator
 import com.asmr.player.data.remote.download.FinalizeDownloadTaskWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,9 +27,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 import androidx.work.workDataOf
@@ -67,13 +76,40 @@ data class DownloadTaskUi(
     val items: List<DownloadItemUi>
 )
 
+data class TaskAlbumCoverUi(
+    val coverThumbPath: String = "",
+    val coverPath: String = "",
+    val coverUrl: String = ""
+)
+
+internal fun TaskAlbumCoverUi.hasSource(): Boolean =
+    coverThumbPath.isNotBlank() || coverPath.isNotBlank() || coverUrl.isNotBlank()
+
+data class TranslationSubtitleUi(
+    val trackId: Long,
+    val title: String,
+    val subtitleCount: Int
+)
+
+data class TranslationSubtitleGroupUi(
+    val rjCode: String,
+    val title: String,
+    val albumCover: TaskAlbumCoverUi,
+    val subtitles: List<TranslationSubtitleUi>
+)
+
+private const val AlbumCoverQueryBatchSize = 900
+
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao,
+    private val trackDao: TrackDao,
+    private val albumDao: AlbumDao,
     private val messageManager: MessageManager
 ) : ViewModel() {
     private val workManager = WorkManager.getInstance(context)
+    private val subtitleTaskRepository = SubtitleTaskRepository.get(context)
 
     val tasks: StateFlow<List<DownloadTaskUi>> =
         downloadDao.observeTasksWithItems()
@@ -156,6 +192,83 @@ class DownloadsViewModel @Inject constructor(
             }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val translationSubtitleGroups: StateFlow<List<TranslationSubtitleGroupUi>> =
+        trackDao.observeSubtitleTrackSummaries()
+            .map { rows ->
+                rows.groupBy { row ->
+                    row.rjCode.trim()
+                        .ifBlank { row.workId.trim() }
+                        .ifBlank { context.getString(R.string.unknown_work_id) }
+                }.map { (rjCode, groupRows) ->
+                    TranslationSubtitleGroupUi(
+                        rjCode = rjCode,
+                        title = groupRows.firstOrNull()?.albumTitle.orEmpty(),
+                        albumCover = groupRows.asSequence()
+                            .map { row ->
+                                TaskAlbumCoverUi(
+                                    coverThumbPath = row.coverThumbPath,
+                                    coverPath = row.coverPath,
+                                    coverUrl = row.coverUrl
+                                )
+                            }
+                            .firstOrNull { it.hasSource() }
+                            ?: TaskAlbumCoverUi(),
+                        subtitles = groupRows.map { row ->
+                            TranslationSubtitleUi(
+                                trackId = row.trackId,
+                                title = row.trackTitle.ifBlank { context.getString(R.string.local_subtitle) },
+                                subtitleCount = row.subtitleCount
+                            )
+                        }
+                    )
+                }
+            }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val subtitleTaskList: StateFlow<List<SubtitleTaskUi>> = subtitleTaskRepository.tasks
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    internal val subtitleTasks: StateFlow<List<SubtitleTaskUi>> = subtitleTaskList
+
+    internal val polishingRjCodes: StateFlow<Set<String>> = subtitleTaskRepository.polishingRjCodes
+
+    val activeSubtitleTaskCount: StateFlow<Int> = subtitleTaskList
+        .map { tasks ->
+            tasks.sumOf { task ->
+                task.items.count { item ->
+                    item.state !in setOf(
+                        SubtitleItemState.PAUSED,
+                        SubtitleItemState.INTERRUPTED,
+                        SubtitleItemState.FAILED,
+                        SubtitleItemState.SUCCEEDED,
+                        SubtitleItemState.CANCELED
+                    )
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    suspend fun loadTranslationAlbumCovers(trackIds: List<Long>): Map<Long, TaskAlbumCoverUi> {
+        if (trackIds.isEmpty()) return emptyMap()
+        return withContext(Dispatchers.IO) {
+            val normalizedTrackIds = trackIds.filter { it > 0L }.distinct()
+            val rows = buildList {
+                normalizedTrackIds.chunked(AlbumCoverQueryBatchSize).forEach { ids ->
+                    addAll(trackDao.getAlbumCoversForTracks(ids))
+                }
+            }
+            rows.associate { row ->
+                row.trackId to TaskAlbumCoverUi(
+                    coverThumbPath = row.coverThumbPath,
+                    coverPath = row.coverPath,
+                    coverUrl = row.coverUrl
+                )
+            }
+        }
+    }
 
     private fun resolveTaskProgress(
         items: List<DownloadItemUi>,
@@ -429,6 +542,112 @@ class DownloadsViewModel @Inject constructor(
             }
             DownloadQueueCoordinator.requestSchedule(context)
             messageManager.showInfo(R.string.file_deleted)
+        }
+    }
+
+    fun deleteSubtitleTrack(trackId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val activeItem = AppDatabaseProvider.get(context).subtitleTaskDao().getItemForTrack(trackId)
+                if (activeItem != null) {
+                    subtitleTaskRepository.cancelItem(activeItem.id)
+                    messageManager.showInfo(R.string.subtitle_delete_cancel_active_first)
+                    return@launch
+                }
+                trackDao.deleteSubtitlesForTrack(trackId)
+            }.onFailure {
+                messageManager.showError(R.string.subtitle_delete_failed)
+            }
+        }
+    }
+
+    fun deleteSubtitleTracks(trackIds: List<Long>) {
+        val distinctTrackIds = trackIds.filter { it > 0L }.distinct()
+        if (distinctTrackIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val subtitleTaskDao = AppDatabaseProvider.get(context).subtitleTaskDao()
+                val activeItems = distinctTrackIds.mapNotNull { subtitleTaskDao.getItemForTrack(it) }
+                if (activeItems.isNotEmpty()) {
+                    activeItems.forEach { subtitleTaskRepository.cancelItem(it.id) }
+                    messageManager.showInfo(R.string.subtitle_delete_cancel_active_first)
+                    return@launch
+                }
+                trackDao.deleteSubtitlesForTracks(distinctTrackIds)
+                messageManager.showInfo(R.string.subtitle_deleted_count, distinctTrackIds.size)
+            }.onFailure {
+                messageManager.showError(R.string.subtitle_delete_failed)
+            }
+        }
+    }
+
+    fun retrySubtitleTranslation(trackId: Long, title: String) {
+        if (trackId <= 0L) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val handle = subtitleTaskRepository.enqueueTranslation(
+                    SubtitleTranslationTarget(
+                        trackId = trackId,
+                        title = title.ifBlank { context.getString(R.string.local_subtitle) }
+                    )
+                )
+                messageManager.showInfo(
+                    if (handle.reusedExisting) {
+                        R.string.subtitle_translation_reuse_existing
+                    } else {
+                        R.string.subtitle_translation_queued
+                    }
+                )
+            }.onFailure { error ->
+                showSubtitleActionFailure(error, R.string.subtitle_translation_retry_failed)
+            }
+        }
+    }
+
+    fun polishSubtitleAlbum(rjCode: String) = viewModelScope.launch {
+        if (rjCode.isBlank()) return@launch
+        val album = withContext(Dispatchers.IO) {
+            runCatching { albumDao.getAlbumByWorkIdOnce(rjCode) }.getOrNull()
+        }
+        if (album == null) {
+            messageManager.showWarning(R.string.subtitle_polish_album_not_found)
+            return@launch
+        }
+        val error = subtitleTaskRepository.requestAlbumPolish(album.id)
+        if (error != null) {
+            if (SubtitleFailureMessages.isUserActionWarning(error)) {
+                messageManager.showWarning(error)
+            } else {
+                messageManager.showError(error)
+            }
+        }
+    }
+
+    fun pauseSubtitleItem(itemId: String) = viewModelScope.launch { subtitleTaskRepository.pauseItem(itemId) }
+
+    fun resumeSubtitleItem(itemId: String) = viewModelScope.launch { subtitleTaskRepository.resumeItem(itemId) }
+
+    fun cancelSubtitleItem(itemId: String) = viewModelScope.launch { subtitleTaskRepository.cancelItem(itemId) }
+
+    fun retrySubtitleItem(itemId: String) = viewModelScope.launch {
+        runCatching { subtitleTaskRepository.retryItem(itemId) }
+            .onFailure { error ->
+                showSubtitleActionFailure(error, R.string.subtitle_task_retry_failed)
+            }
+    }
+
+    fun pauseSubtitleTask(taskId: String) = viewModelScope.launch { subtitleTaskRepository.pauseTask(taskId) }
+
+    fun resumeSubtitleTask(taskId: String) = viewModelScope.launch { subtitleTaskRepository.resumeTask(taskId) }
+
+    fun cancelSubtitleTask(taskId: String) = viewModelScope.launch { subtitleTaskRepository.cancelTask(taskId) }
+
+    private fun showSubtitleActionFailure(error: Throwable, fallbackRes: Int) {
+        val message = error.message?.takeIf { it.isNotBlank() } ?: context.getString(fallbackRes)
+        if (SubtitleFailureMessages.isUserActionWarning(message)) {
+            messageManager.showWarning(message)
+        } else {
+            messageManager.showError(message)
         }
     }
 

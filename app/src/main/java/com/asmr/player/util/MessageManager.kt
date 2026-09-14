@@ -43,7 +43,7 @@ class MessageManager @Inject constructor(
 
     fun showMessage(message: String, type: MessageType = MessageType.Info, durationMs: Long = 2000) {
         val normalizedMessage = when (type) {
-            MessageType.Error -> AppErrorMessageFormatter.sanitize(message, context)
+            MessageType.Error -> AppErrorMessageFormatter.sanitize(message)
             else -> message.trim()
         }
         if (normalizedMessage.isBlank()) return

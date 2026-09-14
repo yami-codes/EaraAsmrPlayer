@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
@@ -68,6 +69,9 @@ import com.asmr.player.BuildConfig
 import com.asmr.player.data.settings.CoverPreviewMode
 import com.asmr.player.data.settings.FloatingLyricsSettings
 import com.asmr.player.data.settings.LyricsPageSettings
+import com.asmr.player.subtitle.SubtitleDeviceCapability
+import com.asmr.player.subtitle.SubtitleModelDownloadSource
+import com.asmr.player.subtitle.SubtitleTranscriptionModels
 import com.asmr.player.ui.library.BulkPhase
 import com.asmr.player.ui.library.LibraryViewModel
 import com.asmr.player.ui.common.AppSupportStatusSection
@@ -114,6 +118,10 @@ fun SettingsScreen(
     val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsState()
     val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsState()
     val searchBlockedKeywords by viewModel.searchBlockedKeywords.collectAsState()
+    val subtitleModelState by viewModel.subtitleModelState.collectAsState()
+    val deepSeekApiKeyState by viewModel.deepSeekApiKeyState.collectAsState()
+    val deepSeekAccountState by viewModel.deepSeekAccountState.collectAsState()
+    val deepSeekTranslationSettings by viewModel.deepSeekTranslationSettings.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsState()
     val scanRoots by libraryViewModel.scanRoots.collectAsState()
@@ -157,6 +165,24 @@ fun SettingsScreen(
         }
     )
     var pendingRemoveRoot by remember { mutableStateOf<String?>(null) }
+    var deepSeekApiKeyInput by rememberSaveable { mutableStateOf("") }
+    var pendingDeleteSubtitleModelId by remember { mutableStateOf<String?>(null) }
+    val subtitleModelSourceIds = remember {
+        mutableStateMapOf(
+            *SubtitleTranscriptionModels.all.map { model ->
+                model.id to SubtitleModelDownloadSource.HuggingFace.id
+            }.toTypedArray()
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.prepareSettingsData()
+    }
+    LaunchedEffect(deepSeekApiKeyState.saveVersion) {
+        if (deepSeekApiKeyState.configured) {
+            deepSeekApiKeyInput = ""
+        }
+    }
 
     // 屏幕尺寸判断
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
@@ -757,6 +783,46 @@ fun SettingsScreen(
                         }
                     }
                 }
+                item(key = "group:translation") {
+                    SettingsGroup(
+                        title = stringResource(R.string.settings_translation_title),
+                        collapsible = true,
+                        initiallyExpanded = false
+                    ) {
+                        SubtitleModelSettingsSection(
+                            state = subtitleModelState,
+                            selectedSourceIds = subtitleModelSourceIds,
+                            deviceSupported = remember(context) {
+                                SubtitleDeviceCapability.evaluate(context).supported
+                            },
+                            segmentedButtonColors = segmentedButtonColors,
+                            onSourceSelected = { modelId, source ->
+                                subtitleModelSourceIds[modelId] = source.id
+                            },
+                            onDownload = viewModel::downloadSubtitleModel,
+                            onCancelDownload = viewModel::cancelSubtitleModelDownload,
+                            onSelect = viewModel::selectSubtitleModel,
+                            onDelete = { modelId -> pendingDeleteSubtitleModelId = modelId },
+                            onClearFailure = viewModel::clearSubtitleModelFailure
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                        DeepSeekTranslationSettingsSection(
+                            state = deepSeekApiKeyState,
+                            accountState = deepSeekAccountState,
+                            settings = deepSeekTranslationSettings,
+                            apiKeyInput = deepSeekApiKeyInput,
+                            compact = isCompact,
+                            segmentedButtonColors = segmentedButtonColors,
+                            onApiKeyInputChanged = { deepSeekApiKeyInput = it },
+                            onSave = { viewModel.saveDeepSeekApiKey(deepSeekApiKeyInput) },
+                            onThinkingEnabledChanged = viewModel::setDeepSeekThinkingEnabled,
+                            onReasoningEffortChanged = viewModel::setDeepSeekReasoningEffort,
+                            onFinalPolishEnabledChanged = viewModel::setDeepSeekFinalPolishEnabled,
+                            activeTipKey = activeTipKey,
+                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                        )
+                    }
+                }
                 item(key = "group:about_update") {
                     SettingsGroup(title = stringResource(R.string.about)) {
                         val isDark = AsmrTheme.colorScheme.isDark
@@ -904,6 +970,25 @@ fun SettingsScreen(
                         }
                         libraryViewModel.removeScanRootAndDeleteAlbums(removeRoot)
                         pendingRemoveRoot = null
+                    }
+                )
+            )
+        )
+    }
+    pendingDeleteSubtitleModelId?.let { modelId ->
+        val modelName = SubtitleTranscriptionModels.fromId(modelId)?.optionName
+            ?: stringResource(R.string.subtitle_chip)
+        FlatActionDialog(
+            onDismissRequest = { pendingDeleteSubtitleModelId = null },
+            message = stringResource(R.string.subtitle_model_delete_confirm, modelName),
+            actions = listOf(
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingDeleteSubtitleModelId = null }),
+                FlatDialogAction(
+                    text = stringResource(R.string.subtitle_model_delete),
+                    tone = FlatDialogActionTone.Danger,
+                    onClick = {
+                        pendingDeleteSubtitleModelId = null
+                        viewModel.deleteSubtitleModel(modelId)
                     }
                 )
             )
@@ -1519,7 +1604,7 @@ internal fun BackgroundEffectTypeSelectorRow(
 }
 */
 @Composable
-private fun SettingsToggleRow(
+internal fun SettingsToggleRow(
     text: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,

@@ -148,9 +148,11 @@ import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.R
+import com.asmr.player.subtitle.SubtitleGenerationPolicy
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
+import com.asmr.player.util.isOnlineTrackPath
 
 internal sealed class AsmrTreeUiEntry {
     abstract val path: String
@@ -581,6 +583,60 @@ internal fun siblingPlayableNodesForEntry(index: LocalTreeIndex, entryPath: Stri
         .filter { it.fileType != TreeFileType.Audio || it.track != null }
         .sortedBy { SmartSortKey.of(it.name) }
         .toList()
+}
+
+internal fun isSupportedSubtitleGenerationAudioName(name: String): Boolean {
+    return SubtitleGenerationPolicy.supportsFileName(name)
+}
+
+internal fun subtitleGenerationTrackForFile(
+    file: DirectoryFileItem,
+    unavailableTrackIds: Set<Long>
+): Track? {
+    val track = file.track ?: return null
+    return track.takeIf {
+        file.fileType == TreeFileType.Audio &&
+            isSupportedSubtitleGenerationAudioName(file.path) &&
+            it.id > 0L &&
+            file.sizeSource is FileSizeSource.Local &&
+            !isOnlineTrackPath(it.path) &&
+            !file.absolutePath.startsWith("http", ignoreCase = true) &&
+            it.id !in unavailableTrackIds
+    }
+}
+
+internal fun collectSubtitleGenerationTracks(
+    index: LocalTreeIndex,
+    currentPath: String,
+    unavailableTrackIds: Set<Long>
+): List<Track> {
+    val currentNode = findLocalTreeNode(index.root, currentPath) ?: return emptyList()
+    val tracks = mutableListOf<Track>()
+
+    fun collect(node: LocalTreeNode) {
+        if (node.children.isEmpty()) {
+            val track = node.track
+            val absolutePath = node.absolutePath.orEmpty()
+            if (
+                node.fileType == TreeFileType.Audio &&
+                isSupportedSubtitleGenerationAudioName(node.name) &&
+                track != null &&
+                track.id > 0L &&
+                !isOnlineTrackPath(track.path) &&
+                !absolutePath.startsWith("http", ignoreCase = true) &&
+                track.id !in unavailableTrackIds
+            ) {
+                tracks += track
+            }
+            return
+        }
+        node.children.values
+            .sortedBy { SmartSortKey.of(it.name) }
+            .forEach(::collect)
+    }
+
+    collect(currentNode)
+    return tracks.distinctBy { it.id }
 }
 
 internal fun buildLocalDirectoryBrowser(
@@ -2083,11 +2139,14 @@ internal fun DirectoryActionGroupButton(
     icon: ImageVector,
     enabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDisabledClick: (() -> Unit)? = null
 ) {
     TextButton(
-        onClick = onClick,
-        enabled = enabled,
+        onClick = {
+            if (enabled) onClick() else onDisabledClick?.invoke()
+        },
+        enabled = enabled || onDisabledClick != null,
         modifier = modifier.height(34.dp),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
     ) {
@@ -2540,7 +2599,12 @@ internal fun DirectoryBatchBarEmbeddedV5(
     modifier: Modifier = Modifier,
     onAddToFavorites: (List<MediaItem>) -> Unit,
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
-    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit
+    onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
+    showTranslateAction: Boolean = false,
+    subtitleGenerationText: String = "",
+    subtitleGenerationEnabled: Boolean = false,
+    onGenerateSubtitles: () -> Unit = {},
+    onSubtitleGenerationUnavailable: (() -> Unit)? = null
 ) {
     val mediaItems = remember(targets) { targets.map { it.toMediaItem() } }
     val hasMediaItems = mediaItems.isNotEmpty()
@@ -2596,7 +2660,25 @@ internal fun DirectoryBatchBarEmbeddedV5(
                     enabled = hasMediaItems,
                     onClick = { onAddMediaItemsToQueue(mediaItems) }
                 )
+                if (showTranslateAction) {
+                    Text("|", color = AsmrTheme.colorScheme.textTertiary, style = MaterialTheme.typography.labelMedium)
+                    DirectoryActionGroupButton(
+                        text = subtitleGenerationText,
+                        icon = Icons.Rounded.Translate,
+                        enabled = subtitleGenerationEnabled,
+                        onClick = onGenerateSubtitles,
+                        onDisabledClick = onSubtitleGenerationUnavailable
+                    )
+                }
             }
+        } else if (showTranslateAction) {
+            DirectoryActionGroupButton(
+                text = subtitleGenerationText,
+                icon = Icons.Rounded.Translate,
+                enabled = subtitleGenerationEnabled,
+                onClick = onGenerateSubtitles,
+                onDisabledClick = onSubtitleGenerationUnavailable
+            )
         }
     }
 }
@@ -2613,6 +2695,12 @@ internal fun DirectoryBrowserPanelV4(
     onAddToFavorites: (List<MediaItem>) -> Unit,
     onOpenBatchPlaylistPicker: (List<MediaItem>) -> Unit,
     onAddMediaItemsToQueue: (List<MediaItem>) -> Unit,
+    onGenerateSubtitlesForCurrentDirectory: (() -> Unit)? = null,
+    subtitleGenerationForCurrentDirectoryEnabled: Boolean = false,
+    onGenerateSubtitlesForSelectedFiles: ((List<DirectoryFileItem>) -> Unit)? = null,
+    canGenerateSubtitleForSelectedFile: ((DirectoryFileItem) -> Boolean)? = null,
+    subtitleModelAvailable: Boolean = true,
+    onSubtitleGenerationUnavailable: (() -> Unit)? = null,
     animateIntro: Boolean = true,
     parentChromeState: CollapsibleHeaderState? = null,
     preferredPath: String = "",
@@ -2681,6 +2769,26 @@ internal fun DirectoryBrowserPanelV4(
     } else {
         stringResource(R.string.long_press_batch_actions)
     }
+    val showTranslateAction = if (selectionMode) {
+        onGenerateSubtitlesForSelectedFiles != null
+    } else {
+        onGenerateSubtitlesForCurrentDirectory != null
+    }
+    val hasSubtitleGenerationTargets = if (selectionMode) {
+        val predicate = canGenerateSubtitleForSelectedFile
+        predicate != null && selectedFiles.any(predicate)
+    } else {
+        subtitleGenerationForCurrentDirectoryEnabled
+    }
+    val subtitleGenerationEnabled = hasSubtitleGenerationTargets && subtitleModelAvailable
+    val onGenerateSubtitles: () -> Unit = {
+        if (selectionMode) {
+            onGenerateSubtitlesForSelectedFiles?.invoke(selectedFiles)
+        } else {
+            onGenerateSubtitlesForCurrentDirectory?.invoke()
+        }
+        Unit
+    }
     LaunchedEffect(preferredPath) {
         preferredPathState = preferredPath.trim().trim('/')
     }
@@ -2734,7 +2842,18 @@ internal fun DirectoryBrowserPanelV4(
                     modifier = Modifier.weight(1f),
                     onAddToFavorites = onAddToFavorites,
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
-                    onAddMediaItemsToQueue = onAddMediaItemsToQueue
+                    onAddMediaItemsToQueue = onAddMediaItemsToQueue,
+                    showTranslateAction = showTranslateAction,
+                    subtitleGenerationText = if (selectionMode) {
+                        stringResource(R.string.subtitle_translate_selected)
+                    } else {
+                        stringResource(R.string.subtitle_batch_translate)
+                    },
+                    subtitleGenerationEnabled = subtitleGenerationEnabled,
+                    onGenerateSubtitles = onGenerateSubtitles,
+                    onSubtitleGenerationUnavailable = onSubtitleGenerationUnavailable.takeIf {
+                        hasSubtitleGenerationTargets && !subtitleModelAvailable
+                    }
                 )
                 if (onTogglePreferredPath != null && !selectionMode) {
                     val preferredIcon = if (isPreferredPath) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder
@@ -2879,6 +2998,8 @@ internal fun DirectoryFileRow(
     onDownload: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
+    onGenerateSubtitles: (() -> Unit)? = null,
+    subtitleGenerationEnabled: Boolean = true,
     onManageTags: (() -> Unit)? = null,
     onRemoveFromAlbum: (() -> Unit)? = null
 ) {
@@ -2907,7 +3028,7 @@ internal fun DirectoryFileRow(
     }
 
     val showPrimaryAction = file.isPlayable
-    val showMenu = showPrimaryAction || onDownload != null || onAddToQueue != null || onAddToPlaylist != null || onManageTags != null || onRemoveFromAlbum != null
+    val showMenu = showPrimaryAction || onDownload != null || onAddToQueue != null || onAddToPlaylist != null || onGenerateSubtitles != null || onManageTags != null || onRemoveFromAlbum != null
     val showTrailing = selectionMode || onSetAsCover != null || file.showSubtitleStamp || showMenu
 
     Surface(
@@ -3063,6 +3184,32 @@ internal fun DirectoryFileRow(
                                                 },
                                                 leadingIcon = {
                                                     Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = colorScheme.textSecondary)
+                                                }
+                                            )
+                                        }
+                                        if (onGenerateSubtitles != null) {
+                                            val subtitleGenerationColor = if (subtitleGenerationEnabled) {
+                                                colorScheme.primary
+                                            } else {
+                                                colorScheme.textTertiary
+                                            }
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        stringResource(R.string.subtitle_generate_and_translate),
+                                                        color = subtitleGenerationColor
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onGenerateSubtitles()
+                                                    showMenuExpanded = false
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        Icons.Rounded.Subtitles,
+                                                        contentDescription = null,
+                                                        tint = subtitleGenerationColor
+                                                    )
                                                 }
                                             )
                                         }

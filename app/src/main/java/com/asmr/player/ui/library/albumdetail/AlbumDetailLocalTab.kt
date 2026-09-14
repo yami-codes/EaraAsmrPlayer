@@ -135,10 +135,17 @@ import com.asmr.player.ui.common.LocalBottomOverlayPadding
 import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
+import com.asmr.player.subtitle.SubtitleDeviceCapability
+import com.asmr.player.subtitle.SubtitleFailureMessages
+import com.asmr.player.subtitle.SubtitleGenerationTarget
+import com.asmr.player.subtitle.SubtitleModelInstallationState
+import com.asmr.player.subtitle.SubtitleModelRepository
+import com.asmr.player.subtitle.SubtitleTaskRepository
 import com.asmr.player.util.Formatting
 import com.asmr.player.util.MessageManager
 import com.asmr.player.util.RemoteSubtitleSource
 import com.asmr.player.util.isOnlineTrackPath
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 internal fun AlbumLocalBreadcrumbTabV2(
@@ -165,6 +172,9 @@ internal fun AlbumLocalBreadcrumbTabV2(
     onSetCoverFromImage: (String) -> Unit,
     onPreviewImages: (ImagePreviewRequest) -> Unit,
     onPreviewFile: (LocalTreeUiEntry.File) -> Unit,
+    onSubtitleGenerationError: (String) -> Unit,
+    onSubtitleGenerationUnavailable: (String) -> Unit,
+    onSubtitleGenerationQueued: (String) -> Unit,
 ) {
     val queueTracks = remember(album.id, album.tracks) { album.tracks.sortedBy { it.path } }
     val queueTrackIds = remember(queueTracks) {
@@ -172,6 +182,13 @@ internal fun AlbumLocalBreadcrumbTabV2(
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val subtitleModelRepository = remember(context) { SubtitleModelRepository.get(context) }
+    val subtitleModelState by subtitleModelRepository.state.collectAsStateWithLifecycle()
+    val subtitleDeviceCapability = remember(context) { SubtitleDeviceCapability.evaluate(context) }
+    val subtitleFeatureSupported = subtitleDeviceCapability.supported
+    val subtitleModelAvailable = subtitleFeatureSupported &&
+        subtitleModelState.installation(subtitleModelState.activeModelId) is
+        SubtitleModelInstallationState.Available
     val allPaths = remember(album) { album.getAllLocalPaths() }
     var currentPath by rememberSaveable(stateKey) { mutableStateOf(initialCurrentPath.trim().trim('/')) }
 
@@ -197,10 +214,10 @@ internal fun AlbumLocalBreadcrumbTabV2(
     }
 
     val subtitleTrackIds by produceState(initialValue = emptySet<Long>(), key1 = queueTrackIds) {
-        value = withContext(Dispatchers.IO) {
-            if (queueTrackIds.isEmpty()) emptySet()
-            else AppDatabaseProvider.get(context).trackDao().getTrackIdsWithSubtitles(queueTrackIds).toSet()
-        }
+        if (queueTrackIds.isEmpty()) return@produceState
+        AppDatabaseProvider.get(context).trackDao()
+            .observeTrackIdsWithSubtitles(queueTrackIds)
+            .collect { value = it.toSet() }
     }
     val remoteSubtitleTrackIds by produceState(initialValue = emptySet<Long>(), key1 = queueTrackIds) {
         value = withContext(Dispatchers.IO) {
@@ -230,6 +247,55 @@ internal fun AlbumLocalBreadcrumbTabV2(
                     track?.let { subtitleTrackIds.contains(it.id) || remoteSubtitleTrackIds.contains(it.id) } == true
                 }
             )
+        }
+    }
+    val currentDirectorySubtitleGenerationTracks = remember(
+        treeIndex,
+        currentPath
+    ) {
+        treeIndex?.let { index ->
+            collectSubtitleGenerationTracks(
+                index = index,
+                currentPath = currentPath,
+                unavailableTrackIds = emptySet()
+            )
+        }.orEmpty()
+    }
+    val startSubtitleGeneration: (List<Track>) -> Unit = { tracks ->
+        val targets = tracks.distinctBy { it.id }.map { track ->
+            SubtitleGenerationTarget(
+                trackId = track.id,
+                title = track.title
+            )
+        }
+        if (targets.isNotEmpty()) {
+            scope.launch {
+                try {
+                    if (tracks.any { it.id in subtitleTrackIds }) {
+                        onSubtitleGenerationQueued(context.getString(R.string.subtitle_gen_overwrite_notice))
+                    }
+                    val handle = SubtitleTaskRepository.get(context).enqueueGeneration(targets)
+                    onSubtitleGenerationQueued(
+                        context.getString(
+                            if (handle.reusedExisting) {
+                                R.string.subtitle_gen_queued_existing
+                            } else {
+                                R.string.subtitle_gen_queued
+                            }
+                        )
+                    )
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    val message = error.message?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.subtitle_gen_start_failed)
+                    if (SubtitleFailureMessages.isUserActionWarning(message)) {
+                        onSubtitleGenerationUnavailable(message)
+                    } else {
+                        onSubtitleGenerationError(message)
+                    }
+                }
+            }
         }
     }
 
@@ -267,6 +333,37 @@ internal fun AlbumLocalBreadcrumbTabV2(
                     onAddToFavorites = onAddMediaItemsToFavorites,
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                     onAddMediaItemsToQueue = onAddMediaItemsToQueue,
+                    onGenerateSubtitlesForCurrentDirectory = {
+                        startSubtitleGeneration(currentDirectorySubtitleGenerationTracks)
+                    },
+                    subtitleGenerationForCurrentDirectoryEnabled = subtitleFeatureSupported &&
+                        currentDirectorySubtitleGenerationTracks.isNotEmpty(),
+                    onGenerateSubtitlesForSelectedFiles = if (subtitleFeatureSupported) { selectedFiles ->
+                        startSubtitleGeneration(
+                            selectedFiles.mapNotNull { file ->
+                                subtitleGenerationTrackForFile(
+                                    file = file,
+                                    unavailableTrackIds = emptySet()
+                                )
+                            }
+                        )
+                    } else null,
+                    canGenerateSubtitleForSelectedFile = if (subtitleFeatureSupported) { file ->
+                        subtitleGenerationTrackForFile(
+                            file = file,
+                            unavailableTrackIds = emptySet()
+                        ) != null
+                    } else null,
+                    subtitleModelAvailable = subtitleModelAvailable,
+                    onSubtitleGenerationUnavailable = {
+                        onSubtitleGenerationUnavailable(
+                            if (subtitleFeatureSupported) {
+                                context.getString(R.string.subtitle_model_required)
+                            } else {
+                                subtitleDeviceCapability.message
+                            }
+                        )
+                    },
                     animateIntro = animateIntro,
                     parentChromeState = chromeState,
                     preferredPath = preferredCurrentPath,
@@ -384,6 +481,23 @@ internal fun AlbumLocalBreadcrumbTabV2(
                             onDownload = null,
                             onAddToQueue = track?.let { { onAddToQueue(it); Unit } },
                             onAddToPlaylist = track?.let { { onAddToPlaylist(it) } },
+                            onGenerateSubtitles = if (subtitleFeatureSupported) {
+                                subtitleGenerationTrackForFile(
+                                    file = file,
+                                    unavailableTrackIds = emptySet()
+                                )?.let { subtitleGenerationTrack ->
+                                    {
+                                        if (subtitleModelAvailable) {
+                                            startSubtitleGeneration(listOf(subtitleGenerationTrack))
+                                        } else {
+                                            onSubtitleGenerationUnavailable(
+                                                context.getString(R.string.subtitle_model_required)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else null,
+                            subtitleGenerationEnabled = subtitleModelAvailable,
                             onManageTags = track?.let { if (!isOnlineTrackPath(it.path)) { { onManageTrackTags(it) } } else null },
                             onRemoveFromAlbum = track?.let { { onRemoveTrack(it) } }
                         )

@@ -139,6 +139,9 @@ interface DownloadDao {
     @Query("SELECT COUNT(*) FROM download_items WHERE state IN ('RUNNING', 'ENQUEUED', 'BLOCKED')")
     suspend fun countActiveItems(): Int
 
+    @Query("SELECT COUNT(*) FROM download_items WHERE state = 'PAUSED' OR state IN ('RUNNING', 'ENQUEUED', 'BLOCKED', 'QUEUED')")
+    suspend fun countRecoverableItems(): Int
+
     @Query("SELECT COUNT(*) FROM download_items WHERE state = 'PAUSED'")
     suspend fun countPausedItems(): Int
 }

@@ -90,10 +90,19 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel()
 ) {
     val tasks by viewModel.tasks.collectAsState()
+    val subtitleTasks by viewModel.subtitleTasks.collectAsState()
+    val polishingRjCodes by viewModel.polishingRjCodes.collectAsState()
     val expandedTasks = remember { mutableStateListOf<Long>() }
     val context = LocalContext.current
     var rjQuery by rememberSaveable { mutableStateOf("") }
+    var managementMode by rememberSaveable { mutableStateOf(DownloadManagementMode.Downloads) }
     var pendingDelete by remember { mutableStateOf<PendingDeleteAction?>(null) }
+    val activeDownloadFileCount = remember(tasks) {
+        tasks.sumOf { task ->
+            task.items.count { it.state == DownloadItemState.RUNNING || it.state == DownloadItemState.ENQUEUED }
+        }
+    }
+    val activeTranslationTaskCount = remember(subtitleTasks) { countActiveSubtitleTaskItems(subtitleTasks) }
     val downloadRoot = remember {
         File(context.getExternalFilesDir(null), "albums").absolutePath
     }
@@ -124,6 +133,13 @@ fun DownloadsScreen(
             },
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            DownloadManagementModeTabs(
+                selected = managementMode,
+                activeDownloadFileCount = activeDownloadFileCount,
+                activeTranslationTaskCount = activeTranslationTaskCount,
+                onSelected = { managementMode = it }
+            )
+
             OutlinedTextField(
                 value = rjQuery,
                 onValueChange = { rjQuery = it },
@@ -132,13 +148,15 @@ fun DownloadsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Text(
-                text = stringResource(R.string.download_folder, downloadRoot),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (managementMode == DownloadManagementMode.Downloads) {
+                Text(
+                    text = stringResource(R.string.download_folder, downloadRoot),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             val normalizedQuery = remember(rjQuery) {
                 val raw = rjQuery.trim()
@@ -149,56 +167,88 @@ fun DownloadsScreen(
                     else -> raw
                 }
             }
-            val shownTasks = remember(tasks, normalizedQuery) {
-                if (normalizedQuery.isBlank()) tasks
-                else tasks.filter { it.title.equals(normalizedQuery, ignoreCase = true) }
-            }
-
-            if (shownTasks.isEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = if (normalizedQuery.isBlank()) {
-                            stringResource(R.string.no_download_tasks_yet)
-                        } else {
-                            stringResource(R.string.task_not_found, normalizedQuery)
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.thinScrollbar(listState),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(
-                        top = 4.dp,
-                        bottom = LocalBottomOverlayPadding.current + 6.dp
-                    )
-                ) {
-                    items(shownTasks, key = { it.taskId }) { task ->
-                        DownloadTaskCard(
-                            task = task,
-                            expanded = expandedTasks.contains(task.taskId),
-                            onToggleExpanded = {
-                                if (expandedTasks.contains(task.taskId)) {
-                                    expandedTasks.remove(task.taskId)
-                                } else {
-                                    expandedTasks.add(task.taskId)
-                                }
-                            },
-                            onRequestDeleteTask = { pendingDelete = PendingDeleteAction.Task(task.taskId) },
-                            onPauseItem = { viewModel.pauseItem(it) },
-                            onResumeItem = { viewModel.resumeItem(it) },
-                            onRetryItem = { viewModel.retryItem(it) },
-                            onDeleteItem = { pendingDelete = PendingDeleteAction.Item(workId = it) },
-                            onRetryFailedInTask = { viewModel.retryFailedInTask(task.taskId) },
-                            onPauseTask = { viewModel.pauseTask(task.taskId) },
-                            onResumeTask = { viewModel.resumeTask(task.taskId) }
-                        )
+            when (managementMode) {
+                DownloadManagementMode.Downloads -> {
+                    val shownTasks = remember(tasks, normalizedQuery) {
+                        if (normalizedQuery.isBlank()) tasks
+                        else tasks.filter { it.title.equals(normalizedQuery, ignoreCase = true) }
                     }
+
+                    if (shownTasks.isEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = if (normalizedQuery.isBlank()) {
+                                    stringResource(R.string.no_download_tasks_yet)
+                                } else {
+                                    stringResource(R.string.task_not_found, normalizedQuery)
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.thinScrollbar(listState),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            contentPadding = PaddingValues(
+                                top = 4.dp,
+                                bottom = LocalBottomOverlayPadding.current + 6.dp
+                            )
+                        ) {
+                            items(shownTasks, key = { it.taskId }) { task ->
+                                DownloadTaskCard(
+                                    task = task,
+                                    expanded = expandedTasks.contains(task.taskId),
+                                    onToggleExpanded = {
+                                        if (expandedTasks.contains(task.taskId)) {
+                                            expandedTasks.remove(task.taskId)
+                                        } else {
+                                            expandedTasks.add(task.taskId)
+                                        }
+                                    },
+                                    onRequestDeleteTask = { pendingDelete = PendingDeleteAction.Task(task.taskId) },
+                                    onPauseItem = { viewModel.pauseItem(it) },
+                                    onResumeItem = { viewModel.resumeItem(it) },
+                                    onRetryItem = { viewModel.retryItem(it) },
+                                    onDeleteItem = { pendingDelete = PendingDeleteAction.Item(workId = it) },
+                                    onRetryFailedInTask = { viewModel.retryFailedInTask(task.taskId) },
+                                    onPauseTask = { viewModel.pauseTask(task.taskId) },
+                                    onResumeTask = { viewModel.resumeTask(task.taskId) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                DownloadManagementMode.Translations -> {
+                    val translationSubtitleGroups by viewModel.translationSubtitleGroups.collectAsState()
+                    TranslationManagementContent(
+                        normalizedQuery = normalizedQuery,
+                        listState = listState,
+                        bottomPadding = LocalBottomOverlayPadding.current,
+                        subtitleGroups = translationSubtitleGroups,
+                        subtitleTasks = subtitleTasks,
+                        polishingRjCodes = polishingRjCodes,
+                        loadAlbumCovers = viewModel::loadTranslationAlbumCovers,
+                        onDeleteSubtitle = { trackId, title ->
+                            pendingDelete = PendingDeleteAction.Subtitle(trackId = trackId, title = title)
+                        },
+                        onDeleteSubtitleGroup = { rjCode, trackIds ->
+                            pendingDelete = PendingDeleteAction.SubtitleGroup(rjCode = rjCode, trackIds = trackIds)
+                        },
+                        onRetrySubtitle = viewModel::retrySubtitleTranslation,
+                        onPolishAlbum = viewModel::polishSubtitleAlbum,
+                        onPauseItem = viewModel::pauseSubtitleItem,
+                        onResumeItem = viewModel::resumeSubtitleItem,
+                        onCancelItem = viewModel::cancelSubtitleItem,
+                        onRetryItem = viewModel::retrySubtitleItem,
+                        onPauseTask = viewModel::pauseSubtitleTask,
+                        onResumeTask = viewModel::resumeSubtitleTask,
+                        onCancelTask = viewModel::cancelSubtitleTask
+                    )
                 }
             }
         }
@@ -222,6 +272,18 @@ fun DownloadsScreen(
                             message = context.getString(R.string.permanently_delete_file, item.fileName)
                         )
                     }
+
+                    is PendingDeleteAction.Subtitle -> ResolvedDeleteText(
+                        message = context.getString(R.string.delete_subtitle_confirm, action.title)
+                    )
+
+                    is PendingDeleteAction.SubtitleGroup -> ResolvedDeleteText(
+                        message = context.getString(
+                            R.string.delete_subtitle_group_confirm,
+                            action.rjCode,
+                            action.trackIds.size
+                        )
+                    )
                 }
             }
 
@@ -239,6 +301,8 @@ fun DownloadsScreen(
                                 when (action) {
                                     is PendingDeleteAction.Task -> viewModel.deleteTask(action.taskId)
                                     is PendingDeleteAction.Item -> viewModel.deleteItem(action.workId)
+                                    is PendingDeleteAction.Subtitle -> viewModel.deleteSubtitleTrack(action.trackId)
+                                    is PendingDeleteAction.SubtitleGroup -> viewModel.deleteSubtitleTracks(action.trackIds)
                                 }
                             }
                         )
@@ -254,6 +318,8 @@ fun DownloadsScreen(
 private sealed class PendingDeleteAction {
     data class Task(val taskId: Long) : PendingDeleteAction()
     data class Item(val workId: String) : PendingDeleteAction()
+    data class Subtitle(val trackId: Long, val title: String) : PendingDeleteAction()
+    data class SubtitleGroup(val rjCode: String, val trackIds: List<Long>) : PendingDeleteAction()
 }
 
 private data class ResolvedDeleteText(

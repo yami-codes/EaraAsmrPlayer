@@ -10,6 +10,8 @@ import com.asmr.player.data.local.db.AppDatabaseProvider
 import com.asmr.player.data.remote.download.DownloadQueueCoordinator
 import com.asmr.player.data.remote.download.DownloadRuntimeConfig
 import com.asmr.player.data.settings.SettingsRepository
+import com.asmr.player.subtitle.SubtitleTaskRepository
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.asmr.player.i18n.LocaleManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -41,9 +43,16 @@ class AsmrApp : Application(), ImageLoaderFactory, Configuration.Provider {
             runCatching { settingsRepository.clearSleepTimer() }
             runCatching { localeManager.applyLanguage(localeManager.getAppLanguage()) }
         }
+        runCatching { PDFBoxResourceLoader.init(applicationContext) }
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            runCatching { AppDatabaseProvider.get(applicationContext) }
-            runCatching { DownloadQueueCoordinator.recoverDownloadsOnAppLaunch(applicationContext) }
+            val database = runCatching { AppDatabaseProvider.get(applicationContext) }.getOrNull()
+                ?: return@launch
+            if (runCatching { database.subtitleTaskDao().countAllItems() > 0 }.getOrDefault(false)) {
+                runCatching { SubtitleTaskRepository.get(applicationContext).reconcileOnAppLaunch() }
+            }
+            if (runCatching { database.downloadDao().countRecoverableItems() > 0 }.getOrDefault(false)) {
+                runCatching { DownloadQueueCoordinator.recoverDownloadsOnAppLaunch(applicationContext) }
+            }
         }
     }
 

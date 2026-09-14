@@ -746,4 +746,79 @@
     <string name="works_blocked" formatted="false">%1$s 个作品被屏蔽</string>
     <string name="you_need_log">需要先登录 DLsite 才能使用已购播放/下载</string>
     <string name="you_tap_play">点击播放时，音量会在设定时长内从低到高平滑升到正常值。</string>
+
+    <string name="settings_translation_title">翻译配置</string>
+    <string name="deepseek_account_summary" formatted="false">Token %1$s · 余额 %2$s</string>
+    <string name="deepseek_api_key_placeholder">API Key（sk-…）</string>
+    <string name="deepseek_api_key_configured_cd">API Key 已配置</string>
+    <string name="deepseek_save_key">保存</string>
+    <string name="deepseek_replace_key">替换</string>
+    <string name="deepseek_api_key_save_failed">API Key 保存失败</string>
+    <string name="deepseek_thinking_mode">思考模式</string>
+    <string name="deepseek_reasoning_effort">思考等级</string>
+    <string name="deepseek_final_polish">最终润色</string>
+    <string name="deepseek_final_polish_info">翻译完成后，可在任务管理中左滑作品卡片，对现有中文字幕进行整体润色。此操作会额外消耗 Token。</string>
+    <string name="subtitle_model_current" formatted="false">%1$s · 当前</string>
+    <string name="subtitle_model_status_active_installed">当前使用</string>
+    <string name="subtitle_model_status_active_not_installed">当前（未安装）</string>
+    <string name="subtitle_model_status_installed">已安装</string>
+    <string name="subtitle_model_status_not_installed">未安装</string>
+    <string name="subtitle_model_waiting_download">等待下载字幕组件</string>
+    <string name="subtitle_model_cancel_download">取消下载</string>
+    <string name="subtitle_model_set_current">设为当前</string>
+    <string name="subtitle_model_delete">删除模型</string>
+    <string name="subtitle_model_device_unsupported">设备不支持</string>
+    <string name="subtitle_model_source_unavailable">来源不可用</string>
+    <string name="subtitle_model_other_downloading">其他模型正在下载</string>
+    <string name="subtitle_model_redownload">重新下载</string>
+    <string name="subtitle_model_download">下载模型</string>
+    <string name="subtitle_model_download_start_failed">无法开始模型下载</string>
+    <string name="subtitle_model_delete_confirm" formatted="false">确定删除“%1$s”模型？约 29 MiB 的公共运行时会保留，之后下载任一模型时无需重复安装。</string>
+    <string name="subtitle_model_required">请先在设置中下载日语字幕组件</string>
+    <string name="subtitle_generate_and_translate">生成并翻译字幕</string>
+    <string name="subtitle_batch_translate">批量翻译</string>
+    <string name="subtitle_translate_selected">翻译选中</string>
+    <string name="subtitle_gen_queued">已加入字幕任务队列</string>
+    <string name="subtitle_gen_queued_existing">所选音频已有可继续的字幕任务</string>
+    <string name="subtitle_gen_overwrite_notice">已有字幕，将覆盖后重新生成并翻译</string>
+    <string name="subtitle_gen_start_failed">无法开始生成并翻译字幕</string>
+    <string name="download_mgmt_downloads_tab">下载任务</string>
+    <string name="download_mgmt_translations_tab">翻译任务</string>
+    <string name="no_translation_tasks">暂无翻译任务</string>
+    <string name="unknown_work_id">未知作品编号</string>
+    <string name="local_subtitle">本地字幕</string>
+    <string name="translation_polishing">整体润色中</string>
+    <string name="translation_subtitle_count" formatted="false">%1$d 个字幕</string>
+    <string name="translation_subtitle_lines" formatted="false">%1$d 行字幕</string>
+    <string name="translation_no_subtitles">暂无字幕</string>
+    <string name="translation_polish_album">润色该作品字幕</string>
+    <string name="translation_delete_all_subtitles">删除该作品的全部字幕</string>
+    <string name="translation_progress_confirmed" formatted="false">已确认 %1$d/%2$d</string>
+    <string name="delete_subtitle_confirm" formatted="false">将删除字幕“%1$s”，播放时不会再显示该字幕。</string>
+    <string name="delete_subtitle_group_confirm" formatted="false">将删除“%1$s”下的 %2$d 个字幕，播放时不会再显示这些字幕。</string>
+    <string name="subtitle_delete_cancel_active_first">已先取消对应字幕任务，清理完成后可删除字幕</string>
+    <string name="subtitle_delete_failed">删除字幕失败</string>
+    <string name="subtitle_deleted_count" formatted="false">已删除 %1$d 个字幕</string>
+    <string name="subtitle_translation_reuse_existing">该音频已有可继续的字幕任务</string>
+    <string name="subtitle_translation_queued">已加入全局翻译队列</string>
+    <string name="subtitle_translation_retry_failed">无法重新翻译字幕</string>
+    <string name="subtitle_polish_album_not_found">找不到对应作品，无法润色</string>
+    <string name="subtitle_task_retry_failed">无法重试字幕任务</string>
+    <string name="subtitle_task_pause">暂停字幕任务</string>
+    <string name="subtitle_task_resume">继续字幕任务</string>
+    <string name="subtitle_task_cancel">取消字幕任务</string>
+    <string name="subtitle_stage_queued_transcription">排队转录</string>
+    <string name="subtitle_stage_transcribing">转录中</string>
+    <string name="subtitle_stage_queued_translation">日文已生成，等待翻译</string>
+    <string name="subtitle_stage_waiting_slot">等待翻译槽位</string>
+    <string name="subtitle_stage_waiting_network">等待网络</string>
+    <string name="subtitle_stage_translating">AI 正在确认字幕</string>
+    <string name="subtitle_stage_retry_wait" formatted="false">重试等待 %1$d/4%2$s</string>
+    <string name="subtitle_stage_pause_requested">暂停中</string>
+    <string name="subtitle_stage_paused">已暂停</string>
+    <string name="subtitle_stage_interrupted" formatted="false">异常中断%1$s</string>
+    <string name="subtitle_stage_cancel_requested">取消中</string>
+    <string name="subtitle_stage_failed">失败</string>
+    <string name="subtitle_stage_succeeded">已完成</string>
+    <string name="subtitle_stage_canceled">已取消</string>
 </resources>

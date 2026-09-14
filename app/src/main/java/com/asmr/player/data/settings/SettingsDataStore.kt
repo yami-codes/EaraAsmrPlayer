@@ -83,4 +83,8 @@ object SettingsKeys {
     val SFW_HIDE_SYSTEM_CONTROLS = booleanPreferencesKey("sfw_hide_system_controls")
     val SHOW_MINI_PLAYER_BAR = booleanPreferencesKey("show_mini_player_bar")
     val APP_LANGUAGE = stringPreferencesKey("app_language")
+
+    val DEEPSEEK_THINKING_ENABLED = booleanPreferencesKey("deepseek_thinking_enabled")
+    val DEEPSEEK_REASONING_EFFORT = stringPreferencesKey("deepseek_reasoning_effort")
+    val DEEPSEEK_FINAL_POLISH_ENABLED = booleanPreferencesKey("deepseek_final_polish_enabled")
 }

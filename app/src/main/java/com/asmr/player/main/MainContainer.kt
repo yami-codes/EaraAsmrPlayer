@@ -1429,6 +1429,7 @@ fun MainContainer(
                                             val entry = navBackStackEntry
                                             if (currentRoute != null && (isPrimaryRoute(currentRoute) || currentRoute == "playlist_system/{type}")) {
                                                 val downloadTasks by downloadsViewModel.tasks.collectAsState()
+                                                val activeSubtitleTaskCount by downloadsViewModel.activeSubtitleTaskCount.collectAsState()
                                                 val activeDownloadCount = remember(downloadTasks) {
                                                     downloadTasks.sumOf { task ->
                                                         task.items.count {
@@ -1436,16 +1437,17 @@ fun MainContainer(
                                                         }
                                                     }
                                                 }
+                                                val activeTaskCount = activeDownloadCount + activeSubtitleTaskCount
                                                 Box {
                                                     IconButton(onClick = { navController.navigate("downloads") }) {
                                                         Icon(Icons.Rounded.Download, contentDescription = stringResource(R.string.downloads))
                                                     }
-                                                    if (activeDownloadCount > 0) {
+                                                    if (activeTaskCount > 0) {
                                                         Badge(
                                                             modifier = Modifier
                                                                 .align(Alignment.TopEnd)
                                                         ) {
-                                                            Text(activeDownloadCount.toString())
+                                                            Text(activeTaskCount.toString())
                                                         }
                                                     }
                                                 }
