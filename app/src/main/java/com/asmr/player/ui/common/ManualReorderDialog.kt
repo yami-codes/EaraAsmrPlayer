@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.common
+package com.asmr.player.ui.common
 
 import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
@@ -170,8 +170,8 @@ internal fun ManualReorderDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .reorderable(reorderState)
-                        .detectReorderAfterLongPress(reorderState)
-                        .thinScrollbar(listState),
+                        .detectReorderAfterLongPress(reorderState),
+                    flingBehavior = rememberCalmScrollableFlingBehavior(),
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         top = 12.dp,

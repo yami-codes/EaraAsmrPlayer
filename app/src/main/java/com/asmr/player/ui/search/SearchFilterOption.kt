@@ -1,11 +1,10 @@
-﻿package com.asmr.player.ui.search
+package com.asmr.player.ui.search
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.asmr.player.R
@@ -19,8 +18,7 @@ sealed class SearchFilterIcon {
 enum class SearchFilterOption(
     @StringRes val labelRes: Int,
     val icon: SearchFilterIcon,
-    val mode: SearchFilterMode,
-    val sortOption: SearchSortOption? = null
+    val mode: SearchFilterMode
 ) {
     Collected(
         labelRes = R.string.included,
@@ -32,29 +30,10 @@ enum class SearchFilterOption(
         icon = SearchFilterIcon.Drawable(R.drawable.ic_search_chinese_book),
         mode = SearchFilterMode.ChineseTranslated
     ),
-    Trend(
-        labelRes = SearchSortOption.Trend.labelRes,
-        icon = SearchFilterIcon.Vector(Icons.Rounded.LocalFireDepartment),
-        mode = SearchFilterMode.Standard,
-        sortOption = SearchSortOption.Trend
-    ),
-    ReleaseNew(
-        labelRes = SearchSortOption.ReleaseNew.labelRes,
-        icon = SearchFilterIcon.Drawable(R.drawable.ic_search_new_releases_new),
-        mode = SearchFilterMode.Standard,
-        sortOption = SearchSortOption.ReleaseNew
-    ),
-    DLCount(
-        labelRes = SearchSortOption.DLCount.labelRes,
-        icon = SearchFilterIcon.Vector(Icons.Rounded.EmojiEvents),
-        mode = SearchFilterMode.Standard,
-        sortOption = SearchSortOption.DLCount
-    ),
-    PriceHigh(
-        labelRes = SearchSortOption.PriceHigh.labelRes,
-        icon = SearchFilterIcon.Drawable(R.drawable.ic_search_badge_japanese_yen),
-        mode = SearchFilterMode.Standard,
-        sortOption = SearchSortOption.PriceHigh
+    Standard(
+        labelRes = R.string.all_works,
+        icon = SearchFilterIcon.Vector(Icons.Rounded.Search),
+        mode = SearchFilterMode.Standard
     ),
     Presale(
         labelRes = R.string.pre_order,
@@ -79,9 +58,14 @@ enum class SearchFilterOption(
     val isCollectedOnly: Boolean
         get() = mode == SearchFilterMode.CollectedOnly
 
+    val supportsWorkFilters: Boolean
+        get() = mode == SearchFilterMode.CollectedOnly || mode == SearchFilterMode.Standard
+
+    val supportsSortAndLanguageOptions: Boolean
+        get() = mode != SearchFilterMode.PurchasedOnly && mode != SearchFilterMode.PresaleOnly
+
     companion object {
         fun fromState(
-            order: SearchSortOption,
             purchasedOnly: Boolean,
             presaleOnly: Boolean,
             chineseTranslatedOnly: Boolean,
@@ -92,7 +76,7 @@ enum class SearchFilterOption(
                 chineseTranslatedOnly -> ChineseTranslated
                 presaleOnly -> Presale
                 collectedOnly -> Collected
-                else -> values().firstOrNull { it.sortOption == order } ?: Trend
+                else -> Standard
             }
         }
     }

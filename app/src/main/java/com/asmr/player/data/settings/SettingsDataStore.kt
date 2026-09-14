@@ -11,7 +11,9 @@ import androidx.datastore.preferences.preferencesDataStore
 val Context.settingsDataStore by preferencesDataStore(name = "settings")
 
 object SettingsKeys {
+    val APP_LANGUAGE = stringPreferencesKey("app_language")
     val APP_VOLUME_PERCENT = intPreferencesKey("app_volume_percent")
+    val APP_CACHE_MAX_SIZE_MB = intPreferencesKey("app_cache_max_size_mb")
 
     val EQ_ENABLED = booleanPreferencesKey("eq_enabled")
     fun eqBandLevel(index: Int) = intPreferencesKey("eq_band_$index")
@@ -21,15 +23,26 @@ object SettingsKeys {
     val HOT_LISTENING_VIEW_MODE = intPreferencesKey("hot_listening_view_mode")
     val HOT_LISTENING_SORT_MODE = stringPreferencesKey("hot_listening_sort_mode")
     val SEARCH_BLOCKED_KEYWORDS = stringPreferencesKey("search_blocked_keywords")
+    val DOWNLOAD_DIRECTORY_TREE_URI = stringPreferencesKey("download_directory_tree_uri")
+    val DOWNLOAD_DIRECTORY_LABEL = stringPreferencesKey("download_directory_label")
 
     val PLAY_MODE = intPreferencesKey("play_mode")
 
     val ASMR_ONE_SITE = intPreferencesKey("asmr_one_site")
+    val NETWORK_PROXY_MODE = stringPreferencesKey("network_proxy_mode")
+    val NETWORK_PROXY_HOST = stringPreferencesKey("network_proxy_host")
+    val NETWORK_PROXY_PORT = intPreferencesKey("network_proxy_port")
+    val NETWORK_PROXY_AUTHENTICATION_ENABLED = booleanPreferencesKey("network_proxy_authentication_enabled")
+    val NETWORK_PROXY_USERNAME = stringPreferencesKey("network_proxy_username")
+    val NETWORK_PROXY_PASSWORD_CONFIGURED = booleanPreferencesKey("network_proxy_password_configured")
+    val NETWORK_PROXY_CREDENTIAL_VERSION = longPreferencesKey("network_proxy_credential_version")
+    val CUSTOM_DNS_SERVER = stringPreferencesKey("custom_dns_server")
 
     val FLOATING_LYRICS_ENABLED = booleanPreferencesKey("floating_lyrics_enabled")
     val FLOATING_LYRICS_COLOR = intPreferencesKey("floating_lyrics_color")
     val FLOATING_LYRICS_SIZE = floatPreferencesKey("floating_lyrics_size")
     val FLOATING_LYRICS_OPACITY = floatPreferencesKey("floating_lyrics_opacity")
+    val FLOATING_LYRICS_X = intPreferencesKey("floating_lyrics_x")
     val FLOATING_LYRICS_Y = intPreferencesKey("floating_lyrics_y")
     val FLOATING_LYRICS_ALIGN = intPreferencesKey("floating_lyrics_align")
     val FLOATING_LYRICS_TOUCHABLE = booleanPreferencesKey("floating_lyrics_touchable")
@@ -82,5 +95,8 @@ object SettingsKeys {
     val PAUSE_FADE_OUT_MS = intPreferencesKey("pause_fade_out_ms")
     val SFW_HIDE_SYSTEM_CONTROLS = booleanPreferencesKey("sfw_hide_system_controls")
     val SHOW_MINI_PLAYER_BAR = booleanPreferencesKey("show_mini_player_bar")
-    val APP_LANGUAGE = stringPreferencesKey("app_language")
+
+    val DEEPSEEK_THINKING_ENABLED = booleanPreferencesKey("deepseek_thinking_enabled")
+    val DEEPSEEK_REASONING_EFFORT = stringPreferencesKey("deepseek_reasoning_effort")
+    val DEEPSEEK_FINAL_POLISH_ENABLED = booleanPreferencesKey("deepseek_final_polish_enabled")
 }

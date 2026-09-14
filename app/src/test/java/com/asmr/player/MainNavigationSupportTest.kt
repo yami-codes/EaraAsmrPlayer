@@ -1,13 +1,134 @@
 package com.asmr.player
 
+import android.content.Context
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.test.core.app.ApplicationProvider
+import com.asmr.player.data.local.db.entities.PlaylistItemEntity
+import com.asmr.player.ui.nav.bottomChromeNavItems
+import com.asmr.player.ui.nav.isPrimaryRoute
+import com.asmr.player.ui.nav.resolvePrimaryRoute
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class MainNavigationSupportTest {
+
+    @Test
+    fun resolveMainRequestedOrientation_locksOnlyFullscreenPlayerToLandscape() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            resolveMainRequestedOrientation(
+                isPhone = true,
+                nowPlayingVisible = true,
+                videoFullscreen = true,
+                portraitExitPending = false
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            resolveMainRequestedOrientation(
+                isPhone = false,
+                nowPlayingVisible = true,
+                videoFullscreen = true,
+                portraitExitPending = false
+            )
+        )
+    }
+
+    @Test
+    fun resolveMainRequestedOrientation_preservesNormalPlayerAndPagePolicies() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_FULL_USER,
+            resolveMainRequestedOrientation(
+                isPhone = true,
+                nowPlayingVisible = true,
+                videoFullscreen = false,
+                portraitExitPending = false
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            resolveMainRequestedOrientation(
+                isPhone = true,
+                nowPlayingVisible = false,
+                videoFullscreen = true,
+                portraitExitPending = false
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR,
+            resolveMainRequestedOrientation(
+                isPhone = false,
+                nowPlayingVisible = false,
+                videoFullscreen = false,
+                portraitExitPending = false
+            )
+        )
+    }
+
+    @Test
+    fun resolveMainRequestedOrientation_rotatesPhoneBeforeRevealingUnderlyingPage() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            resolveMainRequestedOrientation(
+                isPhone = true,
+                nowPlayingVisible = true,
+                videoFullscreen = false,
+                portraitExitPending = true
+            )
+        )
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR,
+            resolveMainRequestedOrientation(
+                isPhone = false,
+                nowPlayingVisible = true,
+                videoFullscreen = false,
+                portraitExitPending = true
+            )
+        )
+    }
+
+    @Test
+    fun shouldKeepVideoOutputEnabled_keepsDecoderWarmWhilePlaybackUiOwnsVideo() {
+        assertEquals(
+            true,
+            shouldKeepVideoOutputEnabled(
+                currentItemIsVideo = true,
+                miniPlayerEnabled = true,
+                nowPlayingVisible = false
+            )
+        )
+        assertEquals(
+            true,
+            shouldKeepVideoOutputEnabled(
+                currentItemIsVideo = true,
+                miniPlayerEnabled = false,
+                nowPlayingVisible = true
+            )
+        )
+        assertEquals(
+            false,
+            shouldKeepVideoOutputEnabled(
+                currentItemIsVideo = true,
+                miniPlayerEnabled = false,
+                nowPlayingVisible = false
+            )
+        )
+        assertEquals(
+            false,
+            shouldKeepVideoOutputEnabled(
+                currentItemIsVideo = false,
+                miniPlayerEnabled = true,
+                nowPlayingVisible = false
+            )
+        )
+    }
 
     @Test
     fun computePrimaryNavSelectionProgresses_blendsCurrentAndNeighborPages() {
@@ -64,10 +185,52 @@ class MainNavigationSupportTest {
     }
 
     @Test
-    fun resolvePrimaryPagerBeyondBoundsPageCount_keepsAllPrimaryPagesComposed() {
+    fun shouldSyncPrimaryPagerToRoute_onlyWhenSettledPageDiffersFromTarget() {
+        assertEquals(false, shouldSyncPrimaryPagerToRoute(targetPage = -1, settledPage = 0))
+        assertEquals(false, shouldSyncPrimaryPagerToRoute(targetPage = 2, settledPage = 2))
+        assertEquals(true, shouldSyncPrimaryPagerToRoute(targetPage = 2, settledPage = 1))
+    }
+
+    @Test
+    fun shouldClearPendingPrimaryNavigationRoute_waitsUntilPagerSettlesOnPendingPage() {
+        assertEquals(
+            false,
+            shouldClearPendingPrimaryNavigationRoute(
+                currentRoute = "search",
+                pendingRoute = "search",
+                navigationInProgress = false,
+                pendingPage = 1,
+                settledPage = 0
+            )
+        )
+        assertEquals(
+            false,
+            shouldClearPendingPrimaryNavigationRoute(
+                currentRoute = "search",
+                pendingRoute = "search",
+                navigationInProgress = true,
+                pendingPage = 1,
+                settledPage = 1
+            )
+        )
+        assertEquals(
+            true,
+            shouldClearPendingPrimaryNavigationRoute(
+                currentRoute = "search",
+                pendingRoute = "search",
+                navigationInProgress = false,
+                pendingPage = 1,
+                settledPage = 1
+            )
+        )
+    }
+
+    @Test
+    fun resolvePrimaryPagerBeyondBoundsPageCount_keepsOnlyAdjacentPageComposed() {
         assertEquals(0, resolvePrimaryPagerBeyondBoundsPageCount(0))
         assertEquals(0, resolvePrimaryPagerBeyondBoundsPageCount(1))
-        assertEquals(7, resolvePrimaryPagerBeyondBoundsPageCount(8))
+        assertEquals(1, resolvePrimaryPagerBeyondBoundsPageCount(2))
+        assertEquals(1, resolvePrimaryPagerBeyondBoundsPageCount(8))
     }
 
     @Test
@@ -84,16 +247,62 @@ class MainNavigationSupportTest {
     }
 
     @Test
+    fun bottomChromeNavItems_useListeningCalendarAsPrimaryEntry() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val items = bottomChromeNavItems()
+        val routes = items.map { it.route }
+
+        assertEquals(context.getString(R.string.nav_listening_calendar), context.getString(items[items.lastIndex - 1].labelRes))
+        assertEquals("listening_calendar", items[items.lastIndex - 1].route)
+        assertEquals(context.getString(R.string.nav_settings), context.getString(items.last().labelRes))
+        assertEquals("settings", items.last().route)
+        assertEquals(true, routes.contains("listening_calendar"))
+        assertEquals(false, routes.contains("dlsite_login"))
+    }
+
+    @Test
+    fun primaryRouteResolution_treatsCalendarAsPrimaryAndDlsiteLoginAsSecondary() {
+        assertEquals(true, isPrimaryRoute("listening_calendar"))
+        assertEquals(false, isPrimaryRoute("dlsite_login"))
+        assertEquals("listening_calendar", resolvePrimaryRoute("listening_calendar", "library"))
+        assertEquals("library", resolvePrimaryRoute("dlsite_login", "library"))
+        assertEquals("listening_calendar", resolveCurrentPrimaryDestinationRoute("listening_calendar"))
+        assertEquals(null, resolveCurrentPrimaryDestinationRoute("dlsite_login"))
+    }
+
+    @Test
     fun resolveCurrentPrimaryDestinationRoute_treatsSearchAssistAsSecondary() {
         assertEquals(null, resolveCurrentPrimaryDestinationRoute("search_assist"))
         assertEquals(null, resolveCurrentPrimaryDestinationRoute("search_assist?keyword={keyword}"))
     }
 
     @Test
-    fun shouldScrollPrimaryRouteToTop_onlyWhenAlreadyAtPrimaryRoot() {
+    fun shouldScrollPrimaryRouteToTop_whenRequestedRouteIsCurrentPrimaryRoute() {
         assertEquals(true, shouldScrollPrimaryRouteToTop("playlists", "playlists", "playlists"))
-        assertEquals(false, shouldScrollPrimaryRouteToTop("playlists", "playlists", null))
+        assertEquals(true, shouldScrollPrimaryRouteToTop("playlists", "playlists", null))
         assertEquals(false, shouldScrollPrimaryRouteToTop("groups", "playlists", "playlists"))
+    }
+
+    @Test
+    fun shouldTriggerPrimaryRouteScrollToTop_whenVisualRouteIsAlreadySelected() {
+        assertEquals(
+            true,
+            shouldTriggerPrimaryRouteScrollToTop(
+                requestedRoute = "hot",
+                visualPrimaryRoute = "hot",
+                activePrimaryRoute = "library",
+                currentPrimaryRoute = "library"
+            )
+        )
+        assertEquals(
+            false,
+            shouldTriggerPrimaryRouteScrollToTop(
+                requestedRoute = "groups",
+                visualPrimaryRoute = "hot",
+                activePrimaryRoute = "library",
+                currentPrimaryRoute = "library"
+            )
+        )
     }
 
     @Test
@@ -115,6 +324,25 @@ class MainNavigationSupportTest {
         assertEquals(false, shouldHideStatusBarForImmersivePage("search", false))
         assertEquals(false, shouldHideStatusBarForImmersivePage("settings", false))
         assertEquals(false, shouldHideStatusBarForImmersivePage(null, false))
+    }
+
+    @Test
+    fun isAlbumDetailStackTransition_onlyMatchesDetailToDetailNavigation() {
+        assertEquals(
+            true,
+            isAlbumDetailStackTransition(
+                "album_detail_rj/{rj}?initialTab={initialTab}",
+                "album_detail_rj/{rj}?initialTab={initialTab}"
+            )
+        )
+        assertEquals(
+            false,
+            isAlbumDetailStackTransition("library", "album_detail_rj/{rj}?initialTab={initialTab}")
+        )
+        assertEquals(
+            false,
+            isAlbumDetailStackTransition("album_detail_online/{rj}", "library")
+        )
     }
 
     @Test
@@ -152,5 +380,27 @@ class MainNavigationSupportTest {
 
         assertEquals(null, result.artworkUri)
         assertEquals(false, result.isVideo)
+    }
+
+    @Test
+    fun isVideoPlaybackItem_distinguishesAudioAndVideoSources() {
+        val audio = MediaItem.Builder()
+            .setUri("file:///sample.flac")
+            .setMimeType("audio/flac")
+            .build()
+        val video = MediaItem.Builder()
+            .setUri("file:///sample.mp4")
+            .setMimeType("video/mp4")
+            .build()
+        val playlistVideo = PlaylistItemEntity(
+            playlistId = 1L,
+            mediaId = "video",
+            title = "视频",
+            uri = "file:///sample.mkv"
+        )
+
+        assertEquals(false, audio.isVideoPlaybackItem())
+        assertEquals(true, video.isVideoPlaybackItem())
+        assertEquals(true, playlistVideo.isVideoPlaybackItem())
     }
 }

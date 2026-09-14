@@ -1,19 +1,18 @@
-﻿package com.asmr.player.ui.search
+package com.asmr.player.ui.search
 
-import androidx.compose.ui.res.stringResource
-import com.asmr.player.R
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -46,9 +44,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FamilyRestroom
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -66,10 +67,12 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,6 +85,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.compositeOver
@@ -91,37 +95,62 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.asmr.player.R
 import com.asmr.player.domain.model.Album
+import com.asmr.player.data.local.db.entities.AlbumEntity
+import com.asmr.player.data.local.db.entities.titleForDisplay
+import com.asmr.player.cache.ImageCacheEntryPoint
+import com.asmr.player.cache.LazyListPreloader
+import com.asmr.player.cache.LazyStaggeredGridPreloader
+import com.asmr.player.ui.common.ActiveDropdownMenuItem
 import com.asmr.player.ui.common.CustomSearchBar
 import com.asmr.player.ui.common.EaraBrandedEmptyState
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.albumCoverImageModel
+import com.asmr.player.ui.common.albumStableKey
+import com.asmr.player.ui.common.interruptScrollableFlingOnPointerDown
 import com.asmr.player.ui.common.clearFocusOnTapOutside
+import com.asmr.player.ui.common.CollapsibleHeaderState
 import com.asmr.player.ui.common.collapsibleHeaderUiState
 import com.asmr.player.ui.common.consumeTapThrough
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.common.rememberCollapsibleHeaderState
-import com.asmr.player.ui.common.smoothScrollToTop
-import com.asmr.player.ui.common.thinScrollbar
+import com.asmr.player.ui.common.rememberSaveablePrefetchedLazyListState
+import com.asmr.player.ui.common.shouldFadeInCover
 import com.asmr.player.ui.common.withAddedBottomPadding
+import com.asmr.player.ui.common.collectAsStateWhileActive
 import com.asmr.player.ui.library.AlbumGridItem
 import com.asmr.player.ui.library.AlbumGridItemSpacing
 import com.asmr.player.ui.library.AlbumItem
+import com.asmr.player.ui.library.AlbumMetaActionDialog
 import com.asmr.player.ui.library.rememberAlbumMetaCopyAction
+import com.asmr.player.ui.groups.AlbumGroupsViewModel
+import com.asmr.player.ui.playlists.PlaylistsViewModel
+import com.asmr.player.ui.settings.SettingsViewModel
 import com.asmr.player.ui.sidepanel.LandscapeRightPanelHost
 import com.asmr.player.ui.sidepanel.RecentAlbumsPanel
 import com.asmr.player.ui.theme.AsmrTheme
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.snapshotFlow
@@ -131,8 +160,12 @@ import kotlin.math.roundToInt
 internal const val SEARCH_INPUT_TAG = "search_input"
 internal const val SEARCH_SCOPE_BUTTON_TAG = "search_scope_button"
 internal const val SEARCH_SCOPE_OPTION_TAG_PREFIX = "search_scope_option"
-internal const val SEARCH_LANGUAGE_BUTTON_TAG = "search_language_button"
-internal const val SEARCH_COLLECTED_SORT_BUTTON_TAG = "search_collected_sort_button"
+internal const val SEARCH_SORT_BUTTON_TAG = "search_sort_button"
+internal const val SEARCH_COLLECTED_SORT_OPTION_TAG_PREFIX = "search_collected_sort_option"
+internal const val SEARCH_SORT_OPTION_TAG_PREFIX = "search_sort_option"
+internal const val SEARCH_LANGUAGE_OPTION_TAG_PREFIX = "search_language_option"
+internal const val SEARCH_HAS_SUBTITLE_OPTION_TAG = "search_has_subtitle_option"
+internal const val SEARCH_ALL_AGES_OPTION_TAG = "search_all_ages_option"
 internal const val SEARCH_CLEAR_BUTTON_TAG = "search_clear_button"
 internal const val SEARCH_SUBMIT_BUTTON_TAG = "search_submit_button"
 internal const val SEARCH_SUBMIT_SPINNER_TAG = "search_submit_spinner"
@@ -142,33 +175,101 @@ internal const val SEARCH_NEXT_BUTTON_TAG = "search_next_button"
 internal const val SEARCH_PAGINATION_TAG = "search_pagination"
 internal const val SEARCH_CHROME_TAG = "search_chrome"
 private val SearchChromeContentGap = 16.dp
-private const val SearchPullRefreshContentShiftRatio = 1f
-private val SearchPullRefreshIndicatorSize = 40.dp
+private const val SearchPullRefreshFollowRatio = 0.86f
+private val SearchPullRefreshSettleDistance = 68.dp
+private val SearchPullRefreshMaxDistance = 112.dp
+private const val SearchPullRefreshMinFeedbackMillis = 420L
+private val SearchPullActionHintHeight = 58.dp
 private val SearchPageHorizontalPadding = 8.dp
-private const val SearchPullNextPageDragResistance = 0.68f
+private const val SearchPullNextPageDragResistance = 0.82f
+private const val SearchPullNextPageFollowRatio = 0.84f
+private const val SearchPullStretchExtraRatio = 0.28f
+private const val SearchPullNextPageVerticalBias = 1.25f
 private val SearchPullNextPageTriggerDistance = 96.dp
-private val SearchPullNextPageMaxDistance = 156.dp
-private val SearchPullNextPageIndicatorMaxLift = 92.dp
+private val SearchPullNextPageMaxDistance = 172.dp
+private val SearchPullNextPageMaxLift = 108.dp
+private val SearchPullNextPageReturnSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
 private val SearchResultPlacementSpring = spring<IntOffset>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessMediumLow
 )
 
-private fun stableAlbumKey(album: Album): String {
-    val id = album.rjCode.ifBlank { album.workId }.trim()
-    if (id.isNotEmpty()) return id
-    val seed = "${album.coverUrl}|${album.title}|${album.circle}|${album.cv}"
-    return "h${seed.hashCode().absoluteValue}"
+private fun searchResultItemKey(album: Album): String {
+    return "search-result:${albumStableKey(album)}"
 }
 
-private fun searchResultItemKey(index: Int, album: Album): String {
-    return "search-result:${stableAlbumKey(album)}:$index"
+internal fun searchResultScrollKey(success: SearchUiState.Success?): String {
+    if (success == null) return "search-results:none"
+    return buildString {
+        append("search-results:")
+        append(success.resultRevision)
+        append(':')
+        append(success.page)
+        append(':')
+        append(success.keyword)
+        append(':')
+        append(success.order.name)
+        append(':')
+        append(success.collectedSort.name)
+        append(':')
+        append(success.purchasedOnly)
+        append(':')
+        append(success.presaleOnly)
+        append(':')
+        append(success.chineseTranslatedOnly)
+        append(':')
+        append(success.collectedOnly)
+        append(':')
+        append(success.hasSubtitle)
+        append(':')
+        append(success.allAges)
+        append(':')
+        append(success.locale.orEmpty())
+    }
 }
 
 private fun onlineDetailLoadingFor(album: Album, state: SearchUiState.Success): Boolean {
-    if (!state.isEnriching || state.purchasedOnly || state.collectedOnly) return false
+    if (state.collectedOnly && !state.purchasedOnly) {
+        val workId = album.asmrOneWorkId ?: return false
+        return workId in state.resolvingCollectedWorkIds
+    }
+    if (!state.isEnriching || state.purchasedOnly) return false
     val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
     return rj.isNotBlank() && rj in state.enrichingRjCodes
+}
+
+internal enum class SearchResultSkeletonMode {
+    None,
+    DetailMetadata,
+    LocalizedText
+}
+
+internal fun searchResultSkeletonMode(
+    onlineDetailLoading: Boolean,
+    isRefreshingLocalizedText: Boolean
+): SearchResultSkeletonMode {
+    if (!onlineDetailLoading) return SearchResultSkeletonMode.None
+    return if (isRefreshingLocalizedText) {
+        SearchResultSkeletonMode.LocalizedText
+    } else {
+        SearchResultSkeletonMode.DetailMetadata
+    }
+}
+
+private fun searchRubberBandOffset(
+    dragPx: Float,
+    triggerPx: Float,
+    maxOffsetPx: Float,
+    followRatio: Float
+): Float {
+    val clampedDrag = dragPx.coerceAtLeast(0f)
+    val safeTrigger = triggerPx.coerceAtLeast(1f)
+    val base = clampedDrag.coerceAtMost(safeTrigger) * followRatio
+    val extra = (clampedDrag - safeTrigger).coerceAtLeast(0f) * SearchPullStretchExtraRatio
+    return (base + extra).coerceIn(0f, maxOffsetPx)
 }
 
 internal data class SearchChromeLockState(
@@ -217,6 +318,8 @@ private fun SearchFilterIconView(
 @Composable
 fun SearchScreen(
     windowSizeClass: WindowSizeClass,
+    isActive: Boolean = true,
+    isDataActive: Boolean = isActive,
     onAlbumClick: (Album, Boolean, Boolean) -> Unit,
     onOpenSearchAssist: (SearchAssistSearchRequest) -> Unit = {},
     submittedSearchKeyword: String = "",
@@ -225,10 +328,13 @@ fun SearchScreen(
     submittedSearchPresaleOnly: Boolean = false,
     submittedSearchChineseTranslatedOnly: Boolean = false,
     submittedSearchCollectedOnly: Boolean = true,
+    submittedSearchHasSubtitle: Boolean = false,
+    submittedSearchAllAges: Boolean = false,
     submittedSearchCollectedSortName: String = SearchCollectedSortOption.ReleaseNew.name,
     submittedSearchLocale: String = "ja_JP",
     submittedSearchSignal: Long = 0L,
     scrollToTopSignal: Long = 0L,
+    onHorizontalPagerScrollLockChanged: (Boolean) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     var keyword by rememberSaveable { mutableStateOf("") }
@@ -236,6 +342,8 @@ fun SearchScreen(
     var presaleOnly by rememberSaveable { mutableStateOf(false) }
     var chineseTranslatedOnly by rememberSaveable { mutableStateOf(false) }
     var collectedOnly by rememberSaveable { mutableStateOf(true) }
+    var hasSubtitle by rememberSaveable { mutableStateOf(false) }
+    var allAges by rememberSaveable { mutableStateOf(false) }
     var selectedCollectedSortName by rememberSaveable { mutableStateOf(SearchCollectedSortOption.ReleaseNew.name) }
     var selectedLocale by rememberSaveable { mutableStateOf("ja_JP") }
     var selectedOrderName by rememberSaveable { mutableStateOf(SearchSortOption.Trend.name) }
@@ -245,41 +353,45 @@ fun SearchScreen(
     val selectedCollectedSort = remember(selectedCollectedSortName) {
         SearchCollectedSortOption.fromName(selectedCollectedSortName)
     }
-    val selectedFilter = remember(selectedOrderName, purchasedOnly, presaleOnly, chineseTranslatedOnly, collectedOnly) {
+    val selectedFilter = remember(purchasedOnly, presaleOnly, chineseTranslatedOnly, collectedOnly) {
         SearchFilterOption.fromState(
-            order = selectedOrder,
             purchasedOnly = purchasedOnly,
             presaleOnly = presaleOnly,
             chineseTranslatedOnly = chineseTranslatedOnly,
             collectedOnly = collectedOnly
         )
     }
-    val viewMode by viewModel.viewMode.collectAsState()
-    val uiState by viewModel.uiState.collectAsState()
-    val hotKeywordTerms by viewModel.hotKeywordTerms.collectAsState()
-    val showHotKeywordFallback by viewModel.showHotKeywordFallback.collectAsState()
+    val viewMode by viewModel.viewMode.collectAsStateWhileActive(isDataActive)
+    val uiState by viewModel.uiState.collectAsStateWhileActive(isDataActive)
+    val hotKeywordTerms by viewModel.hotKeywordTerms.collectAsStateWhileActive(isDataActive)
+    val showHotKeywordFallback by viewModel.showHotKeywordFallback.collectAsStateWhileActive(isDataActive)
     val hotKeywordCarouselItem = rememberSearchHotKeywordCarouselItem(
         terms = hotKeywordTerms,
         showFallback = showHotKeywordFallback
     )
     val success = uiState as? SearchUiState.Success
-    val currentPageKey = success?.page ?: 0
-    val listState = rememberSaveable(currentPageKey, saver = LazyListState.Saver) { LazyListState(0, 0) }
-    val gridState = rememberSaveable(currentPageKey, saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
+    val resultScrollKey = searchResultScrollKey(success)
+    val listState = rememberSaveablePrefetchedLazyListState(stateKey = resultScrollKey)
+    val gridState = rememberSaveable(resultScrollKey, saver = LazyStaggeredGridState.Saver) { LazyStaggeredGridState() }
     val colorScheme = AsmrTheme.colorScheme
     val copyMeta = rememberAlbumMetaCopyAction(viewModel.messageManager)
-    val circleLabel = stringResource(R.string.circles)
-    val tagLabel = stringResource(R.string.tags)
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
     val chromeState = rememberCollapsibleHeaderState()
-    val chromeResetKey = remember(currentPageKey, viewMode) { "$currentPageKey:$viewMode" }
+    val chromeResetKey = remember(resultScrollKey, viewMode) { "$resultScrollKey:$viewMode" }
     var lastChromeResetKey by rememberSaveable { mutableStateOf(chromeResetKey) }
 
     var keywordSyncedFromState by rememberSaveable { mutableStateOf(false) }
     var optionsSyncedFromState by rememberSaveable { mutableStateOf(false) }
     var lastHandledSubmittedSearchSignal by rememberSaveable { mutableStateOf(0L) }
+    var metaActionKeyword by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun openMetaActions(value: String) {
+        val normalized = value.trim()
+        if (normalized.isNotBlank()) metaActionKeyword = normalized
+    }
 
     LaunchedEffect(Unit) {
         viewModel.bootstrap(
@@ -287,8 +399,14 @@ fun SearchScreen(
             initialPurchasedOnly = purchasedOnly,
             initialLocale = selectedLocale,
             initialCollectedOnly = collectedOnly,
-            initialCollectedSort = selectedCollectedSort
+            initialCollectedSort = selectedCollectedSort,
+            initialHasSubtitle = hasSubtitle,
+            initialAllAges = allAges
         )
+    }
+
+    LaunchedEffect(isDataActive, viewModel) {
+        if (isDataActive) viewModel.ensureHotKeywordTermsLoaded()
     }
 
     LaunchedEffect(success?.keyword) {
@@ -307,6 +425,8 @@ fun SearchScreen(
         success?.presaleOnly,
         success?.chineseTranslatedOnly,
         success?.collectedOnly,
+        success?.hasSubtitle,
+        success?.allAges,
         success?.locale
     ) {
         val state = success ?: return@LaunchedEffect
@@ -315,6 +435,8 @@ fun SearchScreen(
             presaleOnly = state.presaleOnly
             chineseTranslatedOnly = state.chineseTranslatedOnly
             collectedOnly = state.collectedOnly
+            hasSubtitle = state.hasSubtitle
+            allAges = state.allAges
             selectedCollectedSortName = state.collectedSort.name
             selectedLocale = state.locale ?: "ja_JP"
             selectedOrderName = state.order.name
@@ -330,11 +452,6 @@ fun SearchScreen(
     val highlightedPage = success?.page ?: 1
     val canGoPrev = success?.canGoPrev == true && !success.isSearching
     val canGoNext = success?.canGoNext == true && !success.isSearching
-    val animatedChromeOffsetPx by animateFloatAsState(
-        targetValue = chromeState.offsetPx,
-        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-        label = "searchChromeOffset"
-    )
     val chromeReservedHeightPx = when {
         chromeState.heightPx > 0f -> chromeState.heightPx
         success != null -> with(androidx.compose.ui.platform.LocalDensity.current) { 120.dp.toPx() }
@@ -344,6 +461,8 @@ fun SearchScreen(
 
     fun scrollResultsToTop() {
         scope.launch {
+            runCatching { listState.stopScroll(MutatePriority.PreventUserInput) }
+            runCatching { gridState.stopScroll(MutatePriority.PreventUserInput) }
             runCatching { listState.scrollToItem(0) }
             runCatching { gridState.scrollToItem(0) }
         }
@@ -376,6 +495,32 @@ fun SearchScreen(
         chromeState.expand()
     }
 
+    fun searchMetaKeyword(value: String) {
+        if (searchSubmitLocked) {
+            viewModel.messageManager.showInfo(context.getString(R.string.search_in_progress_retry_later))
+            return
+        }
+        val normalized = value.trim()
+        if (normalized.isBlank()) return
+        keyboardController?.hide()
+        val accepted = viewModel.search(
+            keyword = normalized,
+            order = selectedOrder,
+            collectedSort = selectedCollectedSort,
+            purchasedOnly = purchasedOnly,
+            presaleOnly = presaleOnly,
+            chineseTranslatedOnly = chineseTranslatedOnly,
+            collectedOnly = collectedOnly,
+            hasSubtitle = hasSubtitle,
+            allAges = allAges,
+            locale = selectedLocale
+        )
+        if (!accepted) return
+        keyword = normalized
+        scrollResultsToTop()
+        chromeState.expand()
+    }
+
     fun currentSearchAssistRequest(): SearchAssistSearchRequest {
         return SearchAssistSearchRequest(
             keyword = keyword,
@@ -384,6 +529,8 @@ fun SearchScreen(
             presaleOnly = presaleOnly,
             chineseTranslatedOnly = chineseTranslatedOnly,
             collectedOnly = collectedOnly,
+            hasSubtitle = hasSubtitle,
+            allAges = allAges,
             collectedSortName = selectedCollectedSort.name,
             locale = selectedLocale
         )
@@ -397,6 +544,8 @@ fun SearchScreen(
         submittedSearchPresaleOnly,
         submittedSearchChineseTranslatedOnly,
         submittedSearchCollectedOnly,
+        submittedSearchHasSubtitle,
+        submittedSearchAllAges,
         submittedSearchCollectedSortName,
         submittedSearchLocale,
         searchSubmitLocked
@@ -423,6 +572,8 @@ fun SearchScreen(
             presaleOnly = submittedSearchPresaleOnly,
             chineseTranslatedOnly = submittedSearchChineseTranslatedOnly,
             collectedOnly = submittedSearchCollectedOnly,
+            hasSubtitle = submittedSearchHasSubtitle,
+            allAges = submittedSearchAllAges,
             locale = submittedSearchLocale
         )
         if (!accepted) return@LaunchedEffect
@@ -434,12 +585,15 @@ fun SearchScreen(
         presaleOnly = submittedSearchPresaleOnly
         chineseTranslatedOnly = submittedSearchChineseTranslatedOnly
         collectedOnly = submittedSearchCollectedOnly
+        hasSubtitle = submittedSearchHasSubtitle
+        allAges = submittedSearchAllAges
         selectedLocale = submittedSearchLocale
         scrollResultsToTop()
         chromeState.expand()
     }
 
     val pullToRefreshState = rememberPullToRefreshState()
+    var pullRefreshStartedAtMs by remember { mutableLongStateOf(0L) }
     val pullNextPageEnabled =
         success?.results?.isNotEmpty() == true &&
             canGoNext &&
@@ -449,11 +603,16 @@ fun SearchScreen(
         with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullNextPageTriggerDistance.toPx() }
     val pullNextPageMaxDistancePx =
         with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullNextPageMaxDistance.toPx() }
-    val pullNextPageIndicatorMaxLiftPx =
-        with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullNextPageIndicatorMaxLift.toPx() }
-    var pullNextPageDragPx by remember(currentPageKey, viewMode) { mutableFloatStateOf(0f) }
+    val pullNextPageMaxLiftPx =
+        with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullNextPageMaxLift.toPx() }
+    var pullNextPageDragPx by remember(resultScrollKey, viewMode) { mutableFloatStateOf(0f) }
+    var pullNextPageGestureActive by remember(resultScrollKey, viewMode) { mutableStateOf(false) }
+    var pullNextPageReturnInProgress by remember(resultScrollKey, viewMode) { mutableStateOf(false) }
+    var pullNextPageRequestAfterReturn by remember(resultScrollKey, viewMode) { mutableStateOf(false) }
+    var searchPointerPressed by remember(resultScrollKey, viewMode) { mutableStateOf(false) }
     val pullNextPageArmed = pullNextPageDragPx >= pullNextPageTriggerDistancePx
-    val latestPullNextPageEnabled = rememberUpdatedState(pullNextPageEnabled)
+    val pullNextPageGestureEnabled = pullNextPageEnabled && !pullNextPageReturnInProgress
+    val latestPullNextPageEnabled = rememberUpdatedState(pullNextPageGestureEnabled)
     val latestIsAtBottom = rememberUpdatedState(
         if (viewMode == 0) !listState.canScrollForward else !gridState.canScrollForward
     )
@@ -464,73 +623,137 @@ fun SearchScreen(
         pullNextPageDragPx,
         pullNextPageTriggerDistancePx,
         pullNextPageMaxDistancePx,
-        pullNextPageIndicatorMaxLiftPx
+        pullNextPageMaxLiftPx
     ) {
-        val clamped = pullNextPageDragPx.coerceIn(0f, pullNextPageMaxDistancePx)
-        val thresholdPart = clamped.coerceAtMost(pullNextPageTriggerDistancePx) * 0.88f
-        val extraPart = (clamped - pullNextPageTriggerDistancePx).coerceAtLeast(0f) * 0.24f
-        (thresholdPart + extraPart).coerceAtMost(pullNextPageIndicatorMaxLiftPx)
+        searchRubberBandOffset(
+            dragPx = pullNextPageDragPx,
+            triggerPx = pullNextPageTriggerDistancePx,
+            maxOffsetPx = pullNextPageMaxLiftPx,
+            followRatio = SearchPullNextPageFollowRatio
+        )
     }
     val pullNextPageVisualOffsetPx by animateFloatAsState(
         targetValue = pullNextPageVisualTargetPx,
-        animationSpec = spring(
-            dampingRatio = if (pullNextPageDragPx > 0f) {
-                Spring.DampingRatioMediumBouncy
-            } else {
-                Spring.DampingRatioLowBouncy
-            },
-            stiffness = if (pullNextPageDragPx > 0f) {
-                Spring.StiffnessMediumLow
-            } else {
-                Spring.StiffnessLow
+        animationSpec = if (pullNextPageGestureActive) {
+            snap()
+        } else {
+            SearchPullNextPageReturnSpring
+        },
+        finishedListener = { settledOffset ->
+            // 翻页请求必须等待回落动画完整结束，避免松手瞬间跳页。
+            if (settledOffset <= 0.5f && pullNextPageReturnInProgress) {
+                val shouldRequestNextPage = pullNextPageRequestAfterReturn
+                pullNextPageRequestAfterReturn = false
+                pullNextPageReturnInProgress = false
+                if (shouldRequestNextPage) {
+                    latestRequestNextPage.value()
+                }
             }
-        ),
-        label = "search_pull_next_offset"
+        },
+        label = "searchPullNextPageOffset"
     )
-    val pullNextPageIndicatorProgress =
-        (pullNextPageVisualOffsetPx / pullNextPageIndicatorMaxLiftPx).coerceIn(0f, 1f)
-    val pullNextPageIndicatorVisible =
-        pullNextPageDragPx > 0f || pullNextPageVisualOffsetPx > 1f
-    val finishPullNextPageGesture = rememberUpdatedState {
+    val pullNextPageProgress =
+        (pullNextPageVisualOffsetPx / pullNextPageMaxLiftPx).coerceIn(0f, 1f)
+    val finishPullNextPageGesture = rememberUpdatedState finish@{
+        if (
+            pullNextPageReturnInProgress &&
+                !pullNextPageGestureActive &&
+                pullNextPageDragPx <= 0f
+        ) {
+            return@finish
+        }
+        val hasPullOffset = pullNextPageDragPx > 0f
         val shouldTrigger =
+            hasPullOffset &&
             latestPullNextPageEnabled.value &&
                 pullNextPageDragPx >= latestPullNextPageTriggerDistancePx.value
+        pullNextPageGestureActive = false
+        pullNextPageRequestAfterReturn = shouldTrigger
+        pullNextPageReturnInProgress = hasPullOffset
         pullNextPageDragPx = 0f
-        if (shouldTrigger) {
-            latestRequestNextPage.value()
-        }
     }
     val refreshGestureEnabled = !pullToRefreshState.isRefreshing
     val topPaddingPx = with(androidx.compose.ui.platform.LocalDensity.current) { topPadding.toPx() }
-    val refreshIndicatorHoverOffsetPx = with(androidx.compose.ui.platform.LocalDensity.current) {
-        16.dp.toPx()
-    }
+    val pullActionHintHeightPx =
+        with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullActionHintHeight.toPx() }
+    val pullRefreshSettleDistancePx =
+        with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullRefreshSettleDistance.toPx() }
+    val pullRefreshMaxDistancePx =
+        with(androidx.compose.ui.platform.LocalDensity.current) { SearchPullRefreshMaxDistance.toPx() }
     val pullContentOffsetTargetPx = (
         if (pullToRefreshState.isRefreshing) {
-            0f
+            pullRefreshSettleDistancePx
         } else {
-            pullToRefreshState.verticalOffset * SearchPullRefreshContentShiftRatio
+            searchRubberBandOffset(
+                dragPx = pullToRefreshState.verticalOffset,
+                triggerPx = pullToRefreshState.positionalThreshold
+                    .takeIf { it > 0f }
+                    ?: pullRefreshSettleDistancePx,
+                maxOffsetPx = pullRefreshMaxDistancePx,
+                followRatio = SearchPullRefreshFollowRatio
+            )
         }
         ).coerceIn(
         minimumValue = 0f,
-        maximumValue = pullToRefreshState.positionalThreshold * SearchPullRefreshContentShiftRatio
+        maximumValue = pullRefreshMaxDistancePx
     )
     val pullContentOffsetPx by animateFloatAsState(
         targetValue = pullContentOffsetTargetPx,
-        animationSpec = if (pullToRefreshState.progress > 0f && !pullToRefreshState.isRefreshing) {
+        animationSpec = if (
+            searchPointerPressed &&
+                pullToRefreshState.progress > 0f &&
+                !pullToRefreshState.isRefreshing
+        ) {
             snap()
         } else {
-            tween(durationMillis = 220, easing = FastOutSlowInEasing)
+            spring(
+                dampingRatio = 0.72f,
+                stiffness = Spring.StiffnessMediumLow
+            )
         },
         label = "searchPullContentOffset"
     )
-    val pullIndicatorBaseOffsetPx =
-        topPaddingPx +
-            refreshIndicatorHoverOffsetPx +
-            (pullContentOffsetPx / 2f)
+    val pullRefreshProgress =
+        if (pullToRefreshState.isRefreshing) {
+            1f
+        } else {
+            val threshold = pullToRefreshState.positionalThreshold
+                .takeIf { it > 0f }
+                ?: pullRefreshSettleDistancePx
+            (pullContentOffsetPx / threshold).coerceIn(0f, 1f)
+        }
+    val pullRefreshArmed = pullToRefreshState.progress >= 1f
+    val pullRefreshHintVisible = pullContentOffsetPx > 1f || pullToRefreshState.isRefreshing
+    val pullNextPageHintVisible = pullNextPageVisualOffsetPx > 1f
+    val listStretchOffsetPx = pullContentOffsetPx - pullNextPageVisualOffsetPx
+    val pullRefreshHintHeightPx = pullContentOffsetPx.coerceIn(0f, pullActionHintHeightPx)
+    val pullRefreshHintHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+        pullRefreshHintHeightPx.toDp()
+    }
+    val pullNextRevealHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+        pullNextPageVisualOffsetPx.toDp()
+    }
+    val pullRefreshHintEdgeOffsetPx = topPaddingPx + pullContentOffsetPx - pullRefreshHintHeightPx
     val latestKeyword by rememberUpdatedState(keyword)
+    val latestHorizontalPagerScrollLockChanged = rememberUpdatedState(onHorizontalPagerScrollLockChanged)
+    fun stopActiveScroll() {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            if (!pullNextPageReturnInProgress) {
+                pullNextPageDragPx = 0f
+                pullNextPageGestureActive = false
+                pullNextPageRequestAfterReturn = false
+                latestHorizontalPagerScrollLockChanged.value(false)
+            }
+            runCatching { listState.stopScroll(MutatePriority.UserInput) }
+            runCatching { gridState.stopScroll(MutatePriority.UserInput) }
+        }
+    }
     LaunchedEffect(pullToRefreshState.isRefreshing) {
-        if (!pullToRefreshState.isRefreshing) return@LaunchedEffect
+        if (!pullToRefreshState.isRefreshing) {
+            pullRefreshStartedAtMs = 0L
+            return@LaunchedEffect
+        }
+        pullRefreshStartedAtMs = android.os.SystemClock.elapsedRealtime()
         when (val state = uiState) {
             is SearchUiState.Success -> {
                 if (state.isBusy) {
@@ -551,13 +774,39 @@ fun SearchScreen(
             is SearchUiState.Loading -> false
             else -> true
         }
-        if (canEnd) pullToRefreshState.endRefresh()
+        if (canEnd) {
+            val elapsedMillis = android.os.SystemClock.elapsedRealtime() - pullRefreshStartedAtMs
+            val remainingFeedbackMillis =
+                (SearchPullRefreshMinFeedbackMillis - elapsedMillis).coerceAtLeast(0L)
+            if (remainingFeedbackMillis > 0L) delay(remainingFeedbackMillis)
+            if (pullToRefreshState.isRefreshing) pullToRefreshState.endRefresh()
+        }
     }
-    LaunchedEffect(currentPageKey, pullNextPageEnabled) {
+    LaunchedEffect(resultScrollKey, pullNextPageEnabled) {
         if (!pullNextPageEnabled) {
-            if (pullNextPageDragPx != 0f) {
-                pullNextPageDragPx = 0f
-            }
+            pullNextPageDragPx = 0f
+            pullNextPageGestureActive = false
+            pullNextPageRequestAfterReturn = false
+            pullNextPageReturnInProgress = false
+            latestHorizontalPagerScrollLockChanged.value(false)
+        }
+    }
+    LaunchedEffect(
+        pullNextPageDragPx > 0f,
+        pullNextPageGestureActive,
+        pullNextPageReturnInProgress
+    ) {
+        latestHorizontalPagerScrollLockChanged.value(
+            pullNextPageDragPx > 0f ||
+                pullNextPageGestureActive ||
+                pullNextPageReturnInProgress
+        )
+    }
+    LaunchedEffect(Unit) {
+        try {
+            kotlinx.coroutines.awaitCancellation()
+        } finally {
+            latestHorizontalPagerScrollLockChanged.value(false)
         }
     }
     LaunchedEffect(chromeResetKey) {
@@ -589,15 +838,36 @@ fun SearchScreen(
     LaunchedEffect(scrollToTopSignal) {
         if (scrollToTopSignal == 0L) return@LaunchedEffect
         pullNextPageDragPx = 0f
+        pullNextPageGestureActive = false
+        pullNextPageRequestAfterReturn = false
+        pullNextPageReturnInProgress = false
         when (viewMode) {
-            0 -> listState.smoothScrollToTop()
-            else -> gridState.smoothScrollToTop()
+            0 -> {
+                runCatching { listState.stopScroll(MutatePriority.PreventUserInput) }
+                runCatching { listState.scrollToItem(0) }
+            }
+            else -> {
+                runCatching { gridState.stopScroll(MutatePriority.PreventUserInput) }
+                runCatching { gridState.scrollToItem(0) }
+            }
         }
         chromeState.expand()
     }
+    LaunchedEffect(isActive, viewMode) {
+        if (isActive) return@LaunchedEffect
+        when (viewMode) {
+            0 -> listState.stopScroll(MutatePriority.PreventUserInput)
+            else -> gridState.stopScroll(MutatePriority.PreventUserInput)
+        }
+        pullNextPageDragPx = 0f
+        pullNextPageGestureActive = false
+        pullNextPageRequestAfterReturn = false
+        pullNextPageReturnInProgress = false
+        latestHorizontalPagerScrollLockChanged.value(false)
+    }
 
     Scaffold(
-        contentWindowInsets = StableWindowInsets.navigationBars,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent,
         contentColor = colorScheme.onBackground
     ) { padding ->
@@ -612,7 +882,7 @@ fun SearchScreen(
                         onAlbumClick(
                             Album(
                                 id = album.id,
-                                title = album.title,
+                                title = album.titleForDisplay,
                                 path = album.path,
                                 localPath = album.localPath,
                                 downloadPath = album.downloadPath,
@@ -639,58 +909,104 @@ fun SearchScreen(
                 modifier = contentModifier,
                 contentAlignment = if (hasRightPanel) Alignment.TopStart else Alignment.TopCenter
             ) {
+                val searchContentModifier = if (isCompact || hasRightPanel) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 800.dp)
+                        .fillMaxWidth()
+                }
                 Box(
-                    modifier = if (isCompact || hasRightPanel) {
-                        Modifier.fillMaxSize()
-                    } else {
-                        Modifier
-                            .fillMaxHeight()
-                            .widthIn(max = 800.dp)
-                            .fillMaxWidth()
-                    }
+                    modifier = searchContentModifier
+                        .interruptScrollableFlingOnPointerDown { stopActiveScroll() }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pointerInput(currentPageKey, viewMode) {
+                    CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(resultScrollKey, viewMode) {
                                 awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Final)
+                                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    searchPointerPressed = true
                                     var trackedPointerId = down.id
-                                    var previousY = down.position.y
+                                    var previousPosition = down.position
+                                    var dragFromDown = Offset.Zero
+                                    var pullNextGestureActive = false
+                                    var horizontalGestureActive = false
+                                    val touchSlop = viewConfiguration.touchSlop
                                     do {
-                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
                                         val change =
                                             event.changes.firstOrNull { it.id == trackedPointerId }
                                                 ?: event.changes.firstOrNull()
                                         if (change != null) {
                                             trackedPointerId = change.id
-                                            val deltaY = change.position.y - previousY
-                                            previousY = change.position.y
+                                            val positionDelta = change.position - previousPosition
+                                            previousPosition = change.position
+                                            if (!pullNextGestureActive && !horizontalGestureActive) {
+                                                dragFromDown += positionDelta
+                                                val isPastTouchSlop = dragFromDown.getDistance() > touchSlop
+                                                if (isPastTouchSlop) {
+                                                    horizontalGestureActive =
+                                                        dragFromDown.x.absoluteValue >=
+                                                            dragFromDown.y.absoluteValue * SearchPullNextPageVerticalBias
+                                                    pullNextGestureActive =
+                                                        !horizontalGestureActive &&
+                                                            dragFromDown.y < 0f &&
+                                                            dragFromDown.y.absoluteValue >=
+                                                            dragFromDown.x.absoluteValue * SearchPullNextPageVerticalBias &&
+                                                            latestIsAtBottom.value &&
+                                                            latestPullNextPageEnabled.value
+                                                    if (pullNextGestureActive) {
+                                                        pullNextPageGestureActive = true
+                                                        latestHorizontalPagerScrollLockChanged.value(true)
+                                                    }
+                                                }
+                                            }
+                                            val deltaY = positionDelta.y
                                             when {
+                                                horizontalGestureActive -> Unit
+
                                                 !latestPullNextPageEnabled.value -> {
                                                     if (pullNextPageDragPx != 0f) {
                                                         pullNextPageDragPx = 0f
                                                     }
+                                                    pullNextPageGestureActive = false
                                                 }
 
-                                                deltaY < 0f && latestIsAtBottom.value -> {
+                                                deltaY < 0f && latestIsAtBottom.value && pullNextGestureActive -> {
                                                     val delta = (-deltaY) * SearchPullNextPageDragResistance
                                                     pullNextPageDragPx =
                                                         (pullNextPageDragPx + delta)
                                                             .coerceIn(0f, latestPullNextPageMaxDistancePx.value)
+                                                    latestHorizontalPagerScrollLockChanged.value(true)
+                                                    change.consume()
                                                 }
 
-                                                deltaY > 0f && pullNextPageDragPx > 0f -> {
+                                                deltaY > 0f && (pullNextPageDragPx > 0f || pullNextGestureActive) -> {
                                                     pullNextPageDragPx =
                                                         (pullNextPageDragPx - deltaY).coerceAtLeast(0f)
+                                                    if (pullNextPageDragPx == 0f) {
+                                                        pullNextGestureActive = false
+                                                        pullNextPageGestureActive = false
+                                                        latestHorizontalPagerScrollLockChanged.value(false)
+                                                    }
+                                                    change.consume()
+                                                }
+
+                                                pullNextGestureActive -> {
+                                                    change.consume()
                                                 }
 
                                                 !latestIsAtBottom.value && pullNextPageDragPx > 0f -> {
                                                     pullNextPageDragPx = 0f
+                                                    pullNextPageGestureActive = false
                                                 }
                                             }
                                         }
                                     } while (event.changes.any { it.pressed })
+                                    searchPointerPressed = false
                                     finishPullNextPageGesture.value()
                                 }
                             }
@@ -701,18 +1017,44 @@ fun SearchScreen(
                                     Modifier
                                 }
                             )
-                            .clipToBounds()
-                    ) {
+                                .clipToBounds()
+                        ) {
+                        if (pullRefreshHintVisible) {
+                            SearchPullActionHint(
+                                progress = pullRefreshProgress,
+                                active = pullToRefreshState.isRefreshing,
+                                armed = pullRefreshArmed,
+                                direction = if (pullRefreshArmed) {
+                                    SearchPullActionDirection.Up
+                                } else {
+                                    SearchPullActionDirection.Down
+                                },
+                                idleText = stringResource(R.string.search_pull_down_refresh),
+                                armedText = stringResource(R.string.search_release_refresh),
+                                activeText = stringResource(R.string.search_refreshing),
+                                height = pullRefreshHintHeight,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .graphicsLayer {
+                                        alpha = pullRefreshProgress.coerceIn(0f, 1f)
+                                        translationY = pullRefreshHintEdgeOffsetPx
+                                    }
+                            )
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clearFocusOnTapOutside()
+                                .graphicsLayer { translationY = listStretchOffsetPx }
                         ) {
                             when (val state = uiState) {
                             is SearchUiState.Loading -> Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
+                                    .verticalScroll(
+                                        state = rememberScrollState(),
+                                        flingBehavior = rememberCalmScrollableFlingBehavior()
+                                    )
                                     .padding(top = topPadding),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
@@ -737,45 +1079,112 @@ fun SearchScreen(
                                         )
                                     )
                                 } else if (viewMode == 0) {
+                                    val app = LocalContext.current.applicationContext
+                                    val cacheManager = remember(app) {
+                                        EntryPointAccessors.fromApplication(app, ImageCacheEntryPoint::class.java)
+                                            .imageCacheManager()
+                                    }
+                                    val density = LocalDensity.current
+                                    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+                                    val listItemHeight = (screenWidthDp.dp * 0.24f).coerceIn(112.dp, 140.dp)
+                                    val coverPx = remember(listItemHeight, density) { with(density) { listItemHeight.roundToPx() } }
+                                    val preloadSize = remember(coverPx) { IntSize(coverPx, coverPx) }
+                                    val coverFadeInState = remember(listState) {
+                                        derivedStateOf {
+                                            shouldFadeInCover(listState.isScrollInProgress)
+                                        }
+                                    }
+                                    LazyListPreloader(
+                                        state = listState,
+                                        itemCount = state.results.size,
+                                        enabled = isActive,
+                                        preloadNext = 24,
+                                        preloadSize = preloadSize,
+                                        cacheManagerProvider = { cacheManager },
+                                        modelAt = { idx ->
+                                            state.results.getOrNull(idx)?.let { albumCoverImageModel(it) }
+                                        }
+                                    )
                                     LazyColumn(
                                         state = listState,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .nestedScroll(chromeState.nestedScrollConnection)
-                                            .thinScrollbar(listState),
+                                            .nestedScroll(chromeState.nestedScrollConnection),
+                                        flingBehavior = rememberCalmScrollableFlingBehavior(),
                                         contentPadding = PaddingValues(top = topPadding, bottom = 8.dp)
                                             .withAddedBottomPadding(LocalBottomOverlayPadding.current)
                                     ) {
                                         lazyItemsIndexed(
                                             items = state.results,
-                                            key = { index, album -> searchResultItemKey(index, album) },
+                                            key = { _, album -> searchResultItemKey(album) },
                                             contentType = { _, _ -> "album" }
                                         ) { _, album ->
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val skeletonMode = searchResultSkeletonMode(
+                                                onlineDetailLoading = onlineDetailLoading,
+                                                isRefreshingLocalizedText = state.isRefreshingLocalizedText
+                                            )
                                             val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
                                             val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
-                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
-                                                emptyCoverUseShimmer = true,
-                                                onlineDetailLoading = onlineDetailLoading,
-                                                onlineCvLoading = onlineDetailLoading,
-                                                onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta(circleLabel, it) },
-                                                onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta(tagLabel, it) },
+                                                modifier = Modifier.animateItem(
+                                                    fadeInSpec = null,
+                                                    placementSpec = SearchResultPlacementSpring,
+                                                    fadeOutSpec = null,
+                                                ),
+                                                onlineDetailLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.DetailMetadata,
+                                                onlineTitleLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.LocalizedText,
+                                                onlineCvLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.DetailMetadata,
+                                                onlineTagsLoading = skeletonMode != SearchResultSkeletonMode.None,
+                                                showCollectedIndicator = !state.collectedOnly,
+                                                showStatsPlaceholders = true,
+                                                coverFadeInState = coverFadeInState,
+                                                coverReloadKey = state.resultRevision,
+                                                onRjLongClick = ::openMetaActions,
+                                                onCircleLongClick = ::openMetaActions,
+                                                onCvLongClick = ::openMetaActions,
+                                                onTagLongClick = ::openMetaActions,
                                             )
                                         }
                                     }
                                 } else {
+                                    val app = LocalContext.current.applicationContext
+                                    val cacheManager = remember(app) {
+                                        EntryPointAccessors.fromApplication(app, ImageCacheEntryPoint::class.java)
+                                            .imageCacheManager()
+                                    }
+                                    val density = LocalDensity.current
+                                    val gridCellSize = if (isCompact) 150.dp else 200.dp
+                                    val gridCoverPx = remember(gridCellSize, density) { with(density) { gridCellSize.roundToPx() } }
+                                    val gridPreloadSize = remember(gridCoverPx) { IntSize(gridCoverPx, gridCoverPx) }
+                                    val coverFadeInState = remember(gridState) {
+                                        derivedStateOf {
+                                            shouldFadeInCover(gridState.isScrollInProgress)
+                                        }
+                                    }
+                                    LazyStaggeredGridPreloader(
+                                        state = gridState,
+                                        itemCount = state.results.size,
+                                        enabled = isActive,
+                                        preloadNext = 24,
+                                        preloadSize = gridPreloadSize,
+                                        cacheManagerProvider = { cacheManager },
+                                        modelAt = { idx ->
+                                            state.results.getOrNull(idx)?.let { albumCoverImageModel(it) }
+                                        }
+                                    )
                                     LazyVerticalStaggeredGrid(
-                                        columns = StaggeredGridCells.Adaptive(if (isCompact) 150.dp else 200.dp),
+                                        columns = StaggeredGridCells.Adaptive(gridCellSize),
                                         state = gridState,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .nestedScroll(chromeState.nestedScrollConnection)
-                                            .thinScrollbar(gridState),
+                                            .nestedScroll(chromeState.nestedScrollConnection),
+                                        flingBehavior = rememberCalmScrollableFlingBehavior(),
                                         contentPadding = PaddingValues(
                                             top = topPadding,
                                             start = SearchPageHorizontalPadding,
@@ -787,24 +1196,40 @@ fun SearchScreen(
                                     ) {
                                         items(
                                             state.results.size,
-                                            key = { index -> searchResultItemKey(index, state.results[index]) },
+                                            key = { index -> searchResultItemKey(state.results[index]) },
                                             contentType = { "albumGrid" }
                                         ) { index ->
                                             val album = state.results[index]
                                             val onlineDetailLoading = onlineDetailLoadingFor(album, state)
+                                            val skeletonMode = searchResultSkeletonMode(
+                                                onlineDetailLoading = onlineDetailLoading,
+                                                isRefreshingLocalizedText = state.isRefreshingLocalizedText
+                                            )
                                             val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
                                             val hasResolvedDetail = rj.isNotBlank() && rj in state.enrichedDetailRjCodes
                                             AlbumGridItem(
                                                 album = album,
                                                 onClick = { onAlbumClick(album, state.purchasedOnly, hasResolvedDetail) },
-                                                modifier = Modifier.animateItemPlacement(SearchResultPlacementSpring),
-                                                emptyCoverUseShimmer = true,
-                                                onlineDetailLoading = onlineDetailLoading,
-                                                onlineCvLoading = onlineDetailLoading,
-                                                onRjClick = { copyMeta("RJ", it) },
-                                                onCircleClick = { copyMeta(circleLabel, it) },
-                                                onCvClick = { copyMeta("CV", it) },
-                                                onTagClick = { copyMeta(tagLabel, it) },
+                                                modifier = Modifier.animateItem(
+                                                    fadeInSpec = null,
+                                                    placementSpec = SearchResultPlacementSpring,
+                                                    fadeOutSpec = null,
+                                                ),
+                                                onlineDetailLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.DetailMetadata,
+                                                onlineTitleLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.LocalizedText,
+                                                onlineCvLoading =
+                                                    skeletonMode == SearchResultSkeletonMode.DetailMetadata,
+                                                onlineTagsLoading = skeletonMode != SearchResultSkeletonMode.None,
+                                                showCollectedIndicator = !state.collectedOnly,
+                                                showStatsPlaceholders = true,
+                                                coverFadeInState = coverFadeInState,
+                                                coverReloadKey = state.resultRevision,
+                                                onRjLongClick = ::openMetaActions,
+                                                onCircleLongClick = ::openMetaActions,
+                                                onCvLongClick = ::openMetaActions,
+                                                onTagLongClick = ::openMetaActions,
                                             )
                                         }
                                     }
@@ -836,34 +1261,42 @@ fun SearchScreen(
                             else -> Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
+                                    .verticalScroll(
+                                        state = rememberScrollState(),
+                                        flingBehavior = rememberCalmScrollableFlingBehavior()
+                                    )
                             ) {}
                             }
                         }
 
-                        SearchPullRefreshIndicator(
-                            progress = pullToRefreshState.progress,
-                            isRefreshing = pullToRefreshState.isRefreshing,
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .graphicsLayer { translationY = pullIndicatorBaseOffsetPx }
-                                .then(
-                                    if (pullToRefreshState.progress > 0 || pullToRefreshState.isRefreshing) {
-                                        Modifier
-                                    } else {
-                                        Modifier.size(0.dp)
-                                    }
-                                )
-                        )
-                        if (pullNextPageIndicatorVisible) {
-                            SearchPullNextPageIndicator(
-                                progress = pullNextPageIndicatorProgress,
-                                armed = pullNextPageArmed,
-                                dragOffsetPx = pullNextPageVisualOffsetPx,
+                        if (pullNextPageHintVisible) {
+                            Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = LocalBottomOverlayPadding.current + 20.dp)
-                            )
+                                    .padding(bottom = LocalBottomOverlayPadding.current)
+                                    .fillMaxWidth()
+                                    .height(pullNextRevealHeight)
+                                    .clipToBounds()
+                                    .graphicsLayer {
+                                        alpha = pullNextPageProgress.coerceIn(0f, 1f)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                SearchPullActionHint(
+                                    progress = pullNextPageProgress,
+                                    active = pullNextPageRequestAfterReturn,
+                                    armed = pullNextPageArmed,
+                                    direction = if (pullNextPageArmed) {
+                                        SearchPullActionDirection.Down
+                                    } else {
+                                        SearchPullActionDirection.Up
+                                    },
+                                    idleText = stringResource(R.string.search_pull_up_next_page),
+                                    armedText = stringResource(R.string.release_turn_page),
+                                    activeText = stringResource(R.string.search_refreshing_page)
+                                )
+                            }
+                        }
                         }
                     }
 
@@ -875,7 +1308,10 @@ fun SearchScreen(
                         searchFieldReadOnly = true,
                         onSearchFieldClick = { onOpenSearchAssist(currentSearchAssistRequest()) },
                         selectedFilter = selectedFilter,
+                        selectedOrder = selectedOrder,
                         selectedCollectedSort = selectedCollectedSort,
+                        hasSubtitle = hasSubtitle,
+                        allAges = allAges,
                         selectedLocale = selectedLocale,
                         filterControlsLocked = filterControlsLocked,
                         searchSubmitLocked = searchSubmitLocked,
@@ -886,61 +1322,43 @@ fun SearchScreen(
                         canGoNext = canGoNext,
                         controlsLocked = interactionLocked,
                         rightPanelToggle = rightPanelToggle,
-                        animatedOffsetPx = animatedChromeOffsetPx,
-                        collapseFraction = chromeState.collapseFraction,
+                        chromeState = chromeState,
                         onMeasured = { size: IntSize -> chromeState.updateHeight(size.height.toFloat()) },
                         onSearchSubmit = { submitSearch() },
                         onClearKeyword = { clearKeywordAndSearch() },
-                        onFilterSelected = { option ->
-                            val nextOrder = option.sortOption ?: selectedOrder
-                            val nextKeyword = keyword.trim()
-                            val accepted = viewModel.search(
-                                keyword = nextKeyword,
-                                order = nextOrder,
-                                collectedSort = selectedCollectedSort,
+                        onOptionsChanged = { options ->
+                            val option = options.scope
+                            val resultSetOptionsChanged =
+                                option != selectedFilter ||
+                                    options.order != selectedOrder ||
+                                    options.collectedSort != selectedCollectedSort ||
+                                    options.hasSubtitle != hasSubtitle ||
+                                    options.allAges != allAges
+                            val accepted = viewModel.updateSearchOptions(
+                                order = options.order,
+                                collectedSort = options.collectedSort,
                                 purchasedOnly = option.isPurchasedOnly,
                                 presaleOnly = option.isPresaleOnly,
                                 chineseTranslatedOnly = option.isChineseTranslated,
                                 collectedOnly = option.isCollectedOnly,
-                                locale = selectedLocale
+                                hasSubtitle = options.hasSubtitle,
+                                allAges = options.allAges,
+                                locale = options.locale
                             )
                             if (accepted) {
-                                selectedOrderName = nextOrder.name
                                 purchasedOnly = option.isPurchasedOnly
                                 presaleOnly = option.isPresaleOnly
                                 chineseTranslatedOnly = option.isChineseTranslated
                                 collectedOnly = option.isCollectedOnly
-                                keyword = nextKeyword
-                                scrollResultsToTop()
-                                chromeState.expand()
-                            }
-                        },
-                        onLocaleSelected = { locale ->
-                            selectedLocale = locale
-                            viewModel.updateSearchOptions(
-                                order = selectedOrder,
-                                collectedSort = selectedCollectedSort,
-                                purchasedOnly = purchasedOnly,
-                                presaleOnly = presaleOnly,
-                                chineseTranslatedOnly = chineseTranslatedOnly,
-                                collectedOnly = collectedOnly,
-                                locale = locale
-                            )
-                        },
-                        onCollectedSortSelected = { sort ->
-                            selectedCollectedSortName = sort.name
-                            val accepted = viewModel.updateSearchOptions(
-                                order = selectedOrder,
-                                collectedSort = sort,
-                                purchasedOnly = purchasedOnly,
-                                presaleOnly = presaleOnly,
-                                chineseTranslatedOnly = chineseTranslatedOnly,
-                                collectedOnly = collectedOnly,
-                                locale = selectedLocale
-                            )
-                            if (accepted) {
-                                scrollResultsToTop()
-                                chromeState.expand()
+                                selectedOrderName = options.order.name
+                                selectedCollectedSortName = options.collectedSort.name
+                                hasSubtitle = options.hasSubtitle
+                                allAges = options.allAges
+                                selectedLocale = options.locale
+                                if (resultSetOptionsChanged) {
+                                    scrollResultsToTop()
+                                    chromeState.expand()
+                                }
                             }
                         },
                         onFirstPage = {
@@ -959,141 +1377,108 @@ fun SearchScreen(
             }
         }
     }
-}
 
-
-@Composable
-private fun SearchPullRefreshIndicator(
-    progress: Float,
-    isRefreshing: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val colorScheme = AsmrTheme.colorScheme
-    val resolvedProgress = if (isRefreshing) 1f else progress.coerceIn(0f, 1f)
-    val indicatorScale by animateFloatAsState(
-        targetValue = 0.82f + resolvedProgress * 0.18f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "search_pull_refresh_scale"
-    )
-    val indicatorAlpha by animateFloatAsState(
-        targetValue = 0.48f + resolvedProgress * 0.52f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "search_pull_refresh_alpha"
-    )
-    val containerColor = colorScheme.surface.copy(alpha = if (colorScheme.isDark) 0.92f else 0.98f)
-    val borderColor = if (colorScheme.isDark) {
-        Color.White.copy(alpha = 0.14f)
-    } else {
-        colorScheme.primary.copy(alpha = 0.16f)
-    }
-
-    Box(
-        modifier = modifier
-            .size(SearchPullRefreshIndicatorSize)
-            .graphicsLayer(
-                alpha = indicatorAlpha,
-                scaleX = indicatorScale,
-                scaleY = indicatorScale
-            )
-            .shadow(
-                elevation = if (colorScheme.isDark) 12.dp else 8.dp,
-                shape = CircleShape,
-                spotColor = if (colorScheme.isDark) Color.Black.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.18f),
-                ambientColor = if (colorScheme.isDark) Color.Black.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.18f)
-            )
-            .clip(CircleShape)
-            .background(containerColor)
-            .border(width = 1.dp, color = borderColor, shape = CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        EaraLogoLoadingIndicator(
-            size = 20.dp,
-            tint = colorScheme.primary,
-            glowColor = colorScheme.primarySoft,
-            showGlow = isRefreshing || resolvedProgress > 0.45f
+    metaActionKeyword?.let { targetKeyword ->
+        val playlistsViewModel: PlaylistsViewModel = hiltViewModel()
+        val albumGroupsViewModel: AlbumGroupsViewModel = hiltViewModel()
+        val settingsViewModel: SettingsViewModel = hiltViewModel()
+        val searchBlockedKeywords by settingsViewModel.searchBlockedKeywords.collectAsStateWhileActive(isDataActive)
+        AlbumMetaActionDialog(
+            keyword = targetKeyword,
+            onDismissRequest = { metaActionKeyword = null },
+            onSearch = ::searchMetaKeyword,
+            onCreatePlaylist = playlistsViewModel::createPlaylist,
+            onCreateGroup = albumGroupsViewModel::createGroup,
+            onAddBlockedKeyword = { value ->
+                val normalized = value.trim()
+                if (normalized.isNotBlank()) {
+                    val exists = searchBlockedKeywords.any { it.equals(normalized, ignoreCase = true) }
+                    settingsViewModel.addSearchBlockedKeyword(normalized)
+                    if (exists) {
+                        viewModel.messageManager.showInfo(context.getString(R.string.blocked_keyword_exists, normalized))
+                    } else {
+                        viewModel.messageManager.showSuccess(context.getString(R.string.blocked_keyword_added, normalized))
+                    }
+                }
+            },
+            onCopy = { copyMeta(context.getString(R.string.content_label), it) },
         )
     }
 }
 
+
+private enum class SearchPullActionDirection {
+    Down,
+    Up
+}
+
 @Composable
-private fun SearchPullNextPageIndicator(
+private fun SearchPullActionHint(
     progress: Float,
+    active: Boolean,
     armed: Boolean,
-    dragOffsetPx: Float,
+    direction: SearchPullActionDirection,
+    idleText: String,
+    armedText: String,
+    activeText: String,
+    height: Dp = SearchPullActionHintHeight,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val resolvedProgress = progress.coerceIn(0f, 1f)
-    val indicatorScale by animateFloatAsState(
-        targetValue = if (armed) 1.04f else 0.9f + resolvedProgress * 0.1f,
+    val iconScale by animateFloatAsState(
+        targetValue = if (armed || active) 1.08f else 0.88f + resolvedProgress * 0.12f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMediumLow
         ),
-        label = "search_pull_next_scale"
+        label = "search_pull_action_icon_scale"
     )
-    val indicatorAlpha by animateFloatAsState(
-        targetValue = 0.52f + resolvedProgress * 0.48f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "search_pull_next_alpha"
-    )
-    val containerColor = lerp(
-        colorScheme.surface,
-        colorScheme.primarySoft,
-        if (armed) 0.32f else 0.18f
-    ).copy(alpha = if (colorScheme.isDark) 0.94f else 0.97f)
-        .compositeOver(colorScheme.background)
-    val borderColor = if (armed) {
-        colorScheme.primary.copy(alpha = if (colorScheme.isDark) 0.48f else 0.36f)
-    } else if (colorScheme.isDark) {
-        Color.White.copy(alpha = 0.16f)
-    } else {
-        colorScheme.primaryStrong.copy(alpha = 0.14f)
+    val tint = if (armed || active) colorScheme.primary else colorScheme.textSecondary
+    val label = when {
+        active -> activeText
+        armed -> armedText
+        else -> idleText
     }
 
     Box(
         modifier = modifier
-            .graphicsLayer {
-                alpha = indicatorAlpha
-                scaleX = indicatorScale
-                scaleY = indicatorScale
-                translationY = -dragOffsetPx
-            }
-            .shadow(
-                elevation = if (colorScheme.isDark) 14.dp else 10.dp,
-                shape = RoundedCornerShape(18.dp),
-                spotColor = if (colorScheme.isDark) Color.Black.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.18f),
-                ambientColor = if (colorScheme.isDark) Color.Black.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.18f)
-            )
-            .clip(RoundedCornerShape(18.dp))
-            .background(containerColor)
-            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(18.dp))
-            .padding(horizontal = 18.dp, vertical = 12.dp),
+            .fillMaxWidth()
+            .height(height),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Rounded.KeyboardArrowUp,
-                contentDescription = null,
-                tint = if (armed) colorScheme.primary else colorScheme.textSecondary,
-                modifier = Modifier.size(22.dp)
-            )
+            if (active) {
+                EaraLogoLoadingIndicator(
+                    size = 18.dp,
+                    tint = colorScheme.primary,
+                    glowColor = colorScheme.primarySoft,
+                    showGlow = false
+                )
+            } else {
+                val icon = when (direction) {
+                    SearchPullActionDirection.Down -> Icons.Rounded.KeyboardArrowDown
+                    SearchPullActionDirection.Up -> Icons.Rounded.KeyboardArrowUp
+                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
+                )
+            }
             Text(
-                text = stringResource(R.string.next_page),
+                text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = if (armed) colorScheme.primary else colorScheme.textPrimary
-            )
-            Text(
-                text = if (armed) {
-                    stringResource(R.string.release_turn_page)
-                } else {
-                    stringResource(R.string.pull_up_continue)
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = if (armed) colorScheme.primary else colorScheme.textSecondary
+                color = tint
             )
         }
     }
@@ -1108,7 +1493,10 @@ internal fun SearchChrome(
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
+    selectedOrder: SearchSortOption = SearchSortOption.Trend,
     selectedCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew,
+    hasSubtitle: Boolean = false,
+    allAges: Boolean = false,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
@@ -1119,8 +1507,7 @@ internal fun SearchChrome(
     canGoNext: Boolean,
     controlsLocked: Boolean,
     rightPanelToggle: (@Composable (Modifier) -> Unit)?,
-    animatedOffsetPx: Float,
-    collapseFraction: Float,
+    chromeState: CollapsibleHeaderState,
     chromeTestTag: String = SEARCH_CHROME_TAG,
     inputTestTag: String = SEARCH_INPUT_TAG,
     clearButtonTestTag: String = SEARCH_CLEAR_BUTTON_TAG,
@@ -1129,21 +1516,22 @@ internal fun SearchChrome(
     onMeasured: (IntSize) -> Unit,
     onSearchSubmit: () -> Unit,
     onClearKeyword: (() -> Unit)? = null,
-    onFilterSelected: (SearchFilterOption) -> Unit,
-    onLocaleSelected: (String) -> Unit,
-    onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
+    onOptionsChanged: (SearchToolbarOptions) -> Unit,
     onFirstPage: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit
 ) {
     val resolvedPlaceholder = placeholder ?: stringResource(DefaultSearchPlaceholderRes)
+    val collapseStateDescription by remember(chromeState) {
+        derivedStateOf { collapsibleHeaderUiState(chromeState.collapseFraction) }
+    }
     Column(
         modifier = modifier
             .onSizeChanged(onMeasured)
             // Use layout offset instead of a graphics layer so Android text selection
             // toolbars anchor to the real on-screen position of the editable field.
-            .offset { IntOffset(x = 0, y = animatedOffsetPx.roundToInt()) }
-            .semantics { stateDescription = collapsibleHeaderUiState(collapseFraction) }
+            .offset { IntOffset(x = 0, y = chromeState.offsetPx.roundToInt()) }
+            .semantics { stateDescription = collapseStateDescription }
             .testTag(chromeTestTag)
     ) {
         SearchToolbar(
@@ -1153,7 +1541,10 @@ internal fun SearchChrome(
             searchFieldReadOnly = searchFieldReadOnly,
             onSearchFieldClick = onSearchFieldClick,
             selectedFilter = selectedFilter,
+            selectedOrder = selectedOrder,
             selectedCollectedSort = selectedCollectedSort,
+            hasSubtitle = hasSubtitle,
+            allAges = allAges,
             selectedLocale = selectedLocale,
             filterControlsLocked = filterControlsLocked,
             searchSubmitLocked = searchSubmitLocked,
@@ -1164,9 +1555,7 @@ internal fun SearchChrome(
             inputFocusRequester = inputFocusRequester,
             onSearchSubmit = onSearchSubmit,
             onClearKeyword = onClearKeyword,
-            onFilterSelected = onFilterSelected,
-            onLocaleSelected = onLocaleSelected,
-            onCollectedSortSelected = onCollectedSortSelected,
+            onOptionsChanged = onOptionsChanged,
             rightPanelToggle = rightPanelToggle
         )
         if (showPagination) {
@@ -1183,6 +1572,15 @@ internal fun SearchChrome(
     }
 }
 
+internal data class SearchToolbarOptions(
+    val scope: SearchFilterOption,
+    val order: SearchSortOption,
+    val collectedSort: SearchCollectedSortOption,
+    val hasSubtitle: Boolean,
+    val allAges: Boolean,
+    val locale: String
+)
+
 @Composable
 internal fun SearchToolbar(
     keyword: String,
@@ -1191,7 +1589,10 @@ internal fun SearchToolbar(
     searchFieldReadOnly: Boolean = false,
     onSearchFieldClick: (() -> Unit)? = null,
     selectedFilter: SearchFilterOption,
+    selectedOrder: SearchSortOption = SearchSortOption.Trend,
     selectedCollectedSort: SearchCollectedSortOption = SearchCollectedSortOption.ReleaseNew,
+    hasSubtitle: Boolean = false,
+    allAges: Boolean = false,
     selectedLocale: String,
     filterControlsLocked: Boolean,
     searchSubmitLocked: Boolean,
@@ -1202,15 +1603,29 @@ internal fun SearchToolbar(
     inputFocusRequester: FocusRequester? = null,
     onSearchSubmit: () -> Unit,
     onClearKeyword: (() -> Unit)? = null,
-    onFilterSelected: (SearchFilterOption) -> Unit,
-    onLocaleSelected: (String) -> Unit,
-    onCollectedSortSelected: (SearchCollectedSortOption) -> Unit = {},
+    onOptionsChanged: (SearchToolbarOptions) -> Unit,
     rightPanelToggle: (@Composable (Modifier) -> Unit)? = null
 ) {
-    val resolvedPlaceholder = placeholder ?: stringResource(DefaultSearchPlaceholderRes)
     val colorScheme = AsmrTheme.colorScheme
-    var scopeMenuExpanded by remember { mutableStateOf(false) }
-    var secondaryMenuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val resolvedPlaceholder = placeholder ?: stringResource(DefaultSearchPlaceholderRes)
+    var filterMenuExpanded by remember { mutableStateOf(false) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    val options = SearchToolbarOptions(
+        scope = selectedFilter,
+        order = selectedOrder,
+        collectedSort = selectedCollectedSort,
+        hasSubtitle = hasSubtitle,
+        allAges = allAges,
+        locale = selectedLocale
+    )
+    val supportsWorkFilters = selectedFilter.supportsWorkFilters
+    val supportsSortAndLanguageOptions = selectedFilter.supportsSortAndLanguageOptions
+    val activeWorkFilterCount = if (supportsWorkFilters) {
+        (if (hasSubtitle) 1 else 0) + (if (allAges) 1 else 0)
+    } else {
+        0
+    }
     val dropdownContainerColor = lerp(
         colorScheme.surface,
         colorScheme.primarySoft,
@@ -1218,10 +1633,10 @@ internal fun SearchToolbar(
     ).copy(alpha = if (colorScheme.isDark) 0.95f else 0.97f)
         .compositeOver(colorScheme.background)
 
-    LaunchedEffect(filterControlsLocked, searchSubmitLocked) {
-        if (filterControlsLocked || searchSubmitLocked) {
-            scopeMenuExpanded = false
-            secondaryMenuExpanded = false
+    LaunchedEffect(filterControlsLocked, searchSubmitLocked, supportsSortAndLanguageOptions) {
+        if (filterControlsLocked || searchSubmitLocked || !supportsSortAndLanguageOptions) {
+            filterMenuExpanded = false
+            sortMenuExpanded = false
         }
     }
 
@@ -1235,8 +1650,7 @@ internal fun SearchToolbar(
             value = keyword,
             onValueChange = onKeywordChange,
             placeholder = resolvedPlaceholder,
-            modifier = Modifier
-                .weight(1f),
+            modifier = Modifier.weight(1f),
             readOnly = searchFieldReadOnly,
             onFieldClick = onSearchFieldClick,
             focusRequester = inputFocusRequester,
@@ -1244,25 +1658,48 @@ internal fun SearchToolbar(
             leadingIcon = {
                 Box {
                     TextButton(
-                        onClick = { scopeMenuExpanded = true },
+                        onClick = { filterMenuExpanded = true },
                         enabled = !filterControlsLocked,
                         modifier = Modifier
                             .height(32.dp)
+                            .semantics {
+                                stateDescription = when {
+                                    !supportsWorkFilters -> context.getString(R.string.search_scope_no_work_filters)
+                                    activeWorkFilterCount == 0 -> context.getString(R.string.search_work_filters_disabled)
+                                    activeWorkFilterCount == 1 -> context.getString(R.string.search_work_filters_one_enabled)
+                                    else -> context.getString(R.string.search_work_filters_two_enabled)
+                                }
+                            }
                             .testTag(SEARCH_SCOPE_BUTTON_TAG),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = colorScheme.primary
+                            contentColor = colorScheme.primary,
+                            disabledContentColor = colorScheme.textTertiary
                         )
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SearchFilterIconView(
-                                icon = selectedFilter.icon,
-                                tint = colorScheme.primary,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Box {
+                                SearchFilterIconView(
+                                    icon = selectedFilter.icon,
+                                    tint = if (filterControlsLocked) {
+                                        colorScheme.textTertiary
+                                    } else {
+                                        colorScheme.primary
+                                    },
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                if (activeWorkFilterCount > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(5.dp)
+                                            .background(colorScheme.primaryStrong, CircleShape)
+                                    )
+                                }
+                            }
                             Text(
                                 text = stringResource(selectedFilter.labelRes),
                                 style = MaterialTheme.typography.labelSmall,
@@ -1271,20 +1708,18 @@ internal fun SearchToolbar(
                         }
                     }
                     DropdownMenu(
-                        expanded = scopeMenuExpanded,
-                        onDismissRequest = { scopeMenuExpanded = false },
+                        expanded = filterMenuExpanded,
+                        onDismissRequest = { filterMenuExpanded = false },
                         modifier = Modifier.background(dropdownContainerColor)
                     ) {
-                        SearchFilterOption.values().forEachIndexed { index, option ->
+                        SearchFilterOption.entries.forEachIndexed { index, option ->
                             if (index > 0) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                    thickness = 0.5.dp,
-                                    color = colorScheme.textSecondary.copy(alpha = 0.2f)
-                                )
+                                SearchMenuDivider()
                             }
                             DropdownMenuItem(
-                                modifier = Modifier.testTag("${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${option.name}"),
+                                modifier = Modifier.testTag(
+                                    "${SEARCH_SCOPE_OPTION_TAG_PREFIX}_${option.name}"
+                                ),
                                 text = {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1292,21 +1727,57 @@ internal fun SearchToolbar(
                                     ) {
                                         SearchFilterIconView(
                                             icon = option.icon,
-                                            tint = if (option == selectedFilter) colorScheme.primary else colorScheme.textSecondary,
+                                            tint = if (option == selectedFilter) {
+                                                colorScheme.primary
+                                            } else {
+                                                colorScheme.textSecondary
+                                            },
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Text(
                                             text = stringResource(option.labelRes),
-                                            color = if (option == selectedFilter) colorScheme.primary else colorScheme.textPrimary
+                                            color = if (option == selectedFilter) {
+                                                colorScheme.primary
+                                            } else {
+                                                colorScheme.textPrimary
+                                            }
                                         )
                                     }
                                 },
                                 onClick = {
-                                    scopeMenuExpanded = false
-                                    onFilterSelected(option)
+                                    filterMenuExpanded = false
+                                    if (option != selectedFilter) {
+                                        onOptionsChanged(
+                                            options.copy(scope = option)
+                                        )
+                                    }
                                 }
                             )
                         }
+
+                        if (supportsWorkFilters) {
+                            SearchMenuSectionLabel(stringResource(R.string.search_work_filters))
+                            SearchCheckableMenuItem(
+                                label = stringResource(R.string.search_has_subtitle),
+                                icon = Icons.Rounded.Subtitles,
+                                selected = hasSubtitle,
+                                testTag = SEARCH_HAS_SUBTITLE_OPTION_TAG,
+                                onClick = {
+                                    onOptionsChanged(options.copy(hasSubtitle = !hasSubtitle))
+                                }
+                            )
+                            SearchMenuDivider()
+                            SearchCheckableMenuItem(
+                                label = stringResource(R.string.search_all_ages),
+                                icon = Icons.Rounded.FamilyRestroom,
+                                selected = allAges,
+                                testTag = SEARCH_ALL_AGES_OPTION_TAG,
+                                onClick = {
+                                    onOptionsChanged(options.copy(allAges = !allAges))
+                                }
+                            )
+                        }
+
                     }
                 }
             },
@@ -1331,77 +1802,94 @@ internal fun SearchToolbar(
                             )
                         }
                     }
-                    Box {
-                        val secondaryButtonTag = if (selectedFilter.isCollectedOnly) {
-                            SEARCH_COLLECTED_SORT_BUTTON_TAG
-                        } else {
-                            SEARCH_LANGUAGE_BUTTON_TAG
-                        }
-                        TextButton(
-                            onClick = { secondaryMenuExpanded = true },
-                            enabled = !filterControlsLocked,
-                            modifier = Modifier
-                                .defaultMinSize(minWidth = 1.dp, minHeight = 30.dp)
-                                .height(30.dp)
-                                .testTag(secondaryButtonTag),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = colorScheme.primary
-                            )
-                        ) {
-                            val labelRes = if (selectedFilter.isCollectedOnly) {
-                                selectedCollectedSort.labelRes
-                            } else {
-                                when (selectedLocale.trim()) {
-                                    "zh_CN" -> R.string.content_locale_zh_cn
-                                    "zh_TW" -> R.string.content_locale_zh_tw
-                                    else -> R.string.content_locale_ja
-                                }
+                    if (supportsSortAndLanguageOptions) {
+                        Box {
+                            TextButton(
+                                onClick = { sortMenuExpanded = true },
+                                enabled = !filterControlsLocked,
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 1.dp, minHeight = 30.dp)
+                                    .height(30.dp)
+                                    .testTag(SEARCH_SORT_BUTTON_TAG),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = colorScheme.primary,
+                                    disabledContentColor = colorScheme.textTertiary
+                                )
+                            ) {
+                                Text(
+                                    text = if (selectedFilter.isCollectedOnly) {
+                                        stringResource(selectedCollectedSort.labelRes)
+                                    } else {
+                                        stringResource(selectedOrder.labelRes)
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1
+                                )
                             }
-                            Text(stringResource(labelRes), style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                        }
-                        DropdownMenu(
-                            expanded = secondaryMenuExpanded,
-                            onDismissRequest = { secondaryMenuExpanded = false },
-                            modifier = Modifier.background(dropdownContainerColor)
-                        ) {
-                            if (selectedFilter.isCollectedOnly) {
-                                SearchCollectedSortOption.values().forEachIndexed { index, option ->
-                                    if (index > 0) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                            thickness = 0.5.dp,
-                                            color = colorScheme.textSecondary.copy(alpha = 0.2f)
+                            DropdownMenu(
+                                expanded = sortMenuExpanded,
+                                onDismissRequest = { sortMenuExpanded = false },
+                                modifier = Modifier.background(dropdownContainerColor)
+                            ) {
+                                if (selectedFilter.isCollectedOnly) {
+                                    SearchCollectedSortOption.entries.forEachIndexed { index, option ->
+                                        if (index > 0) {
+                                            SearchMenuDivider()
+                                        }
+                                        ActiveDropdownMenuItem(
+                                            label = stringResource(option.labelRes),
+                                            selected = option == selectedCollectedSort,
+                                            testTag = "${SEARCH_COLLECTED_SORT_OPTION_TAG_PREFIX}_${option.name}",
+                                            activeColor = colorScheme.primary,
+                                            inactiveColor = colorScheme.textPrimary,
+                                            onClick = {
+                                                sortMenuExpanded = false
+                                                if (option != selectedCollectedSort) {
+                                                    onOptionsChanged(options.copy(collectedSort = option))
+                                                }
+                                            }
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(option.labelRes), color = colorScheme.textPrimary) },
-                                        onClick = {
-                                            secondaryMenuExpanded = false
-                                            onCollectedSortSelected(option)
+                                } else {
+                                    SearchSortOption.entries.forEachIndexed { index, option ->
+                                        if (index > 0) {
+                                            SearchMenuDivider()
                                         }
-                                    )
-                                }
-                            } else {
-                                listOf(
-                                    "ja_JP" to R.string.content_locale_ja,
-                                    "zh_CN" to R.string.content_locale_zh_cn,
-                                    "zh_TW" to R.string.content_locale_zh_tw
-                                ).forEachIndexed { index, (locale, labelRes) ->
-                                    if (index > 0) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 8.dp),
-                                            thickness = 0.5.dp,
-                                            color = colorScheme.textSecondary.copy(alpha = 0.2f)
+                                        ActiveDropdownMenuItem(
+                                            label = stringResource(option.labelRes),
+                                            selected = option == selectedOrder,
+                                            testTag = "${SEARCH_SORT_OPTION_TAG_PREFIX}_${option.name}",
+                                            activeColor = colorScheme.primary,
+                                            inactiveColor = colorScheme.textPrimary,
+                                            onClick = {
+                                                sortMenuExpanded = false
+                                                if (option != selectedOrder) {
+                                                    onOptionsChanged(options.copy(order = option))
+                                                }
+                                            }
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(labelRes), color = colorScheme.textPrimary) },
-                                        onClick = {
-                                            secondaryMenuExpanded = false
-                                            onLocaleSelected(locale)
+
+                                    SearchMenuSectionLabel(stringResource(R.string.search_work_language))
+                                    SearchLocaleOptions.forEachIndexed { index, (locale, labelRes) ->
+                                        if (index > 0) {
+                                            SearchMenuDivider()
                                         }
-                                    )
+                                        ActiveDropdownMenuItem(
+                                            label = stringResource(labelRes),
+                                            selected = locale == selectedLocale.trim(),
+                                            testTag = "${SEARCH_LANGUAGE_OPTION_TAG_PREFIX}_$locale",
+                                            activeColor = colorScheme.primary,
+                                            inactiveColor = colorScheme.textPrimary,
+                                            onClick = {
+                                                sortMenuExpanded = false
+                                                if (locale != selectedLocale.trim()) {
+                                                    onOptionsChanged(options.copy(locale = locale))
+                                                }
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1417,14 +1905,17 @@ internal fun SearchToolbar(
                             EaraLogoLoadingIndicator(
                                 size = 14.dp,
                                 tint = colorScheme.primary,
-                                modifier = Modifier
-                                    .testTag(SEARCH_SUBMIT_SPINNER_TAG)
+                                modifier = Modifier.testTag(SEARCH_SUBMIT_SPINNER_TAG)
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Rounded.Search,
                                 contentDescription = null,
-                                tint = if (!searchSubmitLocked) colorScheme.primary else colorScheme.textTertiary,
+                                tint = if (!searchSubmitLocked) {
+                                    colorScheme.primary
+                                } else {
+                                    colorScheme.textTertiary
+                                },
                                 modifier = Modifier.size(17.dp)
                             )
                         }
@@ -1443,6 +1934,81 @@ internal fun SearchToolbar(
             rightPanelToggle(Modifier.size(50.dp))
         }
     }
+}
+
+private val SearchLocaleOptions = listOf(
+    "ja_JP" to R.string.content_locale_ja,
+    "zh_CN" to R.string.content_locale_zh_cn,
+    "zh_TW" to R.string.content_locale_zh_tw
+)
+
+@Composable
+private fun SearchMenuSectionLabel(label: String) {
+    val colorScheme = AsmrTheme.colorScheme
+    HorizontalDivider(
+        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp),
+        thickness = 0.5.dp,
+        color = colorScheme.textSecondary.copy(alpha = 0.24f)
+    )
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = colorScheme.textSecondary,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
+private fun SearchMenuDivider() {
+    val colorScheme = AsmrTheme.colorScheme
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        thickness = 0.5.dp,
+        color = colorScheme.textSecondary.copy(alpha = 0.2f)
+    )
+}
+
+@Composable
+private fun SearchCheckableMenuItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val context = LocalContext.current
+    val selectionStateDescription = if (selected) {
+        context.getString(R.string.search_filtered)
+    } else {
+        context.getString(R.string.search_not_filtered)
+    }
+    DropdownMenuItem(
+        text = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (selected) colorScheme.primary else colorScheme.textSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = label,
+                    color = if (selected) colorScheme.primary else colorScheme.textPrimary
+                )
+            }
+        },
+        onClick = onClick,
+        modifier = Modifier
+            .semantics {
+                this.selected = selected
+                stateDescription = selectionStateDescription
+            }
+            .testTag(testTag)
+    )
 }
 
 @Composable

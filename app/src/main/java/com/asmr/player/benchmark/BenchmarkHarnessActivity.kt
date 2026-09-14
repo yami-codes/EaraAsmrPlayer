@@ -1,6 +1,7 @@
 package com.asmr.player.benchmark
 
 import android.os.Bundle
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -14,7 +15,7 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,11 +40,14 @@ import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.playlists.PlaylistsScreen
 import com.asmr.player.ui.search.SearchScreen
 import com.asmr.player.ui.settings.SettingsScreen
+import com.asmr.player.ui.common.DiscPlaceholderBitmapCache
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class BenchmarkHarnessActivity : ComponentActivity() {
@@ -67,18 +71,27 @@ class BenchmarkHarnessActivity : ComponentActivity() {
             val windowSizeClass = calculateWindowSizeClass(this@BenchmarkHarnessActivity)
             AsmrPlayerTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    BenchmarkHarnessRoot(
-                        scenario = scenario,
-                        windowSizeClass = windowSizeClass,
-                        uiState = uiState,
-                        playlistRepository = playlistRepository,
-                        albumGroupRepository = albumGroupRepository
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        BenchmarkHarnessRoot(
+                            scenario = scenario,
+                            windowSizeClass = windowSizeClass,
+                            uiState = uiState,
+                            playlistRepository = playlistRepository,
+                            albumGroupRepository = albumGroupRepository
+                        )
+                    }
                 }
             }
         }
 
         lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                DiscPlaceholderBitmapCache.preload(
+                    resources = applicationContext.resources,
+                    darkTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                        Configuration.UI_MODE_NIGHT_YES
+                )
+            }
             uiState = runCatching {
                 BenchmarkHarnessUiState.Ready(benchmarkDataSeeder.prepareScenario(scenario))
             }.getOrElse { throwable ->
@@ -143,7 +156,8 @@ private fun BenchmarkScenarioScreen(
 ) {
     when (scenario) {
         BenchmarkScenario.LibraryAlbums,
-        BenchmarkScenario.LibraryTracks -> {
+        BenchmarkScenario.LibraryTracks,
+        BenchmarkScenario.PerformancePlayback -> {
             LibraryScreen(
                 windowSizeClass = windowSizeClass,
                 onAlbumClick = {},
@@ -164,7 +178,7 @@ private fun BenchmarkScenarioScreen(
         BenchmarkScenario.FavoritesDetail -> {
             val items by playlistRepository
                 .observePlaylistItemsWithSubtitles(seedSummary.favoritesPlaylistId)
-                .collectAsState(initial = emptyList())
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             PlaylistDetailContent(
                 windowSizeClass = windowSizeClass,
                 title = PlaylistRepository.PLAYLIST_FAVORITES,
@@ -187,7 +201,7 @@ private fun BenchmarkScenarioScreen(
         BenchmarkScenario.PlaylistDetail -> {
             val items by playlistRepository
                 .observePlaylistItemsWithSubtitles(seedSummary.detailPlaylistId)
-                .collectAsState(initial = emptyList())
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             PlaylistDetailContent(
                 windowSizeClass = windowSizeClass,
                 title = seedSummary.detailPlaylistName,
@@ -219,7 +233,7 @@ private fun BenchmarkScenarioScreen(
             )
         }
 
-        BenchmarkScenario.DownloadsList -> {
+        BenchmarkScenario.DownloadsList, BenchmarkScenario.TranslationTasks -> {
             DownloadsScreen(windowSizeClass = windowSizeClass)
         }
 
@@ -233,7 +247,7 @@ private fun BenchmarkScenarioScreen(
         BenchmarkScenario.GroupDetail -> {
             val tracks by albumGroupRepository
                 .observeGroupTracks(seedSummary.detailGroupId)
-                .collectAsState(initial = emptyList())
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             AlbumGroupDetailContent(
                 windowSizeClass = windowSizeClass,
                 title = seedSummary.detailGroupName,

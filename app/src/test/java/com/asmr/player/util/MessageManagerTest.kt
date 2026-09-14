@@ -1,14 +1,43 @@
 package com.asmr.player.util
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class MessageManagerTest {
+
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+
+    @Test
+    fun errorFormatter_preservesActionableSubtitleFailureDetails() {
+        val oomMessage = "本地转录失败：运行模型时内存不足（OOM），请关闭占用内存的应用后重试。"
+        val keyMessage = "DeepSeek API Key 无效或已失效，请前往设置重新配置后重试。"
+
+        assertEquals(oomMessage, AppErrorMessageFormatter.sanitize(oomMessage))
+        assertEquals(keyMessage, AppErrorMessageFormatter.sanitize(keyMessage))
+    }
+
+    @Test
+    fun errorFormatter_preservesAsmrOneMirrorSuggestion() {
+        assertEquals(
+            ASMR_ONE_SITE_FAILURE_MESSAGE,
+            AppErrorMessageFormatter.sanitize(ASMR_ONE_SITE_FAILURE_MESSAGE)
+        )
+        assertEquals(
+            ASMR_ONE_SITE_TEST_FAILURE_MESSAGE,
+            AppErrorMessageFormatter.sanitize(ASMR_ONE_SITE_TEST_FAILURE_MESSAGE)
+        )
+    }
 
     @Test
     fun tryConsume_allowsEachMessageOnlyOnce() {
-        val manager = MessageManager()
+        val manager = MessageManager(context)
 
         assertTrue(manager.tryConsume(1L))
         assertFalse(manager.tryConsume(1L))

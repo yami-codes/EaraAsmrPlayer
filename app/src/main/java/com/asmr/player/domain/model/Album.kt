@@ -1,8 +1,13 @@
 package com.asmr.player.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Album(
     val id: Long = 0L,
     val title: String,
+    /** 本地库翻译任务写入的显示名覆盖；为空时用 title。仅来自本地库实体，在线作品恒为空。 */
+    val displayTitle: String = "",
     val path: String,
     val localPath: String? = null,
     val downloadPath: String? = null,
@@ -20,6 +25,8 @@ data class Album(
     val dlCount: Int = 0,
     val priceJpy: Int = 0,
     val hasAsmrOne: Boolean = false,
+    /** ASMR.ONE 的数字作品 ID；在线搜索缺少作品编号时用于后台补全。 */
+    val asmrOneWorkId: Int? = null,
     val description: String = "",
     val audioTrackCount: Int = 0,
     val audioTotalDuration: Double = 0.0,

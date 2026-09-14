@@ -1,40 +1,58 @@
-﻿package com.asmr.player.ui.settings
+package com.asmr.player.ui.settings
 
-import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignLeft
 import androidx.compose.material.icons.automirrored.rounded.FormatAlignRight
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.FormatAlignCenter
 import androidx.compose.material.icons.rounded.FormatAlignLeft
 import androidx.compose.material.icons.rounded.FormatAlignRight
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Router
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
@@ -47,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalConfiguration
@@ -54,22 +73,43 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.BuildConfig
+import com.asmr.player.cache.AppCacheLimits
+import com.asmr.player.cache.AppCacheState
+import com.asmr.player.data.remote.download.DownloadDestination
 import com.asmr.player.data.settings.CoverPreviewMode
+import com.asmr.player.data.settings.DeepSeekReasoningEffort
+import com.asmr.player.data.settings.DeepSeekTranslationSettings
 import com.asmr.player.data.settings.FloatingLyricsSettings
 import com.asmr.player.data.settings.LyricsPageSettings
+import com.asmr.player.data.settings.NowPlayingLyricsSettings
+import com.asmr.player.subtitle.SubtitleDeviceCapability
+import com.asmr.player.subtitle.SubtitleModelDownloadSource
+import com.asmr.player.subtitle.SubtitleModelInstallationState
+import com.asmr.player.subtitle.SubtitleModelOperation
+import com.asmr.player.subtitle.SubtitleModelState
+import com.asmr.player.subtitle.SubtitleTranscriptionModels
+import com.asmr.player.subtitle.configuredSubtitleModelDownloadSources
+import com.asmr.player.subtitle.DEEPSEEK_SUBTITLE_MODEL
+import com.asmr.player.subtitle.DeepSeekAccountState
+import com.asmr.player.subtitle.formatDeepSeekBalances
+import com.asmr.player.subtitle.formatDeepSeekTokenTotal
 import com.asmr.player.ui.library.BulkPhase
 import com.asmr.player.ui.library.LibraryViewModel
+import com.asmr.player.util.documentTreeDisplayPath
 import com.asmr.player.ui.common.AppSupportStatusSection
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.FlatActionDialog
@@ -77,63 +117,159 @@ import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.common.smoothScrollToTop
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
+import com.asmr.player.ui.common.collectAsStateWhileActive
 import com.asmr.player.ui.update.launchDownloadedApkInstall
+import com.asmr.player.util.Formatting
+import java.io.File
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val SettingsPageHorizontalPadding = 8.dp
 private const val MONOCHROME_THEME_SENTINEL = 0x01000000
+private const val SettingsDetailEnterDurationMs = 440
+private const val SettingsDetailExitDurationMs = 420
+private val SettingsDetailSlideEasing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)
+
+private enum class SettingsSection(
+    val title: String,
+    val description: String,
+    val icon: ImageVector,
+) {
+    LocalLibrary("本地库", "管理扫描目录、刷新本地内容与同步元数据", Icons.Rounded.Folder),
+    BlockedKeywords("屏蔽词", "过滤搜索结果中不想看到的关键词", Icons.Rounded.Block),
+    Appearance("外观", "调整主题、主题色与播放页背景", Icons.Rounded.Palette),
+    Playback("播放设置", "管理迷你播放栏、音频输出与淡入淡出", Icons.Rounded.Headphones),
+    Lyrics("歌词", "配置歌词页与悬浮歌词的显示效果", Icons.Rounded.Lyrics),
+    Translation("翻译配置", "管理本地字幕模型与 DeepSeek 翻译", Icons.Rounded.Translate),
+    SupportStatus("服务状态与代理", "测试服务连通性并配置代理与 DNS", Icons.Rounded.Router),
+    AppCache("APP 缓存", "设置缓存容量上限并清理缓存", Icons.Rounded.Storage),
+    About("关于", "查看版本信息并检查应用更新", Icons.Rounded.Info),
+}
+
+private fun settingsDetailEnterTransition() = slideInHorizontally(
+    animationSpec = tween(
+        durationMillis = SettingsDetailEnterDurationMs,
+        easing = SettingsDetailSlideEasing,
+    ),
+    initialOffsetX = { fullWidth -> fullWidth },
+)
+
+private fun settingsDetailExitTransition() = slideOutHorizontally(
+    animationSpec = tween(
+        durationMillis = SettingsDetailExitDurationMs,
+        easing = SettingsDetailSlideEasing,
+    ),
+    targetOffsetX = { fullWidth -> fullWidth },
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     windowSizeClass: WindowSizeClass,
+    isActive: Boolean = true,
+    isDataActive: Boolean = isActive,
     viewModel: SettingsViewModel = hiltViewModel(),
     libraryViewModel: LibraryViewModel = hiltViewModel(),
     scrollToTopSignal: Long = 0L,
     onHorizontalControlInteractionChanged: (Boolean) -> Unit = {},
+    onDetailPageChanged: (Boolean) -> Unit = {},
 ) {
-    val floatingLyricsEnabled by viewModel.floatingLyricsEnabled.collectAsState()
-    val floatingSettings by viewModel.floatingLyricsSettings.collectAsState()
-    val lyricsPageSettings by viewModel.lyricsPageSettings.collectAsState()
-    val dynamicPlayerHueEnabled by viewModel.dynamicPlayerHueEnabled.collectAsState()
-    val themeMode by viewModel.themeMode.collectAsState()
-    val staticHueArgbLight by viewModel.staticHueArgbLight.collectAsState()
-    val staticHueArgbDark by viewModel.staticHueArgbDark.collectAsState()
-    val coverBackgroundEnabled by viewModel.coverBackgroundEnabled.collectAsState()
-    val coverBackgroundClarity by viewModel.coverBackgroundClarity.collectAsState()
-    val coverPreviewMode by viewModel.coverPreviewMode.collectAsState()
-    val pauseOnOutputDisconnect by viewModel.pauseOnOutputDisconnect.collectAsState()
-    val resumeOnOutputConnect by viewModel.resumeOnOutputConnect.collectAsState()
-    val pauseOnOtherAudio by viewModel.pauseOnOtherAudio.collectAsState()
-    val playFadeInMs by viewModel.playFadeInMs.collectAsState()
-    val pauseFadeOutMs by viewModel.pauseFadeOutMs.collectAsState()
-    val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsState()
-    val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsState()
-    val searchBlockedKeywords by viewModel.searchBlockedKeywords.collectAsState()
-    val updateState by viewModel.updateState.collectAsState()
-    val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsState()
-    val scanRoots by libraryViewModel.scanRoots.collectAsState()
-    val bulkProgress by libraryViewModel.bulkProgress.collectAsState()
-    val isGlobalSyncRunning by libraryViewModel.isGlobalSyncRunning.collectAsState()
+    var selectedSection by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
+    var retainedSection by remember { mutableStateOf(selectedSection) }
+    val currentOnDetailPageChanged by rememberUpdatedState(onDetailPageChanged)
+    val localLibraryDataActive = isDataActive && selectedSection == SettingsSection.LocalLibrary
+    val blockedKeywordsDataActive = isDataActive && selectedSection == SettingsSection.BlockedKeywords
+    val appearanceDataActive = isDataActive && selectedSection == SettingsSection.Appearance
+    val playbackDataActive = isDataActive && selectedSection == SettingsSection.Playback
+    val lyricsDataActive = isDataActive && selectedSection == SettingsSection.Lyrics
+    val translationDataActive = isDataActive && selectedSection == SettingsSection.Translation
+    val supportStatusDataActive = isDataActive && selectedSection == SettingsSection.SupportStatus
+    val aboutDataActive = isDataActive && selectedSection == SettingsSection.About
+    val appCacheDataActive = isDataActive && selectedSection == SettingsSection.AppCache
+
+    LaunchedEffect(selectedSection) {
+        currentOnDetailPageChanged(selectedSection != null)
+    }
+    DisposableEffect(Unit) {
+        onDispose { currentOnDetailPageChanged(false) }
+    }
+    LaunchedEffect(translationDataActive, viewModel) {
+        if (translationDataActive) viewModel.prepareSettingsData()
+    }
+    val floatingLyricsEnabled by viewModel.floatingLyricsEnabled.collectAsStateWhileActive(lyricsDataActive)
+    val floatingSettings by viewModel.floatingLyricsSettings.collectAsStateWhileActive(lyricsDataActive)
+    val nowPlayingLyricsSettings by viewModel.nowPlayingLyricsSettings.collectAsStateWhileActive(lyricsDataActive)
+    val lyricsPageSettings by viewModel.lyricsPageSettings.collectAsStateWhileActive(lyricsDataActive)
+    val dynamicPlayerHueEnabled by viewModel.dynamicPlayerHueEnabled.collectAsStateWhileActive(appearanceDataActive)
+    val themeMode by viewModel.themeMode.collectAsStateWhileActive(appearanceDataActive)
+    val staticHueArgbLight by viewModel.staticHueArgbLight.collectAsStateWhileActive(appearanceDataActive)
+    val staticHueArgbDark by viewModel.staticHueArgbDark.collectAsStateWhileActive(appearanceDataActive)
+    val coverBackgroundEnabled by viewModel.coverBackgroundEnabled.collectAsStateWhileActive(appearanceDataActive)
+    val coverBackgroundClarity by viewModel.coverBackgroundClarity.collectAsStateWhileActive(appearanceDataActive)
+    val coverPreviewMode by viewModel.coverPreviewMode.collectAsStateWhileActive(appearanceDataActive)
+    val pauseOnOutputDisconnect by viewModel.pauseOnOutputDisconnect.collectAsStateWhileActive(playbackDataActive)
+    val resumeOnOutputConnect by viewModel.resumeOnOutputConnect.collectAsStateWhileActive(playbackDataActive)
+    val pauseOnOtherAudio by viewModel.pauseOnOtherAudio.collectAsStateWhileActive(playbackDataActive)
+    val playFadeInMs by viewModel.playFadeInMs.collectAsStateWhileActive(playbackDataActive)
+    val pauseFadeOutMs by viewModel.pauseFadeOutMs.collectAsStateWhileActive(playbackDataActive)
+    val sfwHideSystemControls by viewModel.sfwHideSystemControls.collectAsStateWhileActive(playbackDataActive)
+    val showMiniPlayerBar by viewModel.showMiniPlayerBar.collectAsStateWhileActive(playbackDataActive)
+    val searchBlockedKeywords by viewModel.searchBlockedKeywords.collectAsStateWhileActive(blockedKeywordsDataActive)
+    val networkRouteSettings by viewModel.networkRouteSettings.collectAsStateWhileActive(supportStatusDataActive)
+    val appCacheState by viewModel.appCacheState.collectAsStateWhileActive(appCacheDataActive)
+    val subtitleModelState by viewModel.subtitleModelState.collectAsStateWhileActive(translationDataActive)
+    val deepSeekApiKeyState by viewModel.deepSeekApiKeyState.collectAsStateWhileActive(translationDataActive)
+    val deepSeekAccountState by viewModel.deepSeekAccountState.collectAsStateWhileActive(translationDataActive)
+    val deepSeekTranslationSettings by viewModel.deepSeekTranslationSettings.collectAsStateWhileActive(translationDataActive)
+    val updateState by viewModel.updateState.collectAsStateWhileActive(aboutDataActive)
+    val autoUpdateCheckEnabled by viewModel.autoUpdateCheckEnabled.collectAsStateWhileActive(aboutDataActive)
+    val scanRoots by libraryViewModel.scanRoots.collectAsStateWhileActive(localLibraryDataActive)
+    val downloadDestination by viewModel.downloadDestination.collectAsStateWhileActive(localLibraryDataActive)
+    val bulkProgress by libraryViewModel.bulkProgress.collectAsStateWhileActive(localLibraryDataActive)
+    val isGlobalSyncRunning by libraryViewModel.isGlobalSyncRunning.collectAsStateWhileActive(localLibraryDataActive)
     val context = LocalContext.current
     val colorScheme = AsmrTheme.colorScheme
-    val listState = rememberLazyListState()
+    val rootListState = rememberLazyListState()
+    val detailListState = rememberLazyListState()
+    val listState = if (selectedSection == null) rootListState else detailListState
     val segmentedButtonColors = SegmentedButtonDefaults.colors(
         activeContainerColor = colorScheme.primarySoft,
         activeContentColor = if (colorScheme.isDark) colorScheme.onPrimaryContainer else colorScheme.primaryStrong,
         activeBorderColor = colorScheme.primaryStrong,
         inactiveContainerColor = Color.Transparent,
         inactiveContentColor = colorScheme.onSurfaceVariant,
-        inactiveBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+        inactiveBorderColor = colorScheme.primaryStrong.copy(alpha = 0.4f),
+        disabledActiveContainerColor = colorScheme.primarySoft.copy(alpha = 0.48f),
+        disabledActiveContentColor = if (colorScheme.isDark) {
+            colorScheme.onPrimaryContainer.copy(alpha = 0.48f)
+        } else {
+            colorScheme.primaryStrong.copy(alpha = 0.48f)
+        },
+        disabledActiveBorderColor = colorScheme.primaryStrong.copy(alpha = 0.24f),
+        disabledInactiveContainerColor = Color.Transparent,
+        disabledInactiveContentColor = colorScheme.primaryStrong.copy(alpha = 0.38f),
+        disabledInactiveBorderColor = colorScheme.primaryStrong.copy(alpha = 0.2f)
     )
     
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var activeTipKey by remember { mutableStateOf<String?>(null) }
     var searchBlockedKeywordInput by rememberSaveable { mutableStateOf("") }
+    var showClearAppCacheConfirmation by remember { mutableStateOf(false) }
+    var pendingDeleteSubtitleModelId by remember { mutableStateOf<String?>(null) }
+    val subtitleModelSourceIds = remember {
+        mutableStateMapOf<String, String>().apply {
+            SubtitleTranscriptionModels.all.forEach { model ->
+                this[model.id] = SubtitleModelDownloadSource.HuggingFace.id
+            }
+        }
+    }
+    var deepSeekApiKeyInput by remember { mutableStateOf("") }
+    LaunchedEffect(deepSeekApiKeyState.saveVersion) {
+        if (deepSeekApiKeyState.saveVersion > 0L) deepSeekApiKeyInput = ""
+    }
     DisposableEffect(onHorizontalControlInteractionChanged) {
         onDispose { onHorizontalControlInteractionChanged(false) }
     }
@@ -156,15 +292,51 @@ fun SettingsScreen(
             }
         }
     )
+    var pendingDownloadDestination by remember { mutableStateOf<DownloadDestination?>(null) }
+    val pickDownloadRootLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { uri ->
+            if (uri != null) {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                val granted = runCatching {
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                    true
+                }.getOrDefault(false)
+                if (granted) {
+                    pendingDownloadDestination = DownloadDestination.DocumentTree(
+                        root = uri.toString(),
+                        label = formatTreeRootLabel(uri.toString()),
+                    )
+                } else {
+                    libraryViewModel.messageManager.showError("无法获取下载目录读写权限")
+                }
+            }
+        },
+    )
     var pendingRemoveRoot by remember { mutableStateOf<String?>(null) }
 
     // 屏幕尺寸判断
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+    BackHandler(enabled = isActive && selectedSection != null) {
+        selectedSection = null
+    }
     Scaffold(
-        contentWindowInsets = StableWindowInsets.navigationBars,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent,
         contentColor = colorScheme.onBackground
     ) { padding ->
+        LaunchedEffect(isActive) {
+            if (isActive) return@LaunchedEffect
+            deepSeekApiKeyInput = ""
+            rootListState.stopScroll(MutatePriority.PreventUserInput)
+            detailListState.stopScroll(MutatePriority.PreventUserInput)
+        }
+        LaunchedEffect(appCacheDataActive) {
+            if (appCacheDataActive) viewModel.refreshAppCacheSize()
+        }
+        LaunchedEffect(selectedSection) {
+            if (selectedSection != null) detailListState.scrollToItem(0)
+        }
         LaunchedEffect(scrollToTopSignal) {
             if (scrollToTopSignal == 0L) return@LaunchedEffect
             listState.smoothScrollToTop()
@@ -183,21 +355,112 @@ fun SettingsScreen(
                     .widthIn(max = 760.dp)
                     .fillMaxWidth()
             }
-
             LazyColumn(
-                state = listState,
-                modifier = contentModifier.thinScrollbar(listState),
+                state = rootListState,
+                modifier = contentModifier,
+                flingBehavior = rememberCalmScrollableFlingBehavior(),
                 contentPadding = PaddingValues(horizontal = SettingsPageHorizontalPadding, vertical = 10.dp)
                     .withAddedBottomPadding(LocalBottomOverlayPadding.current),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item(key = "group:local") {
-                    SettingsGroup(title = stringResource(R.string.nav_library)) {
+                item(key = "settings_sections") {
+                    SettingsSectionsPanel(
+                        onSectionClick = { section ->
+                            retainedSection = section
+                            selectedSection = section
+                        },
+                    )
+                }
+                item(key = "root_bottom_spacer") {
+                    Spacer(modifier = Modifier.height(40.dp))
+                }
+            }
+
+            AnimatedVisibility(
+                visible = selectedSection != null,
+                modifier = contentModifier,
+                enter = settingsDetailEnterTransition(),
+                exit = settingsDetailExitTransition(),
+                label = "settingsDetailTransition",
+            ) {
+                val currentSection = retainedSection ?: return@AnimatedVisibility
+                LazyColumn(
+                    state = detailListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(colorScheme.background),
+                    flingBehavior = rememberCalmScrollableFlingBehavior(),
+                    contentPadding = PaddingValues(horizontal = SettingsPageHorizontalPadding, vertical = 10.dp)
+                        .withAddedBottomPadding(LocalBottomOverlayPadding.current),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item(key = "detail_header:${currentSection.name}") {
+                        SettingsDetailHeader(
+                            section = currentSection,
+                            onBack = { selectedSection = null },
+                        )
+                    }
+
+                if (currentSection == SettingsSection.LocalLibrary) {
+                    item(key = "group:local") {
+                        SettingsDetailCard {
                 val isDark = AsmrTheme.colorScheme.isDark
                 val buttonColors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = colorScheme.primarySoft,
                     contentColor = if (isDark) colorScheme.onPrimaryContainer else colorScheme.primaryStrong
                 )
+
+                Text("下载目录", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = colorScheme.surface.copy(alpha = 0.35f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(downloadDestination.label, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = downloadDestination.displayPath,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            FilledTonalButton(
+                                onClick = {
+                                    viewModel.requestDownloadDirectoryChange {
+                                        pickDownloadRootLauncher.launch(null)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = buttonColors,
+                                enabled = !isGlobalSyncRunning,
+                            ) {
+                                Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = buttonColors.contentColor)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("选择目录")
+                            }
+                            TextButton(
+                                onClick = {
+                                    viewModel.requestDownloadDirectoryChange {
+                                        pendingDownloadDestination = DownloadDestination.Default(
+                                            root = File(context.getExternalFilesDir(null), "albums").absolutePath,
+                                        )
+                                    }
+                                },
+                                enabled = downloadDestination is DownloadDestination.DocumentTree && !isGlobalSyncRunning,
+                            ) {
+                                Text("重置默认")
+                            }
+                        }
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -237,8 +500,8 @@ fun SettingsScreen(
 
                 bulkProgress?.let { progress ->
                     val title = when (progress.phase) {
-                        BulkPhase.ScanningLocal -> stringResource(R.string.scanning_local_library)
-                        BulkPhase.SyncingCloud -> stringResource(R.string.syncing_cloud)
+                        BulkPhase.ScanningLocal -> "正在扫描本地库"
+                        BulkPhase.SyncingCloud -> "正在云同步"
                     }
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -254,12 +517,7 @@ fun SettingsScreen(
                                     Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                     if (progress.currentAlbumTitle.isNotBlank()) {
                                         Text(
-                                            text = stringResource(
-                                                R.string.album,
-                                                progress.current,
-                                                progress.total,
-                                                progress.currentAlbumTitle
-                                            ),
+                                            text = "专辑 ${progress.current}/${progress.total}：${progress.currentAlbumTitle}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary,
                                             maxLines = 1,
@@ -267,7 +525,7 @@ fun SettingsScreen(
                                         )
                                     } else {
                                         Text(
-                                            text = stringResource(R.string.progress, progress.current, progress.total),
+                                            text = "进度 ${progress.current}/${progress.total}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.textSecondary
                                         )
@@ -285,7 +543,7 @@ fun SettingsScreen(
                             }
                             if (progress.currentFile.isNotBlank()) {
                                 Text(
-                                    text = stringResource(R.string.scanning, progress.currentFile),
+                                    text = "正在扫描：${progress.currentFile}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary,
                                     maxLines = 1,
@@ -297,9 +555,9 @@ fun SettingsScreen(
                 }
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(stringResource(R.string.directory_added), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("已添加目录", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     if (scanRoots.isEmpty()) {
-                        Text(stringResource(R.string.none), style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
+                        Text("暂无", style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary)
                     } else {
                         scanRoots.forEach { root ->
                             val label = remember(root) { formatTreeRootLabel(root) }
@@ -309,7 +567,13 @@ fun SettingsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(label, style = MaterialTheme.typography.bodyMedium)
-                                    Text(root, style = MaterialTheme.typography.bodySmall, color = colorScheme.textSecondary, maxLines = 1)
+                                    Text(
+                                        documentTreeDisplayPath(context, root),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colorScheme.textSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
                                 IconButton(onClick = { libraryViewModel.scanSingleRoot(root) }, enabled = !isGlobalSyncRunning) {
                                     Icon(Icons.Rounded.Refresh, contentDescription = null, tint = colorScheme.onSurface)
@@ -326,9 +590,11 @@ fun SettingsScreen(
                 }
             }
         }
+                }
 
-                item(key = "group:block_words") {
-                    SettingsGroup(title = stringResource(R.string.blocked_keywords_label)) {
+                if (currentSection == SettingsSection.BlockedKeywords) {
+                    item(key = "group:block_words") {
+                        SettingsDetailCard {
                         SearchBlockedKeywordsSection(
                             input = searchBlockedKeywordInput,
                             keywords = searchBlockedKeywords,
@@ -344,46 +610,12 @@ fun SettingsScreen(
                         )
                     }
                 }
-
-                item(key = "group:language") {
-                    val appLanguage by viewModel.appLanguage.collectAsState()
-                    SettingsGroup(
-                        title = stringResource(R.string.settings_language_section),
-                        collapsible = true,
-                        initiallyExpanded = true,
-                        content = {
-                            Text(
-                                stringResource(R.string.settings_app_language),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                com.asmr.player.i18n.AppLanguage.entries.forEach { language ->
-                                    ThemeModeChip(
-                                        label = stringResource(
-                                            when (language) {
-                                                com.asmr.player.i18n.AppLanguage.System -> R.string.language_system
-                                                com.asmr.player.i18n.AppLanguage.English -> R.string.language_english
-                                                com.asmr.player.i18n.AppLanguage.Thai -> R.string.language_thai
-                                                com.asmr.player.i18n.AppLanguage.ChineseSimplified -> R.string.language_chinese_simplified
-                                            }
-                                        ),
-                                        selected = appLanguage == language,
-                                        onClick = { viewModel.setAppLanguage(language) }
-                                    )
-                                }
-                            }
-                        }
-                    )
                 }
 
-                item(key = "group:appearance") {
-                    SettingsGroup(
-                        title = stringResource(R.string.appearance),
-                        collapsible = true,
-                        initiallyExpanded = false,
-                        collapsedContent = {
-                            Text(stringResource(R.string.theme_mode), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                if (currentSection == SettingsSection.Appearance) {
+                    item(key = "group:appearance") {
+                        SettingsDetailCard {
+                            Text("主题模式", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                 ThemeModeChip(
                                     label = stringResource(R.string.drawer_section_system),
@@ -407,7 +639,7 @@ fun SettingsScreen(
                                 )
                             }
 
-                            Text(stringResource(R.string.theme_color), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text("主题色", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -451,8 +683,7 @@ fun SettingsScreen(
                                     )
                                 }
                             }
-                        }
-                    ) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                         SettingsToggleRow(
                             text = stringResource(R.string.dynamic_cover_theme_global),
                             checked = dynamicPlayerHueEnabled,
@@ -464,18 +695,11 @@ fun SettingsScreen(
                             checked = coverBackgroundEnabled,
                             onCheckedChange = viewModel::setCoverBackgroundEnabled
                         )
-                        /*
-                        SettingsToggleRow(
-                            text = stringResource(R.string.rotate_phone_view),
-                            checked = coverMotionEnabled,
-                            onCheckedChange = viewModel::setCoverMotionEnabled
-                        )
-                        */
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(stringResource(R.string.background_cover_preview), style = MaterialTheme.typography.bodyMedium)
+                            Text("背景封面预览方式", style = MaterialTheme.typography.bodyMedium)
                             PreviewModeInfoTip(
                                 active = activeTipKey == "cover_preview_mode",
                                 onToggle = {
@@ -517,10 +741,7 @@ fun SettingsScreen(
                                     range = 0f..1f,
                                     stepSize = 0.05f,
                                     textForValue = { value ->
-                                        context.getString(
-                                            R.string.cover_background_clarity,
-                                            (value.coerceIn(0f, 1f) * 100).toInt()
-                                        )
+                                        "封面背景清晰度：${(value.coerceIn(0f, 1f) * 100).toInt()}%"
                                     },
                                     onValueCommitted = viewModel::setCoverBackgroundClarity,
                                     onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -529,20 +750,18 @@ fun SettingsScreen(
                         }
                     }
                 }
+                }
 
-                item(key = "group:playback") {
-                    SettingsGroup(
-                        title = stringResource(R.string.playback_settings),
-                        collapsible = true,
-                        initiallyExpanded = false,
-                        collapsedContent = {
+                if (currentSection == SettingsSection.Playback) {
+                    item(key = "group:playback") {
+                        SettingsDetailCard {
                             SettingsToggleRow(
                                 text = stringResource(R.string.mini_player_bar_toggle),
                                 checked = showMiniPlayerBar,
                                 onCheckedChange = viewModel::setShowMiniPlayerBar,
                                 infoKey = "show_mini_player_bar",
-                                infoTitle = stringResource(R.string.mini_player_bar),
-                                infoText = stringResource(R.string.off_mini_player),
+                                infoTitle = "迷你播放栏",
+                                infoText = "关闭后，应用底部的迷你播放栏会隐藏，同时页面底部不会再为它预留空白。",
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
@@ -552,19 +771,18 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setSfwHideSystemControls,
                                 infoKey = "sfw_hide_system_controls",
                                 infoTitle = "SFW",
-                                infoText = stringResource(R.string.enabled_media_control),
+                                infoText = "开启后会尽量隐藏系统锁屏和通知栏里的媒体控制按钮，但仍保留后台播放所需的前台通知。",
                                 activeTipKey = activeTipKey,
                                 onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                             )
-                        }
-                    ) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                         SettingsToggleRow(
                             text = stringResource(R.string.pause_playback_immediately),
                             checked = pauseOnOutputDisconnect,
                             onCheckedChange = viewModel::setPauseOnOutputDisconnect,
                             infoKey = "pause_on_output_disconnect",
-                            infoTitle = stringResource(R.string.auto_pause_output),
-                            infoText = stringResource(R.string.output_disconnect_pause_hint),
+                            infoTitle = "输出断开自动暂停",
+                            infoText = "播放中如果外放、耳机或蓝牙输出被移除，会立刻暂停，避免声音突然外放。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -573,8 +791,8 @@ fun SettingsScreen(
                             checked = resumeOnOutputConnect,
                             onCheckedChange = viewModel::setResumeOnOutputConnect,
                             infoKey = "resume_on_output_connect",
-                            infoTitle = stringResource(R.string.auto_resume_output),
-                            infoText = stringResource(R.string.headphones_bluetooth),
+                            infoTitle = "输出接入自动恢复",
+                            infoText = "检测到耳机、蓝牙耳机、USB 音频、HDMI 或 AUX 等外接输出接入时，如果播放器当前处于暂停，会自动尝试恢复播放；手机扬声器不触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
@@ -582,11 +800,11 @@ fun SettingsScreen(
                             committedValue = playFadeInMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> context.getString(R.string.fade_volume_play_ms, value.toInt()) },
+                            textForValue = { value -> "播放时逐渐增强音量: ${value.toInt()}ms" },
                             onValueCommitted = { viewModel.setPlayFadeInMs(it.toInt()) },
                             infoKey = "play_fade_in",
-                            infoTitle = stringResource(R.string.play_fade_in),
-                            infoText = stringResource(R.string.you_tap_play),
+                            infoTitle = "播放淡入",
+                            infoText = "点击播放时，音量会在设定时长内从低到高平滑升到正常值。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -595,11 +813,11 @@ fun SettingsScreen(
                             committedValue = pauseFadeOutMs.toFloat(),
                             range = 0f..3000f,
                             stepSize = 100f,
-                            textForValue = { value -> context.getString(R.string.fade_out_pause_ms, value.toInt()) },
+                            textForValue = { value -> "暂停时逐渐降低音量: ${value.toInt()}ms" },
                             onValueCommitted = { viewModel.setPauseFadeOutMs(it.toInt()) },
                             infoKey = "pause_fade_out",
-                            infoTitle = stringResource(R.string.pause_fade_out),
-                            infoText = stringResource(R.string.pause_tapped_volume),
+                            infoTitle = "暂停淡出",
+                            infoText = "点击暂停时，音量会在设定时长内逐渐降到 0，然后再真正暂停。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key },
                             onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
@@ -609,37 +827,42 @@ fun SettingsScreen(
                             checked = pauseOnOtherAudio,
                             onCheckedChange = viewModel::setPauseOnOtherAudio,
                             infoKey = "pause_on_other_audio",
-                            infoTitle = stringResource(R.string.pause_audio_focus_loss),
-                            infoText = stringResource(R.string.audio_focus_pause_hint),
+                            infoTitle = "音频焦点暂停",
+                            infoText = "当其他音乐或视频应用抢占音频焦点时暂停播放；普通通知提示音不会触发。",
                             activeTipKey = activeTipKey,
                             onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
                         )
                     }
                 }
+                }
 
-                // 悬浮歌词
-                item(key = "group:lyrics") {
-                    SettingsGroup(
-                        title = stringResource(R.string.lyrics),
-                        collapsible = true,
-                        initiallyExpanded = false,
-                        collapsedContent = {
+                // 歌词
+                if (currentSection == SettingsSection.Lyrics) {
+                    item(key = "group:lyrics") {
+                        SettingsDetailCard {
                             SettingsToggleRow(
                                 text = stringResource(R.string.lyric_overlay_perm_title),
                                 checked = floatingLyricsEnabled,
                                 onCheckedChange = { viewModel.setFloatingLyricsEnabled(it) }
                             )
-                        }
-                    ) {
-                        LyricsPageSettingsSection(
-                            settings = lyricsPageSettings,
-                            segmentedButtonColors = segmentedButtonColors,
-                            onSettingsChange = { next -> viewModel.updateLyricsPageSettings(next) },
-                            onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
-                        )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                            NowPlayingLyricsSettingsSection(
+                                settings = nowPlayingLyricsSettings,
+                                onSettingsChange = viewModel::updateNowPlayingLyricsSettings,
+                                onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+                            )
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+
+                            LyricsPageSettingsSection(
+                                settings = lyricsPageSettings,
+                                segmentedButtonColors = segmentedButtonColors,
+                                onSettingsChange = { next -> viewModel.updateLyricsPageSettings(next) },
+                                onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+                            )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                        Text(stringResource(R.string.floating_lyrics_details), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("悬浮歌词细节", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
                         if (!overlayGranted && floatingLyricsEnabled) {
                             OutlinedButton(
@@ -659,7 +882,7 @@ fun SettingsScreen(
 
                         if (floatingLyricsEnabled && overlayGranted) {
                             SettingsSliderRow(
-                                text = stringResource(R.string.font_size, floatingSettings.size.toInt()),
+                                text = "字体大小: ${floatingSettings.size.toInt()}",
                                 value = floatingSettings.size,
                                 range = 12f..32f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(size = it)) },
@@ -667,10 +890,7 @@ fun SettingsScreen(
                             )
 
                             SettingsSliderRow(
-                                text = stringResource(
-                                    R.string.background_opacity,
-                                    (floatingSettings.opacity * 100).toInt()
-                                ),
+                                text = "背景透明度: ${(floatingSettings.opacity * 100).toInt()}%",
                                 value = floatingSettings.opacity,
                                 range = 0f..1f,
                                 onValueChange = { viewModel.updateFloatingLyricsSettings(floatingSettings.copy(opacity = it)) },
@@ -689,7 +909,7 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(stringResource(R.string.alignment), style = MaterialTheme.typography.bodyMedium)
+                                Text("对齐方式", style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.weight(1f))
                                 SingleChoiceSegmentedButtonRow {
                                     SegmentedButton(
@@ -722,14 +942,14 @@ fun SettingsScreen(
                             val presetColors = remember {
                                 listOf(
                                     0xFFFFFFFF.toInt(),
-                                    0xFFFFEB3B.toInt(),
-                                    0xFF00E5FF.toInt(),
-                                    0xFF69F0AE.toInt(),
-                                    0xFFFF4081.toInt()
+                                    0xFFFFE14D.toInt(),
+                                    0xFF39D5FF.toInt(),
+                                    0xFF5CFF95.toInt(),
+                                    0xFFFF5FA2.toInt()
                                 )
                             }
                             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(stringResource(R.string.lyrics_color), style = MaterialTheme.typography.bodyMedium)
+                                Text("歌词颜色", style = MaterialTheme.typography.bodyMedium)
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                     presetColors.forEach { c ->
                                         val selected = floatingSettings.color == c
@@ -757,8 +977,48 @@ fun SettingsScreen(
                         }
                     }
                 }
-                item(key = "group:about_update") {
-                    SettingsGroup(title = stringResource(R.string.about)) {
+                }
+                if (currentSection == SettingsSection.Translation) {
+                    item(key = "group:translation_config") {
+                        SettingsDetailCard {
+                        SubtitleModelSettingsSection(
+                            state = subtitleModelState,
+                            selectedSourceIds = subtitleModelSourceIds,
+                            deviceSupported = remember(context) {
+                                SubtitleDeviceCapability.evaluate(context).supported
+                            },
+                            segmentedButtonColors = segmentedButtonColors,
+                            onSourceSelected = { modelId, source ->
+                                subtitleModelSourceIds[modelId] = source.id
+                            },
+                            onDownload = viewModel::downloadSubtitleModel,
+                            onCancelDownload = viewModel::cancelSubtitleModelDownload,
+                            onSelect = viewModel::selectSubtitleModel,
+                            onDelete = { modelId -> pendingDeleteSubtitleModelId = modelId },
+                            onClearFailure = viewModel::clearSubtitleModelFailure
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                        DeepSeekTranslationSettingsSection(
+                            state = deepSeekApiKeyState,
+                            accountState = deepSeekAccountState,
+                            settings = deepSeekTranslationSettings,
+                            apiKeyInput = deepSeekApiKeyInput,
+                            compact = isCompact,
+                            segmentedButtonColors = segmentedButtonColors,
+                            onApiKeyInputChanged = { deepSeekApiKeyInput = it },
+                            onSave = { viewModel.saveDeepSeekApiKey(deepSeekApiKeyInput) },
+                            onThinkingEnabledChanged = viewModel::setDeepSeekThinkingEnabled,
+                            onReasoningEffortChanged = viewModel::setDeepSeekReasoningEffort,
+                            onFinalPolishEnabledChanged = viewModel::setDeepSeekFinalPolishEnabled,
+                            activeTipKey = activeTipKey,
+                            onToggleTip = { key -> activeTipKey = if (activeTipKey == key) null else key }
+                        )
+                    }
+                }
+                }
+                if (currentSection == SettingsSection.About) {
+                    item(key = "group:about_update") {
+                        SettingsDetailCard {
                         val isDark = AsmrTheme.colorScheme.isDark
                         val buttonColors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = colorScheme.primarySoft,
@@ -766,11 +1026,7 @@ fun SettingsScreen(
                         )
 
                         Text(
-                            text = stringResource(
-                                R.string.current_version_fmt,
-                                com.asmr.player.BuildConfig.VERSION_NAME,
-                                com.asmr.player.BuildConfig.VERSION_CODE
-                            ),
+                            text = "当前版本：${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -800,14 +1056,14 @@ fun SettingsScreen(
                         when (val s = updateState) {
                             is AppUpdateState.UpToDate -> {
                                 Text(
-                                    text = stringResource(R.string.already_up_date, s.latestVersionName),
+                                    text = "已是最新：${s.latestVersionName}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
                             }
                             is AppUpdateState.UpdateAvailable -> {
                                 Text(
-                                    text = stringResource(R.string.new_version_available, s.release.tagName),
+                                    text = "发现新版本：${s.release.tagName}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -826,7 +1082,7 @@ fun SettingsScreen(
                                 val progress = if (total > 0L) (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f) else null
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = stringResource(R.string.downloading_fmt, s.release.apkName),
+                                        text = "正在下载：${s.release.apkName}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.textSecondary,
                                         maxLines = 1,
@@ -841,7 +1097,7 @@ fun SettingsScreen(
                             }
                             is AppUpdateState.ReadyToInstall -> {
                                 Text(
-                                    text = stringResource(R.string.download_complete, s.release.apkName),
+                                    text = "下载完成：${s.release.tagName}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.textSecondary
                                 )
@@ -872,16 +1128,39 @@ fun SettingsScreen(
                         }
                     }
                 }
+                }
 
-                item(key = "group:support_status") {
-                    SettingsGroup(title = stringResource(R.string.support_status)) {
-                        AppSupportStatusSection()
+                if (currentSection == SettingsSection.SupportStatus) {
+                    item(key = "group:support_status") {
+                        SettingsDetailCard {
+                        AppSupportStatusSection(
+                            networkSettings = networkRouteSettings,
+                            onUseSystemProxy = viewModel::useSystemProxy,
+                            onAdvancedProxyApplied = viewModel::setAdvancedProxy,
+                            onUseSystemDns = viewModel::useSystemDns,
+                            onCustomDnsServerApplied = viewModel::setCustomDnsServer,
+                        )
                     }
+                }
+                }
+
+                if (currentSection == SettingsSection.AppCache) {
+                    item(key = "group:app_cache") {
+                        SettingsDetailCard {
+                        AppCacheSettingsSection(
+                            state = appCacheState,
+                            onMaxSizeChanged = viewModel::setAppCacheMaxSizeMb,
+                            onClearClick = { showClearAppCacheConfirmation = true },
+                            onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged,
+                        )
+                    }
+                }
                 }
 
                 item(key = "bottom_spacer") {
                     Spacer(modifier = Modifier.height(40.dp))
                 }
+            }
             }
         }
     }
@@ -909,6 +1188,579 @@ fun SettingsScreen(
             )
         )
     }
+    val nextDownloadDestination = pendingDownloadDestination
+    if (nextDownloadDestination != null) {
+        FlatActionDialog(
+            onDismissRequest = { pendingDownloadDestination = null },
+            message = "切换后将清理旧目录中由 App 下载的本地库、下载任务和字幕翻译任务记录，但不会删除或移动物理文件；同一目录内手动导入的其他作品会保留。切换成功后会自动扫描新的目标目录。是否继续？",
+            actions = listOf(
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingDownloadDestination = null }),
+                FlatDialogAction(
+                    text = if (nextDownloadDestination is DownloadDestination.Default) "重置" else "切换",
+                    tone = FlatDialogActionTone.Danger,
+                    onClick = {
+                        pendingDownloadDestination = null
+                        viewModel.changeDownloadDirectory(nextDownloadDestination) {
+                            libraryViewModel.scanCurrentDownloadDestinationAsImport()
+                        }
+                    },
+                ),
+            ),
+        )
+    }
+    if (showClearAppCacheConfirmation) {
+        FlatActionDialog(
+            onDismissRequest = { showClearAppCacheConfirmation = false },
+            message = "将清理网络图片、在线音频播放和在线预览产生的缓存，不会删除下载内容、本地媒体或收藏数据。",
+            actions = listOf(
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { showClearAppCacheConfirmation = false }),
+                FlatDialogAction(
+                    text = "清理",
+                    tone = FlatDialogActionTone.Danger,
+                    onClick = {
+                        showClearAppCacheConfirmation = false
+                        viewModel.clearAppCache()
+                    }
+                )
+            )
+        )
+    }
+    pendingDeleteSubtitleModelId?.let { modelId ->
+        val modelName = SubtitleTranscriptionModels.fromId(modelId)?.optionName ?: "字幕"
+        FlatActionDialog(
+            onDismissRequest = { pendingDeleteSubtitleModelId = null },
+            message = "确定删除“$modelName”模型？约 29 MiB 的公共运行时会保留，之后下载任一模型时无需重复安装。",
+            actions = listOf(
+                FlatDialogAction(stringResource(R.string.cancel), onClick = { pendingDeleteSubtitleModelId = null }),
+                FlatDialogAction(
+                    text = "删除模型",
+                    tone = FlatDialogActionTone.Danger,
+                    onClick = {
+                        pendingDeleteSubtitleModelId = null
+                        viewModel.deleteSubtitleModel(modelId)
+                    }
+                )
+            )
+        )
+    }
+}
+
+@Composable
+private fun NowPlayingLyricsSettingsSection(
+    settings: NowPlayingLyricsSettings,
+    onSettingsChange: (NowPlayingLyricsSettings) -> Unit,
+    onHorizontalControlInteractionChanged: (Boolean) -> Unit = {}
+) {
+    Text("播放页歌词", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    SettingsSliderRow(
+        text = "高亮字体大小: ${settings.highlightFontSizeSp.toInt()}sp",
+        value = settings.highlightFontSizeSp,
+        range = 18f..36f,
+        stepSize = 1f,
+        onValueChange = { onSettingsChange(settings.copy(highlightFontSizeSp = it)) },
+        onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DeepSeekTranslationSettingsSection(
+    state: DeepSeekApiKeyUiState,
+    accountState: DeepSeekAccountState = DeepSeekAccountState(),
+    settings: DeepSeekTranslationSettings,
+    apiKeyInput: String,
+    compact: Boolean,
+    segmentedButtonColors: SegmentedButtonColors,
+    onApiKeyInputChanged: (String) -> Unit,
+    onSave: () -> Unit,
+    onThinkingEnabledChanged: (Boolean) -> Unit,
+    onReasoningEffortChanged: (DeepSeekReasoningEffort) -> Unit,
+    onFinalPolishEnabledChanged: (Boolean) -> Unit,
+    activeTipKey: String? = null,
+    onToggleTip: ((String) -> Unit)? = null
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val actionButtonColors = settingsPrimaryTonalButtonColors()
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = DEEPSEEK_SUBTITLE_MODEL,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .testTag("deepseek_model_name")
+        )
+        if (state.configured) {
+            Row(
+                modifier = Modifier.width(if (compact) 208.dp else 248.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Token ${formatDeepSeekTokenTotal(accountState.totalTokens)} · 余额 ${formatDeepSeekBalances(accountState.balances)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (accountState.balanceAvailable == false) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("deepseek_account_summary")
+                )
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = "API Key 已配置",
+                    tint = Color(0xFF3E9B63),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .testTag("deepseek_api_key_configured")
+                )
+            }
+        }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val inputModifier = if (compact) {
+            Modifier.weight(1f)
+        } else {
+            Modifier.widthIn(max = 280.dp)
+        }
+        OutlinedTextField(
+            value = apiKeyInput,
+            onValueChange = onApiKeyInputChanged,
+            modifier = inputModifier
+                .height(48.dp)
+                .testTag("deepseek_api_key_input"),
+            placeholder = {
+                Text(
+                    text = "API Key（sk-…）",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !state.saving,
+            isError = state.errorMessage != null
+        )
+        FilledTonalButton(
+            onClick = onSave,
+            enabled = apiKeyInput.isNotBlank() && !state.saving,
+            modifier = Modifier
+                .height(48.dp)
+                .testTag("deepseek_api_key_action"),
+            colors = actionButtonColors,
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            if (state.saving) {
+                EaraLogoLoadingIndicator(size = 18.dp)
+            } else {
+                Text(if (state.configured) "替换" else "保存")
+            }
+        }
+    }
+    state.errorMessage?.let { message ->
+        Text(
+            text = message,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
+
+    SettingsToggleRow(
+        text = "思考模式",
+        checked = settings.thinkingEnabled,
+        onCheckedChange = onThinkingEnabledChanged
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "思考等级",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (settings.thinkingEnabled) colorScheme.textPrimary else colorScheme.textTertiary
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .widthIn(max = 220.dp)
+                .testTag("deepseek_reasoning_effort")
+        ) {
+            DeepSeekReasoningEffort.entries.forEachIndexed { index, effort ->
+                SegmentedButton(
+                    selected = settings.reasoningEffort == effort,
+                    onClick = { onReasoningEffortChanged(effort) },
+                    enabled = settings.thinkingEnabled,
+                    modifier = Modifier.testTag("deepseek_reasoning_${effort.wireValue}"),
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = DeepSeekReasoningEffort.entries.size
+                    ),
+                    colors = segmentedButtonColors,
+                    icon = {},
+                    label = {
+                        Text(
+                            when (effort) {
+                                DeepSeekReasoningEffort.LOW -> "Low"
+                                DeepSeekReasoningEffort.HIGH -> "High"
+                                DeepSeekReasoningEffort.MAX -> "Max"
+                            }
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    SettingsToggleRow(
+        text = "最终润色",
+        checked = settings.finalPolishEnabled,
+        onCheckedChange = onFinalPolishEnabledChanged,
+        infoKey = "final_polish",
+        infoTitle = "最终润色",
+        infoText = "翻译完成后，可在任务管理中左滑作品卡片，对现有中文字幕进行整体润色。此操作会额外消耗 Token。",
+        activeTipKey = activeTipKey,
+        onToggleTip = onToggleTip
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SubtitleModelSettingsSection(
+    state: SubtitleModelState,
+    selectedSourceIds: Map<String, String>,
+    deviceSupported: Boolean,
+    segmentedButtonColors: SegmentedButtonColors,
+    onSourceSelected: (String, SubtitleModelDownloadSource) -> Unit,
+    onDownload: (String, SubtitleModelDownloadSource) -> Unit,
+    onCancelDownload: () -> Unit,
+    onSelect: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onClearFailure: (String) -> Unit
+) {
+    var selectedModelId by rememberSaveable {
+        mutableStateOf(
+            state.operation?.modelId ?: SubtitleTranscriptionModels.SENSE_VOICE_SMALL_INT8.id
+        )
+    }
+    LaunchedEffect(state.operation?.modelId) {
+        state.operation?.modelId?.let { selectedModelId = it }
+    }
+    val model = SubtitleTranscriptionModels.fromId(selectedModelId)
+        ?: SubtitleTranscriptionModels.default
+    val installation = state.installation(model.id)
+    val installed = installation is SubtitleModelInstallationState.Available
+    val isActive = state.activeModelId == model.id
+    val operation = state.operation?.takeIf { it.modelId == model.id }
+    val running = operation is SubtitleModelOperation.Queued ||
+        operation is SubtitleModelOperation.Downloading ||
+        operation is SubtitleModelOperation.Verifying
+    val anotherOperationRunning = state.operation != null &&
+        state.operation.modelId != model.id &&
+        state.operation !is SubtitleModelOperation.Failed
+    val availableSources = configuredSubtitleModelDownloadSources(model)
+    val selectedSource = operation?.source
+        ?: SubtitleModelDownloadSource.fromId(selectedSourceIds[model.id])
+        ?: availableSources.firstOrNull()
+        ?: SubtitleModelDownloadSource.HuggingFace
+    val colors = AsmrTheme.colorScheme
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SubtitleTranscriptionModels.all.forEachIndexed { index, candidate ->
+                SegmentedButton(
+                    selected = model.id == candidate.id,
+                    onClick = { selectedModelId = candidate.id },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = SubtitleTranscriptionModels.all.size
+                    ),
+                    colors = segmentedButtonColors,
+                    icon = {},
+                    modifier = Modifier.testTag("subtitle_model_choice_${candidate.id}"),
+                    label = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = if (state.activeModelId == candidate.id) {
+                                    "${candidate.optionName} · 当前"
+                                } else {
+                                    candidate.optionName
+                                },
+                                maxLines = 1
+                            )
+                            Text(
+                                text = Formatting.formatFileSize(candidate.artifactBytes),
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = model.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = when {
+                    isActive && installed -> "当前使用"
+                    isActive -> "当前（未安装）"
+                    installed -> "已安装"
+                    else -> "未安装"
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isActive) colors.primaryStrong else colors.textSecondary,
+                modifier = Modifier.testTag("subtitle_model_status_${model.id}")
+            )
+        }
+
+        if (!installed && availableSources.size > 1) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                availableSources.forEachIndexed { index, source ->
+                    SegmentedButton(
+                        selected = selectedSource == source,
+                        onClick = {
+                            onClearFailure(model.id)
+                            onSourceSelected(model.id, source)
+                        },
+                        enabled = !running && !anotherOperationRunning,
+                        shape = SegmentedButtonDefaults.itemShape(index, availableSources.size),
+                        colors = segmentedButtonColors,
+                        icon = {},
+                        label = { Text(source.displayName) }
+                    )
+                }
+            }
+        }
+
+        when (operation) {
+            null -> Unit
+            is SubtitleModelOperation.Queued -> {
+                Text("等待下载字幕组件", style = MaterialTheme.typography.bodySmall)
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            is SubtitleModelOperation.Downloading -> {
+                Text(operation.stage.displayName, style = MaterialTheme.typography.bodySmall)
+                if (operation.totalBytes > 0L) {
+                    val progress = (operation.downloadedBytes.toFloat() / operation.totalBytes)
+                        .coerceIn(0f, 1f)
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+            is SubtitleModelOperation.Verifying -> {
+                Text(operation.stage.displayName, style = MaterialTheme.typography.bodySmall)
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            is SubtitleModelOperation.Failed -> Text(
+                text = operation.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        when {
+            running -> FilledTonalButton(
+                onClick = onCancelDownload,
+                modifier = Modifier.fillMaxWidth(),
+                colors = settingsPrimaryTonalButtonColors()
+            ) {
+                Text("取消下载")
+            }
+            installed && !isActive -> Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = { onSelect(model.id) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("subtitle_model_select_${model.id}"),
+                    colors = settingsPrimaryTonalButtonColors()
+                ) {
+                    Text(stringResource(R.string.set_as_current))
+                }
+                FilledTonalButton(
+                    onClick = { onDelete(model.id) },
+                    colors = subtitleModelDeleteButtonColors()
+                ) {
+                    Icon(Icons.Rounded.Delete, contentDescription = "删除模型")
+                }
+            }
+            installed -> FilledTonalButton(
+                onClick = { onDelete(model.id) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = subtitleModelDeleteButtonColors()
+            ) {
+                Icon(Icons.Rounded.Delete, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("删除模型")
+            }
+            else -> FilledTonalButton(
+                onClick = { onDownload(model.id, selectedSource) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("subtitle_model_download_${model.id}"),
+                enabled = deviceSupported && availableSources.contains(selectedSource) &&
+                    !anotherOperationRunning,
+                colors = settingsPrimaryTonalButtonColors()
+            ) {
+                Text(
+                    when {
+                        !deviceSupported -> "设备不支持"
+                        availableSources.isEmpty() -> "来源不可用"
+                        anotherOperationRunning -> "其他模型正在下载"
+                        operation is SubtitleModelOperation.Failed -> "重新下载"
+                        else -> "下载模型"
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun subtitleModelDeleteButtonColors(): ButtonColors =
+    ButtonDefaults.filledTonalButtonColors(
+        containerColor = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        disabledContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.48f),
+        disabledContentColor = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.48f)
+    )
+
+@Composable
+private fun settingsPrimaryTonalButtonColors(): ButtonColors {
+    val colorScheme = AsmrTheme.colorScheme
+    val contentColor = if (colorScheme.isDark) {
+        colorScheme.onPrimaryContainer
+    } else {
+        colorScheme.primaryStrong
+    }
+    return ButtonDefaults.filledTonalButtonColors(
+        containerColor = colorScheme.primarySoft,
+        contentColor = contentColor,
+        disabledContainerColor = colorScheme.primarySoft.copy(alpha = 0.48f),
+        disabledContentColor = contentColor.copy(alpha = 0.48f)
+    )
+}
+
+@Composable
+private fun AppCacheSettingsSection(
+    state: AppCacheState,
+    onMaxSizeChanged: (Int) -> Unit,
+    onClearClick: () -> Unit,
+    onHorizontalControlInteractionChanged: (Boolean) -> Unit,
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val isDragging by interactionSource.collectIsDraggedAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isInteracting = isDragging || isPressed
+    var draftSizeMb by remember { mutableFloatStateOf(state.maxSizeMb.toFloat()) }
+
+    LaunchedEffect(state.maxSizeMb, isInteracting) {
+        if (!isInteracting) draftSizeMb = state.maxSizeMb.toFloat()
+    }
+
+    Text(
+        text = "当前占用：${formatCacheSize(state.usedSizeBytes)}",
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        text = "空间由网络图片、在线音频播放和在线预览缓存共享。缓存满后会优先清理较早使用的资源。",
+        style = MaterialTheme.typography.bodySmall,
+        color = colorScheme.textSecondary,
+    )
+    SettingsSliderRow(
+        text = "缓存空间上限：${draftSizeMb.roundToInt()} MB",
+        value = draftSizeMb,
+        range = AppCacheLimits.MinSizeMb.toFloat()..AppCacheLimits.MaxSizeMb.toFloat(),
+        stepSize = AppCacheLimits.SizeStepMb.toFloat(),
+        onValueChange = { draftSizeMb = it },
+        onValueChangeFinished = { onMaxSizeChanged(draftSizeMb.roundToInt()) },
+        interactionSource = interactionSource,
+        onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "最小 ${AppCacheLimits.MinSizeMb} MB",
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.textSecondary,
+        )
+        Text(
+            text = "最大 ${AppCacheLimits.MaxSizeMb} MB",
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.textSecondary,
+        )
+    }
+    FilledTonalButton(
+        onClick = onClearClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("clearAppCacheButton"),
+        enabled = !state.isClearing,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = colorScheme.primarySoft,
+            contentColor = if (colorScheme.isDark) colorScheme.onPrimaryContainer else colorScheme.primaryStrong,
+        ),
+    ) {
+        if (state.isClearing) {
+            EaraLogoLoadingIndicator(size = 18.dp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("正在清理…")
+        } else {
+            Icon(Icons.Rounded.Delete, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("清理 APP 缓存")
+        }
+    }
+}
+
+private fun formatCacheSize(sizeBytes: Long): String {
+    val safeBytes = sizeBytes.coerceAtLeast(0L)
+    val megabytes = safeBytes / (1024.0 * 1024.0)
+    return if (megabytes < 0.1) {
+        "0 MB"
+    } else if (megabytes < 10.0) {
+        String.format(java.util.Locale.ROOT, "%.1f MB", megabytes)
+    } else {
+        "${megabytes.roundToInt()} MB"
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -919,9 +1771,9 @@ private fun LyricsPageSettingsSection(
     onSettingsChange: (LyricsPageSettings) -> Unit,
     onHorizontalControlInteractionChanged: (Boolean) -> Unit = {}
 ) {
-    Text(stringResource(R.string.lyrics_page), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text("歌词页", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     SettingsSliderRow(
-        text = stringResource(R.string.font_size_sp, settings.fontSizeSp.toInt()),
+        text = "字体大小: ${settings.fontSizeSp.toInt()}sp",
         value = settings.fontSizeSp,
         range = 18f..36f,
         stepSize = 1f,
@@ -929,7 +1781,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "${stringResource(R.string.text_shadow)}${"%.1f".format(settings.strokeWidthSp)}sp",
+        text = "字体阴影: ${"%.1f".format(settings.strokeWidthSp)}sp",
         value = settings.strokeWidthSp,
         range = 0f..3f,
         stepSize = 0.1f,
@@ -937,7 +1789,7 @@ private fun LyricsPageSettingsSection(
         onHorizontalControlInteractionChanged = onHorizontalControlInteractionChanged
     )
     SettingsSliderRow(
-        text = "${stringResource(R.string.line_spacing)}${"%.2f".format(settings.lineHeightMultiplier)}x",
+        text = "行间距: ${"%.2f".format(settings.lineHeightMultiplier)}x",
         value = settings.lineHeightMultiplier,
         range = 0.1f..3.0f,
         stepSize = 0.1f,
@@ -948,7 +1800,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.display_area), style = MaterialTheme.typography.bodyMedium)
+        Text("显示区域", style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -989,7 +1841,7 @@ private fun LyricsPageSettingsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(stringResource(R.string.alignment), style = MaterialTheme.typography.bodyMedium)
+        Text("对齐方式", style = MaterialTheme.typography.bodyMedium)
         Spacer(modifier = Modifier.weight(1f))
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
@@ -1127,10 +1979,10 @@ private fun SearchBlockedKeywordsHelpDialog(
         )
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchHelpText(stringResource(R.string.search_and_hint))
-            SearchHelpText(stringResource(R.string.search_separated_english))
-            SearchHelpText(stringResource(R.string.exclude_search_space))
-            SearchHelpText(stringResource(R.string.search_exact_hint))
+            SearchHelpText("和 搜索(空格分割)：「雨声 助眠」，表示同时包含指定关键词")
+            SearchHelpText("或 搜索(英文竖线分割)：「雨声|助眠」，表示包含一个或多个指定关键词均可")
+            SearchHelpText("排除 搜索(空格与减号)：「雨声 -助眠」，表示排除指定关键词")
+            SearchHelpText("完整 搜索(英文双引号包裹)：「\"【简体中文】 雨声\"」，表示将多个词当做完整词组搜索")
         }
     }
 }
@@ -1287,7 +2139,7 @@ private fun SearchBlockedKeywordInputField(
                     ) {
                         if (value.isEmpty()) {
                             Text(
-                                text = stringResource(R.string.blocked_keywords_e_g_ntr),
+                                text = "屏蔽关键词，例如：同人",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colorScheme.textTertiary,
                                 maxLines = 1,
@@ -1324,7 +2176,7 @@ private fun SearchBlockedKeywordChip(
             trailingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = stringResource(R.string.delete_item_fmt, keyword),
+                    contentDescription = "删除 $keyword",
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1333,191 +2185,145 @@ private fun SearchBlockedKeywordChip(
 }
 
 @Composable
-private fun SettingsGroup(
-    title: String,
-    collapsible: Boolean = false,
-    initiallyExpanded: Boolean = true,
-    collapsedContent: (@Composable ColumnScope.() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit
+private fun SettingsSectionsPanel(
+    onSectionClick: (SettingsSection) -> Unit,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (collapsible) {
-                        Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { expanded = !expanded }
-                            .padding(start = 2.dp, end = 4.dp, bottom = 6.dp)
-                    } else {
-                        Modifier.padding(bottom = 6.dp)
-                    }
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            if (collapsible) {
-                Text(
-                    text = if (expanded) stringResource(R.string.collapse_label) else stringResource(R.string.log_expand),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.textSecondary
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colorScheme.surface.copy(alpha = 0.32f),
+        contentColor = colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            SettingsSection.entries.forEachIndexed { index, section ->
+                SettingsSectionOption(
+                    section = section,
+                    onClick = { onSectionClick(section) },
                 )
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = if (expanded) {
-                        stringResource(R.string.collapse, title)
-                    } else {
-                        stringResource(R.string.expand, title)
-                    },
-                    tint = colorScheme.textSecondary
-                )
-            }
-        }
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = colorScheme.surface.copy(alpha = 0.5f),
-            contentColor = colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (collapsible) {
-                    collapsedContent?.invoke(this)
-                    if (expanded) {
-                        if (collapsedContent != null) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
-                        }
-                        content()
-                    }
-                } else {
-                    content()
+                if (index < SettingsSection.entries.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 58.dp, end = 14.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                    )
                 }
             }
         }
     }
 }
 
-/*
 @Composable
-internal fun BackgroundEffectTypeSelectorRow(
-    backgroundEffectEnabled: Boolean,
-    selectedType: BackgroundEffectType,
-    onBackgroundEffectEnabledChange: (Boolean) -> Unit,
-    onSelected: (BackgroundEffectType) -> Unit
+private fun SettingsSectionOption(
+    section: SettingsSection,
+    onClick: () -> Unit,
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val dynamicContainerColor = dynamicPageContainerColor(colorScheme)
-    val selectorShape = RoundedCornerShape(12.dp)
-    val selectorBorderColor = MaterialTheme.colorScheme.outline.copy(
-        alpha = if (colorScheme.isDark) 0.26f else 0.18f
-    )
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = if (!backgroundEffectEnabled) {
-        stringResource(R.string.sleep_timer_off)
-    } else {
-        when (selectedType) {
-            BackgroundEffectType.Flow -> stringResource(R.string.light_dots)
-            BackgroundEffectType.Ripple -> stringResource(R.string.breathing_ripple)
-        }
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(BACKGROUND_EFFECT_TYPE_ROW_TAG),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .testTag("settingsSection:${section.name}"),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(stringResource(R.string.background_effects), style = MaterialTheme.typography.bodyMedium)
-        Spacer(modifier = Modifier.weight(1f))
-        Box(
-            modifier = Modifier.wrapContentSize(Alignment.TopEnd)
+        Icon(
+            imageVector = section.icon,
+            contentDescription = null,
+            tint = colorScheme.primary,
+            modifier = Modifier.size(24.dp),
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
-            Surface(
-                shape = selectorShape,
-                color = dynamicContainerColor,
-                contentColor = colorScheme.onSurface,
-                border = BorderStroke(1.dp, selectorBorderColor),
-                modifier = Modifier
-                    .clip(selectorShape)
-                    .clickable { expanded = true }
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = selectedLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colorScheme.textSecondary,
-                        modifier = Modifier.testTag(BACKGROUND_EFFECT_VALUE_TAG)
-                    )
-                    Text(
-                        text = "▼",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = section.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = "进入${section.title}",
+            tint = colorScheme.textSecondary,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
 
-            MaterialTheme(
-                colorScheme = MaterialTheme.colorScheme.copy(
-                    surface = dynamicContainerColor,
-                    surfaceContainer = dynamicContainerColor
-                )
-            ) {
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    offset = DpOffset(x = 0.dp, y = 6.dp),
-                    modifier = Modifier.background(dynamicContainerColor)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sleep_timer_off)) },
-                        onClick = {
-                            expanded = false
-                            onBackgroundEffectEnabledChange(false)
-                        }
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.light_dots)) },
-                        onClick = {
-                            expanded = false
-                            onSelected(BackgroundEffectType.Flow)
-                            onBackgroundEffectEnabledChange(true)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.breathing_ripple)) },
-                        onClick = {
-                            expanded = false
-                            onSelected(BackgroundEffectType.Ripple)
-                            onBackgroundEffectEnabledChange(true)
-                        }
-                    )
-                }
-            }
+@Composable
+private fun SettingsDetailHeader(
+    section: SettingsSection,
+    onBack: () -> Unit,
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.testTag("settingsDetailBack"),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "返回设置",
+                tint = colorScheme.primary,
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.textPrimary,
+            )
+            Text(
+                text = section.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.textSecondary,
+            )
         }
     }
 }
-*/
+
+@Composable
+private fun SettingsDetailCard(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colorScheme = AsmrTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colorScheme.surface.copy(alpha = 0.5f),
+        contentColor = colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
 @Composable
 private fun SettingsToggleRow(
     text: String,
@@ -1669,7 +2475,7 @@ private fun SettingsInfoTip(active: Boolean, title: String, text: String, onTogg
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Info,
-                    contentDescription = null,
+                    contentDescription = "${title}说明",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(14.dp)
                 )

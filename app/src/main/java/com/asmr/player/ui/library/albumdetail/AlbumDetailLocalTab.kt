@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.library
+package com.asmr.player.ui.library
 
 import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
@@ -9,7 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -25,7 +24,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -45,6 +43,7 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +59,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -90,6 +88,12 @@ import com.asmr.player.data.remote.scraper.DlsiteRecommendations
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
 import com.asmr.player.playback.MediaItemFactory
+import com.asmr.player.subtitle.SubtitleDeviceCapability
+import com.asmr.player.subtitle.SubtitleFailureMessages
+import com.asmr.player.subtitle.SubtitleGenerationTarget
+import com.asmr.player.subtitle.SubtitleTaskRepository
+import com.asmr.player.subtitle.SubtitleModelRepository
+import com.asmr.player.subtitle.SubtitleModelInstallationState
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.data.remote.dlsite.DlsiteLanguageEdition
@@ -111,7 +115,6 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 import androidx.compose.ui.draw.clip
@@ -127,12 +130,10 @@ import com.asmr.player.ui.common.CvChipsFlow
 import com.asmr.player.ui.common.EaraLogoLoadingIndicator
 import com.asmr.player.ui.common.ImagePreviewItem
 import com.asmr.player.ui.common.ImagePreviewRequest
-import com.asmr.player.ui.common.collapsibleHeaderUiState
-import com.asmr.player.ui.common.rememberCollapsibleHeaderState
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.util.Formatting
@@ -148,7 +149,6 @@ internal fun AlbumLocalBreadcrumbTabV2(
     initialScroll: Pair<Int, Int>,
     onPersistScroll: (Int, Int) -> Unit,
     topContentPadding: Dp,
-    chromeState: com.asmr.player.ui.common.CollapsibleHeaderState,
     animateIntro: Boolean,
     album: Album,
     header: @Composable () -> Unit,
@@ -160,47 +160,67 @@ internal fun AlbumLocalBreadcrumbTabV2(
     preferredCurrentPath: String,
     onTogglePreferredCurrentPath: (String, Boolean) -> Unit,
     onAddToPlaylist: (Track) -> Unit,
+    onDownloadOnlineTrack: (Track, String) -> Unit,
     onManageTrackTags: (Track) -> Unit,
     onRemoveTrack: (Track) -> Unit,
+    onDeleteTreeEntry: (LocalTreeDeletionTarget, (Boolean) -> Unit) -> Unit,
     onSetCoverFromImage: (String) -> Unit,
     onPreviewImages: (ImagePreviewRequest) -> Unit,
     onPreviewFile: (LocalTreeUiEntry.File) -> Unit,
+    onSubtitleGenerationError: (String) -> Unit,
+    onSubtitleGenerationUnavailable: (String) -> Unit,
+    onSubtitleGenerationQueued: (String) -> Unit,
+    onListStateAvailable: (LazyListState?) -> Unit = {},
 ) {
-    val queueTracks = remember(album.id, album.tracks) { album.tracks.sortedBy { it.path } }
+    var locallyDeletedTrackIds by remember(stateKey) { mutableStateOf(emptySet<Long>()) }
+    var treeRevision by rememberSaveable(stateKey) { mutableIntStateOf(0) }
+    var pendingDeletion by remember { mutableStateOf<LocalTreeDeletionTarget?>(null) }
+    val queueTracks = remember(album.id, album.tracks, locallyDeletedTrackIds) {
+        album.tracks
+            .filterNot { it.id in locallyDeletedTrackIds }
+            .sortedBy { it.path }
+    }
     val queueTrackIds = remember(queueTracks) {
         queueTracks.asSequence().map { it.id }.filter { it > 0L }.distinct().toList()
     }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val subtitleModelRepository = remember(context) { SubtitleModelRepository.get(context) }
+    val subtitleModelState by subtitleModelRepository.state.collectAsStateWithLifecycle()
+    val subtitleDeviceCapability = remember(context) { SubtitleDeviceCapability.evaluate(context) }
+    val subtitleFeatureSupported = subtitleDeviceCapability.supported
+    val subtitleModelAvailable = subtitleFeatureSupported &&
+        subtitleModelState.installation(subtitleModelState.activeModelId) is
+        SubtitleModelInstallationState.Available
     val allPaths = remember(album) { album.getAllLocalPaths() }
     var currentPath by rememberSaveable(stateKey) { mutableStateOf(initialCurrentPath.trim().trim('/')) }
+
+    LaunchedEffect(album.tracks) {
+        val currentTrackIds = album.tracks.asSequence().map { it.id }.toSet()
+        locallyDeletedTrackIds = locallyDeletedTrackIds.intersect(currentTrackIds)
+    }
 
     val listState = rememberSaveable("scroll:$stateKey", saver = LazyListState.Saver) {
         LazyListState(initialScroll.first, initialScroll.second)
     }
-    LaunchedEffect(listState, stateKey) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .distinctUntilChanged()
-            .collect { (idx, off) -> onPersistScroll(idx, off) }
+    DisposableEffect(listState) {
+        onListStateAvailable(listState)
+        onDispose { onListStateAvailable(null) }
     }
-    LaunchedEffect(listState, stateKey) {
-        snapshotFlow {
-            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-        }
-            .distinctUntilChanged()
-            .collect { atTop ->
-                if (atTop) chromeState.expand()
-            }
-    }
+    PersistAlbumDetailListScroll(
+        listState = listState,
+        stateKey = stateKey,
+        onPersistScroll = onPersistScroll
+    )
     LaunchedEffect(currentPath, stateKey) {
         onPersistCurrentPath(currentPath)
     }
 
     val subtitleTrackIds by produceState(initialValue = emptySet<Long>(), key1 = queueTrackIds) {
-        value = withContext(Dispatchers.IO) {
-            if (queueTrackIds.isEmpty()) emptySet()
-            else AppDatabaseProvider.get(context).trackDao().getTrackIdsWithSubtitles(queueTrackIds).toSet()
-        }
+        if (queueTrackIds.isEmpty()) return@produceState
+        AppDatabaseProvider.get(context).trackDao()
+            .observeTrackIdsWithSubtitles(queueTrackIds)
+            .collect { value = it.toSet() }
     }
     val remoteSubtitleTrackIds by produceState(initialValue = emptySet<Long>(), key1 = queueTrackIds) {
         value = withContext(Dispatchers.IO) {
@@ -210,13 +230,30 @@ internal fun AlbumLocalBreadcrumbTabV2(
                 .toSet()
         }
     }
-    val treeIndex by produceState<LocalTreeIndex?>(initialValue = null, key1 = allPaths, key2 = queueTracks) {
+    val onlineSavedResources by produceState(
+        initialValue = emptyList<com.asmr.player.data.local.db.entities.OnlineSavedResourceEntity>(),
+        key1 = album.id
+    ) {
+        if (album.id <= 0L) return@produceState
+        AppDatabaseProvider.get(context).onlineSavedResourceDao()
+            .observeForAlbum(album.id)
+            .collect { value = it }
+    }
+    val treeIndex by produceState<LocalTreeIndex?>(
+        null,
+        allPaths,
+        queueTracks,
+        onlineSavedResources,
+        treeRevision,
+    ) {
         value = withContext(Dispatchers.IO) {
             loadOrBuildLocalTreeIndex(
                 context = context,
                 albumId = album.id,
                 albumPaths = allPaths,
-                tracks = queueTracks
+                tracks = queueTracks,
+                onlineSavedResources = onlineSavedResources,
+                sources = localTreeSourcesForAlbum(album),
             )
         }
     }
@@ -232,13 +269,53 @@ internal fun AlbumLocalBreadcrumbTabV2(
             )
         }
     }
-
+    val currentDirectorySubtitleGenerationTracks = remember(
+        treeIndex,
+        currentPath
+    ) {
+        treeIndex?.let { index ->
+            collectSubtitleGenerationTracks(
+                index = index,
+                currentPath = currentPath,
+                unavailableTrackIds = emptySet()
+            )
+        }.orEmpty()
+    }
+    val startSubtitleGeneration: (List<Track>) -> Unit = { tracks ->
+        val targets = tracks.distinctBy { it.id }.map { track ->
+            SubtitleGenerationTarget(
+                trackId = track.id,
+                title = track.title
+            )
+        }
+        if (targets.isNotEmpty()) {
+            scope.launch {
+                try {
+                    if (tracks.any { it.id in subtitleTrackIds }) {
+                        onSubtitleGenerationQueued("已有字幕，将覆盖后重新生成并翻译")
+                    }
+                    val handle = SubtitleTaskRepository.get(context).enqueueGeneration(targets)
+                    onSubtitleGenerationQueued(
+                        if (handle.reusedExisting) "所选音频已有可继续的字幕任务" else "已加入字幕任务队列"
+                    )
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    val message = error.message?.takeIf { it.isNotBlank() } ?: "无法开始生成并翻译字幕"
+                    if (SubtitleFailureMessages.isUserActionWarning(message)) {
+                        onSubtitleGenerationUnavailable(message)
+                    } else {
+                        onSubtitleGenerationError(message)
+                    }
+                }
+            }
+        }
+    }
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(chromeState.nestedScrollConnection)
-            .thinScrollbar(listState),
+            .fillMaxSize(),
         state = listState,
+        flingBehavior = rememberCalmScrollableFlingBehavior(),
         contentPadding = PaddingValues(top = topContentPadding, bottom = LocalBottomOverlayPadding.current)
     ) {
         item(key = "local-header:$stateKey") { header() }
@@ -264,19 +341,59 @@ internal fun AlbumLocalBreadcrumbTabV2(
                     folders = browserValue.folders,
                     files = browserValue.files,
                     onNavigate = { path -> currentPath = path },
+                    onDeleteFolder = { folder ->
+                        pendingDeletion = LocalTreeDeletionTarget(
+                            title = folder.title,
+                            relativePath = folder.path,
+                            isDirectory = true,
+                            trackIds = folder.descendantTrackIds,
+                            hasLocalContent = folder.hasLocalContent,
+                        )
+                    },
                     onAddToFavorites = onAddMediaItemsToFavorites,
                     onOpenBatchPlaylistPicker = onOpenBatchPlaylistPicker,
                     onAddMediaItemsToQueue = onAddMediaItemsToQueue,
+                    onGenerateSubtitlesForCurrentDirectory = {
+                        startSubtitleGeneration(currentDirectorySubtitleGenerationTracks)
+                    },
+                    subtitleGenerationForCurrentDirectoryEnabled = subtitleFeatureSupported &&
+                        currentDirectorySubtitleGenerationTracks.isNotEmpty(),
+                    onGenerateSubtitlesForSelectedFiles = if (subtitleFeatureSupported) { selectedFiles ->
+                        startSubtitleGeneration(
+                            selectedFiles.mapNotNull { file ->
+                                subtitleGenerationTrackForFile(
+                                    file = file,
+                                    unavailableTrackIds = emptySet()
+                                )
+                            }
+                        )
+                    } else null,
+                    canGenerateSubtitleForSelectedFile = if (subtitleFeatureSupported) { file ->
+                        subtitleGenerationTrackForFile(
+                            file = file,
+                            unavailableTrackIds = emptySet()
+                        ) != null
+                    } else null,
+                    subtitleModelAvailable = subtitleModelAvailable,
+                    onSubtitleGenerationUnavailable = {
+                        onSubtitleGenerationUnavailable(
+                            if (subtitleFeatureSupported) {
+                                SubtitleModelRepository.MODEL_REQUIRED_MESSAGE
+                            } else {
+                                subtitleDeviceCapability.message
+                            }
+                        )
+                    },
                     animateIntro = animateIntro,
-                    parentChromeState = chromeState,
                     preferredPath = preferredCurrentPath,
                     onTogglePreferredPath = { enabled ->
                         onTogglePreferredCurrentPath(currentPath, enabled)
                     },
                     folderKeyPrefix = "folder",
                     fileKeyPrefix = "file",
-                    fileContent = { file, selectionMode, selected, enterSelectionMode, onSelectedChange ->
+                    fileContent = { file, selectionMode, selected, selectedPosition, enterSelectionMode, onSelectedChange ->
                         val track = file.track
+                        val downloadableTrack = downloadableOnlineAudioTrack(file)
                         DirectoryFileRow(
                             file = file,
                             loadRemoteFileSize = { null },
@@ -378,18 +495,98 @@ internal fun AlbumLocalBreadcrumbTabV2(
                             },
                             selectionMode = selectionMode,
                             selected = selected,
+                            selectedPosition = selectedPosition,
                             onEnterSelectionMode = enterSelectionMode,
                             onSelectedChange = onSelectedChange,
-                            onSetAsCover = if (file.fileType == TreeFileType.Image) ({ onSetCoverFromImage(file.absolutePath) }) else null,
-                            onDownload = null,
+                            onSetAsCover = if (canSetDirectoryImageAsLocalCover(file)) {
+                                { onSetCoverFromImage(file.absolutePath) }
+                            } else {
+                                null
+                            },
+                            onDownload = downloadableTrack?.let {
+                                { onDownloadOnlineTrack(it, file.path) }
+                            },
                             onAddToQueue = track?.let { { onAddToQueue(it); Unit } },
                             onAddToPlaylist = track?.let { { onAddToPlaylist(it) } },
+                            onGenerateSubtitles = if (subtitleFeatureSupported) {
+                                subtitleGenerationTrackForFile(
+                                    file = file,
+                                    unavailableTrackIds = emptySet()
+                                )?.let { subtitleGenerationTrack ->
+                                    {
+                                        if (subtitleModelAvailable) {
+                                            startSubtitleGeneration(listOf(subtitleGenerationTrack))
+                                        } else {
+                                            onSubtitleGenerationUnavailable(SubtitleModelRepository.MODEL_REQUIRED_MESSAGE)
+                                        }
+                                    }
+                                }
+                            } else null,
+                            subtitleGenerationEnabled = subtitleModelAvailable,
                             onManageTags = track?.let { if (!isOnlineTrackPath(it.path)) { { onManageTrackTags(it) } } else null },
-                            onRemoveFromAlbum = track?.let { { onRemoveTrack(it) } }
+                            onRemoveFromAlbum = track?.let { { onRemoveTrack(it) } },
+                            onDelete = if (file.fileType != TreeFileType.Audio) {
+                                {
+                                    pendingDeletion = LocalTreeDeletionTarget(
+                                        title = file.title,
+                                        relativePath = file.path,
+                                        absolutePath = file.absolutePath,
+                                        isDirectory = false,
+                                        trackIds = file.track?.id?.takeIf { it > 0L }?.let(::listOf).orEmpty(),
+                                        hasLocalContent = !file.absolutePath.startsWith("http", ignoreCase = true),
+                                    )
+                                }
+                            } else {
+                                null
+                            }
                         )
                     }
                 )
             }
         }
     }
+
+    pendingDeletion?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletion = null },
+            title = { Text(if (target.isDirectory) "删除目录？" else "删除文件？") },
+            text = {
+                val message = when {
+                    target.isDirectory && target.hasLocalContent ->
+                        "将永久删除目录“${target.title}”及其全部内容，同时移除关联的本地库记录。此操作不可恢复。"
+                    target.isDirectory ->
+                        "将从本地库目录树移除“${target.title}”及其包含的在线资源。"
+                    target.hasLocalContent ->
+                        "将永久删除文件“${target.title}”。此操作不可恢复。"
+                    else ->
+                        "将从本地库目录树移除资源“${target.title}”。"
+                }
+                Text(message)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeletion = null
+                        onDeleteTreeEntry(target) { deleted ->
+                            if (deleted) {
+                                locallyDeletedTrackIds = locallyDeletedTrackIds + target.trackIds
+                                treeRevision += 1
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeletion = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
 }

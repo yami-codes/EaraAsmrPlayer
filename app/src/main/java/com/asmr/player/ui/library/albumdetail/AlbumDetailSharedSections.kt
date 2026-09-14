@@ -1,4 +1,4 @@
-﻿package com.asmr.player.ui.library
+package com.asmr.player.ui.library
 
 import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
@@ -17,7 +17,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -47,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,7 +55,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
@@ -84,13 +81,16 @@ import com.asmr.player.data.remote.auth.DlsiteAuthStore
 import com.asmr.player.data.remote.api.AsmrOneTrackNodeResponse
 import com.asmr.player.data.remote.scraper.DlsiteRecommendedWork
 import com.asmr.player.data.remote.scraper.DlsiteRecommendations
+import com.asmr.player.data.remote.scraper.resolveRecommendedWorkCoverUrl
 import com.asmr.player.domain.model.Album
 import com.asmr.player.domain.model.Track
+import com.asmr.player.util.DlsiteWorkNo
 import com.asmr.player.playback.MediaItemFactory
 import com.asmr.player.data.remote.NetworkHeaders
 import com.asmr.player.cache.CacheImageModel
 import com.asmr.player.data.remote.dlsite.DlsiteLanguageEdition
 import com.asmr.player.ui.dlsite.DlsitePlayViewModel
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.util.DlsiteAntiHotlink
 import com.asmr.player.util.SmartSortKey
 import com.google.gson.Gson
@@ -129,7 +129,6 @@ import com.asmr.player.ui.common.rememberCollapsibleHeaderState
 import com.asmr.player.ui.playlists.PlaylistPickerScreen
 import com.asmr.player.ui.theme.AsmrTheme
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.theme.AsmrPlayerTheme
 import com.asmr.player.ui.theme.dynamicPageContainerColor
 import com.asmr.player.util.Formatting
@@ -239,7 +238,7 @@ internal fun AlbumDescription(album: Album) {
 @Composable
 internal fun DlsiteRecommendationsBlocks(
     recommendations: DlsiteRecommendations,
-    onOpenAlbumByRj: (String) -> Unit
+    onOpenAlbumByRj: (String, DlsiteRecommendedWork?) -> Unit
 ) {
     if (recommendations.circleWorks.isEmpty() && 
         recommendations.sameVoiceWorks.isEmpty() && 
@@ -270,29 +269,72 @@ internal fun DlsiteRecommendationsBlocks(
 }
 
 @Composable
+internal fun AlbumDetailSectionHeading(
+    title: String,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    val colorScheme = AsmrTheme.colorScheme
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.35.sp
+                ),
+                color = colorScheme.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .width(64.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                colorScheme.primary.copy(alpha = 0.82f),
+                                colorScheme.primary.copy(alpha = 0.08f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+        actions()
+    }
+}
+
+@Composable
 private fun DlsiteRecommendationsBlock(
     title: String,
     items: List<DlsiteRecommendedWork>,
-    onOpenAlbumByRj: (String) -> Unit
+    onOpenAlbumByRj: (String, DlsiteRecommendedWork?) -> Unit
 ) {
     if (items.isEmpty()) return
-    val colorScheme = AsmrTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = colorScheme.textPrimary
-        )
+        AlbumDetailSectionHeading(title = title)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             itemsIndexed(
                 items = items.take(30),
                 key = { index, work ->
-                    val rj = sanitizeRj(work.rjCode).ifBlank { work.rjCode }
+                    val rj = sanitizeWorkNo(work.rjCode).ifBlank { work.rjCode }
                     "recommendation:$rj:$index"
                 }
             ) { _, w ->
-                val rj = sanitizeRj(w.rjCode).ifBlank { w.rjCode }
-                DlsiteRecommendedWorkCard(work = w, displayRj = rj, onClick = { onOpenAlbumByRj(rj) })
+                val rj = sanitizeWorkNo(w.rjCode).ifBlank { w.rjCode }
+                DlsiteRecommendedWorkCard(work = w, displayRj = rj, onClick = { onOpenAlbumByRj(rj, w) })
             }
         }
     }
@@ -306,7 +348,7 @@ private fun DlsiteRecommendedWorkCard(
 ) {
     val colorScheme = AsmrTheme.colorScheme
     val coverModel = remember(work.coverUrl, displayRj) {
-        work.coverUrl.takeIf { it.isNotBlank() } ?: dlsiteCoverUrlForRj(displayRj)
+        resolveRecommendedWorkCoverUrl(displayRj, work.coverUrl)
     }
     val imageModel = remember(coverModel) {
         val s = coverModel.toString()
@@ -392,18 +434,8 @@ private fun DlsiteRecommendedWorkCard(
     }
 }
 
-private fun sanitizeRj(raw: String): String {
-    return Regex("""RJ\d+""", RegexOption.IGNORE_CASE).find(raw)?.value?.uppercase().orEmpty()
-}
-
-private fun dlsiteCoverUrlForRj(rj: String): String {
-    val clean = sanitizeRj(rj)
-    val digits = clean.removePrefix("RJ")
-    val num = digits.toLongOrNull() ?: return ""
-    val group = ((num + 999L) / 1000L) * 1000L
-    val padded = group.toString().padStart(digits.length, '0')
-    val folder = "RJ$padded"
-    return "https://img.dlsite.jp/modpub/images2/work/doujin/$folder/${clean}_img_main.jpg"
+private fun sanitizeWorkNo(raw: String): String {
+    return DlsiteWorkNo.extractWorkNo(raw)
 }
 
 @Composable
@@ -438,7 +470,8 @@ internal fun AlbumTracks(album: Album, onTrackClick: (Track) -> Unit) {
     } else {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().thinScrollbar(listState),
+            modifier = Modifier.fillMaxSize(),
+            flingBehavior = rememberCalmScrollableFlingBehavior(),
             contentPadding = PaddingValues(bottom = LocalBottomOverlayPadding.current)
         ) {
             groupedTracks.forEach { (group, tracks) ->

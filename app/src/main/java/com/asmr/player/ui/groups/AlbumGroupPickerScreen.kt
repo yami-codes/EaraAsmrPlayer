@@ -1,7 +1,7 @@
 package com.asmr.player.ui.groups
 
-import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,13 +14,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,7 +34,8 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.asmr.player.ui.common.thinScrollbar
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.theme.AsmrTheme
 
 @Composable
@@ -51,9 +57,10 @@ fun AlbumGroupPickerScreen(
     windowSizeClass: WindowSizeClass,
     albumId: Long,
     onBack: () -> Unit,
+    embeddedInDialog: Boolean = false,
     viewModel: AlbumGroupsViewModel = hiltViewModel()
 ) {
-    val groups by viewModel.groups.collectAsState()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
     val colorScheme = AsmrTheme.colorScheme
     val listState = rememberLazyListState()
     val screenActive = remember { mutableStateOf(true) }
@@ -88,14 +95,44 @@ fun AlbumGroupPickerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(
+                        horizontal = if (embeddedInDialog) 6.dp else 16.dp,
+                        vertical = if (embeddedInDialog) 8.dp else 12.dp
+                    ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.select_group),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = colorScheme.textPrimary
-                )
+                if (embeddedInDialog) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onBack,
+                            enabled = !isAdding
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "返回",
+                                tint = colorScheme.textPrimary
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.select_group),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colorScheme.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.size(48.dp))
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.select_group),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colorScheme.textPrimary
+                    )
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -128,12 +165,13 @@ fun AlbumGroupPickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 18.dp)
                 ) {
-                    Text(stringResource(R.string.no_groups_available), color = colorScheme.textSecondary)
+                    Text("暂无可选分组", color = colorScheme.textSecondary)
                 }
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().thinScrollbar(listState),
+                    modifier = Modifier.fillMaxSize(),
+                    flingBehavior = rememberCalmScrollableFlingBehavior(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {

@@ -1,9 +1,10 @@
 package com.asmr.player.data.remote.dlsite
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
+import android.graphics.BitmapFactory
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.math.ceil
 import kotlin.math.floor
 
@@ -44,8 +45,7 @@ internal fun descrambleDlsitePlayBitmap(src: Bitmap, seed: Int, width: Int, heig
     }
 
     val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(out)
-    val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    val tilePixels = IntArray(tileSize * tileSize)
     for (i in 0 until tileCount) {
         val srcIndex = reverse[i]
         val srcX = (srcIndex % tilesW) * tileSize
@@ -55,12 +55,8 @@ internal fun descrambleDlsitePlayBitmap(src: Bitmap, seed: Int, width: Int, heig
         val srcW = minOf(tileSize, src.width - srcX)
         val srcH = minOf(tileSize, src.height - srcY)
         if (srcW <= 0 || srcH <= 0) continue
-        canvas.drawBitmap(
-            src,
-            Rect(srcX, srcY, srcX + srcW, srcY + srcH),
-            Rect(dstX, dstY, dstX + srcW, dstY + srcH),
-            paint
-        )
+        src.getPixels(tilePixels, 0, srcW, srcX, srcY, srcW, srcH)
+        out.setPixels(tilePixels, 0, srcW, dstX, dstY, srcW, srcH)
     }
 
     val croppedWidth = width.coerceAtMost(out.width)
@@ -69,6 +65,54 @@ internal fun descrambleDlsitePlayBitmap(src: Bitmap, seed: Int, width: Int, heig
     val cropped = Bitmap.createBitmap(out, 0, 0, croppedWidth, croppedHeight)
     if (cropped !== out) out.recycle()
     return cropped
+}
+
+internal fun descrambleDlsitePlayImageFile(
+    scrambledFile: File,
+    outputFile: File,
+    seed: Int,
+    width: Int,
+    height: Int
+) {
+    require(width > 0 && height > 0) { "Invalid DLsite Play image dimensions" }
+    val scrambled = BitmapFactory.decodeFile(scrambledFile.absolutePath)
+        ?: throw IOException("Unable to decode DLsite Play image")
+    var descrambled: Bitmap? = null
+    val temporaryOutput = File(outputFile.parentFile, ".${outputFile.name}.descrambling")
+    try {
+        descrambled = descrambleDlsitePlayBitmap(scrambled, seed, width, height)
+        outputFile.parentFile?.mkdirs()
+        FileOutputStream(temporaryOutput).use { output ->
+            val compressed = descrambled.compress(
+                dlsitePlayOutputFormat(outputFile.extension),
+                100,
+                output
+            )
+            if (!compressed) throw IOException("Unable to encode descrambled DLsite Play image")
+        }
+        if (outputFile.exists() && !outputFile.delete()) {
+            throw IOException("Unable to replace downloaded DLsite Play image")
+        }
+        if (!temporaryOutput.renameTo(outputFile)) {
+            temporaryOutput.copyTo(outputFile, overwrite = true)
+            temporaryOutput.delete()
+        }
+    } finally {
+        if (temporaryOutput.exists()) temporaryOutput.delete()
+        if (descrambled != null && descrambled !== scrambled && !descrambled.isRecycled) {
+            descrambled.recycle()
+        }
+        if (!scrambled.isRecycled) scrambled.recycle()
+    }
+}
+
+@Suppress("DEPRECATION")
+private fun dlsitePlayOutputFormat(extension: String): Bitmap.CompressFormat {
+    return when (extension.lowercase()) {
+        "jpg", "jpeg" -> Bitmap.CompressFormat.JPEG
+        "webp" -> Bitmap.CompressFormat.WEBP
+        else -> Bitmap.CompressFormat.PNG
+    }
 }
 
 private fun dlsitePlayMtShuffledTiles(seed: Int, length: Int): List<Int> {

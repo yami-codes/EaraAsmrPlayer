@@ -23,7 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.asmr.player.ui.common.FlatTextFieldDialog
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.theme.AsmrTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -48,8 +49,8 @@ fun SleepTimerSheetContent(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = AsmrTheme.colorScheme
-    val endAtMs by viewModel.sleepTimerEndAtMs.collectAsState()
-    val lastMin by viewModel.sleepTimerLastDurationMin.collectAsState()
+    val endAtMs by viewModel.sleepTimerEndAtMs.collectAsStateWithLifecycle()
+    val lastMin by viewModel.sleepTimerLastDurationMin.collectAsStateWithLifecycle()
 
     var remainingMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(endAtMs) {
@@ -76,7 +77,10 @@ fun SleepTimerSheetContent(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(
+                state = rememberScrollState(),
+                flingBehavior = rememberCalmScrollableFlingBehavior()
+            )
             .padding(bottom = 24.dp)
     ) {
         Row(

@@ -1,7 +1,9 @@
-﻿package com.asmr.player.ui.playlists
+package com.asmr.player.ui.playlists
 
-import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
+
+import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,13 +36,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.data.local.db.dao.PlaylistStatsRow
 import com.asmr.player.data.local.db.entities.PlaylistEntity
@@ -57,11 +58,11 @@ import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.common.smoothScrollToTop
 import com.asmr.player.ui.common.EaraBrandedEmptyState
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
+import com.asmr.player.ui.common.collectAsStateWhileActive
 
 private val PlaylistsPageHorizontalPadding = 8.dp
 private val PlaylistRowActionButtonSize = 34.dp
@@ -70,11 +71,13 @@ private val PlaylistRowActionIconSize = 18.dp
 @Composable
 fun PlaylistsScreen(
     windowSizeClass: WindowSizeClass,
+    isActive: Boolean = true,
+    isDataActive: Boolean = isActive,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     scrollToTopSignal: Long = 0L,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
-    val playlists by viewModel.playlists.collectAsState()
+    val playlists by viewModel.playlists.collectAsStateWhileActive(isDataActive)
     val colorScheme = AsmrTheme.colorScheme
     val listState = rememberLazyListState()
     var showCreate by remember { mutableStateOf(false) }
@@ -84,10 +87,14 @@ fun PlaylistsScreen(
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
 
     Scaffold(
-        contentWindowInsets = StableWindowInsets.navigationBars,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent,
         contentColor = colorScheme.onBackground
     ) { padding ->
+        LaunchedEffect(isActive) {
+            if (isActive) return@LaunchedEffect
+            listState.stopScroll(MutatePriority.PreventUserInput)
+        }
         LaunchedEffect(scrollToTopSignal) {
             if (scrollToTopSignal == 0L) return@LaunchedEffect
             listState.smoothScrollToTop()
@@ -118,7 +125,8 @@ fun PlaylistsScreen(
                 } else {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().thinScrollbar(listState),
+                        modifier = Modifier.fillMaxSize(),
+                        flingBehavior = rememberCalmScrollableFlingBehavior(),
                         contentPadding = PaddingValues(horizontal = PlaylistsPageHorizontalPadding, vertical = 8.dp)
                             .withAddedBottomPadding(LocalBottomOverlayPadding.current + 72.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -192,6 +200,7 @@ private fun PlaylistRow(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 placeholderCornerRadius = 12,
+                peekAnySizeForInitial = true,
                 modifier = Modifier
                     .size(54.dp)
                     .clip(RoundedCornerShape(12.dp)),
@@ -206,7 +215,7 @@ private fun PlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.tracks_total, playlist.itemCount),
+                    text = "共 ${playlist.itemCount} 首",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -241,7 +250,7 @@ private fun PlaylistRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.are_you_sure_2, playlist.name),
+            message = "确定要删除列表“${playlist.name}”吗？此操作不可撤销。",
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
@@ -280,8 +289,8 @@ private fun CreatePlaylistDialog(
         message = stringResource(R.string.enter_list_name_prompt),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.enter_list_name),
-        confirmText = stringResource(R.string.create),
+        placeholder = "请输入列表名称",
+        confirmText = "创建",
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onCreate(name.trim()) },
     )
@@ -300,8 +309,8 @@ private fun RenamePlaylistDialog(
         message = stringResource(R.string.enter_new_list_name),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.enter_list_name),
-        confirmText = stringResource(R.string.dialog_confirm),
+        placeholder = "请输入列表名称",
+        confirmText = "确定",
         confirmEnabled = name.trim().isNotBlank() && name.trim() != initialName.trim(),
         onConfirm = { onRename(name.trim()) },
     )

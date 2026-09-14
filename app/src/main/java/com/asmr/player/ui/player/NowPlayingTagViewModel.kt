@@ -8,11 +8,9 @@ import com.asmr.player.data.local.db.dao.TagWithCount
 import com.asmr.player.data.local.db.entities.TagEntity
 import com.asmr.player.data.local.db.entities.TagSource
 import com.asmr.player.data.local.db.entities.TrackTagEntity
-import com.asmr.player.R
+import com.asmr.player.data.local.db.entities.titleForDisplay
 import com.asmr.player.util.TagNormalizer
-import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,8 +22,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NowPlayingTagViewModel @Inject constructor(
-    private val database: AppDatabase,
-    @ApplicationContext private val appContext: Context
+    private val database: AppDatabase
 ) : ViewModel() {
     data class DialogState(
         val trackId: Long,
@@ -51,7 +48,7 @@ class NowPlayingTagViewModel @Inject constructor(
             val inherited = parseTagsCsv(listOf(albumTagsCsv, userAlbumTagsCsv).filter { it.isNotBlank() }.joinToString(","))
             val userCsv = database.trackTagDao().getTrackTagsCsvOnce(track.id, TagSource.USER).orEmpty()
             val user = parseTagsCsv(userCsv)
-            val title = track.title.ifBlank { fallbackTitle.ifBlank { appContext.getString(R.string.track) } }
+            val title = track.titleForDisplay.ifBlank { fallbackTitle.ifBlank { "音轨" } }
             _dialogState.value = DialogState(trackId = track.id, title = title, inheritedTags = inherited, userTags = user)
         }
     }

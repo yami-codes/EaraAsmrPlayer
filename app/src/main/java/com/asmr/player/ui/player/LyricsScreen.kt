@@ -16,7 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.asmr.player.service.PlaybackState
-import com.asmr.player.ui.common.thinScrollbar
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.util.SubtitleEntry
 import com.asmr.player.util.SubtitleIndexFinder
 import kotlinx.coroutines.launch
@@ -55,7 +55,8 @@ fun LyricsScreen(
         } else {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().thinScrollbar(listState),
+                modifier = Modifier.fillMaxSize(),
+                flingBehavior = rememberCalmScrollableFlingBehavior(),
                 contentPadding = PaddingValues(vertical = if (isLandscape) 100.dp else 200.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

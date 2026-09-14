@@ -17,7 +17,11 @@ import com.asmr.player.ui.theme.AsmrPlayerTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import kotlin.math.abs
 
+@RunWith(RobolectricTestRunner::class)
 class AlbumItemLayoutTest {
     @get:Rule
     val composeRule = createComposeRule()
@@ -49,7 +53,7 @@ class AlbumItemLayoutTest {
 
             CompositionLocalProvider(
                 LocalConfiguration provides compactConfig,
-                LocalDensity provides Density(2.75f, 1f)
+                LocalDensity provides Density(1f, 1f)
             ) {
                 AsmrPlayerTheme {
                     Box(modifier = Modifier.width(310.dp)) {
@@ -63,7 +67,8 @@ class AlbumItemLayoutTest {
         }
 
         val cardBounds = composeRule.onNodeWithTag(ALBUM_ITEM_CARD_TAG).getUnclippedBoundsInRoot()
-        val statsBounds = composeRule.onNodeWithTag(ALBUM_ITEM_STATS_TAG).getUnclippedBoundsInRoot()
+        val statsBounds = composeRule.onNodeWithTag(ALBUM_ITEM_STATS_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
         val cardHeight = cardBounds.bottom - cardBounds.top
 
         assertTrue(
@@ -73,6 +78,56 @@ class AlbumItemLayoutTest {
         assertTrue(
             "Expected album card height to expand beyond the old 140dp minimum when metadata is dense",
             cardHeight > 140.dp
+        )
+    }
+
+    @Test
+    fun albumItem_tagsLineClipsAtCardRightEdge() {
+        val album = Album(
+            id = 1L,
+            title = "Album title",
+            path = "/tmp/album",
+            circle = "Example Circle",
+            cv = "CV A / CV B",
+            tags = listOf(
+                "very-long-first-tag-name",
+                "second-long-tag-name",
+                "third-long-tag-name"
+            ),
+            workId = "RJ999999",
+            rjCode = "RJ999999"
+        )
+
+        composeRule.setContent {
+            val base = LocalConfiguration.current
+            val compactConfig = Configuration(base).apply {
+                screenWidthDp = 310
+                smallestScreenWidthDp = 310
+            }
+
+            CompositionLocalProvider(
+                LocalConfiguration provides compactConfig,
+                LocalDensity provides Density(1f, 1f)
+            ) {
+                AsmrPlayerTheme {
+                    Box(modifier = Modifier.width(310.dp)) {
+                        AlbumItem(
+                            album = album,
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        val cardBounds = composeRule.onNodeWithTag(ALBUM_ITEM_CARD_TAG).getUnclippedBoundsInRoot()
+        val tagsBounds = composeRule.onNodeWithTag(ALBUM_ITEM_TAGS_TAG, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+
+        assertTrue(
+            "Expected tags row clipping boundary to reach the album card right edge: " +
+                "card=$cardBounds tags=$tagsBounds",
+            abs((tagsBounds.right - cardBounds.right).value) <= 0.5f
         )
     }
 }

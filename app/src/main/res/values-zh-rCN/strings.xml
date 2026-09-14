@@ -746,4 +746,26 @@
     <string name="works_blocked" formatted="false">%1$s 个作品被屏蔽</string>
     <string name="you_need_log">需要先登录 DLsite 才能使用已购播放/下载</string>
     <string name="you_tap_play">点击播放时，音量会在设定时长内从低到高平滑升到正常值。</string>
+    <string name="all_works">全部作品</string>
+    <string name="search_sort_collected_new">最新收录</string>
+    <string name="nav_listening_calendar">ASMR 看板</string>
+    <string name="search_pull_down_refresh">下拉刷新</string>
+    <string name="search_release_refresh">松手刷新</string>
+    <string name="search_refreshing">正在刷新</string>
+    <string name="search_pull_up_next_page">上拉下一页</string>
+    <string name="search_refreshing_page">正在翻页</string>
+    <string name="search_work_filters">作品筛选</string>
+    <string name="search_work_language">作品语言</string>
+    <string name="search_has_subtitle">有字幕</string>
+    <string name="search_all_ages">全年龄</string>
+    <string name="search_scope_no_work_filters">当前范围不支持作品筛选</string>
+    <string name="search_work_filters_disabled">未启用作品筛选</string>
+    <string name="search_work_filters_one_enabled">已启用 1 项作品筛选</string>
+    <string name="search_work_filters_two_enabled">已启用 2 项作品筛选</string>
+    <string name="search_filtered">已筛选</string>
+    <string name="search_not_filtered">未筛选</string>
+    <string name="search_in_progress_retry_later">搜索处理中，请稍后再试</string>
+    <string name="blocked_keyword_exists" formatted="false">屏蔽词已存在：%1$s</string>
+    <string name="blocked_keyword_added" formatted="false">已添加屏蔽词：%1$s</string>
+    <string name="content_label">内容</string>
 </resources>

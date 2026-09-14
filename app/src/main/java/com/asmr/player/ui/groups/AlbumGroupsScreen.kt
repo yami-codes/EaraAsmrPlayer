@@ -1,9 +1,11 @@
 package com.asmr.player.ui.groups
 
-import androidx.compose.ui.res.stringResource
 import com.asmr.player.R
+
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,7 +39,6 @@ import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.asmr.player.data.local.db.dao.AlbumGroupStatsRow
 import com.asmr.player.data.local.db.entities.AlbumGroupEntity
@@ -61,10 +62,10 @@ import com.asmr.player.ui.common.FlatDialogAction
 import com.asmr.player.ui.common.FlatDialogActionTone
 import com.asmr.player.ui.common.FlatTextFieldDialog
 import com.asmr.player.ui.common.LocalBottomOverlayPadding
-import com.asmr.player.ui.common.StableWindowInsets
+import com.asmr.player.ui.common.rememberCalmScrollableFlingBehavior
 import com.asmr.player.ui.common.smoothScrollToTop
-import com.asmr.player.ui.common.thinScrollbar
 import com.asmr.player.ui.common.withAddedBottomPadding
+import com.asmr.player.ui.common.collectAsStateWhileActive
 import com.asmr.player.ui.theme.AsmrTheme
 
 private val AlbumGroupsPageHorizontalPadding = 8.dp
@@ -74,21 +75,27 @@ private val AlbumGroupRowActionIconSize = 18.dp
 @Composable
 fun AlbumGroupsScreen(
     windowSizeClass: WindowSizeClass,
+    isActive: Boolean = true,
+    isDataActive: Boolean = isActive,
     onGroupClick: (AlbumGroupEntity) -> Unit,
     scrollToTopSignal: Long = 0L,
     viewModel: AlbumGroupsViewModel = hiltViewModel()
 ) {
-    val groups by viewModel.groups.collectAsState()
+    val groups by viewModel.groups.collectAsStateWhileActive(isDataActive)
     val colorScheme = AsmrTheme.colorScheme
     val listState = rememberLazyListState()
     var showCreate by remember { mutableStateOf(false) }
 
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
     Scaffold(
-        contentWindowInsets = StableWindowInsets.navigationBars,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color.Transparent,
         contentColor = colorScheme.onBackground
     ) { padding ->
+        LaunchedEffect(isActive) {
+            if (isActive) return@LaunchedEffect
+            listState.stopScroll(MutatePriority.PreventUserInput)
+        }
         LaunchedEffect(scrollToTopSignal) {
             if (scrollToTopSignal == 0L) return@LaunchedEffect
             listState.smoothScrollToTop()
@@ -119,7 +126,8 @@ fun AlbumGroupsScreen(
                 } else {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize().thinScrollbar(listState),
+                        modifier = Modifier.fillMaxSize(),
+                        flingBehavior = rememberCalmScrollableFlingBehavior(),
                         contentPadding = PaddingValues(horizontal = AlbumGroupsPageHorizontalPadding, vertical = 8.dp)
                             .withAddedBottomPadding(LocalBottomOverlayPadding.current + 72.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -193,6 +201,7 @@ private fun AlbumGroupRow(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 placeholderCornerRadius = 12,
+                peekAnySizeForInitial = true,
                 modifier = Modifier
                     .size(54.dp)
                     .clip(RoundedCornerShape(12.dp))
@@ -207,7 +216,7 @@ private fun AlbumGroupRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = stringResource(R.string.albums_tracks, group.albumCount, group.itemCount),
+                    text = "共 ${group.albumCount} 张专辑 · ${group.itemCount} 首",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.textTertiary
                 )
@@ -234,7 +243,7 @@ private fun AlbumGroupRow(
     if (showDeleteConfirm) {
         FlatActionDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            message = stringResource(R.string.are_you_sure, group.name),
+            message = "确定要删除分组“${group.name}”吗？此操作不可撤销。",
             actions = listOf(
                 FlatDialogAction(stringResource(R.string.cancel), onClick = { showDeleteConfirm = false }),
                 FlatDialogAction(
@@ -273,8 +282,8 @@ private fun CreateAlbumGroupDialog(
         message = stringResource(R.string.enter_new_group_name),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.group_name),
-        confirmText = stringResource(R.string.create),
+        placeholder = "分组名称",
+        confirmText = "创建",
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onCreate(name.trim()) },
     )
@@ -293,8 +302,8 @@ private fun RenameAlbumGroupDialog(
         message = stringResource(R.string.enter_group_name_prompt),
         value = name,
         onValueChange = { name = it },
-        placeholder = stringResource(R.string.group_name),
-        confirmText = stringResource(R.string.dialog_confirm),
+        placeholder = "分组名称",
+        confirmText = "确定",
         confirmEnabled = name.trim().isNotBlank(),
         onConfirm = { onRename(name.trim()) },
     )

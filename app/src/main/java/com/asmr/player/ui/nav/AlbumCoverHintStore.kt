@@ -6,7 +6,7 @@ import com.asmr.player.domain.model.Album
 
 /**
  * 轻量内存存储：在列表点击进入专辑详情时，记录列表已知的首屏信息，
- * 供详情页在网络解析完成前先种入标题、RJ、社团、CV、标签、评分与封面。
+ * 供详情页在网络解析完成前先种入标题、作品编号、社团、CV、标签、评分与封面。
  *
  * 这样 hero 封面与列表卡片使用完全相同的图片 model（同一 coverUrl + 同一 keyTag），
  * 跨尺寸缓存复用（peekAnySize）即可命中，避免重复发起网络请求。
@@ -44,6 +44,28 @@ object AlbumCoverHintStore {
         )
     }
 
+    fun recordLocalAlbum(album: Album) {
+        val rj = album.rjCode.ifBlank { album.workId }.trim().uppercase()
+        val hint = AlbumCoverHint(
+            title = album.title,
+            rjCode = rj,
+            circle = album.circle,
+            cv = album.cv,
+            tags = album.tags,
+            coverUrl = album.coverUrl.takeIf { it.startsWith("http", ignoreCase = true) }.orEmpty(),
+            ratingValue = album.ratingValue,
+            ratingCount = album.ratingCount,
+            releaseDate = album.releaseDate,
+            dlCount = album.dlCount,
+            priceJpy = album.priceJpy,
+            hasAsmrOne = album.hasAsmrOne,
+            description = album.description,
+            hasResolvedDlsiteInfo = false,
+            localAlbum = album
+        )
+        storeHint(album.id, rj, hint)
+    }
+
     fun record(
         albumId: Long?,
         rjCode: String?,
@@ -59,7 +81,8 @@ object AlbumCoverHintStore {
         priceJpy: Int = 0,
         hasAsmrOne: Boolean = false,
         description: String? = null,
-        hasResolvedDlsiteInfo: Boolean = false
+        hasResolvedDlsiteInfo: Boolean = false,
+        localAlbum: Album? = null
     ) {
         val hint = AlbumCoverHint(
             title = title?.trim().orEmpty(),
@@ -78,14 +101,23 @@ object AlbumCoverHintStore {
             priceJpy = priceJpy.coerceAtLeast(0),
             hasAsmrOne = hasAsmrOne,
             description = description?.trim().orEmpty(),
-            hasResolvedDlsiteInfo = hasResolvedDlsiteInfo
+            hasResolvedDlsiteInfo = hasResolvedDlsiteInfo,
+            localAlbum = localAlbum
         )
         if (hint.isBlank()) return
-        val rj = hint.rjCode
-        val id = albumId ?: 0L
+        storeHint(albumId ?: 0L, hint.rjCode, hint)
+    }
+
+    private fun storeHint(albumId: Long, rjCode: String, hint: AlbumCoverHint) {
         synchronized(lock) {
-            if (rj.isNotBlank()) hints["rj:$rj"] = hint
-            if (id > 0L) hints["id:$id"] = hint
+            if (rjCode.isNotBlank()) {
+                val key = "rj:$rjCode"
+                hints[key] = hint
+            }
+            if (albumId > 0L) {
+                val key = "id:$albumId"
+                hints[key] = hint
+            }
         }
     }
 
@@ -102,6 +134,7 @@ object AlbumCoverHintStore {
         }
         return null
     }
+
 }
 
 data class AlbumCoverHint(
@@ -118,7 +151,8 @@ data class AlbumCoverHint(
     val priceJpy: Int,
     val hasAsmrOne: Boolean,
     val description: String,
-    val hasResolvedDlsiteInfo: Boolean
+    val hasResolvedDlsiteInfo: Boolean,
+    val localAlbum: Album?
 ) {
     fun isBlank(): Boolean {
         return title.isBlank() &&
@@ -133,11 +167,13 @@ data class AlbumCoverHint(
             dlCount <= 0 &&
             priceJpy <= 0 &&
             !hasAsmrOne &&
-            description.isBlank()
+            description.isBlank() &&
+            localAlbum == null
     }
 }
 
 internal fun albumFromCoverHint(context: Context, rj: String, hint: AlbumCoverHint?): Album {
+    hint?.localAlbum?.let { return it }
     val normalizedRj = rj.ifBlank { hint?.rjCode.orEmpty() }
     val albumFallback = context.getString(R.string.album_label)
     return Album(
